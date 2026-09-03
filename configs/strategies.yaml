@@ -1,0 +1,27 @@
+strategies:
+  - id: coalesced_global_memory
+    description: Improve global-memory access coalescing
+    prompts:
+      cuda_cpp: |
+        Rewrite the kernel to improve global-memory coalescing while preserving exact workload semantics.
+  - id: vectorized_memory_access
+    description: Use safe vectorized memory operations
+    prompts:
+      cuda_cpp: |
+        Apply aligned vectorized loads or stores where permitted by the workload contract.
+  - id: reduce_synchronization
+    description: Eliminate unnecessary synchronization
+    prompts:
+      cuda_cpp: |
+        Reduce synchronization overhead without introducing races or changing numerical semantics.
+  - id: reduce_register_pressure
+    description: Reduce register pressure
+    prompts:
+      cuda_cpp: |
+        Reduce register pressure while preserving correctness and useful instruction-level parallelism.
+  - id: specialize_workload_shape
+    description: Specialize for the fixed workload shapes
+    prompts:
+      cuda_cpp: |
+        Specialize the implementation for the allowed workload shapes and launch choices.
+

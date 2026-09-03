@@ -1,0 +1,226 @@
+from __future__ import annotations
+
+from kernel_mcts.budget import GenerationBudget
+import pytest
+
+from kernel_mcts.domain import (
+    BenchmarkResult,
+    EvaluationResult,
+    InvalidReason,
+    KernelProgram,
+    ProposalStatus,
+    ShapeCase,
+    Strategy,
+    WorkloadContract,
+)
+from kernel_mcts.generation import GenerationResult
+from kernel_mcts.priors import UniformStrategyPrior
+from kernel_mcts.search import MCTS, MCTSConfig
+from kernel_mcts.search.model import SearchNode
+
+
+WORKLOAD = WorkloadContract("toy", "toy", "fp32", (ShapeCase({"n": 1}, 1.0),), 0.0, 0.0)
+STRATEGIES = (
+    Strategy("a", "increment one", {"cuda_cpp": "a"}),
+    Strategy("b", "increment two", {"cuda_cpp": "b"}),
+)
+
+
+def valid_evaluation(source: str, state_key: str, reward: float) -> EvaluationResult:
+    return EvaluationResult(
+        ProposalStatus.VALID,
+        KernelProgram(source),
+        state_key,
+        reward,
+        BenchmarkResult((1.0,), 1.0, {"n=1": 1.0}),
+        metadata={"artifact_id": f"artifact:{state_key}"},
+    )
+
+
+class ToyGenerator:
+    def __init__(self) -> None:
+        self.counter = 0
+
+    def generate(self, request):
+        self.counter += 1
+        parent_value = int(request.parent.source)
+        value = parent_value + (1 if request.strategy.id == "a" else 2)
+        return GenerationResult(f"generation:{self.counter}", str(value), KernelProgram(str(value)), "prompt")
+
+
+class ToyEvaluator:
+    def evaluate(self, program, workload):
+        value = int(program.source)
+        return valid_evaluation(program.source, f"state:{value}", float(value))
+
+
+def test_mcts_obeys_budget_and_finds_improvement() -> None:
+    result = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(12),
+        config=MCTSConfig(max_depth=5, k_max=2),
+    ).run(valid_evaluation("0", "state:0", 0.0))
+    assert result.generations == 12
+    assert result.best.reward > 0
+    assert len(result.nodes) > 1
+    assert all(edge.visits >= 0 for node in result.nodes for edge in node.actions.values())
+
+
+class DuplicateGenerator:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def generate(self, request):
+        self.calls += 1
+        return GenerationResult(
+            f"generation:{self.calls}",
+            "same",
+            KernelProgram("same"),
+            "prompt",
+        )
+
+
+class DuplicateEvaluator:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def evaluate(self, program, workload):
+        self.calls += 1
+        return EvaluationResult(
+            ProposalStatus.VALID,
+            program,
+            "same-state",
+            1.0,
+            BenchmarkResult((float(self.calls),), float(self.calls), {"n=1": float(self.calls)}),
+            metadata={"artifact_id": f"artifact:call:{self.calls}"},
+        )
+
+
+def test_transpositions_reuse_state() -> None:
+    generator = DuplicateGenerator()
+    evaluator = DuplicateEvaluator()
+    result = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=generator,
+        evaluator=evaluator,
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(6),
+        config=MCTSConfig(max_depth=3, k_max=2),
+    ).run(valid_evaluation("root", "root", 0.0))
+    assert len(result.nodes) == 2
+    cached = next(node for node in result.nodes if node.state_key == "same-state")
+    assert cached.evaluation.benchmark == BenchmarkResult((1.0,), 1.0, {"n=1": 1.0})
+    assert cached.evaluation.metadata["artifact_id"] == "artifact:call:1"
+    assert generator.calls == result.generations
+    assert evaluator.calls == result.generations
+
+
+def test_search_node_rejects_invalid_evaluation() -> None:
+    invalid = EvaluationResult(
+        ProposalStatus.INVALID,
+        invalid_reason=InvalidReason.COMPILE_FAILURE,
+    )
+    with pytest.raises(ValueError, match="valid evaluations"):
+        SearchNode("invalid", invalid, 1)
+
+
+def test_root_and_candidate_cache_complete_evaluations() -> None:
+    root_evaluation = valid_evaluation("0", "state:0", 0.0)
+    result = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+    ).run(root_evaluation)
+
+    assert result.root.evaluation is root_evaluation
+    candidate = next(node for node in result.nodes if node is not result.root)
+    assert candidate.evaluation.benchmark is not None
+    assert candidate.program is candidate.evaluation.program
+
+
+def test_profiler_receives_cached_evaluation() -> None:
+    class RecordingProfiler:
+        def __init__(self) -> None:
+            self.evaluations = []
+
+        def lightweight_profile(self, evaluation, workload):
+            self.evaluations.append(evaluation)
+            return {"profiled": True}
+
+    root_evaluation = valid_evaluation("0", "state:0", 0.0)
+    profiler = RecordingProfiler()
+    MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        profiler=profiler,
+    ).run(root_evaluation)
+
+    assert profiler.evaluations == [root_evaluation]
+
+
+def test_mcts_charges_and_logs_repair_generation() -> None:
+    class RepairGenerator:
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request):
+            self.requests.append(request)
+            source = "bad" if request.attempt == 0 else "1"
+            return GenerationResult(
+                f"generation:{len(self.requests)}",
+                source,
+                KernelProgram(source),
+                "prompt",
+            )
+
+    class RepairEvaluator:
+        def evaluate(self, program, workload):
+            if program.source == "bad":
+                return EvaluationResult(
+                    ProposalStatus.INVALID,
+                    program=program,
+                    invalid_reason=InvalidReason.COMPILE_FAILURE,
+                )
+            return valid_evaluation("1", "state:1", 1.0)
+
+    class RecordingEvents:
+        def __init__(self) -> None:
+            self.events = []
+
+        def emit(self, event_type, payload):
+            self.events.append((event_type, payload))
+
+    generator = RepairGenerator()
+    events = RecordingEvents()
+    result = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=generator,
+        evaluator=RepairEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(2),
+        config=MCTSConfig(max_repairs=1),
+        events=events,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    action = result.root.actions["a"]
+    generation_events = [payload for event, payload in events.events if event == "generation"]
+    assert result.generations == 2
+    assert len(result.nodes) == 2
+    assert action.proposal_count == 1
+    assert action.generation_attempt_count == 2
+    assert action.repair_generation_count == 1
+    assert [payload["b_gen"] for payload in generation_events] == [1, 2]
+    assert [payload["repair_attempt"] for payload in generation_events] == [0, 1]

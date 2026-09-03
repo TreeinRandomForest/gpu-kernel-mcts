@@ -1,2 +1,20 @@
 # gpu-kernel-mcts
 Monte-Carlo Tree Search Applied to GPU Kernel Optimizations
+
+The repository currently contains the dependency-light Milestone A search core:
+
+- stochastic semantic actions with progressive widening,
+- PUCT strategy selection and UCB realization selection,
+- DAG state reuse through a transposition table,
+- strict candidate-generation budget accounting,
+- independent, greedy, and iterative best-of-K baselines,
+- uniform strategy priors and typed extension interfaces,
+- append-oriented SQLite trace events.
+
+Run the tests with:
+
+```bash
+python -m pytest
+```
+
+See `spec.md` for the complete project specification.
