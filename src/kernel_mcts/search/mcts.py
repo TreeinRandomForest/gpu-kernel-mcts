@@ -101,15 +101,18 @@ class MCTS:
         node.actions = {key: StrategyEdge(key, prior) for key, prior in priors.items()}
 
     def _iterate(self, root: SearchNode) -> SearchNode | None:
+        """PUCT selection
+        """
+
         node = root
         path: list[tuple[StrategyEdge, RealizationEdge | None]] = []
         seen = {node.id}
         while node.depth < self.config.max_depth:
             self._ensure_actions(node)
-            action = self._select_action(node)
+            action = self._select_action(node) #puct -> StrategyEdge
             # Count selection before widening, matching K_allowed(N) with first visit N=1.
             action.visits += 1
-            if len(action.realizations) < self._allowed_children(action.visits):
+            if len(action.realizations) < self._allowed_children(action.visits): #progressive widening
                 leaf = self._expand(node, action)
                 if leaf is None:
                     self._backup(path + [(action, None)], node.reward)
