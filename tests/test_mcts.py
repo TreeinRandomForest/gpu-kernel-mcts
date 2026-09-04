@@ -222,6 +222,8 @@ def test_mcts_charges_and_logs_repair_generation() -> None:
     assert action.proposal_count == 1
     assert action.generation_attempt_count == 2
     assert action.repair_generation_count == 1
+    assert action.visits == 1
+    assert action.value_sum == 1.0
     assert [payload["b_gen"] for payload in generation_events] == [1, 2]
     assert [payload["repair_attempt"] for payload in generation_events] == [0, 1]
 
@@ -265,3 +267,104 @@ def test_puct_uses_priors_after_an_action_visit() -> None:
     )
 
     assert mcts._select_action(node).strategy_id == "high-prior"
+
+
+class FixedGenerator:
+    def __init__(self, sources):
+        self.sources = iter(sources)
+        self.calls = 0
+
+    def generate(self, request):
+        self.calls += 1
+        source = next(self.sources)
+        return GenerationResult(
+            f"generation:{self.calls}",
+            source,
+            KernelProgram(source),
+            "prompt",
+        )
+
+
+def test_invalid_proposal_does_not_update_search_statistics() -> None:
+    class InvalidEvaluator:
+        def evaluate(self, program, workload):
+            return EvaluationResult(
+                ProposalStatus.INVALID,
+                program=program,
+                invalid_reason=InvalidReason.CORRECTNESS_FAILURE,
+            )
+
+    result = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=FixedGenerator(("invalid",)),
+        evaluator=InvalidEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        config=MCTSConfig(max_repairs=0),
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    action = result.root.actions["a"]
+    assert action.visits == 0
+    assert action.value_sum == 0.0
+    assert action.q_max == float("-inf")
+    assert action.proposal_count == 1
+    assert action.invalid_proposal_count == 1
+    assert action.generation_attempt_count == 1
+
+
+def test_infrastructure_failure_does_not_update_search_statistics() -> None:
+    class InfrastructureEvaluator:
+        def evaluate(self, program, workload):
+            return EvaluationResult(ProposalStatus.INFRASTRUCTURE_FAILURE)
+
+    result = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=FixedGenerator(("candidate",)),
+        evaluator=InfrastructureEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        config=MCTSConfig(max_repairs=0, max_infrastructure_retries=1),
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    action = result.root.actions["a"]
+    assert action.visits == 0
+    assert action.value_sum == 0.0
+    assert action.q_max == float("-inf")
+    assert action.proposal_count == 1
+    assert action.invalid_proposal_count == 0
+
+
+def test_failed_descendant_does_not_partially_back_up_valid_ancestor_path() -> None:
+    class ValidThenInvalidEvaluator:
+        def evaluate(self, program, workload):
+            if program.source == "1":
+                return valid_evaluation("1", "state:1", 1.0)
+            return EvaluationResult(
+                ProposalStatus.INVALID,
+                program=program,
+                invalid_reason=InvalidReason.COMPILE_FAILURE,
+            )
+
+    result = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=FixedGenerator(("1", "invalid")),
+        evaluator=ValidThenInvalidEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(2),
+        config=MCTSConfig(k_max=1, max_repairs=0),
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    root_action = result.root.actions["a"]
+    realization = next(iter(root_action.realizations.values()))
+    child = next(node for node in result.nodes if node.state_key == "state:1")
+    child_action = child.actions["a"]
+    assert root_action.visits == 1
+    assert root_action.value_sum == 1.0
+    assert root_action.q_max == 1.0
+    assert realization.descents == 1
+    assert realization.value_sum == 1.0
+    assert child_action.visits == 0
+    assert child_action.value_sum == 0.0

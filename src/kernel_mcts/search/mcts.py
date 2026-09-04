@@ -40,8 +40,14 @@ class SearchResult:
     root: SearchNode
     best: SearchNode
     nodes: tuple[SearchNode, ...] #all unique nodes
-    iterations: int #MCTS iterations i.e. #of backups
+    iterations: int #select -> expand/evaluate -> optional backup cycles
     generations: int #LLM calls for gen incl. repair
+
+
+@dataclass(frozen=True, slots=True)
+class ExpansionOutcome:
+    status: ProposalStatus
+    node: SearchNode | None = None
 
 
 class MCTS:
@@ -110,13 +116,14 @@ class MCTS:
         while node.depth < self.config.max_depth:
             self._ensure_actions(node)
             action = self._select_action(node) #puct -> StrategyEdge
-            # Count selection before widening, matching K_allowed(N) with first visit N=1.
-            action.visits += 1
-            if len(action.realizations) < self._allowed_children(action.visits): #progressive widening
-                leaf = self._expand(node, action)
-                if leaf is None:
-                    self._backup(path + [(action, None)], node.reward)
+            # Use the prospective valid visit so the first selection allows one child.
+            prospective_visits = action.visits + 1
+            if len(action.realizations) < self._allowed_children(prospective_visits): #progressive widening
+                outcome = self._expand(node, action)
+                if outcome.status != ProposalStatus.VALID:
                     return None
+                assert outcome.node is not None
+                leaf = outcome.node
                 realization = action.realizations[leaf.id]
                 path.append((action, realization))
                 self._backup(path, leaf.reward)
@@ -161,7 +168,7 @@ class MCTS:
             + self.config.c_ucb * math.sqrt(math.log1p(action.visits) / (1 + edge.descents)),
         )
 
-    def _expand(self, parent: SearchNode, action: StrategyEdge) -> SearchNode | None:
+    def _expand(self, parent: SearchNode, action: StrategyEdge) -> ExpansionOutcome:
         action.proposal_count += 1
         outcome = run_proposal(
             generator=self.generator,
@@ -185,17 +192,17 @@ class MCTS:
         if result.status != ProposalStatus.VALID:
             if result.status == ProposalStatus.INVALID:
                 action.invalid_proposal_count += 1
-            return None
+            return ExpansionOutcome(result.status)
         action.valid_proposal_count += 1
         assert result.program is not None and result.state_key is not None and result.reward is not None
         candidate = SearchNode(str(uuid4()), result, parent.depth + 1)
         child = self.nodes.add(candidate)
         action.realizations.setdefault(child.id, RealizationEdge(child.id))
-        return child
+        return ExpansionOutcome(ProposalStatus.VALID, child)
 
     def _backup(self, path: list[tuple[StrategyEdge, RealizationEdge | None]], reward: float) -> None:
         for action, realization in path:
-            # The action visit was already counted during selection.
+            action.visits += 1
             action.value_sum += reward
             action.q_max = max(action.q_max, reward)
             if realization is not None:
