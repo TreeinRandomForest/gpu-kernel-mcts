@@ -16,7 +16,7 @@ from kernel_mcts.domain import (
 from kernel_mcts.generation import GenerationResult
 from kernel_mcts.priors import UniformStrategyPrior
 from kernel_mcts.search import MCTS, MCTSConfig
-from kernel_mcts.search.model import SearchNode, StrategyEdge
+from kernel_mcts.search.model import RealizationEdge, SearchNode, StrategyEdge
 
 
 WORKLOAD = WorkloadContract("toy", "toy", "fp32", (ShapeCase({"n": 1}, 1.0),), 0.0, 0.0)
@@ -126,7 +126,7 @@ def test_search_node_rejects_invalid_evaluation() -> None:
         invalid_reason=InvalidReason.COMPILE_FAILURE,
     )
     with pytest.raises(ValueError, match="valid evaluations"):
-        SearchNode("invalid", invalid, 1)
+        SearchNode("invalid", invalid)
 
 
 def test_root_and_candidate_cache_complete_evaluations() -> None:
@@ -229,7 +229,7 @@ def test_mcts_charges_and_logs_repair_generation() -> None:
 
 
 def test_zero_visit_puct_uses_seeded_tie_breaking() -> None:
-    node = SearchNode("root", valid_evaluation("0", "state:0", 0.0), 0)
+    node = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
     node.actions = {
         "high-prior": StrategyEdge("high-prior", 0.99),
         "low-prior": StrategyEdge("low-prior", 0.01),
@@ -251,7 +251,7 @@ def test_zero_visit_puct_uses_seeded_tie_breaking() -> None:
 
 
 def test_puct_uses_priors_after_an_action_visit() -> None:
-    node = SearchNode("root", valid_evaluation("0", "state:0", 0.0), 0)
+    node = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
     node.actions = {
         "high-prior": StrategyEdge("high-prior", 0.9, visits=1),
         "low-prior": StrategyEdge("low-prior", 0.1),
@@ -368,3 +368,52 @@ def test_failed_descendant_does_not_partially_back_up_valid_ancestor_path() -> N
     assert realization.value_sum == 1.0
     assert child_action.visits == 0
     assert child_action.value_sum == 0.0
+
+
+def test_transposed_node_uses_current_path_depth_for_expansion() -> None:
+    mcts = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        config=MCTSConfig(k_max=1, max_depth=2),
+    )
+    detour = SearchNode("detour", valid_evaluation("10", "state:10", 10.0))
+    middle = SearchNode("middle", valid_evaluation("11", "state:11", 11.0))
+    shared = SearchNode("shared", valid_evaluation("1", "state:1", 1.0))
+    detour.actions = {
+        "a": StrategyEdge(
+            "a",
+            1.0,
+            visits=1,
+            realizations={middle.id: RealizationEdge(middle.id, descents=1, value_sum=1.0)},
+        )
+    }
+    middle.actions = {
+        "a": StrategyEdge(
+            "a",
+            1.0,
+            visits=1,
+            realizations={shared.id: RealizationEdge(shared.id, descents=1, value_sum=1.0)},
+        )
+    }
+    root = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
+    root.actions = {
+        "a": StrategyEdge(
+            "a",
+            1.0,
+            visits=1,
+            realizations={shared.id: RealizationEdge(shared.id, descents=1, value_sum=1.0)},
+        )
+    }
+    for node in (detour, middle, shared, root):
+        mcts.nodes.add(node)
+
+    leaf = mcts._iterate(root)
+
+    assert leaf is not None
+    assert leaf.state_key == "state:2"
+    assert mcts.nodes.get("state:1") is shared
+    assert not hasattr(shared, "depth")

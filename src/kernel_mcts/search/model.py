@@ -59,7 +59,6 @@ class StrategyEdge:
 class SearchNode:
     id: str
     evaluation: EvaluationResult
-    depth: int #DAG so this is first depth (ill-defined)
     actions: dict[str, StrategyEdge] = field(default_factory=dict)
     profile: dict[str, object] | None = None #derived from ncu
 

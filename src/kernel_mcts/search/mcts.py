@@ -83,7 +83,7 @@ class MCTS:
         self.nodes = TranspositionTable()
 
     def run(self, root_evaluation: EvaluationResult) -> SearchResult:
-        root = SearchNode(str(uuid4()), root_evaluation, 0)
+        root = SearchNode(str(uuid4()), root_evaluation)
         self.nodes.add(root)
         best = root
         iterations = 0
@@ -111,9 +111,10 @@ class MCTS:
         """
 
         node = root
+        traversal_depth = 0
         path: list[tuple[StrategyEdge, RealizationEdge | None]] = []
         seen = {node.id}
-        while node.depth < self.config.max_depth:
+        while traversal_depth < self.config.max_depth:
             self._ensure_actions(node)
             action = self._select_action(node) #puct -> StrategyEdge
             # Use the prospective valid visit so the first selection allows one child.
@@ -130,6 +131,7 @@ class MCTS:
                 return leaf
             realization = self._select_realization(action)
             path.append((action, realization))
+            traversal_depth += 1
             child = next(item for item in self.nodes.values() if item.id == realization.child_id)
             if child.id in seen:
                 self._backup(path, child.reward)
@@ -195,7 +197,7 @@ class MCTS:
             return ExpansionOutcome(result.status)
         action.valid_proposal_count += 1
         assert result.program is not None and result.state_key is not None and result.reward is not None
-        candidate = SearchNode(str(uuid4()), result, parent.depth + 1)
+        candidate = SearchNode(str(uuid4()), result)
         child = self.nodes.add(candidate)
         action.realizations.setdefault(child.id, RealizationEdge(child.id))
         return ExpansionOutcome(ProposalStatus.VALID, child)
