@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from random import Random
 from typing import Mapping, Sequence
 from uuid import uuid4
 
@@ -55,6 +56,7 @@ class MCTS:
         budget: GenerationBudget,
         hardware: Mapping[str, object] | None = None,
         config: MCTSConfig = MCTSConfig(),
+        seed: int = 0,
         profiler: NodeProfiler | None = None,
         events: EventSink | None = None,
     ) -> None:
@@ -68,6 +70,8 @@ class MCTS:
         self.budget = budget
         self.hardware = hardware or {}
         self.config = config
+        self.seed = seed
+        self.rng = Random(seed)
         self.profiler = profiler
         self.events = events or NullEventSink()
         self.nodes = TranspositionTable()
@@ -127,13 +131,24 @@ class MCTS:
 
     def _select_action(self, node: SearchNode) -> StrategyEdge:
         total = sum(edge.visits for edge in node.actions.values())
-        root = math.sqrt(max(1, total))
-        return max(
-            node.actions.values(),
-            key=lambda edge: edge.q_mean + self.config.c_puct * edge.prior * root / (1 + edge.visits),
-        )
+        exploration_scale = math.sqrt(total)
+        scored = [
+            (
+                edge.q_mean
+                + self.config.c_puct
+                * edge.prior
+                * exploration_scale
+                / (1 + edge.visits),
+                edge,
+            )
+            for edge in node.actions.values()
+        ]
+        best_score = max(score for score, _ in scored)
+        tied = [edge for score, edge in scored if score == best_score]
+        return self.rng.choice(tied)
 
     def _allowed_children(self, visits: int) -> int:
+        #progressive widening budget
         return min(self.config.k_max, math.ceil(self.config.c_pw * visits ** self.config.alpha_pw))
 
     def _select_realization(self, action: StrategyEdge) -> RealizationEdge:

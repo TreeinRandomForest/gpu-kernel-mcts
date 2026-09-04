@@ -16,7 +16,7 @@ from kernel_mcts.domain import (
 from kernel_mcts.generation import GenerationResult
 from kernel_mcts.priors import UniformStrategyPrior
 from kernel_mcts.search import MCTS, MCTSConfig
-from kernel_mcts.search.model import SearchNode
+from kernel_mcts.search.model import SearchNode, StrategyEdge
 
 
 WORKLOAD = WorkloadContract("toy", "toy", "fp32", (ShapeCase({"n": 1}, 1.0),), 0.0, 0.0)
@@ -224,3 +224,44 @@ def test_mcts_charges_and_logs_repair_generation() -> None:
     assert action.repair_generation_count == 1
     assert [payload["b_gen"] for payload in generation_events] == [1, 2]
     assert [payload["repair_attempt"] for payload in generation_events] == [0, 1]
+
+
+def test_zero_visit_puct_uses_seeded_tie_breaking() -> None:
+    node = SearchNode("root", valid_evaluation("0", "state:0", 0.0), 0)
+    node.actions = {
+        "high-prior": StrategyEdge("high-prior", 0.99),
+        "low-prior": StrategyEdge("low-prior", 0.01),
+    }
+    selections = []
+    for _ in range(2):
+        mcts = MCTS(
+            strategies=STRATEGIES,
+            workload=WORKLOAD,
+            generator=ToyGenerator(),
+            evaluator=ToyEvaluator(),
+            prior_provider=UniformStrategyPrior(),
+            budget=GenerationBudget(1),
+            seed=0,
+        )
+        selections.append(mcts._select_action(node).strategy_id)
+
+    assert selections == ["low-prior", "low-prior"]
+
+
+def test_puct_uses_priors_after_an_action_visit() -> None:
+    node = SearchNode("root", valid_evaluation("0", "state:0", 0.0), 0)
+    node.actions = {
+        "high-prior": StrategyEdge("high-prior", 0.9, visits=1),
+        "low-prior": StrategyEdge("low-prior", 0.1),
+    }
+    mcts = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        seed=0,
+    )
+
+    assert mcts._select_action(node).strategy_id == "high-prior"
