@@ -24,9 +24,6 @@ See `spec.md` for the complete project specification.
 
 ## TODO
 
-- Do not back up invalid proposals or infrastructure failures.
-- Track search depth on the traversal path rather than the canonical transposed node.
-- Account for and report strategy-prior calls as `B_prior`.
 - Persist complete proposal, node, and edge records, including `Q_mean` and `Q_max`.
 - Validate requested GPU form factor and toolchain/profiler constraints.
 - Implement the RunPod worker lifecycle with manifest capture, validation, reuse, and release.

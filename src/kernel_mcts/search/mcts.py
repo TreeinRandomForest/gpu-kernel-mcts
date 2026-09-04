@@ -42,6 +42,7 @@ class SearchResult:
     nodes: tuple[SearchNode, ...] #all unique nodes
     iterations: int #select -> expand/evaluate -> optional backup cycles
     generations: int #LLM calls for gen incl. repair
+    prior_calls: int #B_prior: LLM calls used to obtain strategy priors
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +82,7 @@ class MCTS:
         self.profiler = profiler
         self.events = events or NullEventSink()
         self.nodes = TranspositionTable()
+        self.prior_calls = 0
 
     def run(self, root_evaluation: EvaluationResult) -> SearchResult:
         root = SearchNode(str(uuid4()), root_evaluation)
@@ -93,18 +95,37 @@ class MCTS:
             if leaf is not None and leaf.reward > best.reward:
                 best = leaf
                 self.events.emit("new_global_best", {"node_id": leaf.id, "reward": leaf.reward})
-        return SearchResult(root, best, tuple(self.nodes.values()), iterations, self.budget.snapshot().used)
+        return SearchResult(
+            root,
+            best,
+            tuple(self.nodes.values()),
+            iterations,
+            self.budget.snapshot().used,
+            self.prior_calls,
+        )
 
     def _ensure_actions(self, node: SearchNode) -> None:
         if node.actions:
             return
         if self.profiler is not None and node.profile is None:
             node.profile = dict(self.profiler.lightweight_profile(node.evaluation, self.workload))
+        if self.prior_provider.counts_toward_b_prior:
+            self.prior_calls += 1
         priors = validate_priors(
             self.prior_provider.get_priors(node.program, self.workload, tuple(self.strategies.values()), node.profile),
             tuple(self.strategies.values()),
         )
         node.actions = {key: StrategyEdge(key, prior) for key, prior in priors.items()}
+        self.events.emit(
+            "strategy_priors",
+            {
+                "node_id": node.id,
+                "provider": self.prior_provider.name,
+                "counts_toward_b_prior": self.prior_provider.counts_toward_b_prior,
+                "b_prior": self.prior_calls,
+                "priors": priors,
+            },
+        )
 
     def _iterate(self, root: SearchNode) -> SearchNode | None:
         """PUCT selection

@@ -6,6 +6,9 @@ from .domain import KernelProgram, Strategy, WorkloadContract
 
 
 class UniformStrategyPrior:
+    name = "uniform"
+    counts_toward_b_prior = False
+
     def get_priors(
         self,
         program: KernelProgram,
@@ -31,4 +34,3 @@ def validate_priors(
     if total <= 0:
         raise ValueError("strategy priors must have positive mass")
     return {key: value / total for key, value in priors.items()}
-

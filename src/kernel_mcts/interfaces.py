@@ -10,6 +10,9 @@ class KernelEvaluator(Protocol):
 
 
 class StrategyPriorProvider(Protocol):
+    name: str
+    counts_toward_b_prior: bool
+
     def get_priors(
         self,
         program: KernelProgram,

@@ -65,6 +65,7 @@ def test_mcts_obeys_budget_and_finds_improvement() -> None:
         config=MCTSConfig(max_depth=5, k_max=2),
     ).run(valid_evaluation("0", "state:0", 0.0))
     assert result.generations == 12
+    assert result.prior_calls == 0
     assert result.best.reward > 0
     assert len(result.nodes) > 1
     assert all(edge.visits >= 0 for node in result.nodes for edge in node.actions.values())
@@ -417,3 +418,96 @@ def test_transposed_node_uses_current_path_depth_for_expansion() -> None:
     assert leaf.state_key == "state:2"
     assert mcts.nodes.get("state:1") is shared
     assert not hasattr(shared, "depth")
+
+
+class CountingLLMPrior:
+    name = "test-llm"
+    counts_toward_b_prior = True
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def get_priors(self, program, workload, strategies, profile):
+        self.calls += 1
+        return {strategy.id: index + 1.0 for index, strategy in enumerate(strategies)}
+
+
+class RecordingEvents:
+    def __init__(self) -> None:
+        self.events = []
+
+    def emit(self, event_type, payload):
+        self.events.append((event_type, payload))
+
+
+def test_llm_prior_is_counted_reported_and_logged() -> None:
+    provider = CountingLLMPrior()
+    events = RecordingEvents()
+    result = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=provider,
+        budget=GenerationBudget(1),
+        events=events,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    prior_events = [payload for event, payload in events.events if event == "strategy_priors"]
+    assert provider.calls == 1
+    assert result.prior_calls == 1
+    assert prior_events == [
+        {
+            "node_id": result.root.id,
+            "provider": "test-llm",
+            "counts_toward_b_prior": True,
+            "b_prior": 1,
+            "priors": {"a": 1.0 / 3.0, "b": 2.0 / 3.0},
+        }
+    ]
+
+
+def test_prior_is_cached_per_node_and_counted_on_new_node() -> None:
+    provider = CountingLLMPrior()
+    mcts = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=provider,
+        budget=GenerationBudget(0),
+    )
+    first = SearchNode("first", valid_evaluation("0", "state:0", 0.0))
+    second = SearchNode("second", valid_evaluation("1", "state:1", 1.0))
+
+    mcts._ensure_actions(first)
+    mcts._ensure_actions(first)
+    mcts._ensure_actions(second)
+
+    assert provider.calls == 2
+    assert mcts.prior_calls == 2
+
+
+def test_invalid_llm_priors_are_counted_but_not_cached() -> None:
+    class InvalidLLMPrior(CountingLLMPrior):
+        def get_priors(self, program, workload, strategies, profile):
+            self.calls += 1
+            return {"unknown": 1.0}
+
+    provider = InvalidLLMPrior()
+    mcts = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=provider,
+        budget=GenerationBudget(0),
+    )
+    node = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
+
+    with pytest.raises(ValueError, match="prior keys"):
+        mcts._ensure_actions(node)
+
+    assert provider.calls == 1
+    assert mcts.prior_calls == 1
+    assert node.actions == {}
