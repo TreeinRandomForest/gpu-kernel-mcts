@@ -12,6 +12,7 @@ from ..generation import GenerationRequest, KernelGenerator
 from ..interfaces import EventSink, KernelEvaluator, NodeProfiler, NullEventSink, StrategyPriorProvider
 from ..priors import validate_priors
 from ..proposals import GenerationAttempt, run_proposal
+from ..trace_records import IterationStatus, SelectionMode
 from .model import RealizationEdge, SearchNode, StrategyEdge, TranspositionTable
 
 
@@ -49,6 +50,24 @@ class SearchResult:
 class ExpansionOutcome:
     status: ProposalStatus
     node: SearchNode | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SelectionStep:
+    node_id: str
+    strategy_id: str
+    selection_mode: SelectionMode
+    child_node_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class IterationOutcome:
+    status: IterationStatus
+    steps: tuple[SelectionStep, ...]
+    leaf: SearchNode | None = None
+    expanded_parent_node_id: str | None = None
+    selected_strategy_id: str | None = None
+    backed_up_reward: float | None = None
 
 
 class MCTS:
@@ -90,8 +109,9 @@ class MCTS:
         best = root
         iterations = 0
         while not self.budget.exhausted:
-            leaf = self._iterate(root)
+            outcome = self._iterate(root)
             iterations += 1
+            leaf = outcome.leaf
             if leaf is not None and leaf.reward > best.reward:
                 best = leaf
                 self.events.emit("new_global_best", {"node_id": leaf.id, "reward": leaf.reward})
@@ -127,13 +147,14 @@ class MCTS:
             },
         )
 
-    def _iterate(self, root: SearchNode) -> SearchNode | None:
+    def _iterate(self, root: SearchNode) -> IterationOutcome:
         """PUCT selection
         """
 
         node = root
         traversal_depth = 0
         path: list[tuple[StrategyEdge, RealizationEdge | None]] = []
+        steps: list[SelectionStep] = []
         seen = {node.id}
         while traversal_depth < self.config.max_depth:
             self._ensure_actions(node)
@@ -142,25 +163,63 @@ class MCTS:
             prospective_visits = action.visits + 1
             if len(action.realizations) < self._allowed_children(prospective_visits): #progressive widening
                 outcome = self._expand(node, action)
+                steps.append(
+                    SelectionStep(
+                        node.id,
+                        action.strategy_id,
+                        SelectionMode.EXPAND,
+                        outcome.node.id if outcome.node is not None else None,
+                    )
+                )
                 if outcome.status != ProposalStatus.VALID:
-                    return None
+                    return IterationOutcome(
+                        status=IterationStatus(outcome.status.value),
+                        steps=tuple(steps),
+                        expanded_parent_node_id=node.id,
+                        selected_strategy_id=action.strategy_id,
+                    )
                 assert outcome.node is not None
                 leaf = outcome.node
                 realization = action.realizations[leaf.id]
                 path.append((action, realization))
                 self._backup(path, leaf.reward)
-                return leaf
+                return IterationOutcome(
+                    status=IterationStatus.VALID,
+                    steps=tuple(steps),
+                    leaf=leaf,
+                    expanded_parent_node_id=node.id,
+                    selected_strategy_id=action.strategy_id,
+                    backed_up_reward=leaf.reward,
+                )
             realization = self._select_realization(action)
             path.append((action, realization))
             traversal_depth += 1
             child = next(item for item in self.nodes.values() if item.id == realization.child_id)
+            steps.append(
+                SelectionStep(
+                    node.id,
+                    action.strategy_id,
+                    SelectionMode.UCB,
+                    child.id,
+                )
+            )
             if child.id in seen:
                 self._backup(path, child.reward)
-                return child
+                return IterationOutcome(
+                    status=IterationStatus.CYCLE,
+                    steps=tuple(steps),
+                    leaf=child,
+                    backed_up_reward=child.reward,
+                )
             seen.add(child.id)
             node = child
         self._backup(path, node.reward)
-        return node
+        return IterationOutcome(
+            status=IterationStatus.DEPTH_LIMIT,
+            steps=tuple(steps),
+            leaf=node,
+            backed_up_reward=node.reward,
+        )
 
     def _select_action(self, node: SearchNode) -> StrategyEdge:
         total = sum(edge.visits for edge in node.actions.values())

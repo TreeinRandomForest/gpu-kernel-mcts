@@ -17,6 +17,7 @@ from kernel_mcts.generation import GenerationResult
 from kernel_mcts.priors import UniformStrategyPrior
 from kernel_mcts.search import MCTS, MCTSConfig
 from kernel_mcts.search.model import RealizationEdge, SearchNode, StrategyEdge
+from kernel_mcts.trace_records import IterationStatus, SelectionMode
 
 
 WORKLOAD = WorkloadContract("toy", "toy", "fp32", (ShapeCase({"n": 1}, 1.0),), 0.0, 0.0)
@@ -412,12 +413,161 @@ def test_transposed_node_uses_current_path_depth_for_expansion() -> None:
     for node in (detour, middle, shared, root):
         mcts.nodes.add(node)
 
-    leaf = mcts._iterate(root)
+    outcome = mcts._iterate(root)
 
-    assert leaf is not None
-    assert leaf.state_key == "state:2"
+    assert outcome.status == IterationStatus.VALID
+    assert outcome.leaf is not None
+    assert outcome.leaf.state_key == "state:2"
+    assert [step.selection_mode for step in outcome.steps] == [
+        SelectionMode.UCB,
+        SelectionMode.EXPAND,
+    ]
+    assert [step.node_id for step in outcome.steps] == [root.id, shared.id]
+    assert outcome.expanded_parent_node_id == shared.id
+    assert outcome.selected_strategy_id == "a"
+    assert outcome.backed_up_reward == 2.0
     assert mcts.nodes.get("state:1") is shared
     assert not hasattr(shared, "depth")
+
+
+def test_invalid_iteration_outcome_has_no_leaf_or_backup_reward() -> None:
+    class InvalidEvaluator:
+        def evaluate(self, program, workload):
+            return EvaluationResult(
+                ProposalStatus.INVALID,
+                program=program,
+                invalid_reason=InvalidReason.COMPILE_FAILURE,
+            )
+
+    mcts = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=FixedGenerator(("invalid",)),
+        evaluator=InvalidEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        config=MCTSConfig(max_repairs=0),
+    )
+    root = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
+    mcts.nodes.add(root)
+
+    outcome = mcts._iterate(root)
+
+    assert outcome.status == IterationStatus.INVALID
+    assert outcome.leaf is None
+    assert outcome.backed_up_reward is None
+    assert len(outcome.steps) == 1
+    assert outcome.steps[0].selection_mode == SelectionMode.EXPAND
+    assert outcome.steps[0].child_node_id is None
+
+
+def test_valid_root_expansion_records_expand_step_and_reward() -> None:
+    mcts = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+    )
+    root = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
+    mcts.nodes.add(root)
+
+    outcome = mcts._iterate(root)
+
+    assert outcome.status == IterationStatus.VALID
+    assert outcome.leaf is not None
+    assert outcome.backed_up_reward == outcome.leaf.reward
+    assert outcome.expanded_parent_node_id == root.id
+    assert len(outcome.steps) == 1
+    assert outcome.steps[0].selection_mode == SelectionMode.EXPAND
+    assert outcome.steps[0].child_node_id == outcome.leaf.id
+
+
+def test_infrastructure_iteration_outcome_has_no_leaf_or_backup_reward() -> None:
+    class InfrastructureEvaluator:
+        def evaluate(self, program, workload):
+            return EvaluationResult(ProposalStatus.INFRASTRUCTURE_FAILURE)
+
+    mcts = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=FixedGenerator(("candidate",)),
+        evaluator=InfrastructureEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        config=MCTSConfig(max_repairs=0, max_infrastructure_retries=0),
+    )
+    root = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
+    mcts.nodes.add(root)
+
+    outcome = mcts._iterate(root)
+
+    assert outcome.status == IterationStatus.INFRASTRUCTURE_FAILURE
+    assert outcome.leaf is None
+    assert outcome.backed_up_reward is None
+
+
+def test_cycle_iteration_outcome_records_ucb_step() -> None:
+    mcts = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(0),
+        config=MCTSConfig(k_max=1),
+    )
+    root = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
+    root.actions = {
+        "a": StrategyEdge(
+            "a",
+            1.0,
+            visits=1,
+            realizations={root.id: RealizationEdge(root.id)},
+        )
+    }
+    mcts.nodes.add(root)
+
+    outcome = mcts._iterate(root)
+
+    assert outcome.status == IterationStatus.CYCLE
+    assert outcome.leaf is root
+    assert outcome.backed_up_reward == root.reward
+    assert len(outcome.steps) == 1
+    assert outcome.steps[0].selection_mode == SelectionMode.UCB
+    assert outcome.steps[0].child_node_id == root.id
+
+
+def test_depth_limit_iteration_outcome_records_traversed_path() -> None:
+    mcts = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(0),
+        config=MCTSConfig(k_max=1, max_depth=1),
+    )
+    root = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
+    child = SearchNode("child", valid_evaluation("1", "state:1", 1.0))
+    root.actions = {
+        "a": StrategyEdge(
+            "a",
+            1.0,
+            visits=1,
+            realizations={child.id: RealizationEdge(child.id)},
+        )
+    }
+    mcts.nodes.add(root)
+    mcts.nodes.add(child)
+
+    outcome = mcts._iterate(root)
+
+    assert outcome.status == IterationStatus.DEPTH_LIMIT
+    assert outcome.leaf is child
+    assert outcome.backed_up_reward == child.reward
+    assert [step.child_node_id for step in outcome.steps] == [child.id]
 
 
 class CountingLLMPrior:
