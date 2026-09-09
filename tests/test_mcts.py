@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from kernel_mcts.budget import GenerationBudget
 import pytest
 
@@ -105,6 +107,7 @@ class DuplicateEvaluator:
 def test_transpositions_reuse_state() -> None:
     generator = DuplicateGenerator()
     evaluator = DuplicateEvaluator()
+    events = RecordingEvents()
     result = MCTS(
         strategies=STRATEGIES,
         workload=WORKLOAD,
@@ -113,6 +116,7 @@ def test_transpositions_reuse_state() -> None:
         prior_provider=UniformStrategyPrior(),
         budget=GenerationBudget(6),
         config=MCTSConfig(max_depth=3, k_max=2),
+        events=events,
     ).run(valid_evaluation("root", "root", 0.0))
     assert len(result.nodes) == 2
     cached = next(node for node in result.nodes if node.state_key == "same-state")
@@ -120,6 +124,9 @@ def test_transpositions_reuse_state() -> None:
     assert cached.evaluation.metadata["artifact_id"] == "artifact:call:1"
     assert generator.calls == result.generations
     assert evaluator.calls == result.generations
+    reused = [payload for event, payload in events.events if event == "node_reused"]
+    assert reused
+    assert all(payload["node_id"] == cached.id for payload in reused)
 
 
 def test_search_node_rejects_invalid_evaluation() -> None:
@@ -219,6 +226,8 @@ def test_mcts_charges_and_logs_repair_generation() -> None:
 
     action = result.root.actions["a"]
     generation_events = [payload for event, payload in events.events if event == "generation"]
+    backup_events = [payload for event, payload in events.events if event == "backup"]
+    iteration_events = [payload for event, payload in events.events if event == "iteration_completed"]
     assert result.generations == 2
     assert len(result.nodes) == 2
     assert action.proposal_count == 1
@@ -228,6 +237,13 @@ def test_mcts_charges_and_logs_repair_generation() -> None:
     assert action.value_sum == 1.0
     assert [payload["b_gen"] for payload in generation_events] == [1, 2]
     assert [payload["repair_attempt"] for payload in generation_events] == [0, 1]
+    assert [payload["iteration"] for payload in generation_events] == [1, 1]
+    assert generation_events[-1]["created_node_id"] is not None
+    assert generation_events[-1]["compile_status"] == "NOT_ATTEMPTED"
+    assert len(backup_events) == 1
+    assert backup_events[0]["strategy"]["q_mean"] == 1.0
+    assert backup_events[0]["strategy"]["q_max"] == 1.0
+    assert iteration_events[0]["steps"][0]["selection_mode"] == "EXPAND"
 
 
 def test_zero_visit_puct_uses_seeded_tie_breaking() -> None:
@@ -608,6 +624,7 @@ def test_llm_prior_is_counted_reported_and_logged() -> None:
     assert result.prior_calls == 1
     assert prior_events == [
         {
+            "iteration": 1,
             "node_id": result.root.id,
             "provider": "test-llm",
             "counts_toward_b_prior": True,
@@ -661,3 +678,91 @@ def test_invalid_llm_priors_are_counted_but_not_cached() -> None:
     assert provider.calls == 1
     assert mcts.prior_calls == 1
     assert node.actions == {}
+
+
+def test_run_emits_lifecycle_node_iteration_and_backup_events() -> None:
+    events = RecordingEvents()
+    result = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        events=events,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    event_types = [event for event, _ in events.events]
+    assert event_types[:2] == ["run_started", "node_created"]
+    assert event_types[-1] == "run_completed"
+    assert event_types.count("node_created") == 2
+    assert event_types.count("generation") == 1
+    assert event_types.count("backup") == 1
+    assert event_types.count("iteration_completed") == 1
+    completed = events.events[-1][1]
+    assert completed["iterations"] == result.iterations
+    assert completed["b_gen"] == result.generations
+    assert completed["best_node_id"] == result.best.id
+    for _, payload in events.events:
+        json.dumps(payload)
+
+
+def test_invalid_run_emits_iteration_without_backup_or_node() -> None:
+    class InvalidEvaluator:
+        def evaluate(self, program, workload):
+            return EvaluationResult(
+                ProposalStatus.INVALID,
+                program=program,
+                invalid_reason=InvalidReason.COMPILE_FAILURE,
+            )
+
+    events = RecordingEvents()
+    MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=FixedGenerator(("invalid",)),
+        evaluator=InvalidEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        config=MCTSConfig(max_repairs=0),
+        events=events,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    event_types = [event for event, _ in events.events]
+    assert event_types.count("node_created") == 1
+    assert "backup" not in event_types
+    iteration = next(payload for event, payload in events.events if event == "iteration_completed")
+    assert iteration["status"] == "INVALID"
+    assert iteration["backed_up_reward"] is None
+
+
+def test_run_failure_is_logged_and_reraised() -> None:
+    class FailingGenerator:
+        def generate(self, request):
+            raise RuntimeError("generation failed")
+
+    events = RecordingEvents()
+    mcts = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=FailingGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        events=events,
+    )
+
+    with pytest.raises(RuntimeError, match="generation failed"):
+        mcts.run(valid_evaluation("0", "state:0", 0.0))
+
+    failed = [payload for event, payload in events.events if event == "run_failed"]
+    assert failed == [
+        {
+            "iterations": 1,
+            "b_gen": 1,
+            "b_prior": 0,
+            "error_type": "RuntimeError",
+            "message": "generation failed",
+        }
+    ]
+    assert all(event != "run_completed" for event, _ in events.events)
