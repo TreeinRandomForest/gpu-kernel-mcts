@@ -24,7 +24,5 @@ See `spec.md` for the complete project specification.
 
 ## TODO
 
-- Validate requested GPU form factor and toolchain/profiler constraints.
 - Implement the RunPod worker lifecycle with manifest capture, validation, reuse, and release.
-- Expand the environment manifest schema and generate stable manifest IDs.
 - Implement benchmark workloads and fixed validated root kernels, beginning with a narrowly scoped BF16 GEMM on H100.

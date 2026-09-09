@@ -6,6 +6,7 @@ from typing import Any, Mapping
 
 from .domain import BenchmarkResult, EvaluationResult, WorkloadContract
 from .generation import GenerationResult
+from .providers import EnvironmentManifest
 
 
 def serialize_benchmark(benchmark: BenchmarkResult | None) -> dict[str, Any] | None:
@@ -77,6 +78,12 @@ def serialize_workload(workload: WorkloadContract) -> dict[str, Any]:
         "atol": workload.atol,
         "metadata": _json_value(workload.metadata),
     }
+
+
+def serialize_environment_manifest(manifest: EnvironmentManifest) -> dict[str, Any]:
+    value = _json_value(manifest.as_dict())
+    assert isinstance(value, dict)
+    return value
 
 
 def _json_value(value: object) -> Any:

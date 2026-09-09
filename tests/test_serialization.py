@@ -16,11 +16,13 @@ from kernel_mcts.domain import (
 )
 from kernel_mcts.generation import GenerationResult
 from kernel_mcts.serialization import (
+    serialize_environment_manifest,
     serialize_evaluation,
     serialize_generation,
     serialize_profile,
     serialize_workload,
 )
+from kernel_mcts.providers import EnvironmentManifest
 
 
 def test_complete_evaluation_serializes_to_json() -> None:
@@ -81,3 +83,21 @@ def test_generation_workload_and_profile_serialize_to_json() -> None:
 def test_serializer_rejects_opaque_objects() -> None:
     with pytest.raises(TypeError, match="not JSON serializable"):
         serialize_profile({"artifact": object()})
+
+
+def test_environment_manifest_serializes_with_stable_id() -> None:
+    manifest = EnvironmentManifest(
+        worker_id="worker",
+        provider="runpod",
+        gpu_model="NVIDIA H100",
+        compute_capability="9.0",
+        captured_at="2026-09-09T12:00:00+00:00",
+        form_factor="SXM",
+        toolchain_versions={"cuda_toolkit": "12.4"},
+    )
+
+    serialized = serialize_environment_manifest(manifest)
+
+    assert serialized["manifest_id"] == manifest.manifest_id
+    assert serialized["form_factor"] == "SXM"
+    json.dumps(serialized)

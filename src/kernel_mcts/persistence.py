@@ -38,6 +38,18 @@ CREATE TABLE IF NOT EXISTS search_events (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS search_events_run_id ON search_events(run_id, id);
+CREATE TABLE IF NOT EXISTS environment_manifests (
+    manifest_id TEXT PRIMARY KEY,
+    worker_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    pod_id TEXT,
+    gpu_model TEXT NOT NULL,
+    gpu_uuid TEXT,
+    compute_capability TEXT NOT NULL,
+    form_factor TEXT,
+    captured_at TEXT NOT NULL,
+    manifest_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS generations (
     generation_id TEXT PRIMARY KEY,
     run_id TEXT NOT NULL REFERENCES search_runs(run_id),
@@ -146,7 +158,7 @@ CREATE TABLE IF NOT EXISTS iteration_steps (
 );
 """
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -229,6 +241,7 @@ class SQLiteTraceStore:
             "run_started": self._materialize_run_started,
             "run_completed": self._materialize_run_completed,
             "run_failed": self._materialize_run_failed,
+            "environment_manifest": self._materialize_environment_manifest,
             "node_created": self._materialize_node,
             "node_snapshot": self._materialize_node,
             "strategy_priors": self._materialize_strategy_priors,
@@ -241,6 +254,34 @@ class SQLiteTraceStore:
         handler = handlers.get(event_type)
         if handler is not None:
             handler(payload, created_at)
+
+    def _materialize_environment_manifest(
+        self, payload: Mapping[str, object], created_at: str
+    ) -> None:
+        self.connection.execute(
+            """INSERT INTO environment_manifests(
+                manifest_id, worker_id, provider, pod_id, gpu_model, gpu_uuid,
+                compute_capability, form_factor, captured_at, manifest_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(manifest_id) DO UPDATE SET
+                manifest_json = excluded.manifest_json""",
+            (
+                payload["manifest_id"],
+                payload["worker_id"],
+                payload["provider"],
+                payload.get("pod_id"),
+                payload["gpu_model"],
+                payload.get("gpu_uuid"),
+                payload["compute_capability"],
+                payload.get("form_factor"),
+                payload["captured_at"],
+                _json(payload),
+            ),
+        )
+        self.connection.execute(
+            "UPDATE search_runs SET environment_manifest_id = ? WHERE run_id = ?",
+            (payload["manifest_id"], self.run_id),
+        )
 
     def _materialize_run_started(
         self, payload: Mapping[str, object], created_at: str

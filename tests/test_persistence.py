@@ -18,7 +18,9 @@ from kernel_mcts.domain import (
 from kernel_mcts.generation import GenerationResult
 from kernel_mcts.persistence import SQLiteTraceStore
 from kernel_mcts.priors import UniformStrategyPrior
+from kernel_mcts.providers import EnvironmentManifest
 from kernel_mcts.search import MCTS, MCTSConfig
+from kernel_mcts.serialization import serialize_environment_manifest
 
 
 def test_trace_store_records_run_and_event(tmp_path) -> None:
@@ -45,6 +47,7 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
         assert {
             "search_runs",
             "search_events",
+            "environment_manifests",
             "generations",
             "nodes",
             "strategy_edges",
@@ -52,7 +55,7 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "iterations",
             "iteration_steps",
         } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -275,3 +278,29 @@ def test_materialization_failure_rolls_back_raw_event(tmp_path) -> None:
         with pytest.raises((KeyError, ValueError)):
             store.emit("node_created", {"node_id": "incomplete"})
         assert store.connection.execute("SELECT count(*) FROM search_events").fetchone() == (0,)
+
+
+def test_environment_manifest_event_is_persisted_and_linked_to_run(tmp_path) -> None:
+    manifest = EnvironmentManifest(
+        worker_id="worker",
+        provider="runpod",
+        pod_id="pod",
+        gpu_model="NVIDIA H100",
+        gpu_uuid="GPU-123",
+        compute_capability="9.0",
+        form_factor="SXM",
+        captured_at="2026-09-09T12:00:00+00:00",
+        toolchain_versions={"cuda_toolkit": "12.4"},
+    )
+    path = tmp_path / "trace.sqlite"
+    with SQLiteTraceStore(path) as store:
+        store.start_run("run", "toy", "mcts", {})
+        store.emit("environment_manifest", serialize_environment_manifest(manifest))
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT worker_id, gpu_model, form_factor FROM environment_manifests"
+        ).fetchone() == ("worker", "NVIDIA H100", "SXM")
+        assert connection.execute(
+            "SELECT environment_manifest_id FROM search_runs WHERE run_id = 'run'"
+        ).fetchone() == (manifest.manifest_id,)
