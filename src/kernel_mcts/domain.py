@@ -20,6 +20,18 @@ class InvalidReason(StrEnum):
     OTHER = "OTHER"
 
 
+class CompileStatus(StrEnum):
+    NOT_ATTEMPTED = "NOT_ATTEMPTED"
+    SUCCESS = "SUCCESS"
+    FAIL = "FAIL"
+
+
+class CorrectnessStatus(StrEnum):
+    NOT_TESTED = "NOT_TESTED"
+    PASS = "PASS"
+    FAIL = "FAIL"
+
+
 @dataclass(frozen=True, slots=True)
 class ShapeCase:
     dimensions: Mapping[str, int]
@@ -81,6 +93,13 @@ class EvaluationResult: #leaf candidate result
     benchmark: BenchmarkResult | None = None
     invalid_reason: InvalidReason | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    compile_status: CompileStatus = CompileStatus.NOT_ATTEMPTED
+    correctness_status: CorrectnessStatus = CorrectnessStatus.NOT_TESTED
+    worker_id: str | None = None
+    environment_manifest_id: str | None = None
+    source_hash: str | None = None
+    binary_hash: str | None = None
+    launch_config: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.status == ProposalStatus.VALID:
@@ -88,4 +107,3 @@ class EvaluationResult: #leaf candidate result
                 raise ValueError("valid evaluations require program, state_key, and reward")
         elif self.invalid_reason is None and self.status == ProposalStatus.INVALID:
             raise ValueError("invalid evaluations require an invalid_reason")
-

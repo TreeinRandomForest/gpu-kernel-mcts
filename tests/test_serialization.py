@@ -1,0 +1,83 @@
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from kernel_mcts.domain import (
+    BenchmarkResult,
+    CompileStatus,
+    CorrectnessStatus,
+    EvaluationResult,
+    KernelProgram,
+    ProposalStatus,
+    ShapeCase,
+    WorkloadContract,
+)
+from kernel_mcts.generation import GenerationResult
+from kernel_mcts.serialization import (
+    serialize_evaluation,
+    serialize_generation,
+    serialize_profile,
+    serialize_workload,
+)
+
+
+def test_complete_evaluation_serializes_to_json() -> None:
+    evaluation = EvaluationResult(
+        status=ProposalStatus.VALID,
+        program=KernelProgram("kernel"),
+        state_key="state",
+        reward=0.5,
+        benchmark=BenchmarkResult((1.0, 2.0), 1.5, {"n=1": 1.5}),
+        metadata={"registers": 32},
+        compile_status=CompileStatus.SUCCESS,
+        correctness_status=CorrectnessStatus.PASS,
+        worker_id="worker",
+        environment_manifest_id="manifest",
+        source_hash="source-hash",
+        binary_hash="binary-hash",
+        launch_config={"block": [256, 1, 1]},
+    )
+
+    serialized = serialize_evaluation(evaluation)
+
+    assert serialized["compile_status"] == "SUCCESS"
+    assert serialized["correctness_status"] == "PASS"
+    assert serialized["benchmark"]["timings_us"] == [1.0, 2.0]
+    assert serialized["launch_config"] == {"block": [256, 1, 1]}
+    json.dumps(serialized)
+
+
+def test_generation_workload_and_profile_serialize_to_json() -> None:
+    generation = GenerationResult(
+        "generation",
+        "raw",
+        KernelProgram("kernel"),
+        "prompt-hash",
+        input_tokens=10,
+        output_tokens=20,
+        metadata={"model": "test"},
+    )
+    workload = WorkloadContract(
+        "toy",
+        "op",
+        "bf16",
+        (ShapeCase({"m": 16, "n": 32}, 1.0),),
+        1e-2,
+        1e-2,
+    )
+
+    values = {
+        "generation": serialize_generation(generation),
+        "workload": serialize_workload(workload),
+        "profile": serialize_profile({"occupancy": 0.75, "stalls": ("memory",)}),
+    }
+
+    assert values["workload"]["shapes"][0]["dimensions"] == {"m": 16, "n": 32}
+    json.dumps(values)
+
+
+def test_serializer_rejects_opaque_objects() -> None:
+    with pytest.raises(TypeError, match="not JSON serializable"):
+        serialize_profile({"artifact": object()})
