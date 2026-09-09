@@ -230,7 +230,10 @@ class SQLiteTraceStore:
             "run_completed": self._materialize_run_completed,
             "run_failed": self._materialize_run_failed,
             "node_created": self._materialize_node,
+            "node_snapshot": self._materialize_node,
             "strategy_priors": self._materialize_strategy_priors,
+            "strategy_edge_snapshot": self._materialize_strategy_edge_snapshot,
+            "realization_edge_snapshot": self._materialize_realization_edge_snapshot,
             "generation": self._materialize_generation,
             "backup": self._materialize_backup,
             "iteration_completed": self._materialize_iteration,
@@ -306,7 +309,20 @@ class SQLiteTraceStore:
                 worker_id, environment_manifest_id
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id, node_id) DO UPDATE SET
-                profile_json = excluded.profile_json
+                state_key = excluded.state_key,
+                program_text = excluded.program_text,
+                backend_type = excluded.backend_type,
+                reward = excluded.reward,
+                workload_json = excluded.workload_json,
+                hardware_json = excluded.hardware_json,
+                benchmark_json = excluded.benchmark_json,
+                profile_json = excluded.profile_json,
+                metadata_json = excluded.metadata_json,
+                source_hash = excluded.source_hash,
+                binary_hash = excluded.binary_hash,
+                launch_config_json = excluded.launch_config_json,
+                worker_id = excluded.worker_id,
+                environment_manifest_id = excluded.environment_manifest_id
             """,
             (
                 self.run_id,
@@ -406,6 +422,26 @@ class SQLiteTraceStore:
     ) -> None:
         strategy = _mapping(payload.get("strategy"), "backup strategy")
         realization = _mapping(payload.get("realization"), "backup realization")
+        self._upsert_strategy_edge(payload, strategy)
+        self._upsert_realization_edge(payload, realization)
+
+    def _materialize_strategy_edge_snapshot(
+        self, payload: Mapping[str, object], created_at: str
+    ) -> None:
+        strategy = _mapping(payload.get("strategy"), "strategy edge snapshot")
+        self._upsert_strategy_edge(payload, strategy)
+
+    def _materialize_realization_edge_snapshot(
+        self, payload: Mapping[str, object], created_at: str
+    ) -> None:
+        realization = _mapping(payload.get("realization"), "realization edge snapshot")
+        self._upsert_realization_edge(payload, realization)
+
+    def _upsert_strategy_edge(
+        self,
+        payload: Mapping[str, object],
+        strategy: Mapping[str, object],
+    ) -> None:
         self.connection.execute(
             """INSERT INTO strategy_edges(
                 run_id, parent_node_id, strategy_id, prior, visits,
@@ -440,6 +476,12 @@ class SQLiteTraceStore:
                 strategy["invalid_proposal_count"],
             ),
         )
+
+    def _upsert_realization_edge(
+        self,
+        payload: Mapping[str, object],
+        realization: Mapping[str, object],
+    ) -> None:
         self.connection.execute(
             """INSERT INTO realization_edges(
                 run_id, parent_node_id, strategy_id, child_node_id,

@@ -699,6 +699,9 @@ def test_run_emits_lifecycle_node_iteration_and_backup_events() -> None:
     assert event_types.count("generation") == 1
     assert event_types.count("backup") == 1
     assert event_types.count("iteration_completed") == 1
+    assert event_types.count("node_snapshot") == len(result.nodes)
+    assert event_types.count("strategy_edge_snapshot") == 1
+    assert event_types.count("realization_edge_snapshot") == 1
     completed = events.events[-1][1]
     assert completed["iterations"] == result.iterations
     assert completed["b_gen"] == result.generations
@@ -734,6 +737,13 @@ def test_invalid_run_emits_iteration_without_backup_or_node() -> None:
     iteration = next(payload for event, payload in events.events if event == "iteration_completed")
     assert iteration["status"] == "INVALID"
     assert iteration["backed_up_reward"] is None
+    snapshot = next(
+        payload for event, payload in events.events if event == "strategy_edge_snapshot"
+    )
+    assert snapshot["strategy"]["visits"] == 0
+    assert snapshot["strategy"]["proposal_count"] == 1
+    assert snapshot["strategy"]["invalid_proposal_count"] == 1
+    assert snapshot["strategy"]["q_max"] is None
 
 
 def test_run_failure_is_logged_and_reraised() -> None:

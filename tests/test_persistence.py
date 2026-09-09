@@ -8,6 +8,7 @@ from kernel_mcts.domain import (
     CompileStatus,
     CorrectnessStatus,
     EvaluationResult,
+    InvalidReason,
     KernelProgram,
     ProposalStatus,
     ShapeCase,
@@ -147,6 +148,10 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
                 launch_config={"block": [32, 1, 1]},
             )
 
+    class Profiler:
+        def lightweight_profile(self, evaluation, workload):
+            return {"occupancy": 0.75}
+
     root_evaluation = EvaluationResult(
         ProposalStatus.VALID,
         KernelProgram("0"),
@@ -167,6 +172,7 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
             prior_provider=UniformStrategyPrior(),
             budget=GenerationBudget(2),
             config=MCTSConfig(k_max=1),
+            profiler=Profiler(),
             events=store,
         ).run(root_evaluation)
 
@@ -194,6 +200,72 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
             "SELECT compile_status, correctness_status, input_tokens, output_tokens "
             "FROM generations ORDER BY b_gen LIMIT 1"
         ).fetchone() == ("SUCCESS", "PASS", 10, 5)
+        assert connection.execute(
+            "SELECT profile_json FROM nodes WHERE node_id = ?",
+            (result.root.id,),
+        ).fetchone() == ('{"occupancy": 0.75}',)
+
+
+def test_final_snapshot_persists_invalid_proposal_counters(tmp_path) -> None:
+    workload = WorkloadContract(
+        "toy",
+        "invalid",
+        "fp32",
+        (ShapeCase({"n": 1}, 1.0),),
+        0.0,
+        0.0,
+    )
+    strategy = Strategy("invalid", "invalid", {"cuda_cpp": "invalid"})
+
+    class Generator:
+        def generate(self, request):
+            return GenerationResult(
+                "generation",
+                "invalid",
+                KernelProgram("invalid"),
+                "prompt-hash",
+            )
+
+    class Evaluator:
+        def evaluate(self, program, workload):
+            return EvaluationResult(
+                ProposalStatus.INVALID,
+                program=program,
+                invalid_reason=InvalidReason.COMPILE_FAILURE,
+                compile_status=CompileStatus.FAIL,
+            )
+
+    root = EvaluationResult(
+        ProposalStatus.VALID,
+        KernelProgram("root"),
+        "root",
+        0.0,
+        BenchmarkResult((1.0,), 1.0),
+        compile_status=CompileStatus.SUCCESS,
+        correctness_status=CorrectnessStatus.PASS,
+    )
+    path = tmp_path / "trace.sqlite"
+    with SQLiteTraceStore(path) as store:
+        store.start_run("run", "toy", "mcts", {})
+        result = MCTS(
+            strategies=(strategy,),
+            workload=workload,
+            generator=Generator(),
+            evaluator=Evaluator(),
+            prior_provider=UniformStrategyPrior(),
+            budget=GenerationBudget(1),
+            config=MCTSConfig(max_repairs=0),
+            events=store,
+        ).run(root)
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            """SELECT visits, q_max, proposal_count, generation_attempt_count,
+                      valid_proposal_count, invalid_proposal_count
+               FROM strategy_edges
+               WHERE parent_node_id = ? AND strategy_id = 'invalid'""",
+            (result.root.id,),
+        ).fetchone() == (0, None, 1, 1, 0, 1)
 
 
 def test_materialization_failure_rolls_back_raw_event(tmp_path) -> None:

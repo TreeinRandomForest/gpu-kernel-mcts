@@ -24,7 +24,6 @@ See `spec.md` for the complete project specification.
 
 ## TODO
 
-- Persist complete proposal, node, and edge records, including `Q_mean` and `Q_max`.
 - Validate requested GPU form factor and toolchain/profiler constraints.
 - Implement the RunPod worker lifecycle with manifest capture, validation, reuse, and release.
 - Expand the environment manifest schema and generate stable manifest IDs.

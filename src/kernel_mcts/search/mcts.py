@@ -169,6 +169,7 @@ class MCTS:
             self.budget.snapshot().used,
             self.prior_calls,
         )
+        self._emit_final_snapshots(result)
         self.events.emit(
             "run_completed",
             {
@@ -181,6 +182,30 @@ class MCTS:
             },
         )
         return result
+
+    def _emit_final_snapshots(self, result: SearchResult) -> None:
+        for node in result.nodes:
+            self.events.emit(
+                "node_snapshot",
+                self._node_payload(node, is_root=node is result.root),
+            )
+            for action in node.actions.values():
+                strategy_payload = self._strategy_edge_payload(node.id, action)
+                self.events.emit("strategy_edge_snapshot", strategy_payload)
+                for realization in action.realizations.values():
+                    self.events.emit(
+                        "realization_edge_snapshot",
+                        {
+                            "parent_node_id": node.id,
+                            "strategy_id": action.strategy_id,
+                            "child_node_id": realization.child_id,
+                            "realization": {
+                                "descents": realization.descents,
+                                "value_sum": realization.value_sum,
+                                "q_mean": realization.q_mean,
+                            },
+                        },
+                    )
 
     def _ensure_actions(self, node: SearchNode, iteration: int | None = None) -> None:
         if node.actions:
@@ -396,18 +421,9 @@ class MCTS:
                     "strategy_id": action.strategy_id,
                     "child_node_id": realization.child_id,
                     "backed_up_reward": reward,
-                    "strategy": {
-                        "prior": action.prior,
-                        "visits": action.visits,
-                        "value_sum": action.value_sum,
-                        "q_mean": action.q_mean,
-                        "q_max": action.q_max,
-                        "proposal_count": action.proposal_count,
-                        "generation_attempt_count": action.generation_attempt_count,
-                        "repair_generation_count": action.repair_generation_count,
-                        "valid_proposal_count": action.valid_proposal_count,
-                        "invalid_proposal_count": action.invalid_proposal_count,
-                    },
+                    "strategy": self._strategy_edge_payload(
+                        selected.parent_node_id, action
+                    )["strategy"],
                     "realization": {
                         "descents": realization.descents,
                         "value_sum": realization.value_sum,
@@ -415,6 +431,28 @@ class MCTS:
                     },
                 },
             )
+
+    @staticmethod
+    def _strategy_edge_payload(
+        parent_node_id: str,
+        action: StrategyEdge,
+    ) -> Mapping[str, object]:
+        return {
+            "parent_node_id": parent_node_id,
+            "strategy_id": action.strategy_id,
+            "strategy": {
+                "prior": action.prior,
+                "visits": action.visits,
+                "value_sum": action.value_sum,
+                "q_mean": action.q_mean,
+                "q_max": action.q_max if math.isfinite(action.q_max) else None,
+                "proposal_count": action.proposal_count,
+                "generation_attempt_count": action.generation_attempt_count,
+                "repair_generation_count": action.repair_generation_count,
+                "valid_proposal_count": action.valid_proposal_count,
+                "invalid_proposal_count": action.invalid_proposal_count,
+            },
+        }
 
     @staticmethod
     def _generation_payload(
