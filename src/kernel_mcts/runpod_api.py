@@ -17,6 +17,7 @@ _ALLOWED_WORKER_ENV = {
     "KERNEL_MCTS_GIT_COMMIT",
     "KERNEL_MCTS_WORKER_PORT",
 }
+_USER_AGENT = "gpu-kernel-mcts/0.1.0"
 
 
 class RunPodAPIError(RuntimeError):
@@ -127,18 +128,27 @@ class RunPodRESTClient(RunPodClient):
         self._worker_tokens[pod_id] = worker_token
         return RunPodPod(pod_id)
 
-    def wait_until_ready(self, pod_id: str, timeout_seconds: float) -> WorkerEndpoint:
+    def wait_until_ready(
+        self,
+        pod_id: str,
+        timeout_seconds: float,
+        *,
+        progress: Callable[[str, float], None] | None = None,
+    ) -> WorkerEndpoint:
         if timeout_seconds <= 0:
             raise ValueError("RunPod startup timeout must be positive")
         request = self._requests.get(pod_id)
         if request is None:
             raise ValueError("cannot wait for a pod not created by this client")
-        deadline = self._monotonic() + timeout_seconds
+        started = self._monotonic()
+        deadline = started + timeout_seconds
         last_status = "UNKNOWN"
         while True:
             pod = self._request_mapping("GET", f"/pods/{pod_id}")
             status = pod.get("desiredStatus")
             last_status = status if isinstance(status, str) else "UNKNOWN"
+            if progress is not None:
+                progress(last_status, self._monotonic() - started)
             if last_status == "RUNNING":
                 address = _endpoint_address(pod_id, request, pod)
                 if address is not None and (
@@ -169,6 +179,7 @@ class RunPodRESTClient(RunPodClient):
                 {
                     "Authorization": f"Bearer {token}",
                     "Accept": "application/json",
+                    "User-Agent": _USER_AGENT,
                 },
                 None,
                 self._request_timeout_seconds,
@@ -255,6 +266,7 @@ class RunPodRESTClient(RunPodClient):
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Accept": "application/json",
+            "User-Agent": _USER_AGENT,
         }
         if body is not None:
             headers["Content-Type"] = "application/json"

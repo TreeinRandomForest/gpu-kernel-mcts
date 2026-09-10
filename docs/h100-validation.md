@@ -52,13 +52,15 @@ Alternatively, discover current H100 availability and reuse the managed
 .venv/bin/python -m kernel_mcts.runpod_cli \
   --image REGISTRY/gpu-kernel-mcts:REVISION \
   --auto-volume \
+  --preferred-data-center-id RUNPOD_DATA_CENTER_ID \
   --confirm-create-and-terminate
 ```
 
 If no reusable managed volume exists, the command stops before creating storage.
 To permit creation of a persistent 50 GB volume, add
 `--confirm-create-volume`. Volume creation and storage billing are independent of
-pod termination.
+pod termination. The optional `--preferred-data-center-id` restricts both managed
+volume reuse and creation to an available data center selected by the operator.
 
 This command creates a billable pod. Its `finally` path requests termination, but
 you should also confirm deletion in the RunPod console after any interrupted or

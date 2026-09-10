@@ -2,10 +2,48 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
+from typing import TextIO
 
 from .providers import RunPodPodRequest
 from .runpod_api import RunPodRESTClient
 from .runpod_discovery import RunPodDiscovery
+
+
+class _ReadinessProgress:
+    _FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
+
+    def __init__(self, pod_id: str, stream: TextIO = sys.stdout) -> None:
+        self._pod_id = pod_id
+        self._stream = stream
+        self._frame = 0
+        self._last_status: str | None = None
+        self._active_line = False
+
+    def __call__(self, status: str, elapsed_seconds: float) -> None:
+        if self._stream.isatty():
+            frame = self._FRAMES[self._frame % len(self._FRAMES)]
+            self._frame += 1
+            message = (
+                f"{frame} Waiting for pod {self._pod_id} — status: {status} "
+                f"— {elapsed_seconds:.0f}s elapsed"
+            )
+            self._stream.write(f"\r\033[2K{message}")
+            self._stream.flush()
+            self._active_line = True
+        elif status != self._last_status:
+            self._stream.write(
+                f"Waiting for pod {self._pod_id} — status: {status} "
+                f"— {elapsed_seconds:.0f}s elapsed\n"
+            )
+            self._stream.flush()
+        self._last_status = status
+
+    def finish(self) -> None:
+        if self._active_line:
+            self._stream.write("\n")
+            self._stream.flush()
+            self._active_line = False
 
 
 def main() -> int:
@@ -27,6 +65,10 @@ def main() -> int:
         "--auto-volume",
         action="store_true",
         help="discover H100 availability and select a managed network volume",
+    )
+    parser.add_argument(
+        "--preferred-data-center-id",
+        help="restrict automatic volume reuse or creation to this available data center",
     )
     parser.add_argument("--volume-name", default="gpu-kernel-mcts")
     parser.add_argument("--volume-size-gb", type=int, default=50)
@@ -54,6 +96,8 @@ def main() -> int:
         parser.error("--network-volume-id and --data-center-id must be supplied together")
     if arguments.auto_volume and manual_volume:
         parser.error("--auto-volume cannot be combined with explicit volume/data-center IDs")
+    if arguments.preferred_data_center_id and not arguments.auto_volume:
+        parser.error("--preferred-data-center-id requires --auto-volume")
     if not arguments.auto_volume and not manual_volume:
         parser.error("provide explicit volume/data-center IDs or use --auto-volume")
     if arguments.auto_volume:
@@ -62,6 +106,7 @@ def main() -> int:
             volume_name=arguments.volume_name,
             size_gb=arguments.volume_size_gb,
             allow_create=arguments.confirm_create_volume,
+            preferred_data_center_id=arguments.preferred_data_center_id,
         )
         network_volume_id = selection.volume.volume_id
         data_center_id = selection.volume.data_center_id
@@ -84,10 +129,17 @@ def main() -> int:
             data_center_ids=(data_center_id,),
         )
     )
+    progress = _ReadinessProgress(pod.pod_id)
     try:
-        endpoint = client.wait_until_ready(pod.pod_id, arguments.timeout)
+        endpoint = client.wait_until_ready(
+            pod.pod_id,
+            arguments.timeout,
+            progress=progress,
+        )
+        progress.finish()
         print(f"Pod {pod.pod_id} is running; worker endpoint: {endpoint.address}")
     finally:
+        progress.finish()
         client.terminate_pod(pod.pod_id)
         print(f"Pod {pod.pod_id} terminated")
     return 0

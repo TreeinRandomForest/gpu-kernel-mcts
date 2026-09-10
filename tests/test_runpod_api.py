@@ -70,6 +70,7 @@ def test_create_pod_uses_official_rest_payload_without_secret_in_body() -> None:
     assert method == "POST"
     assert url == "https://rest.runpod.io/v1/pods"
     assert headers["Authorization"] == f"Bearer {secret}"
+    assert headers["User-Agent"] == "gpu-kernel-mcts/0.1.0"
     assert timeout == 30.0
     assert json.loads(body) == {
         "cloudType": "SECURE",
@@ -124,6 +125,7 @@ def test_wait_polls_until_http_proxy_endpoint_is_running() -> None:
         ]
     )
     clock = FakeClock()
+    progress = []
     client = RunPodRESTClient(
         "secret",
         http=http,
@@ -134,13 +136,16 @@ def test_wait_polls_until_http_proxy_endpoint_is_running() -> None:
     )
     client.create_pod(REQUEST)
 
-    endpoint = client.wait_until_ready("pod-1", 10.0)
+    endpoint = client.wait_until_ready(
+        "pod-1", 10.0, progress=lambda status, elapsed: progress.append((status, elapsed))
+    )
 
     assert endpoint.worker_id == "pod-1"
     assert endpoint.address == "https://pod-1-8000.proxy.runpod.net"
     assert endpoint.auth_token == "worker-secret"
     assert "worker-secret" not in repr(endpoint)
     assert clock.sleeps == [2.0]
+    assert progress == [("EXITED_PENDING", 0.0), ("RUNNING", 2.0)]
     assert [call[0] for call in http.calls] == ["POST", "GET", "GET", "GET"]
 
 
@@ -169,6 +174,7 @@ def test_http_readiness_waits_for_authenticated_worker_health() -> None:
     health_calls = [call for call in http.calls if call[1].endswith("/health")]
     assert len(health_calls) == 2
     assert health_calls[0][2]["Authorization"] == "Bearer worker-secret"
+    assert health_calls[0][2]["User-Agent"] == "gpu-kernel-mcts/0.1.0"
     assert clock.sleeps == [2.0]
 
 

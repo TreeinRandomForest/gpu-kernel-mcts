@@ -143,6 +143,42 @@ def test_volume_creation_requires_explicit_permission() -> None:
     ]
 
 
+def test_preferred_data_center_restricts_volume_creation() -> None:
+    rest = FakeREST()
+
+    selection = discovery(rest).select_volume(
+        gpu_id="NVIDIA H100 80GB HBM3",
+        volume_name="gpu-kernel-mcts",
+        size_gb=50,
+        allow_create=True,
+        preferred_data_center_id="US-LOW-1",
+    )
+
+    assert selection.created
+    assert rest.created == [
+        {
+            "name": "gpu-kernel-mcts",
+            "size_gb": 50,
+            "data_center_id": "US-LOW-1",
+        }
+    ]
+
+
+def test_unavailable_preferred_data_center_fails_before_volume_operations() -> None:
+    rest = FakeREST()
+
+    with pytest.raises(RunPodDiscoveryError, match="preferred data center.*availability"):
+        discovery(rest).select_volume(
+            gpu_id="NVIDIA H100 80GB HBM3",
+            volume_name="gpu-kernel-mcts",
+            size_gb=50,
+            allow_create=True,
+            preferred_data_center_id="US-NONE-1",
+        )
+
+    assert rest.created == []
+
+
 def test_small_managed_volume_is_not_silently_reused() -> None:
     rest = FakeREST(
         [NetworkVolume("small", "gpu-kernel-mcts", 25, "US-HIGH-1")]

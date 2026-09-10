@@ -88,12 +88,24 @@ class RunPodDiscovery:
         volume_name: str,
         size_gb: int,
         allow_create: bool,
+        preferred_data_center_id: str | None = None,
     ) -> VolumeSelection:
         if not volume_name or size_gb < 1 or size_gb > 4000:
             raise ValueError("managed volume requires a name and size from 1-4000 GB")
         available = self.available_data_centers(gpu_id)
         if not available:
             raise RunPodDiscoveryError(f"no data center currently reports availability for {gpu_id}")
+        if preferred_data_center_id is not None:
+            available = tuple(
+                item
+                for item in available
+                if item.data_center_id == preferred_data_center_id
+            )
+            if not available:
+                raise RunPodDiscoveryError(
+                    f"preferred data center {preferred_data_center_id!r} does not "
+                    f"currently report availability for {gpu_id}"
+                )
         center_ids = {item.data_center_id for item in available}
         named = [
             volume
