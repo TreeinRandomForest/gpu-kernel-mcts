@@ -85,6 +85,19 @@ class BenchmarkResult:
 
 
 @dataclass(frozen=True, slots=True)
+class CompilationEvidence:
+    artifact_id: str | None
+    stdout: str
+    stderr: str
+
+
+@dataclass(frozen=True, slots=True)
+class CorrectnessEvidence:
+    maximum_error: float | None
+    mean_error: float | None
+
+
+@dataclass(frozen=True, slots=True)
 class EvaluationResult: #leaf candidate result
     status: ProposalStatus
     program: KernelProgram | None = None
@@ -100,6 +113,9 @@ class EvaluationResult: #leaf candidate result
     source_hash: str | None = None
     binary_hash: str | None = None
     launch_config: Mapping[str, Any] = field(default_factory=dict)
+    compiled_artifact: Any | None = field(default=None, repr=False, compare=False)
+    compilation: CompilationEvidence | None = None
+    correctness: CorrectnessEvidence | None = None
 
     def __post_init__(self) -> None:
         if self.status == ProposalStatus.VALID:

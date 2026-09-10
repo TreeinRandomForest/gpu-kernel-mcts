@@ -34,6 +34,23 @@ def serialize_evaluation(evaluation: EvaluationResult) -> dict[str, Any]:
         "source_hash": evaluation.source_hash,
         "binary_hash": evaluation.binary_hash,
         "launch_config": _json_value(evaluation.launch_config),
+        "compilation": (
+            {
+                "artifact_id": evaluation.compilation.artifact_id,
+                "stdout": evaluation.compilation.stdout,
+                "stderr": evaluation.compilation.stderr,
+            }
+            if evaluation.compilation
+            else None
+        ),
+        "correctness": (
+            {
+                "maximum_error": evaluation.correctness.maximum_error,
+                "mean_error": evaluation.correctness.mean_error,
+            }
+            if evaluation.correctness
+            else None
+        ),
         "metadata": _json_value(evaluation.metadata),
     }
 

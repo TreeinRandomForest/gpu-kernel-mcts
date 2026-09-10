@@ -6,7 +6,9 @@ import pytest
 
 from kernel_mcts.domain import (
     BenchmarkResult,
+    CompilationEvidence,
     CompileStatus,
+    CorrectnessEvidence,
     CorrectnessStatus,
     EvaluationResult,
     KernelProgram,
@@ -40,6 +42,9 @@ def test_complete_evaluation_serializes_to_json() -> None:
         source_hash="source-hash",
         binary_hash="binary-hash",
         launch_config={"block": [256, 1, 1]},
+        compiled_artifact=object(),
+        compilation=CompilationEvidence("artifact", "compiler output", ""),
+        correctness=CorrectnessEvidence(0.01, 0.001),
     )
 
     serialized = serialize_evaluation(evaluation)
@@ -48,6 +53,16 @@ def test_complete_evaluation_serializes_to_json() -> None:
     assert serialized["correctness_status"] == "PASS"
     assert serialized["benchmark"]["timings_us"] == [1.0, 2.0]
     assert serialized["launch_config"] == {"block": [256, 1, 1]}
+    assert serialized["compilation"] == {
+        "artifact_id": "artifact",
+        "stdout": "compiler output",
+        "stderr": "",
+    }
+    assert serialized["correctness"] == {
+        "maximum_error": 0.01,
+        "mean_error": 0.001,
+    }
+    assert "compiled_artifact" not in serialized
     json.dumps(serialized)
 
 
