@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import time
 import urllib.error
@@ -147,19 +148,30 @@ class RunPodRESTClient(RunPodClient):
             pod = self._request_mapping("GET", f"/pods/{pod_id}")
             status = pod.get("desiredStatus")
             last_status = status if isinstance(status, str) else "UNKNOWN"
-            if progress is not None:
-                progress(last_status, self._monotonic() - started)
             if last_status == "RUNNING":
                 address = _endpoint_address(pod_id, request, pod)
+                worker_status = None
+                if address is not None and request.worker_protocol == "http":
+                    worker_status = self._worker_readiness(
+                        address, self._worker_tokens[pod_id]
+                    )
+                if progress is not None:
+                    label = (
+                        f"{last_status}/{worker_status}"
+                        if worker_status and worker_status != "ready"
+                        else last_status
+                    )
+                    progress(label, self._monotonic() - started)
                 if address is not None and (
-                    request.worker_protocol != "http"
-                    or self._worker_is_ready(address, self._worker_tokens[pod_id])
+                    request.worker_protocol != "http" or worker_status == "ready"
                 ):
                     return WorkerEndpoint(
                         worker_id=pod_id,
                         address=address,
                         auth_token=self._worker_tokens[pod_id],
                     )
+            elif progress is not None:
+                progress(last_status, self._monotonic() - started)
             if last_status in {"EXITED", "TERMINATED"}:
                 raise RunPodAPIError(
                     f"RunPod pod became {last_status} before its worker endpoint was ready"
@@ -171,7 +183,7 @@ class RunPodRESTClient(RunPodClient):
                 )
             self._sleep(min(self._poll_interval_seconds, max(0.0, deadline - self._monotonic())))
 
-    def _worker_is_ready(self, address: str, token: str) -> bool:
+    def _worker_readiness(self, address: str, token: str) -> str | None:
         try:
             response = self._http(
                 "GET",
@@ -184,12 +196,23 @@ class RunPodRESTClient(RunPodClient):
                 None,
                 self._request_timeout_seconds,
             )
-            if response.status != 200:
-                return False
             payload = json.loads(response.body)
-            return isinstance(payload, dict) and payload.get("status") == "ready"
+            if not isinstance(payload, dict):
+                return None
+            status = payload.get("status")
+            if status == "failed":
+                stage = _safe_diagnostic_field(payload.get("stage"))
+                error_code = _safe_diagnostic_field(payload.get("error_code"))
+                raise RunPodAPIError(
+                    f"RunPod worker startup failed during {stage} ({error_code})"
+                )
+            if status == "starting":
+                return _safe_diagnostic_field(payload.get("stage"))
+            if response.status == 200 and status == "ready":
+                return "ready"
+            return None
         except (OSError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
-            return False
+            return None
 
     def terminate_pod(self, pod_id: str) -> None:
         self._request("DELETE", f"/pods/{pod_id}", expected_statuses={200, 202, 204})
@@ -309,6 +332,12 @@ def _endpoint_address(
     if not isinstance(public_port, int):
         return None
     return f"tcp://{public_ip}:{public_port}"
+
+
+def _safe_diagnostic_field(value: object) -> str:
+    if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", value):
+        return value
+    return "unknown"
 
 
 def _urllib_http(

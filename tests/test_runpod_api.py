@@ -178,6 +178,31 @@ def test_http_readiness_waits_for_authenticated_worker_health() -> None:
     assert clock.sleeps == [2.0]
 
 
+def test_worker_startup_failure_reports_sanitized_stage() -> None:
+    http = FakeHTTP(
+        [
+            response(201, {"id": "pod-1"}),
+            response(200, {"desiredStatus": "RUNNING"}),
+            response(
+                500,
+                {
+                    "status": "failed",
+                    "stage": "vendor_baselines",
+                    "error_code": "EvaluationInfrastructureError",
+                },
+            ),
+        ]
+    )
+    client = RunPodRESTClient("secret", http=http)
+    client.create_pod(REQUEST)
+
+    with pytest.raises(
+        RunPodAPIError,
+        match=r"failed during vendor_baselines \(EvaluationInfrastructureError\)",
+    ):
+        client.wait_until_ready("pod-1", 10.0)
+
+
 def test_tcp_endpoint_waits_for_public_port_mapping() -> None:
     request = replace(REQUEST, worker_port=22, worker_protocol="tcp")
     http = FakeHTTP(

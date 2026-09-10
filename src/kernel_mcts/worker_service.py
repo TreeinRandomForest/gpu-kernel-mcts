@@ -5,9 +5,12 @@ import os
 import re
 import shutil
 import subprocess
+import threading
+import hmac
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import Callable
 
 from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from .cuda_backend import CudaBackendConfig, CudaCppBackend
@@ -15,15 +18,19 @@ from .evaluation import BackendKernelEvaluator, EvaluationContext
 from .providers import EnvironmentManifest
 from .serialization import serialize_benchmark
 from .vendor_baselines import VendorBaselineConfig, VendorBaselineSuite
-from .worker_protocol import WorkerApplication
+from .worker_protocol import WorkerApplication, WorkerResponse
 
 
-def build_application(environ=None) -> WorkerApplication:
+def build_application(
+    environ=None,
+    progress: Callable[[str], None] | None = None,
+) -> WorkerApplication:
     environment = os.environ if environ is None else environ
     token = environment.get("KERNEL_MCTS_WORKER_TOKEN")
     pod_id = environment.get("RUNPOD_POD_ID")
     if not token or not pod_id:
         raise RuntimeError("worker token and RUNPOD_POD_ID are required")
+    _report_stage(progress, "environment_manifest")
     manifest = capture_environment_manifest(environment)
     backend = CudaCppBackend(
         CudaBackendConfig(
@@ -32,16 +39,20 @@ def build_application(environ=None) -> WorkerApplication:
             )
         )
     )
+    _report_stage(progress, "root_compile")
     root_compilation = backend.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
     if not root_compilation.success or root_compilation.artifact is None:
         raise RuntimeError("fixed root kernel failed to compile on the worker")
+    _report_stage(progress, "root_correctness")
     root_correctness = backend.check_correctness(
         root_compilation.artifact,
         BF16_GEMM_WORKLOAD,
     )
     if not root_correctness.success:
         raise RuntimeError("fixed root kernel failed correctness on the worker")
+    _report_stage(progress, "root_benchmark")
     root_benchmark = backend.benchmark(root_compilation.artifact, BF16_GEMM_WORKLOAD)
+    _report_stage(progress, "vendor_baselines")
     vendor_results = VendorBaselineSuite(
         VendorBaselineConfig(
             artifact_root=Path(
@@ -94,6 +105,56 @@ def build_application(environ=None) -> WorkerApplication:
         evaluator=evaluator,
         calibration=calibration,
     )
+
+
+class WorkerBootstrap:
+    """Keep health reporting available while the GPU worker initializes."""
+
+    def __init__(self, auth_token: str) -> None:
+        self._auth_token = auth_token
+        self._lock = threading.Lock()
+        self._stage = "starting"
+        self._application: WorkerApplication | None = None
+        self._failure_code: str | None = None
+
+    def initialize(self, factory: Callable[[Callable[[str], None]], WorkerApplication]) -> None:
+        try:
+            application = factory(self.set_stage)
+        except Exception as error:
+            with self._lock:
+                self._failure_code = type(error).__name__
+            return
+        with self._lock:
+            self._application = application
+            self._stage = "ready"
+
+    def set_stage(self, stage: str) -> None:
+        with self._lock:
+            self._stage = stage
+
+    def handle(self, method, path, headers, body=b"") -> WorkerResponse:
+        authorization = headers.get("Authorization", "")
+        if not hmac.compare_digest(authorization, f"Bearer {self._auth_token}"):
+            return WorkerResponse(401, {"error": "unauthorized"})
+        with self._lock:
+            application = self._application
+            stage = self._stage
+            failure_code = self._failure_code
+        if application is not None:
+            return application.handle(method, path, headers, body)
+        if method == "GET" and path == "/health":
+            if failure_code is not None:
+                return WorkerResponse(
+                    500,
+                    {"status": "failed", "stage": stage, "error_code": failure_code},
+                )
+            return WorkerResponse(503, {"status": "starting", "stage": stage})
+        return WorkerResponse(503, {"error": "worker_starting", "stage": stage})
+
+
+def _report_stage(progress: Callable[[str], None] | None, stage: str) -> None:
+    if progress is not None:
+        progress(stage)
 
 
 def capture_environment_manifest(environ=None) -> EnvironmentManifest:
@@ -150,6 +211,10 @@ def capture_environment_manifest(environ=None) -> EnvironmentManifest:
 
 
 def serve(application: WorkerApplication, host: str = "0.0.0.0", port: int = 8000) -> None:
+    _serve(application.handle, host, port)
+
+
+def _serve(handler, host: str, port: int) -> None:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             self._dispatch()
@@ -160,7 +225,7 @@ def serve(application: WorkerApplication, host: str = "0.0.0.0", port: int = 800
         def _dispatch(self):
             length = int(self.headers.get("Content-Length", "0"))
             body = self.rfile.read(length) if length else b""
-            response = application.handle(self.command, self.path, self.headers, body)
+            response = handler(self.command, self.path, self.headers, body)
             encoded = json.dumps(response.payload, separators=(",", ":")).encode()
             self.send_response(response.status)
             self.send_header("Content-Type", "application/json")
@@ -215,7 +280,16 @@ def _extract_nvcc_version(output: str) -> str:
 
 def main() -> None:
     port = int(os.environ.get("KERNEL_MCTS_WORKER_PORT", "8000"))
-    serve(build_application(), port=port)
+    token = os.environ.get("KERNEL_MCTS_WORKER_TOKEN")
+    if not token:
+        raise RuntimeError("worker token is required")
+    bootstrap = WorkerBootstrap(token)
+    threading.Thread(
+        target=bootstrap.initialize,
+        args=(lambda progress: build_application(progress=progress),),
+        daemon=True,
+    ).start()
+    _serve(bootstrap.handle, "0.0.0.0", port)
 
 
 if __name__ == "__main__":

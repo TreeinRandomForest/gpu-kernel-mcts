@@ -63,6 +63,8 @@ Worker calibration also measures fixed cuBLAS and CUTLASS performance references
 with the same shape, data layouts, deterministic inputs, tolerances, warmups, and
 measurement count. CUTLASS is pinned in the worker image. These references are
 reported separately and never enter the MCTS state space or budget accounting.
+The current CUTLASS reference is a fixed, untuned Tensor Core configuration, not
+an auto-tuned Hopper SM90 WGMMA/TMA performance ceiling.
 
 ## Remote execution and secrets
 
@@ -74,6 +76,11 @@ worker service exposes health, manifest, and tier-zero evaluation endpoints thro
 RunPod's HTTPS proxy. Each pod receives a random worker-only bearer token. Evaluation
 IDs are idempotent: an identical retry returns the cached result, while reuse with a
 different payload is rejected. The worker retains compiled artifacts for its run.
+
+The HTTP service starts before GPU calibration and reports authenticated startup
+stages through `/health`. If initialization fails, the controller receives only the
+stage and exception category, prints the diagnostic, and still terminates the pod;
+arbitrary exception text and credentials are not returned.
 
 The H100 SXM provisioning path attaches an existing network volume and pins the pod
 to explicitly configured matching data-center IDs. The REST payload omits
