@@ -26,3 +26,12 @@ See `spec.md` for the complete project specification.
 
 See [TODO.md](TODO.md) for implemented and remaining work. `spec.md` remains the
 source of truth for Milestone A behavior and architecture.
+
+## Starting a new agent session
+
+Use this opening prompt when continuing work in a new session:
+
+> Read `AGENTS.md`, `spec.md`, `TODO.md`, and all files under `docs/` before
+> making changes. Treat `spec.md` as the Milestone A source of truth, then
+> inspect `git status` and the relevant implementation and tests for the next
+> unchecked item. Do not commit or push unless explicitly asked.
