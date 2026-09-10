@@ -30,6 +30,14 @@ class CandidateBenchmarkError(RuntimeError):
     """A deterministic candidate launch or benchmark failure."""
 
 
+class CandidateLaunchError(RuntimeError):
+    """The compiled candidate could not launch successfully."""
+
+
+class CandidateTimeoutError(RuntimeError):
+    """A candidate exceeded a bounded compile or execution timeout."""
+
+
 @dataclass(frozen=True, slots=True)
 class EvaluationContext:
     worker_id: str
@@ -70,13 +78,19 @@ class BackendKernelEvaluator:
                 artifact_id=(compiled.artifact.artifact_id if compiled.artifact else None),
                 stdout=compiled.stdout,
                 stderr=compiled.stderr,
+                duration_seconds=getattr(compiled, "duration_seconds", None),
+                artifact_paths=getattr(compiled, "artifact_paths", ()),
             )
             if not compiled.success or compiled.artifact is None:
                 return self._result(
                     status=ProposalStatus.INVALID,
                     program=program,
                     source_hash=source_hash,
-                    invalid_reason=InvalidReason.COMPILE_FAILURE,
+                    invalid_reason=(
+                        InvalidReason.TIMEOUT
+                        if getattr(compiled, "timed_out", False)
+                        else InvalidReason.COMPILE_FAILURE
+                    ),
                     compile_status=CompileStatus.FAIL,
                     correctness_status=correctness_status,
                     compilation=compilation,
@@ -88,6 +102,8 @@ class BackendKernelEvaluator:
             correctness = CorrectnessEvidence(
                 maximum_error=checked.maximum_error,
                 mean_error=checked.mean_error,
+                failed_test_id=getattr(checked, "failed_test_id", None),
+                reference_metadata=getattr(checked, "reference_metadata", {}),
             )
             if not checked.success:
                 return self._result(
@@ -129,12 +145,18 @@ class BackendKernelEvaluator:
                 compilation=compilation,
                 correctness=correctness,
             )
-        except CandidateBenchmarkError as error:
+        except (CandidateBenchmarkError, CandidateLaunchError, CandidateTimeoutError) as error:
+            if isinstance(error, CandidateLaunchError):
+                reason = InvalidReason.LAUNCH_FAILURE
+            elif isinstance(error, CandidateTimeoutError):
+                reason = InvalidReason.TIMEOUT
+            else:
+                reason = InvalidReason.BENCHMARK_FAILURE
             return self._result(
                 status=ProposalStatus.INVALID,
                 program=program,
                 source_hash=source_hash,
-                invalid_reason=InvalidReason.BENCHMARK_FAILURE,
+                invalid_reason=reason,
                 compile_status=compile_status,
                 correctness_status=correctness_status,
                 artifact=artifact,

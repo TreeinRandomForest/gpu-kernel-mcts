@@ -46,10 +46,14 @@ class CompilationResult(Protocol):
     artifact: CompiledArtifact | None
     stdout: str
     stderr: str
+    duration_seconds: float | None
+    timed_out: bool
+    artifact_paths: tuple[str, ...]
 
 
 class CorrectnessResult(Protocol):
     success: bool
     maximum_error: float | None
     mean_error: float | None
-
+    failed_test_id: str | None
+    reference_metadata: Mapping[str, object]

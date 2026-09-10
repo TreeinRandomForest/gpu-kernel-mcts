@@ -16,6 +16,11 @@ def serialize_benchmark(benchmark: BenchmarkResult | None) -> dict[str, Any] | N
         "timings_us": list(benchmark.timings_us),
         "median_us": benchmark.median_us,
         "per_shape_median_us": _json_value(benchmark.per_shape_median_us),
+        "warmup_count": benchmark.warmup_count,
+        "mean_us": benchmark.mean_us,
+        "stddev_us": benchmark.stddev_us,
+        "min_us": benchmark.min_us,
+        "max_us": benchmark.max_us,
     }
 
 
@@ -39,6 +44,8 @@ def serialize_evaluation(evaluation: EvaluationResult) -> dict[str, Any]:
                 "artifact_id": evaluation.compilation.artifact_id,
                 "stdout": evaluation.compilation.stdout,
                 "stderr": evaluation.compilation.stderr,
+                "duration_seconds": evaluation.compilation.duration_seconds,
+                "artifact_paths": list(evaluation.compilation.artifact_paths),
             }
             if evaluation.compilation
             else None
@@ -47,6 +54,10 @@ def serialize_evaluation(evaluation: EvaluationResult) -> dict[str, Any]:
             {
                 "maximum_error": evaluation.correctness.maximum_error,
                 "mean_error": evaluation.correctness.mean_error,
+                "failed_test_id": evaluation.correctness.failed_test_id,
+                "reference_metadata": _json_value(
+                    evaluation.correctness.reference_metadata
+                ),
             }
             if evaluation.correctness
             else None

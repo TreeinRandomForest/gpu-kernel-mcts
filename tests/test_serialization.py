@@ -57,10 +57,14 @@ def test_complete_evaluation_serializes_to_json() -> None:
         "artifact_id": "artifact",
         "stdout": "compiler output",
         "stderr": "",
+        "duration_seconds": None,
+        "artifact_paths": [],
     }
     assert serialized["correctness"] == {
         "maximum_error": 0.01,
         "mean_error": 0.001,
+        "failed_test_id": None,
+        "reference_metadata": {},
     }
     assert "compiled_artifact" not in serialized
     json.dumps(serialized)

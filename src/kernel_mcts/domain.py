@@ -82,6 +82,11 @@ class BenchmarkResult:
     timings_us: tuple[float, ...]
     median_us: float
     per_shape_median_us: Mapping[str, float] = field(default_factory=dict)
+    warmup_count: int | None = None
+    mean_us: float | None = None
+    stddev_us: float | None = None
+    min_us: float | None = None
+    max_us: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,12 +94,16 @@ class CompilationEvidence:
     artifact_id: str | None
     stdout: str
     stderr: str
+    duration_seconds: float | None = None
+    artifact_paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class CorrectnessEvidence:
     maximum_error: float | None
     mean_error: float | None
+    failed_test_id: str | None = None
+    reference_metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
