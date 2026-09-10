@@ -22,6 +22,7 @@ python -m pytest
 
 See `spec.md` for the complete project specification.
 
-## TODO
+## Project status
 
-- Implement benchmark workloads and fixed validated root kernels, beginning with a narrowly scoped BF16 GEMM on H100.
+See [TODO.md](TODO.md) for implemented and remaining work. `spec.md` remains the
+source of truth for Milestone A behavior and architecture.

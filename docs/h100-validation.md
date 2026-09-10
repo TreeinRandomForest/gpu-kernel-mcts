@@ -1,0 +1,65 @@
+# H100 BF16 GEMM validation
+
+This procedure validates the packaged root kernel and CUDA harness on the hardware
+target. Run it on an H100 SXM worker, not on an arbitrary CUDA machine.
+
+## Prerequisites
+
+- NVIDIA H100 SXM with compute capability 9.0;
+- a compatible NVIDIA driver;
+- CUDA toolkit with `nvcc`, CUDA headers, and the cuBLAS development library;
+- `cuobjdump` for preferred SASS fingerprints (optional; executable hashing is the fallback);
+- the project virtual environment with test dependencies installed.
+
+Do not print or record `RUNPOD_API_KEY` while collecting validation evidence.
+
+## Confirm the environment
+
+```bash
+nvidia-smi --query-gpu=name,uuid,driver_version,memory.total --format=csv
+nvcc --version
+cuobjdump --version
+```
+
+Confirm that the reported GPU model and form factor match the requested H100 SXM
+environment manifest before running benchmarks.
+
+## Run the hardware test
+
+From the repository root:
+
+```bash
+RUN_H100_INTEGRATION=1 .venv/bin/python -m pytest \
+  tests/test_cuda_backend.py::test_packaged_root_on_h100 -vv -s
+```
+
+The test must:
+
+1. compile the packaged root and harness with `nvcc -arch=sm_90`;
+2. execute deterministic correctness comparison against cuBLAS;
+3. satisfy the workload's BF16 tolerances;
+4. complete warmups and all timing repetitions;
+5. return a positive median latency.
+
+Then run the complete suite on the same revision:
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+## Record the result
+
+Record the following in the run trace or review notes:
+
+- git revision and dirty-tree state;
+- environment-manifest ID and worker ID;
+- GPU model, UUID, form factor, and driver version;
+- CUDA, NVCC, cuBLAS, and cuobjdump versions;
+- container image tag and digest;
+- correctness maximum and mean error;
+- individual timing samples and summary statistics;
+- binary fingerprint.
+
+If compilation, correctness, or timing fails, retain the structured result and
+classify it according to the evaluator rules. Do not weaken tolerances or silently
+change the workload to make the test pass; report any implementation/spec mismatch.
