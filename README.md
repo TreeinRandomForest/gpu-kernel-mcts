@@ -24,5 +24,4 @@ See `spec.md` for the complete project specification.
 
 ## TODO
 
-- Implement the RunPod worker lifecycle with manifest capture, validation, reuse, and release.
 - Implement benchmark workloads and fixed validated root kernels, beginning with a narrowly scoped BF16 GEMM on H100.

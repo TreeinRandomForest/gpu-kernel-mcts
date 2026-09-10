@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
-from dataclasses import dataclass, field
-from typing import Mapping, Protocol
+from contextlib import contextmanager
+from dataclasses import dataclass, field, replace
+from typing import Iterator, Mapping, Protocol
 
-from .domain import EvaluationResult, KernelProgram, WorkloadContract
+from .domain import EvaluationResult, KernelProgram, ProposalStatus, WorkloadContract
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +113,263 @@ class GPUProvider(Protocol):
     def acquire_worker(self, hardware: HardwareSpec) -> GPUWorker: ...
 
     def release_worker(self, worker: GPUWorker) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class RunPodConfig:
+    image: str
+    api_key_env: str = "RUNPOD_API_KEY"
+    gpu_type: str = "H100_SXM"
+    gpu_count: int = 1
+    container_disk_gb: int = 50
+    interruptible: bool = False
+    startup_timeout_seconds: float = 600.0
+    terminate_after_run: bool = True
+
+    def __post_init__(self) -> None:
+        if not self.image:
+            raise ValueError("RunPod worker image is required")
+        if self.gpu_count < 1 or self.container_disk_gb < 1:
+            raise ValueError("RunPod GPU count and container disk must be positive")
+        if self.startup_timeout_seconds <= 0:
+            raise ValueError("RunPod startup timeout must be positive")
+
+
+@dataclass(frozen=True, slots=True)
+class RunPodPodRequest:
+    gpu_type: str
+    gpu_count: int
+    image: str
+    container_disk_gb: int
+    interruptible: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RunPodPod:
+    pod_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class WorkerEndpoint:
+    worker_id: str
+    address: str
+
+
+class RunPodClient(Protocol):
+    def create_pod(self, request: RunPodPodRequest) -> RunPodPod: ...
+
+    def wait_until_ready(self, pod_id: str, timeout_seconds: float) -> WorkerEndpoint: ...
+
+    def terminate_pod(self, pod_id: str) -> None: ...
+
+
+class RunPodClientFactory(Protocol):
+    def __call__(self, api_key: str) -> RunPodClient: ...
+
+
+class WorkerTransport(Protocol):
+    def get_environment_manifest(self) -> EnvironmentManifest: ...
+
+    def evaluate(
+        self,
+        evaluation_id: str,
+        program: KernelProgram,
+        workload: WorkloadContract,
+        profile_level: str,
+    ) -> EvaluationResult: ...
+
+    def close(self) -> None: ...
+
+
+class WorkerTransportFactory(Protocol):
+    def __call__(self, endpoint: WorkerEndpoint) -> WorkerTransport: ...
+
+
+class ManifestEventSink(Protocol):
+    def emit(self, event_type: str, payload: Mapping[str, object]) -> None: ...
+
+
+class RunPodWorker:
+    def __init__(
+        self,
+        *,
+        pod_id: str,
+        endpoint: WorkerEndpoint,
+        transport: WorkerTransport,
+        manifest: EnvironmentManifest,
+        owner_token: object,
+    ) -> None:
+        self.pod_id = pod_id
+        self.endpoint = endpoint
+        self._transport = transport
+        self._manifest = manifest
+        self._owner_token = owner_token
+        self._released = False
+
+    @property
+    def worker_id(self) -> str:
+        return self.endpoint.worker_id
+
+    @property
+    def released(self) -> bool:
+        return self._released
+
+    def get_environment_manifest(self) -> EnvironmentManifest:
+        return self._manifest
+
+    def evaluate(
+        self,
+        evaluation_id: str,
+        program: KernelProgram,
+        workload: WorkloadContract,
+        profile_level: str,
+    ) -> EvaluationResult:
+        if self._released:
+            raise RuntimeError("cannot evaluate on a released RunPod worker")
+        try:
+            result = self._transport.evaluate(
+                evaluation_id,
+                program,
+                workload,
+                profile_level,
+            )
+        except Exception as error:
+            return EvaluationResult(
+                status=ProposalStatus.INFRASTRUCTURE_FAILURE,
+                worker_id=self.worker_id,
+                environment_manifest_id=self._manifest.manifest_id,
+                metadata={
+                    "evaluation_id": evaluation_id,
+                    "error_type": type(error).__name__,
+                },
+            )
+        return replace(
+            result,
+            worker_id=result.worker_id or self.worker_id,
+            environment_manifest_id=(
+                result.environment_manifest_id or self._manifest.manifest_id
+            ),
+        )
+
+    def _close(self) -> None:
+        if not self._released:
+            self._transport.close()
+
+
+class RunPodProvider:
+    def __init__(
+        self,
+        config: RunPodConfig,
+        *,
+        client_factory: RunPodClientFactory,
+        transport_factory: WorkerTransportFactory,
+        environ: Mapping[str, str] | None = None,
+    ) -> None:
+        self.config = config
+        self._client_factory = client_factory
+        self._transport_factory = transport_factory
+        self._environ = environ if environ is not None else os.environ
+        self._owner_token = object()
+        self._active: dict[int, tuple[RunPodWorker, RunPodClient]] = {}
+
+    def acquire_worker(self, hardware: HardwareSpec) -> RunPodWorker:
+        api_key = self._environ.get(self.config.api_key_env)
+        if not api_key:
+            raise ValueError(
+                f"required RunPod credential environment variable "
+                f"{self.config.api_key_env!r} is not set"
+            )
+        client = self._client_factory(api_key)
+        pod: RunPodPod | None = None
+        transport: WorkerTransport | None = None
+        try:
+            pod = client.create_pod(
+                RunPodPodRequest(
+                    gpu_type=self.config.gpu_type,
+                    gpu_count=self.config.gpu_count,
+                    image=self.config.image,
+                    container_disk_gb=self.config.container_disk_gb,
+                    interruptible=self.config.interruptible,
+                )
+            )
+            endpoint = client.wait_until_ready(
+                pod.pod_id,
+                self.config.startup_timeout_seconds,
+            )
+            transport = self._transport_factory(endpoint)
+            manifest = transport.get_environment_manifest()
+            if manifest.pod_id != pod.pod_id:
+                raise ValueError(
+                    f"worker manifest pod mismatch: expected {pod.pod_id!r}, "
+                    f"observed {manifest.pod_id!r}"
+                )
+            if manifest.worker_id != endpoint.worker_id:
+                raise ValueError(
+                    f"worker manifest identity mismatch: expected {endpoint.worker_id!r}, "
+                    f"observed {manifest.worker_id!r}"
+                )
+            validate_environment(hardware, manifest)
+            worker = RunPodWorker(
+                pod_id=pod.pod_id,
+                endpoint=endpoint,
+                transport=transport,
+                manifest=manifest,
+                owner_token=self._owner_token,
+            )
+            self._active[id(worker)] = (worker, client)
+            return worker
+        except Exception:
+            if transport is not None:
+                try:
+                    transport.close()
+                except Exception:
+                    pass
+            if pod is not None:
+                try:
+                    client.terminate_pod(pod.pod_id)
+                except Exception:
+                    pass
+            raise
+
+    def release_worker(self, worker: GPUWorker) -> None:
+        if not isinstance(worker, RunPodWorker) or worker._owner_token is not self._owner_token:
+            raise ValueError("worker is not owned by this RunPod provider")
+        if worker.released:
+            return
+        entry = self._active.get(id(worker))
+        if entry is None or entry[0] is not worker:
+            raise ValueError("worker is not active in this RunPod provider")
+        client = entry[1]
+        cleanup_error: Exception | None = None
+        try:
+            worker._close()
+        except Exception as error:
+            cleanup_error = error
+        try:
+            if self.config.terminate_after_run:
+                client.terminate_pod(worker.pod_id)
+        except Exception as error:
+            if cleanup_error is None:
+                cleanup_error = error
+        finally:
+            worker._released = True
+            self._active.pop(id(worker), None)
+        if cleanup_error is not None:
+            raise cleanup_error
+
+    @contextmanager
+    def worker_for_run(
+        self,
+        hardware: HardwareSpec,
+        events: ManifestEventSink | None = None,
+    ) -> Iterator[RunPodWorker]:
+        worker = self.acquire_worker(hardware)
+        try:
+            if events is not None:
+                events.emit("environment_manifest", worker.get_environment_manifest().as_dict())
+            yield worker
+        finally:
+            self.release_worker(worker)
 
 
 def validate_environment(requested: HardwareSpec, observed: EnvironmentManifest) -> None:
