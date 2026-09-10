@@ -23,6 +23,9 @@ from .serialization import (
 )
 
 
+_USER_AGENT = "gpu-kernel-mcts/0.1.0"
+
+
 class WorkerProtocolError(RuntimeError):
     """A sanitized remote-worker protocol failure."""
 
@@ -53,6 +56,7 @@ class WorkerApplication:
         auth_token: str,
         manifest: EnvironmentManifest,
         evaluator: KernelEvaluator,
+        calibration: Mapping[str, object] | None = None,
         max_request_bytes: int = 2_000_000,
     ) -> None:
         if not auth_token:
@@ -60,6 +64,7 @@ class WorkerApplication:
         self._auth_token = auth_token
         self._manifest = manifest
         self._evaluator = evaluator
+        self._calibration = dict(calibration or {})
         self._max_request_bytes = max_request_bytes
         self._lock = threading.Lock()
         self._evaluations: dict[str, tuple[str, dict[str, object]]] = {}
@@ -77,6 +82,8 @@ class WorkerApplication:
             return WorkerResponse(200, {"status": "ready"})
         if method == "GET" and path == "/manifest":
             return WorkerResponse(200, serialize_environment_manifest(self._manifest))
+        if method == "GET" and path == "/calibration":
+            return WorkerResponse(200, self._calibration)
         if method != "POST" or path != "/evaluate":
             return WorkerResponse(404, {"error": "not_found"})
         if len(body) > self._max_request_bytes:
@@ -137,6 +144,9 @@ class HTTPWorkerTransport(WorkerTransport):
     def get_environment_manifest(self) -> EnvironmentManifest:
         return deserialize_environment_manifest(self._request("GET", "/manifest"))
 
+    def get_calibration(self) -> Mapping[str, object]:
+        return self._request("GET", "/calibration")
+
     def evaluate(
         self,
         evaluation_id: str,
@@ -167,6 +177,7 @@ class HTTPWorkerTransport(WorkerTransport):
         headers = {
             "Authorization": f"Bearer {self._endpoint.auth_token}",
             "Accept": "application/json",
+            "User-Agent": _USER_AGENT,
         }
         if body is not None:
             headers["Content-Type"] = "application/json"

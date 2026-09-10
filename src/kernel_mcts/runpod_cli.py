@@ -8,6 +8,7 @@ from typing import TextIO
 from .providers import RunPodPodRequest
 from .runpod_api import RunPodRESTClient
 from .runpod_discovery import RunPodDiscovery
+from .worker_protocol import HTTPWorkerTransport
 
 
 class _ReadinessProgress:
@@ -138,11 +139,48 @@ def main() -> int:
         )
         progress.finish()
         print(f"Pod {pod.pod_id} is running; worker endpoint: {endpoint.address}")
+        transport = HTTPWorkerTransport(endpoint, timeout_seconds=arguments.timeout)
+        manifest = transport.get_environment_manifest()
+        calibration = transport.get_calibration()
+        _print_calibration(manifest, calibration)
+        transport.close()
     finally:
         progress.finish()
         client.terminate_pod(pod.pod_id)
         print(f"Pod {pod.pod_id} terminated")
     return 0
+
+
+def _print_calibration(manifest, calibration) -> None:
+    compilation = calibration.get("compile", {})
+    correctness = calibration.get("correctness", {})
+    benchmark = calibration.get("benchmark", {})
+    print(
+        f"Worker hardware: {manifest.gpu_model} ({manifest.form_factor or 'unknown form factor'}), "
+        f"compute capability {manifest.compute_capability}"
+    )
+    print(
+        f"Root calibration {calibration.get('benchmark_id', 'unknown')}: "
+        f"compile={compilation.get('success')}, "
+        f"correctness={correctness.get('success')}, "
+        f"max_error={correctness.get('maximum_error')}, "
+        f"mean_error={correctness.get('mean_error')}"
+    )
+    print(
+        f"Benchmark: median={benchmark.get('median_us')} us, "
+        f"mean={benchmark.get('mean_us')} us, min={benchmark.get('min_us')} us, "
+        f"max={benchmark.get('max_us')} us, samples={len(benchmark.get('timings_us', []))}"
+    )
+    for name, result in calibration.get("vendor_baselines", {}).items():
+        correctness = result.get("correctness", {})
+        benchmark = result.get("benchmark", {})
+        print(
+            f"{name} baseline: correctness={correctness.get('success')}, "
+            f"max_error={correctness.get('maximum_error')}, "
+            f"median={benchmark.get('median_us')} us, "
+            f"mean={benchmark.get('mean_us')} us, "
+            f"samples={len(benchmark.get('timings_us', []))}"
+        )
 
 
 if __name__ == "__main__":

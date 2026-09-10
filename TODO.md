@@ -21,6 +21,7 @@ optional hardware integration test has run.
 - [x] Fixed 4096 x 4096 x 4096 H100 BF16 GEMM workload and packaged CUDA root kernel.
 - [x] Backend-neutral compile, correctness, benchmark, reward, and state-identity pipeline.
 - [x] CUDA/NVCC backend and cuBLAS correctness/benchmark harness with GPU-independent tests.
+- [x] Fixed cuBLAS and pinned CUTLASS diagnostic performance baselines outside the MCTS state space.
 
 ## Next
 
@@ -33,6 +34,6 @@ optional hardware integration test has run.
 
 ## Validation status
 
-- Unit suite: `113 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `120 passed, 1 skipped` at the time this checklist was last updated.
 - Skipped test: real H100 compilation, cuBLAS correctness, and timing.
 - No claim of GPU correctness or performance should be made until that test passes on the requested hardware class.

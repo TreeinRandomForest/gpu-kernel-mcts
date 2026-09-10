@@ -85,7 +85,12 @@ def request_body(evaluation_id="evaluation-1", source="kernel"):
 def test_worker_requires_authentication_for_every_endpoint() -> None:
     app = WorkerApplication(auth_token="token", manifest=MANIFEST, evaluator=FakeEvaluator())
 
-    for method, path in [("GET", "/health"), ("GET", "/manifest"), ("POST", "/evaluate")]:
+    for method, path in [
+        ("GET", "/health"),
+        ("GET", "/manifest"),
+        ("GET", "/calibration"),
+        ("POST", "/evaluate"),
+    ]:
         response = app.handle(method, path, {}, request_body())
         assert response.status == 401
 
@@ -139,7 +144,13 @@ class AppHTTP:
 
 def test_http_transport_round_trips_manifest_and_evaluation() -> None:
     evaluator = FakeEvaluator()
-    app = WorkerApplication(auth_token="token", manifest=MANIFEST, evaluator=evaluator)
+    calibration = {"benchmark_id": "toy", "benchmark": {"median_us": 1.0}}
+    app = WorkerApplication(
+        auth_token="token",
+        manifest=MANIFEST,
+        evaluator=evaluator,
+        calibration=calibration,
+    )
     http = AppHTTP(app)
     transport = HTTPWorkerTransport(
         WorkerEndpoint("pod-1", "https://worker.invalid", "token"),
@@ -147,11 +158,14 @@ def test_http_transport_round_trips_manifest_and_evaluation() -> None:
     )
 
     manifest = transport.get_environment_manifest()
+    returned_calibration = transport.get_calibration()
     result = transport.evaluate("evaluation-1", KernelProgram("kernel"), WORKLOAD, "tier0")
 
     assert manifest == MANIFEST
+    assert returned_calibration == calibration
     assert result == evaluator.evaluate(KernelProgram("kernel"), WORKLOAD)
     assert http.calls[0][2]["Authorization"] == "Bearer token"
+    assert all(call[2]["User-Agent"] == "gpu-kernel-mcts/0.1.0" for call in http.calls)
     assert "token" not in repr(transport._endpoint)
 
 

@@ -85,6 +85,10 @@ The test must:
 4. complete warmups and all timing repetitions;
 5. return a positive median latency.
 
+The guarded worker probe additionally checks and reports fixed cuBLAS and CUTLASS
+BF16 baselines. Both must pass correctness under the same workload contract and
+produce the configured number of timing samples.
+
 Then run the complete suite on the same revision:
 
 ```bash

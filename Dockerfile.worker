@@ -3,11 +3,16 @@ FROM nvidia/cuda:12.8.2-devel-ubuntu24.04
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    CUTLASS_PATH=/opt/cutlass \
+    CUTLASS_VERSION=v4.5.1 \
     PATH=/opt/venv/bin:$PATH
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-venv \
+    && apt-get install -y --no-install-recommends ca-certificates git python3 python3-venv \
     && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 --branch v4.5.1 https://github.com/NVIDIA/cutlass.git /opt/cutlass \
+    && rm -rf /opt/cutlass/.git
 
 RUN python3 -m venv /opt/venv
 

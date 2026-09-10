@@ -1815,7 +1815,14 @@ profiling commands
 binary/SASS fingerprinting
 ```
 
-Do not implement CuTe DSL or CUTLASS support during Milestone A.
+Do not implement CuTe DSL or a searchable `CutlassCppBackend` during Milestone A.
+
+Milestone A may include fixed vendor/library performance references, such as
+cuBLAS and a pinned CUTLASS kernel, for calibration and reporting. These are
+diagnostic baselines only: they must use the same workload contract,
+correctness tolerances, warmup count, and measurement count as searched CUDA
+C++ kernels, and they must not become MCTS nodes, consume generation budget,
+or affect selection, backup, or reward semantics.
 
 ---
 

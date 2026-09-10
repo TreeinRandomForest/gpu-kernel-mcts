@@ -13,6 +13,8 @@ from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from .cuda_backend import CudaBackendConfig, CudaCppBackend
 from .evaluation import BackendKernelEvaluator, EvaluationContext
 from .providers import EnvironmentManifest
+from .serialization import serialize_benchmark
+from .vendor_baselines import VendorBaselineConfig, VendorBaselineSuite
 from .worker_protocol import WorkerApplication
 
 
@@ -40,6 +42,14 @@ def build_application(environ=None) -> WorkerApplication:
     if not root_correctness.success:
         raise RuntimeError("fixed root kernel failed correctness on the worker")
     root_benchmark = backend.benchmark(root_compilation.artifact, BF16_GEMM_WORKLOAD)
+    vendor_results = VendorBaselineSuite(
+        VendorBaselineConfig(
+            artifact_root=Path(
+                environment.get("KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts")
+            ),
+            cutlass_path=Path(environment.get("CUTLASS_PATH", "/opt/cutlass")),
+        )
+    ).run(BF16_GEMM_WORKLOAD)
     evaluator = BackendKernelEvaluator(
         backend=backend,
         root_benchmark=root_benchmark,
@@ -55,7 +65,35 @@ def build_application(environ=None) -> WorkerApplication:
             },
         ),
     )
-    return WorkerApplication(auth_token=token, manifest=manifest, evaluator=evaluator)
+    calibration = {
+        "benchmark_id": BF16_GEMM_WORKLOAD.benchmark_id,
+        "compile": {
+            "success": root_compilation.success,
+            "duration_seconds": root_compilation.duration_seconds,
+            "artifact_id": root_compilation.artifact.artifact_id,
+        },
+        "correctness": {
+            "success": root_correctness.success,
+            "maximum_error": root_correctness.maximum_error,
+            "mean_error": root_correctness.mean_error,
+            "failed_test_id": root_correctness.failed_test_id,
+            "reference_metadata": dict(root_correctness.reference_metadata),
+        },
+        "benchmark": serialize_benchmark(root_benchmark),
+        "vendor_baselines": {
+            name: {
+                "correctness": result["correctness"],
+                "benchmark": serialize_benchmark(result["benchmark"]),
+            }
+            for name, result in vendor_results.items()
+        },
+    }
+    return WorkerApplication(
+        auth_token=token,
+        manifest=manifest,
+        evaluator=evaluator,
+        calibration=calibration,
+    )
 
 
 def capture_environment_manifest(environ=None) -> EnvironmentManifest:
@@ -77,6 +115,7 @@ def capture_environment_manifest(environ=None) -> EnvironmentManifest:
     toolchains = {
         "nvcc": nvcc_version,
         "cuda_toolkit": environment.get("CUDA_VERSION", "unknown"),
+        "cutlass": environment.get("CUTLASS_VERSION", "unknown"),
     }
     profilers = {}
     ncu_version = _optional_command(["ncu", "--version"])

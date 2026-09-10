@@ -59,6 +59,11 @@ baseline, not an expert kernel. The harness generates deterministic inputs and u
 cuBLAS with FP32 accumulation as the correctness reference. It benchmarks with CUDA
 events after warmup and retains every timing sample plus summary statistics.
 
+Worker calibration also measures fixed cuBLAS and CUTLASS performance references
+with the same shape, data layouts, deterministic inputs, tolerances, warmups, and
+measurement count. CUTLASS is pinned in the worker image. These references are
+reported separately and never enter the MCTS state space or budget accounting.
+
 ## Remote execution and secrets
 
 `RunPodProvider` owns lifecycle policy but depends on injected client and transport
