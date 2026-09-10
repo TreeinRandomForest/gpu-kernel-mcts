@@ -108,6 +108,18 @@ def test_hardware_and_manifest_gpu_counts_must_be_positive() -> None:
         manifest(gpu_count=0)
 
 
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"network_volume_id": "volume-1"},
+        {"data_center_ids": ("US-TX-3",)},
+    ],
+)
+def test_runpod_config_requires_volume_and_region_together(changes) -> None:
+    with pytest.raises(ValueError, match="configured together"):
+        RunPodConfig(image="worker:latest", **changes)
+
+
 WORKLOAD = WorkloadContract(
     "toy",
     "toy",
@@ -216,6 +228,23 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
     assert worker.released
     with pytest.raises(RuntimeError, match="released"):
         worker.evaluate("evaluation-3", KernelProgram("three"), WORKLOAD, "tier0")
+
+
+def test_runpod_provider_passes_network_volume_affinity() -> None:
+    client = FakeClient()
+    transport = FakeTransport()
+    runpod = provider(
+        client,
+        transport,
+        network_volume_id="volume-1",
+        data_center_ids=("US-TX-3",),
+    )
+
+    worker = runpod.acquire_worker(HardwareSpec("H100"))
+
+    assert client.requests[0].network_volume_id == "volume-1"
+    assert client.requests[0].data_center_ids == ("US-TX-3",)
+    runpod.release_worker(worker)
 
 
 def test_runpod_context_logs_manifest_and_releases_after_exception() -> None:

@@ -70,6 +70,18 @@ RunPod's HTTPS proxy. Each pod receives a random worker-only bearer token. Evalu
 IDs are idempotent: an identical retry returns the cached result, while reuse with a
 different payload is rejected. The worker retains compiled artifacts for its run.
 
+The H100 SXM provisioning path attaches an existing network volume and pins the pod
+to explicitly configured matching data-center IDs. The REST payload omits
+`volumeInGb` when `networkVolumeId` is present. Pod termination does not delete the
+network volume; its lifecycle and storage charges remain externally managed.
+
+Automatic placement uses read-only `runpodctl datacenter list --output json` data to
+find exact GPU-ID matches with positive stock status. It then prefers an adequately
+sized volume with the configured managed name in one of those data centers. Creating
+a missing persistent volume requires a separate explicit confirmation. Existing,
+unrelated, undersized, and user-managed volumes are never silently repurposed or
+deleted.
+
 `RUNPOD_API_KEY` is read only from its configured environment variable. CUDA child
 processes receive a small allowlisted environment rather than the controller's full
 environment. Credentials must not appear in prompts, manifests, traces, subprocess

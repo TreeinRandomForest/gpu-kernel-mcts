@@ -129,6 +129,8 @@ class RunPodConfig:
     worker_port: int = 8000
     worker_protocol: str = "http"
     pod_name: str = "gpu-kernel-mcts"
+    network_volume_id: str | None = None
+    data_center_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.image:
@@ -143,6 +145,10 @@ class RunPodConfig:
             raise ValueError("RunPod worker protocol must be 'http' or 'tcp'")
         if self.cloud_type not in {"SECURE", "COMMUNITY", "ALL"}:
             raise ValueError("unsupported RunPod cloud type")
+        if bool(self.network_volume_id) != bool(self.data_center_ids):
+            raise ValueError(
+                "RunPod network volume ID and data-center IDs must be configured together"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,6 +163,14 @@ class RunPodPodRequest:
     worker_protocol: str = "http"
     name: str = "gpu-kernel-mcts"
     environment: Mapping[str, str] = field(default_factory=dict)
+    network_volume_id: str | None = None
+    data_center_ids: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if bool(self.network_volume_id) != bool(self.data_center_ids):
+            raise ValueError(
+                "RunPod network volume ID and data-center IDs must be configured together"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -313,6 +327,8 @@ class RunPodProvider:
                     environment={
                         "KERNEL_MCTS_WORKER_PORT": str(self.config.worker_port)
                     },
+                    network_volume_id=self.config.network_volume_id,
+                    data_center_ids=self.config.data_center_ids,
                 )
             )
             endpoint = client.wait_until_ready(

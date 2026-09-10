@@ -29,6 +29,14 @@ class HTTPResponse:
     body: bytes
 
 
+@dataclass(frozen=True, slots=True)
+class NetworkVolume:
+    volume_id: str
+    name: str
+    size_gb: int
+    data_center_id: str
+
+
 class HTTPTransport(Protocol):
     def __call__(
         self,
@@ -102,7 +110,16 @@ class RunPodRESTClient(RunPodClient):
                 "KERNEL_MCTS_CONTAINER_IMAGE": request.image,
             },
         }
-        response = self._request("POST", "/pods", payload)
+        if request.network_volume_id is not None:
+            payload.pop("volumeInGb")
+            payload.update(
+                {
+                    "networkVolumeId": request.network_volume_id,
+                    "dataCenterIds": list(request.data_center_ids),
+                    "dataCenterPriority": "custom",
+                }
+            )
+        response = self._request_mapping("POST", "/pods", payload)
         pod_id = response.get("id") or response.get("podId")
         if not isinstance(pod_id, str) or not pod_id:
             raise RunPodAPIError("RunPod create response did not contain a pod ID")
@@ -119,7 +136,7 @@ class RunPodRESTClient(RunPodClient):
         deadline = self._monotonic() + timeout_seconds
         last_status = "UNKNOWN"
         while True:
-            pod = self._request("GET", f"/pods/{pod_id}")
+            pod = self._request_mapping("GET", f"/pods/{pod_id}")
             status = pod.get("desiredStatus")
             last_status = status if isinstance(status, str) else "UNKNOWN"
             if last_status == "RUNNING":
@@ -168,6 +185,60 @@ class RunPodRESTClient(RunPodClient):
         self._requests.pop(pod_id, None)
         self._worker_tokens.pop(pod_id, None)
 
+    def list_network_volumes(self) -> tuple[NetworkVolume, ...]:
+        value = self._request("GET", "/networkvolumes")
+        if not isinstance(value, list):
+            raise RunPodAPIError("RunPod network-volume response must be a JSON array")
+        try:
+            if any(not isinstance(item, Mapping) for item in value):
+                raise TypeError
+            return tuple(
+                NetworkVolume(
+                    volume_id=str(item["id"]),
+                    name=str(item["name"]),
+                    size_gb=int(item["size"]),
+                    data_center_id=str(item["dataCenterId"]),
+                )
+                for item in value
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise RunPodAPIError("RunPod returned an invalid network-volume record") from error
+
+    def create_network_volume(
+        self,
+        *,
+        name: str,
+        size_gb: int,
+        data_center_id: str,
+    ) -> NetworkVolume:
+        if not name or not data_center_id or size_gb < 1 or size_gb > 4000:
+            raise ValueError("network volume requires a name, data center, and size from 1-4000 GB")
+        value = self._request_mapping(
+            "POST",
+            "/networkvolumes",
+            {"name": name, "size": size_gb, "dataCenterId": data_center_id},
+        )
+        try:
+            return NetworkVolume(
+                volume_id=str(value["id"]),
+                name=str(value["name"]),
+                size_gb=int(value["size"]),
+                data_center_id=str(value["dataCenterId"]),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise RunPodAPIError("RunPod returned an invalid network-volume record") from error
+
+    def _request_mapping(
+        self,
+        method: str,
+        path: str,
+        payload: Mapping[str, object] | None = None,
+    ) -> Mapping[str, object]:
+        value = self._request(method, path, payload)
+        if not isinstance(value, Mapping):
+            raise RunPodAPIError("RunPod response must be a JSON object")
+        return value
+
     def _request(
         self,
         method: str,
@@ -175,7 +246,7 @@ class RunPodRESTClient(RunPodClient):
         payload: Mapping[str, object] | None = None,
         *,
         expected_statuses: set[int] | None = None,
-    ) -> dict[str, object]:
+    ) -> object:
         body = (
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
             if payload is not None
@@ -208,8 +279,6 @@ class RunPodRESTClient(RunPodClient):
             value = json.loads(response.body)
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise RunPodAPIError("RunPod returned malformed JSON") from error
-        if not isinstance(value, dict):
-            raise RunPodAPIError("RunPod response must be a JSON object")
         return value
 
 

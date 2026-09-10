@@ -6,7 +6,12 @@ from dataclasses import replace
 import pytest
 
 from kernel_mcts.providers import RunPodPodRequest
-from kernel_mcts.runpod_api import HTTPResponse, RunPodAPIError, RunPodRESTClient
+from kernel_mcts.runpod_api import (
+    HTTPResponse,
+    NetworkVolume,
+    RunPodAPIError,
+    RunPodRESTClient,
+)
 
 
 REQUEST = RunPodPodRequest(
@@ -85,6 +90,28 @@ def test_create_pod_uses_official_rest_payload_without_secret_in_body() -> None:
     }
     assert secret.encode() not in body
     assert secret not in repr(client)
+
+
+def test_create_pod_attaches_network_volume_in_matching_data_center() -> None:
+    http = FakeHTTP([response(201, {"id": "pod-1"})])
+    client = RunPodRESTClient(
+        "api-secret",
+        http=http,
+        worker_token_factory=lambda: "worker-secret",
+    )
+    request = replace(
+        REQUEST,
+        network_volume_id="volume-1",
+        data_center_ids=("US-TX-3",),
+    )
+
+    client.create_pod(request)
+
+    payload = json.loads(http.calls[0][3])
+    assert payload["networkVolumeId"] == "volume-1"
+    assert payload["dataCenterIds"] == ["US-TX-3"]
+    assert payload["dataCenterPriority"] == "custom"
+    assert "volumeInGb" not in payload
 
 
 def test_wait_polls_until_http_proxy_endpoint_is_running() -> None:
@@ -252,3 +279,62 @@ def test_controller_credentials_cannot_be_forwarded_to_worker() -> None:
 
     with pytest.raises(ValueError, match="unsupported keys: RUNPOD_API_KEY"):
         client.create_pod(request)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"network_volume_id": "volume-1"},
+        {"data_center_ids": ("US-TX-3",)},
+    ],
+)
+def test_network_volume_and_data_center_must_be_configured_together(changes) -> None:
+    with pytest.raises(ValueError, match="configured together"):
+        replace(REQUEST, **changes)
+
+
+def test_list_and_create_network_volumes() -> None:
+    http = FakeHTTP(
+        [
+            response(
+                200,
+                [
+                    {
+                        "id": "existing",
+                        "name": "gpu-kernel-mcts",
+                        "size": 50,
+                        "dataCenterId": "US-TX-3",
+                    }
+                ],
+            ),
+            response(
+                200,
+                {
+                    "id": "created",
+                    "name": "gpu-kernel-mcts",
+                    "size": 100,
+                    "dataCenterId": "US-GA-1",
+                },
+            ),
+        ]
+    )
+    client = RunPodRESTClient("secret", http=http)
+
+    listed = client.list_network_volumes()
+    created = client.create_network_volume(
+        name="gpu-kernel-mcts",
+        size_gb=100,
+        data_center_id="US-GA-1",
+    )
+
+    assert listed == (NetworkVolume("existing", "gpu-kernel-mcts", 50, "US-TX-3"),)
+    assert created == NetworkVolume("created", "gpu-kernel-mcts", 100, "US-GA-1")
+    assert http.calls[0][0:2] == (
+        "GET",
+        "https://rest.runpod.io/v1/networkvolumes",
+    )
+    assert json.loads(http.calls[1][3]) == {
+        "name": "gpu-kernel-mcts",
+        "size": 100,
+        "dataCenterId": "US-GA-1",
+    }

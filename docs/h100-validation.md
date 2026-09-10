@@ -40,12 +40,31 @@ finish root calibration, and terminate it:
 ```bash
 .venv/bin/python -m kernel_mcts.runpod_cli \
   --image REGISTRY/gpu-kernel-mcts:REVISION \
+  --network-volume-id RUNPOD_NETWORK_VOLUME_ID \
+  --data-center-id MATCHING_RUNPOD_DATA_CENTER_ID \
   --confirm-create-and-terminate
 ```
 
+Alternatively, discover current H100 availability and reuse the managed
+`gpu-kernel-mcts` volume where possible:
+
+```bash
+.venv/bin/python -m kernel_mcts.runpod_cli \
+  --image REGISTRY/gpu-kernel-mcts:REVISION \
+  --auto-volume \
+  --confirm-create-and-terminate
+```
+
+If no reusable managed volume exists, the command stops before creating storage.
+To permit creation of a persistent 50 GB volume, add
+`--confirm-create-volume`. Volume creation and storage billing are independent of
+pod termination.
+
 This command creates a billable pod. Its `finally` path requests termination, but
 you should also confirm deletion in the RunPod console after any interrupted or
-failed probe.
+failed probe. The network volume must already exist in the specified data center.
+Pod termination does not delete the network volume, which may continue to incur
+storage charges.
 
 To run the test directly from a checkout already present on an H100 worker:
 
