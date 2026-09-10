@@ -119,12 +119,16 @@ class GPUProvider(Protocol):
 class RunPodConfig:
     image: str
     api_key_env: str = "RUNPOD_API_KEY"
-    gpu_type: str = "H100_SXM"
+    gpu_type: str = "NVIDIA H100 80GB HBM3"
     gpu_count: int = 1
     container_disk_gb: int = 50
     interruptible: bool = False
     startup_timeout_seconds: float = 600.0
     terminate_after_run: bool = True
+    cloud_type: str = "SECURE"
+    worker_port: int = 8000
+    worker_protocol: str = "http"
+    pod_name: str = "gpu-kernel-mcts"
 
     def __post_init__(self) -> None:
         if not self.image:
@@ -133,6 +137,12 @@ class RunPodConfig:
             raise ValueError("RunPod GPU count and container disk must be positive")
         if self.startup_timeout_seconds <= 0:
             raise ValueError("RunPod startup timeout must be positive")
+        if self.worker_port < 1 or self.worker_port > 65535:
+            raise ValueError("RunPod worker port must be between 1 and 65535")
+        if self.worker_protocol not in {"http", "tcp"}:
+            raise ValueError("RunPod worker protocol must be 'http' or 'tcp'")
+        if self.cloud_type not in {"SECURE", "COMMUNITY", "ALL"}:
+            raise ValueError("unsupported RunPod cloud type")
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,6 +152,11 @@ class RunPodPodRequest:
     image: str
     container_disk_gb: int
     interruptible: bool
+    cloud_type: str = "SECURE"
+    worker_port: int = 8000
+    worker_protocol: str = "http"
+    name: str = "gpu-kernel-mcts"
+    environment: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,6 +168,7 @@ class RunPodPod:
 class WorkerEndpoint:
     worker_id: str
     address: str
+    auth_token: str | None = field(default=None, repr=False, compare=False)
 
 
 class RunPodClient(Protocol):
@@ -290,6 +306,13 @@ class RunPodProvider:
                     image=self.config.image,
                     container_disk_gb=self.config.container_disk_gb,
                     interruptible=self.config.interruptible,
+                    cloud_type=self.config.cloud_type,
+                    worker_port=self.config.worker_port,
+                    worker_protocol=self.config.worker_protocol,
+                    name=self.config.pod_name,
+                    environment={
+                        "KERNEL_MCTS_WORKER_PORT": str(self.config.worker_port)
+                    },
                 )
             )
             endpoint = client.wait_until_ready(

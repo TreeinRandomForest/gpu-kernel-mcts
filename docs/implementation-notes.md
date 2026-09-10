@@ -63,8 +63,12 @@ events after warmup and retains every timing sample plus summary statistics.
 
 `RunPodProvider` owns lifecycle policy but depends on injected client and transport
 interfaces. It acquires one worker per run, captures and validates its manifest once,
-reuses it for evaluations, and releases it in a `finally` path. A concrete RunPod SDK
-adapter and remote worker service are still outstanding.
+reuses it for evaluations, and releases it in a `finally` path. `RunPodRESTClient`
+implements the client interface against the official Pods REST API. The authenticated
+worker service exposes health, manifest, and tier-zero evaluation endpoints through
+RunPod's HTTPS proxy. Each pod receives a random worker-only bearer token. Evaluation
+IDs are idempotent: an identical retry returns the cached result, while reuse with a
+different payload is rejected. The worker retains compiled artifacts for its run.
 
 `RUNPOD_API_KEY` is read only from its configured environment variable. CUDA child
 processes receive a small allowlisted environment rather than the controller's full

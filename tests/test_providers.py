@@ -206,6 +206,7 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
     runpod.release_worker(worker)
 
     assert len(client.requests) == 1
+    assert client.requests[0].environment == {"KERNEL_MCTS_WORKER_PORT": "8000"}
     assert transport.manifest_calls == 1
     assert len(transport.evaluations) == 2
     assert first.worker_id == second.worker_id == "worker-1"

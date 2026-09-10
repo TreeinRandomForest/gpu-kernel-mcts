@@ -4,7 +4,19 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Mapping
 
-from .domain import BenchmarkResult, EvaluationResult, WorkloadContract
+from .domain import (
+    BenchmarkResult,
+    CompilationEvidence,
+    CompileStatus,
+    CorrectnessEvidence,
+    CorrectnessStatus,
+    EvaluationResult,
+    InvalidReason,
+    KernelProgram,
+    ProposalStatus,
+    ShapeCase,
+    WorkloadContract,
+)
 from .generation import GenerationResult
 from .providers import EnvironmentManifest
 
@@ -112,6 +124,98 @@ def serialize_environment_manifest(manifest: EnvironmentManifest) -> dict[str, A
     value = _json_value(manifest.as_dict())
     assert isinstance(value, dict)
     return value
+
+
+def deserialize_workload(value: Mapping[str, Any]) -> WorkloadContract:
+    return WorkloadContract(
+        benchmark_id=str(value["benchmark_id"]),
+        operation=str(value["operation"]),
+        dtype=str(value["dtype"]),
+        shapes=tuple(
+            ShapeCase(
+                {str(key): int(item) for key, item in shape["dimensions"].items()},
+                float(shape["weight"]),
+            )
+            for shape in value["shapes"]
+        ),
+        rtol=float(value["rtol"]),
+        atol=float(value["atol"]),
+        metadata=value.get("metadata", {}),
+    )
+
+
+def deserialize_evaluation(value: Mapping[str, Any]) -> EvaluationResult:
+    program_value = value.get("program")
+    program = (
+        KernelProgram(str(program_value["source"]), str(program_value["backend"]))
+        if isinstance(program_value, Mapping)
+        else None
+    )
+    benchmark_value = value.get("benchmark")
+    benchmark = (
+        BenchmarkResult(
+            tuple(float(item) for item in benchmark_value["timings_us"]),
+            float(benchmark_value["median_us"]),
+            benchmark_value.get("per_shape_median_us", {}),
+            benchmark_value.get("warmup_count"),
+            benchmark_value.get("mean_us"),
+            benchmark_value.get("stddev_us"),
+            benchmark_value.get("min_us"),
+            benchmark_value.get("max_us"),
+        )
+        if isinstance(benchmark_value, Mapping)
+        else None
+    )
+    compilation_value = value.get("compilation")
+    compilation = (
+        CompilationEvidence(
+            compilation_value.get("artifact_id"),
+            str(compilation_value.get("stdout", "")),
+            str(compilation_value.get("stderr", "")),
+            compilation_value.get("duration_seconds"),
+            tuple(compilation_value.get("artifact_paths", ())),
+        )
+        if isinstance(compilation_value, Mapping)
+        else None
+    )
+    correctness_value = value.get("correctness")
+    correctness = (
+        CorrectnessEvidence(
+            correctness_value.get("maximum_error"),
+            correctness_value.get("mean_error"),
+            correctness_value.get("failed_test_id"),
+            correctness_value.get("reference_metadata", {}),
+        )
+        if isinstance(correctness_value, Mapping)
+        else None
+    )
+    invalid_reason = value.get("invalid_reason")
+    return EvaluationResult(
+        status=ProposalStatus(value["status"]),
+        program=program,
+        state_key=value.get("state_key"),
+        reward=value.get("reward"),
+        benchmark=benchmark,
+        invalid_reason=InvalidReason(invalid_reason) if invalid_reason else None,
+        metadata=value.get("metadata", {}),
+        compile_status=CompileStatus(value.get("compile_status", "NOT_ATTEMPTED")),
+        correctness_status=CorrectnessStatus(
+            value.get("correctness_status", "NOT_TESTED")
+        ),
+        worker_id=value.get("worker_id"),
+        environment_manifest_id=value.get("environment_manifest_id"),
+        source_hash=value.get("source_hash"),
+        binary_hash=value.get("binary_hash"),
+        launch_config=value.get("launch_config", {}),
+        compilation=compilation,
+        correctness=correctness,
+    )
+
+
+def deserialize_environment_manifest(value: Mapping[str, Any]) -> EnvironmentManifest:
+    fields = dict(value)
+    fields.pop("manifest_id", None)
+    return EnvironmentManifest(**fields)
 
 
 def _json_value(value: object) -> Any:

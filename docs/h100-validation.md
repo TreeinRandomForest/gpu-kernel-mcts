@@ -26,6 +26,29 @@ environment manifest before running benchmarks.
 
 ## Run the hardware test
 
+Build and push the worker image to a registry accessible by RunPod:
+
+```bash
+docker build -f Dockerfile.worker -t REGISTRY/gpu-kernel-mcts:REVISION .
+docker push REGISTRY/gpu-kernel-mcts:REVISION
+```
+
+The image tag should be immutable for a recorded experiment. After pushing, the
+guarded lifecycle probe can provision an H100, wait for the authenticated worker to
+finish root calibration, and terminate it:
+
+```bash
+.venv/bin/python -m kernel_mcts.runpod_cli \
+  --image REGISTRY/gpu-kernel-mcts:REVISION \
+  --confirm-create-and-terminate
+```
+
+This command creates a billable pod. Its `finally` path requests termination, but
+you should also confirm deletion in the RunPod console after any interrupted or
+failed probe.
+
+To run the test directly from a checkout already present on an H100 worker:
+
 From the repository root:
 
 ```bash
