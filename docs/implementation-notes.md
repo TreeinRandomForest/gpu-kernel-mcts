@@ -132,7 +132,17 @@ read only by the local controller from its configured environment variable.
 workload, hardware, selected strategy, profile summary, and bounded repair evidence.
 It returns a complete replacement program and preserves the exact prompt, raw output,
 model metadata, usage, latency, and response ID in the generation trace. The adapter
-is not yet selected by the search CLI; live activation remains an explicit next step.
+is not yet selected by the search CLI; full MCTS activation remains an explicit next
+step.
+
+The controller-only `kernel_mcts.llm_cli` command provides a guarded intermediate
+check before provisioning a GPU. It requires an explicit model, configured strategy,
+new output path, and `--confirm-api-call`; makes exactly one request; writes only the
+extracted candidate source; and prints response identity, resolved model, token usage,
+latency, and output path without printing the prompt, raw response, or API key.
+The guarded command completed successfully with `gpt-5.6-terra` on 2026-09-11;
+the generated source remains unevaluated until it passes remote compilation and
+correctness testing.
 
 ## Known limitations
 

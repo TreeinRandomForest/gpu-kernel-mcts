@@ -26,6 +26,22 @@ python -m pytest
 
 See `spec.md` for the complete project specification.
 
+To make one guarded, controller-only LLM generation request before running a remote
+search, install the optional dependencies and select a configured strategy:
+
+```bash
+python -m pip install -e '.[config,llm]'
+python -m kernel_mcts.llm_cli \
+  --model MODEL_ID \
+  --strategies configs/strategies.yaml \
+  --strategy-id coalesced_global_memory \
+  --output candidate.cu \
+  --confirm-api-call
+```
+
+The output path must not already exist. The command makes one potentially billable
+API request and does not provision a GPU or validate the generated kernel.
+
 ## Project status
 
 See [TODO.md](TODO.md) for implemented and remaining work. `spec.md` remains the
