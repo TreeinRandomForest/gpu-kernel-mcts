@@ -50,6 +50,8 @@ generated candidate before running the documented OpenAI-backed MCTS command.
 
 See [TODO.md](TODO.md) for implemented and remaining work. `spec.md` remains the
 source of truth for Milestone A behavior and architecture.
+Speculative post–Milestone A ideas are tracked separately in
+[docs/research-roadmap.md](docs/research-roadmap.md).
 
 ## Starting a new agent session
 
