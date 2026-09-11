@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import sqlite3
 
@@ -124,6 +125,39 @@ class MockGenerator:
             source,
             KernelProgram(source),
             f"prompt-{self.calls}",
+        )
+
+
+class OneCandidateGenerator:
+    def generate(self, request):
+        return GenerationResult(
+            "generation-1",
+            "candidate",
+            KernelProgram("candidate"),
+            "prompt-hash",
+        )
+
+
+class TransientRootWorker(MockWorker):
+    def evaluate(self, evaluation_id, program, workload, profile_level):
+        self.calls.append((evaluation_id, program.source, workload, profile_level))
+        self.attempts[evaluation_id] = self.attempts.get(evaluation_id, 0) + 1
+        if program.source == "root" and self.attempts[evaluation_id] == 1:
+            return EvaluationResult(
+                ProposalStatus.INFRASTRUCTURE_FAILURE,
+                metadata={"error_type": "WorkerProtocolError"},
+            )
+        if program.source == "root":
+            return valid(program, 0.25)
+        return valid(program, 1.0)
+
+
+class FailedRootWorker(MockWorker):
+    def evaluate(self, evaluation_id, program, workload, profile_level):
+        self.calls.append((evaluation_id, program.source, workload, profile_level))
+        return EvaluationResult(
+            ProposalStatus.INFRASTRUCTURE_FAILURE,
+            metadata={"error_type": "WorkerProtocolError"},
         )
 
 
@@ -253,3 +287,91 @@ def test_candidate_evaluation_retries_infrastructure_and_normalizes_reward() -> 
         "candidate-1",
     ]
     assert provider.acquisitions == provider.releases == 1
+
+
+def test_mcts_root_retries_infrastructure_with_same_evaluation_id(tmp_path) -> None:
+    provider = MockProvider(TransientRootWorker())
+    database = tmp_path / "root-retry.sqlite"
+
+    with SQLiteTraceStore(database) as trace:
+        execution = run_mcts_search(
+            provider=provider,
+            hardware=HARDWARE,
+            workload=WORKLOAD,
+            root_program=KernelProgram("root"),
+            strategies=(STRATEGY,),
+            generator=OneCandidateGenerator(),
+            prior_provider=UniformStrategyPrior(),
+            generation_budget=1,
+            trace=trace,
+            mcts_config=MCTSConfig(max_infrastructure_retries=1),
+            run_id="root-retry",
+        )
+
+    root_calls = [call for call in provider.worker.calls if call[1] == "root"]
+    assert len(root_calls) == 2
+    assert root_calls[0][0] == root_calls[1][0]
+    assert execution.result.generations == 1
+    assert execution.result.root.reward == 0.0
+    assert provider.acquisitions == provider.releases == 1
+    with sqlite3.connect(database) as connection:
+        attempts = connection.execute(
+            "SELECT payload_json FROM search_events "
+            "WHERE run_id = 'root-retry' AND event_type = 'root_evaluation_attempt' "
+            "ORDER BY id"
+        ).fetchall()
+    payloads = [json.loads(row[0]) for row in attempts]
+    assert [item["attempt"] for item in payloads] == [1, 2]
+    assert [item["evaluation"]["status"] for item in payloads] == [
+        "INFRASTRUCTURE_FAILURE",
+        "VALID",
+    ]
+
+
+def test_mcts_root_exhausted_retries_are_traced_without_generation(tmp_path) -> None:
+    provider = MockProvider(FailedRootWorker())
+    database = tmp_path / "root-failed.sqlite"
+
+    with SQLiteTraceStore(database) as trace:
+        with pytest.raises(
+            RuntimeError,
+            match=(
+                "after 2 attempt.*INFRASTRUCTURE_FAILURE.*"
+                "error_type=WorkerProtocolError"
+            ),
+        ):
+            run_mcts_search(
+                provider=provider,
+                hardware=HARDWARE,
+                workload=WORKLOAD,
+                root_program=KernelProgram("root"),
+                strategies=(STRATEGY,),
+                generator=OneCandidateGenerator(),
+                prior_provider=UniformStrategyPrior(),
+                generation_budget=50,
+                trace=trace,
+                mcts_config=MCTSConfig(max_infrastructure_retries=1),
+                run_id="root-failed",
+            )
+
+    assert len(provider.worker.calls) == 2
+    assert provider.worker.calls[0][0] == provider.worker.calls[1][0]
+    assert provider.acquisitions == provider.releases == 1
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT count(*) FROM generations WHERE run_id = 'root-failed'"
+        ).fetchone() == (0,)
+        row = connection.execute(
+            "SELECT final_b_gen, final_iterations FROM search_runs "
+            "WHERE run_id = 'root-failed'"
+        ).fetchone()
+        failed_payload = json.loads(
+            connection.execute(
+                "SELECT payload_json FROM search_events "
+                "WHERE run_id = 'root-failed' AND event_type = 'run_failed'"
+            ).fetchone()[0]
+        )
+    assert row == (0, 0)
+    assert failed_payload["root_evaluation_attempts"] == 2
+    assert failed_payload["root_evaluation_status"] == "INFRASTRUCTURE_FAILURE"
+    assert failed_payload["root_error_type"] == "WorkerProtocolError"

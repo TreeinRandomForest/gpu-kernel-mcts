@@ -43,6 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-output-tokens", type=int, default=16_384)
     parser.add_argument("--llm-timeout", type=float, default=180.0)
     parser.add_argument("--max-repairs", type=int, default=1)
+    parser.add_argument("--max-infrastructure-retries", type=int, default=1)
     parser.add_argument("--k-max", type=int, default=4)
     parser.add_argument("--max-depth", type=int, default=10)
     parser.add_argument("--best-output", type=Path)
@@ -144,7 +145,12 @@ def _search_components(
             ),
             SmokeKernelGenerator(),
             None,
-            MCTSConfig(k_max=1, max_repairs=0, max_depth=arguments.max_depth),
+            MCTSConfig(
+                k_max=1,
+                max_repairs=0,
+                max_depth=arguments.max_depth,
+                max_infrastructure_retries=arguments.max_infrastructure_retries,
+            ),
         )
 
     if not arguments.model:
@@ -178,6 +184,7 @@ def _search_components(
             k_max=arguments.k_max,
             max_depth=arguments.max_depth,
             max_repairs=arguments.max_repairs,
+            max_infrastructure_retries=arguments.max_infrastructure_retries,
         ),
     )
 

@@ -167,6 +167,7 @@ MCTS search with configured semantic strategies and uniform priors:
   --strategies configs/strategies.yaml \
   --generation-budget 3 \
   --max-repairs 1 \
+  --max-infrastructure-retries 1 \
   --best-output best-kernel.cu \
   --auto-volume \
   --preferred-data-center-id RUNPOD_DATA_CENTER_ID \
@@ -177,6 +178,9 @@ This command can incur both OpenAI API and RunPod charges. The local controller 
 fresh model requests and sends only generated kernel/evaluation data to the worker;
 neither API key is sent to the other service. Start with a small `B_gen`, inspect the
 SQLite trace and exported best kernel, and increase the budget only deliberately.
+Root infrastructure failures are retried idempotently according to
+`--max-infrastructure-retries`; each attempt is retained in the SQLite event trace and
+does not consume generation budget.
 
 Then run the complete suite on the same revision:
 

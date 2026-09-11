@@ -158,6 +158,12 @@ Responses API call. The SQLite run records the configured model, while each gene
 records the resolved model and usage. An optional new `--best-output` path exports the
 best valid kernel after the global search completes.
 
+Root evaluation uses the same configurable infrastructure-retry count as candidate
+evaluation. Every retry reuses the stable root evaluation ID and emits a complete
+`root_evaluation_attempt` trace event. Exhausted retries occur before MCTS starts,
+consume no `B_gen`, create no nodes or backups, and record the final root status,
+attempt count, and sanitized underlying error type before worker cleanup.
+
 ## Known limitations
 
 - The CUDA harness, root, cuBLAS baseline, and fixed CUTLASS baseline have run

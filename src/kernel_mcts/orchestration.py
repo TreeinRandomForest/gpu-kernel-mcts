@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict, dataclass, replace
-from typing import Mapping, Protocol, Sequence
+from typing import Callable, Mapping, Protocol, Sequence
 from uuid import uuid4
 
 from .budget import GenerationBudget
@@ -20,7 +20,7 @@ from .generation import KernelGenerator
 from .interfaces import EventSink, KernelEvaluator, StrategyPriorProvider
 from .providers import GPUProvider, GPUWorker, HardwareSpec
 from .search import MCTS, MCTSConfig, SearchResult
-from .serialization import serialize_program, serialize_workload
+from .serialization import serialize_evaluation, serialize_program, serialize_workload
 
 
 class SearchTraceStore(EventSink, Protocol):
@@ -159,12 +159,17 @@ def _evaluate_with_infrastructure_retries(
     program: KernelProgram,
     workload: WorkloadContract,
     retries: int,
+    on_attempt: Callable[[int, EvaluationResult], None] | None = None,
 ) -> EvaluationResult:
     result = evaluator.evaluate(program, workload)
-    for _ in range(retries):
+    if on_attempt is not None:
+        on_attempt(1, result)
+    for retry in range(retries):
         if result.status != ProposalStatus.INFRASTRUCTURE_FAILURE:
             break
         result = evaluator.evaluate(program, workload)
+        if on_attempt is not None:
+            on_attempt(retry + 2, result)
     return result
 
 
@@ -203,14 +208,39 @@ def run_mcts_search(
     )
     worker: GPUWorker | None = None
     mcts_started = False
+    root_evaluation: EvaluationResult | None = None
+    root_attempts = 0
     try:
         worker = provider.acquire_worker(hardware)
         trace.emit("environment_manifest", worker.get_environment_manifest().as_dict())
         worker_evaluator = WorkerKernelEvaluator(worker, resolved_run_id)
-        root_evaluation = worker_evaluator.evaluate(root_program, workload)
+        def record_root_attempt(attempt: int, result: EvaluationResult) -> None:
+            nonlocal root_attempts
+            root_attempts = attempt
+            trace.emit(
+                "root_evaluation_attempt",
+                {
+                    "attempt": attempt,
+                    "max_infrastructure_retries": (
+                        mcts_config.max_infrastructure_retries
+                    ),
+                    "evaluation": serialize_evaluation(result),
+                },
+            )
+
+        root_evaluation = _evaluate_with_infrastructure_retries(
+            worker_evaluator,
+            root_program,
+            workload,
+            mcts_config.max_infrastructure_retries,
+            record_root_attempt,
+        )
         if root_evaluation.status != ProposalStatus.VALID:
+            error_type = root_evaluation.metadata.get("error_type")
+            detail = f", error_type={error_type}" if isinstance(error_type, str) else ""
             raise RuntimeError(
-                f"root evaluation must be valid, got {root_evaluation.status.value}"
+                f"root evaluation must be valid after {root_attempts} attempt(s), "
+                f"got {root_evaluation.status.value}{detail}"
             )
         if root_evaluation.benchmark is None:
             raise RuntimeError("valid root evaluation must include a benchmark")
@@ -235,15 +265,19 @@ def run_mcts_search(
         return SearchExecution(resolved_run_id, search.run(root_evaluation))
     except Exception as error:
         if not mcts_started:
-            trace.emit(
-                "run_failed",
-                {
-                    "iterations": 0,
-                    "b_gen": 0,
-                    "b_prior": 0,
-                    "error_type": type(error).__name__,
-                },
-            )
+            payload: dict[str, object] = {
+                "iterations": 0,
+                "b_gen": 0,
+                "b_prior": 0,
+                "error_type": type(error).__name__,
+                "root_evaluation_attempts": root_attempts,
+            }
+            if root_evaluation is not None:
+                payload["root_evaluation_status"] = root_evaluation.status.value
+                underlying = root_evaluation.metadata.get("error_type")
+                if isinstance(underlying, str):
+                    payload["root_error_type"] = underlying
+            trace.emit("run_failed", payload)
         raise
     finally:
         if worker is not None:

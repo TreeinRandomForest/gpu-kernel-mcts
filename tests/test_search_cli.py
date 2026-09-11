@@ -178,4 +178,5 @@ def test_openai_search_wires_configured_generator_and_exports_best(
     assert search["generation_budget"] == 3
     assert search["model_name"] == "test-model"
     assert search["mcts_config"].max_repairs == 1
+    assert search["mcts_config"].max_infrastructure_retries == 1
     assert "OpenAI search completed" in capsys.readouterr().out
