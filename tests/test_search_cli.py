@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 from types import SimpleNamespace
 
@@ -7,9 +8,14 @@ import pytest
 
 from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from kernel_mcts.domain import KernelProgram, Strategy
-from kernel_mcts.generation import GenerationRequest
+from kernel_mcts.generation import GenerationRequest, GenerationResult
 from kernel_mcts.llm_generation import LLMKernelGenerator
-from kernel_mcts.search_cli import build_parser, main
+from kernel_mcts.search_cli import (
+    ProgressKernelGenerator,
+    SearchCLIProgress,
+    build_parser,
+    main,
+)
 from kernel_mcts.smoke import SmokeKernelGenerator
 
 
@@ -173,10 +179,98 @@ def test_openai_search_wires_configured_generator_and_exports_best(
     assert best_output.read_text() == "best source"
     assert captured["openai_config"].model == "test-model"
     search = captured["search"]
-    assert isinstance(search["generator"], LLMKernelGenerator)
+    assert isinstance(search["generator"], ProgressKernelGenerator)
+    assert isinstance(search["generator"]._generator, LLMKernelGenerator)
     assert [strategy.id for strategy in search["strategies"]] == ["coalescing"]
     assert search["generation_budget"] == 3
     assert search["model_name"] == "test-model"
     assert search["mcts_config"].max_repairs == 1
     assert search["mcts_config"].max_infrastructure_retries == 1
     assert "OpenAI search completed" in capsys.readouterr().out
+
+
+def test_search_progress_finishes_readiness_and_reports_events() -> None:
+    class Trace:
+        def __init__(self) -> None:
+            self.events = []
+
+        def start_run(self, *args) -> None:
+            pass
+
+        def emit(self, event_type, payload) -> None:
+            self.events.append((event_type, payload))
+
+    class Readiness:
+        def __init__(self) -> None:
+            self.finished = 0
+
+        def finish(self) -> None:
+            self.finished += 1
+
+    trace = Trace()
+    readiness = Readiness()
+    stream = io.StringIO()
+    progress = SearchCLIProgress(trace, readiness, stream)
+
+    progress.emit("environment_manifest", {"worker_id": "worker-1"})
+    progress.emit(
+        "generation",
+        {"b_gen": 3, "proposal_status": "VALID", "strategy_id": "coalescing"},
+    )
+    progress.emit(
+        "iteration_completed",
+        {
+            "iteration": 2,
+            "b_gen": 3,
+            "status": "VALID",
+            "backed_up_reward": 0.5,
+        },
+    )
+    progress.emit("new_global_best", {"iteration": 2, "reward": 0.5})
+    progress.emit(
+        "run_completed", {"iterations": 2, "b_gen": 3, "best_reward": 0.5}
+    )
+
+    assert readiness.finished == 1
+    assert [event for event, _ in trace.events] == [
+        "environment_manifest",
+        "generation",
+        "iteration_completed",
+        "new_global_best",
+        "run_completed",
+    ]
+    output = stream.getvalue()
+    assert "Worker ready; starting root evaluation" in output
+    assert "B_gen=3, status=VALID, strategy=coalescing" in output
+    assert "iteration=2, B_gen=3, status=VALID, backed_up_reward=0.5" in output
+    assert "New best: iteration=2, reward=0.5" in output
+    assert "Search completed; terminating worker" in output
+
+
+def test_progress_generator_reports_start_and_evaluation_handoff() -> None:
+    class Generator:
+        def generate(self, request) -> GenerationResult:
+            return GenerationResult(
+                "generation-1",
+                "source",
+                KernelProgram("source"),
+                "prompt-hash",
+            )
+
+    stream = io.StringIO()
+    generator = ProgressKernelGenerator(Generator(), stream)
+    request = GenerationRequest(
+        parent=KernelProgram("root"),
+        strategy=Strategy("coalescing", "Coalesce loads", {}),
+        workload=BF16_GEMM_WORKLOAD,
+        hardware={"gpu_model": "H100"},
+        profile=None,
+    )
+
+    result = generator.generate(request)
+
+    assert result.generation_id == "generation-1"
+    assert stream.getvalue().splitlines() == [
+        "Starting generation call 1: strategy=coalescing",
+        "Generation call 1 returned; evaluating proposal",
+    ]

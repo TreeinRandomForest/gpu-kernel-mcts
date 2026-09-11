@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from pathlib import Path
+from typing import Mapping, TextIO
 
 from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from .config import load_data, parse_strategies
 from .domain import Strategy
-from .generation import KernelGenerator
+from .generation import GenerationRequest, GenerationResult, KernelGenerator
 from .llm_generation import LLMKernelGenerator
 from .openai_client import OpenAIResponsesClient, OpenAIResponsesConfig
 from .orchestration import run_mcts_search
@@ -19,6 +21,102 @@ from .runpod_cli import ReadinessProgress
 from .runpod_volume import resolve_reusable_volume
 from .search import MCTSConfig
 from .smoke import SmokeKernelGenerator
+
+
+class SearchCLIProgress:
+    """Report durable search events without changing persistence semantics."""
+
+    def __init__(
+        self,
+        trace: SQLiteTraceStore,
+        readiness: ReadinessProgress,
+        stream: TextIO = sys.stdout,
+    ) -> None:
+        self._trace = trace
+        self._readiness = readiness
+        self._stream = stream
+
+    def start_run(
+        self,
+        run_id: str,
+        benchmark_id: str,
+        algorithm: str,
+        config: Mapping[str, object],
+    ) -> None:
+        self._trace.start_run(run_id, benchmark_id, algorithm, config)
+
+    def emit(self, event_type: str, payload: Mapping[str, object]) -> None:
+        self._trace.emit(event_type, payload)
+        if event_type == "environment_manifest":
+            self._readiness.finish()
+            self._write("Worker ready; starting root evaluation")
+        elif event_type == "root_evaluation_attempt":
+            evaluation = payload.get("evaluation")
+            status = evaluation.get("status") if isinstance(evaluation, Mapping) else None
+            self._write(
+                f"Root evaluation attempt {payload.get('attempt')}: status={status}"
+            )
+        elif event_type == "generation":
+            self._write(
+                "Generation evaluated: "
+                f"B_gen={payload.get('b_gen')}, status={payload.get('proposal_status')}, "
+                f"strategy={payload.get('strategy_id')}"
+            )
+        elif event_type == "iteration_completed":
+            self._write(
+                "MCTS iteration completed: "
+                f"iteration={payload.get('iteration')}, B_gen={payload.get('b_gen')}, "
+                f"status={payload.get('status')}, "
+                f"backed_up_reward={payload.get('backed_up_reward')}"
+            )
+        elif event_type == "new_global_best":
+            self._write(
+                f"New best: iteration={payload.get('iteration')}, "
+                f"reward={payload.get('reward')}"
+            )
+        elif event_type == "run_completed":
+            self._write(
+                "Search completed; terminating worker: "
+                f"iterations={payload.get('iterations')}, B_gen={payload.get('b_gen')}, "
+                f"best_reward={payload.get('best_reward')}"
+            )
+        elif event_type == "run_failed":
+            self._write(
+                f"Search failed: error_type={payload.get('error_type')}, "
+                f"B_gen={payload.get('b_gen')}"
+            )
+
+    def _write(self, message: str) -> None:
+        self._stream.write(f"{message}\n")
+        self._stream.flush()
+
+
+class ProgressKernelGenerator:
+    """Make otherwise quiet remote LLM calls visible to CLI users."""
+
+    def __init__(
+        self,
+        generator: KernelGenerator,
+        stream: TextIO = sys.stdout,
+    ) -> None:
+        self._generator = generator
+        self._stream = stream
+        self._calls = 0
+
+    def generate(self, request: GenerationRequest) -> GenerationResult:
+        self._calls += 1
+        self._write(
+            f"Starting generation call {self._calls}: strategy={request.strategy.id}"
+        )
+        result = self._generator.generate(request)
+        self._write(
+            f"Generation call {self._calls} returned; evaluating proposal"
+        )
+        return result
+
+    def _write(self, message: str) -> None:
+        self._stream.write(f"{message}\n")
+        self._stream.flush()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -91,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         with SQLiteTraceStore(arguments.trace) as trace:
+            reporting_trace = SearchCLIProgress(trace, progress)
             execution = run_mcts_search(
                 provider=provider,
                 hardware=HardwareSpec(
@@ -101,10 +200,10 @@ def main(argv: list[str] | None = None) -> int:
                 workload=BF16_GEMM_WORKLOAD,
                 root_program=load_bf16_gemm_root(),
                 strategies=strategies,
-                generator=generator,
+                generator=ProgressKernelGenerator(generator),
                 prior_provider=UniformStrategyPrior(),
                 generation_budget=arguments.generation_budget,
-                trace=trace,
+                trace=reporting_trace,
                 mcts_config=mcts_config,
                 seed=arguments.seed,
                 run_id=arguments.run_id,
