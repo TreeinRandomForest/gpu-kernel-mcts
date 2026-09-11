@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Mapping
+from typing import Callable, Mapping
 
 from .providers import RunPodConfig, RunPodProvider
 from .runpod_api import HTTPTransport, RunPodRESTClient
@@ -13,6 +13,7 @@ def create_runpod_provider(
     environ: Mapping[str, str] | None = None,
     runpod_http: HTTPTransport | None = None,
     worker_http: WorkerHTTP | None = None,
+    readiness_progress: Callable[[str, float], None] | None = None,
 ) -> RunPodProvider:
     """Wire the concrete RunPod lifecycle and authenticated worker transports."""
     return RunPodProvider(
@@ -24,4 +25,5 @@ def create_runpod_provider(
             http=worker_http,
         ),
         environ=environ,
+        readiness_progress=readiness_progress,
     )

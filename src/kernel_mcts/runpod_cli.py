@@ -11,11 +11,11 @@ from .runpod_discovery import RunPodDiscovery
 from .worker_protocol import HTTPWorkerTransport
 
 
-class _ReadinessProgress:
+class ReadinessProgress:
     _FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
 
-    def __init__(self, pod_id: str, stream: TextIO = sys.stdout) -> None:
-        self._pod_id = pod_id
+    def __init__(self, label: str, stream: TextIO = sys.stdout) -> None:
+        self._label = label
         self._stream = stream
         self._frame = 0
         self._last_status: str | None = None
@@ -26,7 +26,7 @@ class _ReadinessProgress:
             frame = self._FRAMES[self._frame % len(self._FRAMES)]
             self._frame += 1
             message = (
-                f"{frame} Waiting for pod {self._pod_id} — status: {status} "
+                f"{frame} Waiting for {self._label} — status: {status} "
                 f"— {elapsed_seconds:.0f}s elapsed"
             )
             self._stream.write(f"\r\033[2K{message}")
@@ -34,7 +34,7 @@ class _ReadinessProgress:
             self._active_line = True
         elif status != self._last_status:
             self._stream.write(
-                f"Waiting for pod {self._pod_id} — status: {status} "
+                f"Waiting for {self._label} — status: {status} "
                 f"— {elapsed_seconds:.0f}s elapsed\n"
             )
             self._stream.flush()
@@ -130,7 +130,7 @@ def main() -> int:
             data_center_ids=(data_center_id,),
         )
     )
-    progress = _ReadinessProgress(pod.pod_id)
+    progress = ReadinessProgress(f"pod {pod.pod_id}")
     try:
         endpoint = client.wait_until_ready(
             pod.pod_id,

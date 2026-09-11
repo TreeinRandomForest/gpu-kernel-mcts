@@ -62,6 +62,28 @@ To permit creation of a persistent 50 GB volume, add
 pod termination. The optional `--preferred-data-center-id` restricts both managed
 volume reuse and creation to an available data center selected by the operator.
 
+### Volume-selection rules
+
+Every RunPod command must use exactly one volume-selection mode:
+
+1. **Manual:** provide both `--network-volume-id` and `--data-center-id`. They
+   must refer to the same RunPod data center.
+2. **Automatic:** provide `--auto-volume`. Do not combine it with either manual
+   identifier.
+
+`--preferred-data-center-id` is valid only with `--auto-volume`; it restricts
+automatic selection to that data center, which must currently report the requested
+GPU as available.
+
+For `kernel_mcts.runpod_cli`, automatic mode reuses a suitable managed volume when
+one exists. If none exists, the command fails before creating a pod unless
+`--confirm-create-volume` is also supplied. That separate flag authorizes creation
+of persistent, billable storage.
+
+For `kernel_mcts.search_cli`, automatic mode is always reuse-only. The search CLI
+does not create network volumes and fails before creating a pod if no suitable
+managed volume exists.
+
 This command creates a billable pod. Its `finally` path requests termination, but
 you should also confirm deletion in the RunPod console after any interrupted or
 failed probe. The network volume must already exist in the specified data center.
@@ -88,6 +110,26 @@ The test must:
 The guarded worker probe additionally checks and reports fixed cuBLAS and CUTLASS
 BF16 baselines. Both must pass correctness under the same workload contract and
 produce the configured number of timing samples.
+
+## Run one MCTS smoke iteration
+
+After lifecycle calibration succeeds, run one deterministic PUCT, progressive-
+widening, evaluation, and backup cycle on the same worker architecture:
+
+```bash
+.venv/bin/python -m kernel_mcts.search_cli \
+  --image REGISTRY/gpu-kernel-mcts:REVISION \
+  --trace smoke-search.sqlite \
+  --auto-volume \
+  --preferred-data-center-id RUNPOD_DATA_CENTER_ID \
+  --confirm-create-and-terminate
+```
+
+The smoke generator makes no LLM call and is restricted to `B_gen=1`. It emits a
+packaged, correctness-first CUDA implementation that is distinct from the root.
+The command records the root, generation, evaluation, node/edge statistics, backup,
+and final result in the local SQLite file, then terminates the worker in a `finally`
+path. It does not create a network volume.
 
 Then run the complete suite on the same revision:
 

@@ -23,11 +23,12 @@ optional hardware integration test has run.
 - [x] CUDA/NVCC backend and cuBLAS correctness/benchmark harness with GPU-independent tests.
 - [x] Fixed cuBLAS and pinned CUTLASS diagnostic performance baselines outside the MCTS state space.
 - [x] Provider-to-MCTS orchestration with deterministic mock integration coverage and SQLite traces.
+- [x] Guarded one-generation H100 smoke-search CLI with a packaged valid candidate.
 
 ## Next
 
 - [ ] Run and record the opt-in BF16 GEMM validation on an H100 SXM worker; see [docs/h100-validation.md](docs/h100-validation.md).
-- [ ] Add a user-facing run entry point and configuration loading for the provider-to-MCTS orchestration layer.
+- [ ] Generalize the smoke-search CLI into a configuration-driven LLM search entry point.
 - [ ] Add lazy Nsight Compute profiling and cache profiles per node/environment.
 - [ ] Add offline CUTLASS SM90 WGMMA/TMA autotuning and persist the selected configuration; keep its tuning cost separate from MCTS budgets.
 - [ ] Add concrete LLM generator and LLM-prior adapters while preserving `B_gen` and `B_prior` accounting.
@@ -36,6 +37,6 @@ optional hardware integration test has run.
 
 ## Validation status
 
-- Unit suite: `125 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `130 passed, 1 skipped` at the time this checklist was last updated.
 - Skipped test: real H100 compilation, cuBLAS correctness, and timing.
 - No claim of GPU correctness or performance should be made until that test passes on the requested hardware class.

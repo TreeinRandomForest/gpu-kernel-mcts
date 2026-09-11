@@ -6,7 +6,7 @@ import os
 import re
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
-from typing import Iterator, Mapping, Protocol
+from typing import Callable, Iterator, Mapping, Protocol
 
 from .domain import EvaluationResult, KernelProgram, ProposalStatus, WorkloadContract
 
@@ -188,7 +188,13 @@ class WorkerEndpoint:
 class RunPodClient(Protocol):
     def create_pod(self, request: RunPodPodRequest) -> RunPodPod: ...
 
-    def wait_until_ready(self, pod_id: str, timeout_seconds: float) -> WorkerEndpoint: ...
+    def wait_until_ready(
+        self,
+        pod_id: str,
+        timeout_seconds: float,
+        *,
+        progress: Callable[[str, float], None] | None = None,
+    ) -> WorkerEndpoint: ...
 
     def terminate_pod(self, pod_id: str) -> None: ...
 
@@ -294,11 +300,13 @@ class RunPodProvider:
         client_factory: RunPodClientFactory,
         transport_factory: WorkerTransportFactory,
         environ: Mapping[str, str] | None = None,
+        readiness_progress: Callable[[str, float], None] | None = None,
     ) -> None:
         self.config = config
         self._client_factory = client_factory
         self._transport_factory = transport_factory
         self._environ = environ if environ is not None else os.environ
+        self._readiness_progress = readiness_progress
         self._owner_token = object()
         self._active: dict[int, tuple[RunPodWorker, RunPodClient]] = {}
 
@@ -331,10 +339,17 @@ class RunPodProvider:
                     data_center_ids=self.config.data_center_ids,
                 )
             )
-            endpoint = client.wait_until_ready(
-                pod.pod_id,
-                self.config.startup_timeout_seconds,
-            )
+            if self._readiness_progress is None:
+                endpoint = client.wait_until_ready(
+                    pod.pod_id,
+                    self.config.startup_timeout_seconds,
+                )
+            else:
+                endpoint = client.wait_until_ready(
+                    pod.pod_id,
+                    self.config.startup_timeout_seconds,
+                    progress=self._readiness_progress,
+                )
             transport = self._transport_factory(endpoint)
             manifest = transport.get_environment_manifest()
             if manifest.pod_id != pod.pod_id:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 
 from kernel_mcts.providers import EnvironmentManifest
-from kernel_mcts.runpod_cli import _ReadinessProgress
+from kernel_mcts.runpod_cli import ReadinessProgress
 from kernel_mcts.runpod_cli import _print_calibration
 
 
@@ -14,7 +14,7 @@ class TTYBuffer(io.StringIO):
 
 def test_readiness_progress_animates_one_terminal_line() -> None:
     stream = TTYBuffer()
-    progress = _ReadinessProgress("pod-1", stream)
+    progress = ReadinessProgress("pod pod-1", stream)
 
     progress("CREATED", 0.0)
     progress("RUNNING", 2.0)
@@ -28,7 +28,7 @@ def test_readiness_progress_animates_one_terminal_line() -> None:
 
 def test_noninteractive_progress_logs_only_status_changes() -> None:
     stream = io.StringIO()
-    progress = _ReadinessProgress("pod-1", stream)
+    progress = ReadinessProgress("pod pod-1", stream)
 
     progress("CREATED", 0.0)
     progress("CREATED", 2.0)

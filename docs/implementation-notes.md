@@ -109,6 +109,11 @@ logical GPU evaluation. A deterministic mock integration test exercises transien
 infrastructure failure, invalid-generation repair, valid-only node creation, budget
 accounting, trace materialization, and cleanup without LLM or GPU resources.
 
+The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
+GEMM candidate. It is intentionally a wiring test rather than an optimization claim:
+the one-shot generator performs no LLM call, while `B_gen=1` still exercises the same
+search budget, trace, and backup paths used by a future API-backed generator.
+
 ## Known limitations
 
 - The CUDA harness has not yet been compiled or run on an H100 in the recorded development environment.

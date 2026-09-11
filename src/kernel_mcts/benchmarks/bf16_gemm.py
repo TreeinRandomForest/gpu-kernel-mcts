@@ -53,3 +53,13 @@ def load_bf16_gemm_root() -> KernelProgram:
         .read_text(encoding="utf-8")
     )
     return KernelProgram(source=source, backend="cuda_cpp")
+
+
+def load_bf16_gemm_smoke_candidate() -> KernelProgram:
+    """Load a distinct correctness-first candidate for remote smoke tests."""
+    source = (
+        files("kernel_mcts.benchmarks")
+        .joinpath("kernels", "bf16_gemm_smoke_candidate.cu")
+        .read_text(encoding="utf-8")
+    )
+    return KernelProgram(source=source, backend="cuda_cpp")

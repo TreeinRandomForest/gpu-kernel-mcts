@@ -230,6 +230,33 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
         worker.evaluate("evaluation-3", KernelProgram("three"), WORKLOAD, "tier0")
 
 
+def test_runpod_forwards_optional_readiness_progress() -> None:
+    progress_events = []
+
+    class ProgressClient(FakeClient):
+        def wait_until_ready(self, pod_id, timeout_seconds, *, progress=None):
+            assert progress is not None
+            progress("RUNNING/root_compile", 3.0)
+            return WorkerEndpoint("worker-1", "https://worker.invalid")
+
+    client = ProgressClient()
+    transport = FakeTransport()
+    runpod = RunPodProvider(
+        RunPodConfig(image="kernel-mcts:cuda-12.4"),
+        client_factory=lambda api_key: client,
+        transport_factory=lambda endpoint: transport,
+        environ={"RUNPOD_API_KEY": "secret"},
+        readiness_progress=lambda status, elapsed: progress_events.append(
+            (status, elapsed)
+        ),
+    )
+
+    worker = runpod.acquire_worker(HardwareSpec("H100", form_factor="SXM"))
+    runpod.release_worker(worker)
+
+    assert progress_events == [("RUNNING/root_compile", 3.0)]
+
+
 def test_runpod_provider_passes_network_volume_affinity() -> None:
     client = FakeClient()
     transport = FakeTransport()
