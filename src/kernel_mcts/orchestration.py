@@ -182,20 +182,24 @@ def run_mcts_search(
     mcts_config: MCTSConfig = MCTSConfig(),
     seed: int = 0,
     run_id: str | None = None,
+    model_name: str | None = None,
 ) -> SearchExecution:
     """Run one global MCTS search on one acquired worker with durable traces."""
     budget = GenerationBudget(generation_budget)
     resolved_run_id = run_id or str(uuid4())
     hardware_payload = asdict(hardware)
+    run_config: dict[str, object] = {
+        "generation_budget": generation_budget,
+        "mcts": asdict(mcts_config),
+        "seed": seed,
+    }
+    if model_name is not None:
+        run_config["model_name"] = model_name
     trace.start_run(
         resolved_run_id,
         workload.benchmark_id,
         "mcts",
-        {
-            "generation_budget": generation_budget,
-            "mcts": asdict(mcts_config),
-            "seed": seed,
-        },
+        run_config,
     )
     worker: GPUWorker | None = None
     mcts_started = False

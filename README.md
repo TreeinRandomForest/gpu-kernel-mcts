@@ -44,7 +44,7 @@ API request and does not provision a GPU or validate the generated kernel.
 
 Use the guarded remote evaluation procedure in
 [docs/h100-validation.md](docs/h100-validation.md) to compile and correctness-test the
-generated candidate before connecting the LLM adapter to MCTS.
+generated candidate before running the documented OpenAI-backed MCTS command.
 
 ## Project status
 

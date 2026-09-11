@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import json
+from types import SimpleNamespace
+
 import pytest
 
 from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
-from kernel_mcts.domain import Strategy
+from kernel_mcts.domain import KernelProgram, Strategy
 from kernel_mcts.generation import GenerationRequest
+from kernel_mcts.llm_generation import LLMKernelGenerator
 from kernel_mcts.search_cli import build_parser, main
 from kernel_mcts.smoke import SmokeKernelGenerator
 
@@ -62,3 +66,116 @@ def test_search_cli_parser_accepts_manual_volume_pair() -> None:
 
     assert arguments.network_volume_id == "volume-1"
     assert arguments.data_center_id == "EUR-IS-3"
+
+
+def test_openai_search_requires_model_before_provisioning(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.create_runpod_provider",
+        lambda *args, **kwargs: pytest.fail("must not provision"),
+    )
+
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--image",
+                "worker:v1",
+                "--trace",
+                str(tmp_path / "trace.sqlite"),
+                "--generator",
+                "openai",
+                "--confirm-create-and-terminate",
+            ]
+        )
+
+    assert "--model is required" in capsys.readouterr().err
+
+
+def test_openai_search_wires_configured_generator_and_exports_best(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    strategies = tmp_path / "strategies.json"
+    strategies.write_text(
+        json.dumps(
+            {
+                "strategies": [
+                    {
+                        "id": "coalescing",
+                        "description": "Improve coalescing",
+                        "prompts": {"cuda_cpp": "Coalesce global loads."},
+                    }
+                ]
+            }
+        )
+    )
+    trace = tmp_path / "trace.sqlite"
+    best_output = tmp_path / "best.cu"
+    captured = {}
+
+    class FakeOpenAIClient:
+        def __init__(self, config):
+            captured["openai_config"] = config
+
+    def fake_search(**values):
+        captured["search"] = values
+        node = SimpleNamespace(
+            program=KernelProgram("best source"),
+            reward=0.5,
+        )
+        result = SimpleNamespace(
+            root=node,
+            best=node,
+            nodes=(node,),
+            iterations=3,
+            generations=3,
+            prior_calls=0,
+        )
+        return SimpleNamespace(run_id="llm-run", result=result)
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+    monkeypatch.setenv("RUNPOD_API_KEY", "test-runpod-key")
+    monkeypatch.setattr("kernel_mcts.search_cli.OpenAIResponsesClient", FakeOpenAIClient)
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.resolve_reusable_volume",
+        lambda *args: ("volume-1", "EUR-IS-3"),
+    )
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.create_runpod_provider", lambda *args, **kwargs: object()
+    )
+    monkeypatch.setattr("kernel_mcts.search_cli.run_mcts_search", fake_search)
+
+    result = main(
+        [
+            "--image",
+            "worker:v1",
+            "--trace",
+            str(trace),
+            "--generator",
+            "openai",
+            "--model",
+            "test-model",
+            "--strategies",
+            str(strategies),
+            "--generation-budget",
+            "3",
+            "--network-volume-id",
+            "volume-1",
+            "--data-center-id",
+            "EUR-IS-3",
+            "--best-output",
+            str(best_output),
+            "--confirm-create-and-terminate",
+        ]
+    )
+
+    assert result == 0
+    assert best_output.read_text() == "best source"
+    assert captured["openai_config"].model == "test-model"
+    search = captured["search"]
+    assert isinstance(search["generator"], LLMKernelGenerator)
+    assert [strategy.id for strategy in search["strategies"]] == ["coalescing"]
+    assert search["generation_budget"] == 3
+    assert search["model_name"] == "test-model"
+    assert search["mcts_config"].max_repairs == 1
+    assert "OpenAI search completed" in capsys.readouterr().out

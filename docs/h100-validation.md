@@ -153,6 +153,31 @@ completes benchmarking. Invalid candidates return status `1` after writing their
 compile/correctness evidence. Review compiler diagnostics in the JSON report rather
 than weakening the workload contract or numerical tolerances.
 
+## Run an OpenAI-backed MCTS search
+
+After the guarded generation and candidate evaluation checks pass, run a small global
+MCTS search with configured semantic strategies and uniform priors:
+
+```bash
+.venv/bin/python -m kernel_mcts.search_cli \
+  --image REGISTRY/gpu-kernel-mcts:REVISION \
+  --trace llm-search.sqlite \
+  --generator openai \
+  --model MODEL_ID \
+  --strategies configs/strategies.yaml \
+  --generation-budget 3 \
+  --max-repairs 1 \
+  --best-output best-kernel.cu \
+  --auto-volume \
+  --preferred-data-center-id RUNPOD_DATA_CENTER_ID \
+  --confirm-create-and-terminate
+```
+
+This command can incur both OpenAI API and RunPod charges. The local controller makes
+fresh model requests and sends only generated kernel/evaluation data to the worker;
+neither API key is sent to the other service. Start with a small `B_gen`, inspect the
+SQLite trace and exported best kernel, and increase the budget only deliberately.
+
 Then run the complete suite on the same revision:
 
 ```bash

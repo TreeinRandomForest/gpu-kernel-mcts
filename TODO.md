@@ -29,10 +29,10 @@ completed hardware validation is identified explicitly.
 - [x] Provider-neutral LLM completion interface and OpenAI Responses API kernel-generator adapter with fresh-session prompts and usage metadata.
 - [x] Guarded controller-only CLI for one configured OpenAI kernel-generation request.
 - [x] Guarded H100 candidate compilation, correctness, benchmark, and JSON-report CLI.
+- [x] Configuration-driven OpenAI MCTS search CLI with uniform priors and best-kernel export.
 
 ## Next
 
-- [ ] Generalize the smoke-search CLI into a configuration-driven LLM search entry point.
 - [ ] Add lazy Nsight Compute profiling and cache profiles per node/environment.
 - [ ] Add offline CUTLASS SM90 WGMMA/TMA autotuning and persist the selected configuration; keep its tuning cost separate from MCTS budgets.
 - [ ] Add an LLM strategy-prior adapter while preserving separate `B_prior` accounting.
@@ -41,7 +41,7 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `146 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `149 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.

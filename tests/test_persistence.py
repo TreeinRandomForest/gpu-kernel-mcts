@@ -32,6 +32,22 @@ def test_trace_store_records_run_and_event(tmp_path) -> None:
         assert connection.execute("SELECT count(*) FROM search_events").fetchone()[0] == 1
 
 
+def test_trace_store_records_run_model_name(tmp_path) -> None:
+    path = tmp_path / "trace.sqlite"
+    with SQLiteTraceStore(path) as store:
+        store.start_run(
+            "run",
+            "toy",
+            "mcts",
+            {"generation_budget": 2, "model_name": "test-model"},
+        )
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT model_name FROM search_runs WHERE run_id = 'run'"
+        ).fetchone() == ("test-model",)
+
+
 def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
     path = tmp_path / "trace.sqlite"
     with SQLiteTraceStore(path) as store:

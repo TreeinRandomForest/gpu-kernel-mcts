@@ -131,9 +131,7 @@ read only by the local controller from its configured environment variable.
 `LLMKernelGenerator` builds a backend-aware JSON prompt from the parent kernel,
 workload, hardware, selected strategy, profile summary, and bounded repair evidence.
 It returns a complete replacement program and preserves the exact prompt, raw output,
-model metadata, usage, latency, and response ID in the generation trace. The adapter
-is not yet selected by the search CLI; full MCTS activation remains an explicit next
-step.
+model metadata, usage, latency, and response ID in the generation trace.
 
 The controller-only `kernel_mcts.llm_cli` command provides a guarded intermediate
 check before provisioning a GPU. It requires an explicit model, configured strategy,
@@ -151,6 +149,14 @@ compile, correctness, and benchmark pipeline used by search. Valid candidate rew
 are normalized against that measured root. Infrastructure failures receive one
 idempotent retry, the worker is released in a `finally` path, and a non-overwritten
 JSON report retains the environment manifest and complete root/candidate evidence.
+
+The search CLI supports both the original deterministic smoke generator and the
+OpenAI generator. OpenAI mode loads semantic strategies from configuration, checks
+LLM configuration before provisioning, uses uniform strategy priors, and permits an
+arbitrary positive `B_gen`. Every initial or repair generation remains an independent
+Responses API call. The SQLite run records the configured model, while each generation
+records the resolved model and usage. An optional new `--best-output` path exports the
+best valid kernel after the global search completes.
 
 ## Known limitations
 
