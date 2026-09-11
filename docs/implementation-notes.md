@@ -120,6 +120,20 @@ GEMM candidate. It is intentionally a wiring test rather than an optimization cl
 the one-shot generator performs no LLM call, while `B_gen=1` still exercises the same
 search budget, trace, and backup paths used by a future API-backed generator.
 
+## LLM generation
+
+The provider-neutral `LLMClient` returns text, resolved model identity, token usage,
+latency, and provider metadata. `OpenAIResponsesClient` implements it with one
+independent Responses API request per completion: it supplies neither a conversation
+nor `previous_response_id`, and response storage defaults to disabled. The API key is
+read only by the local controller from its configured environment variable.
+
+`LLMKernelGenerator` builds a backend-aware JSON prompt from the parent kernel,
+workload, hardware, selected strategy, profile summary, and bounded repair evidence.
+It returns a complete replacement program and preserves the exact prompt, raw output,
+model metadata, usage, latency, and response ID in the generation trace. The adapter
+is not yet selected by the search CLI; live activation remains an explicit next step.
+
 ## Known limitations
 
 - The CUDA harness, root, cuBLAS baseline, and fixed CUTLASS baseline have run

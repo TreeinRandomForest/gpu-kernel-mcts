@@ -84,6 +84,7 @@ def serialize_generation(generation: GenerationResult) -> dict[str, Any]:
         "raw_output": generation.raw_output,
         "program": serialize_program(generation.program),
         "prompt_hash": generation.prompt_hash,
+        "prompt_text": generation.prompt_text,
         "input_tokens": generation.input_tokens,
         "output_tokens": generation.output_tokens,
         "latency_seconds": generation.latency_seconds,

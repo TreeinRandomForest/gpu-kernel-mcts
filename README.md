@@ -14,6 +14,7 @@ path:
 - independent, greedy, and iterative best-of-K baselines,
 - uniform strategy priors and typed extension interfaces,
 - compile/correctness/benchmark evaluation with fixed root-normalized rewards,
+- provider-neutral LLM generation with an optional OpenAI Responses API adapter,
 - append-oriented SQLite trace events,
 - guarded RunPod H100 SXM lifecycle, worker, calibration, and smoke-search CLIs.
 

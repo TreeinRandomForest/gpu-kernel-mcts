@@ -131,6 +131,7 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
                 str(value),
                 KernelProgram(str(value)),
                 "prompt-hash",
+                prompt_text="full generation prompt",
                 input_tokens=10,
                 output_tokens=5,
             )
@@ -200,9 +201,10 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
             (result.root.id,),
         ).fetchone() == (1.5, 2.0)
         assert connection.execute(
-            "SELECT compile_status, correctness_status, input_tokens, output_tokens "
+            "SELECT compile_status, correctness_status, input_tokens, output_tokens, "
+            "prompt_text "
             "FROM generations ORDER BY b_gen LIMIT 1"
-        ).fetchone() == ("SUCCESS", "PASS", 10, 5)
+        ).fetchone() == ("SUCCESS", "PASS", 10, 5, "full generation prompt")
         assert connection.execute(
             "SELECT profile_json FROM nodes WHERE node_id = ?",
             (result.root.id,),

@@ -26,19 +26,20 @@ completed hardware validation is identified explicitly.
 - [x] Guarded one-generation H100 smoke-search CLI with a packaged valid candidate.
 - [x] Root rewards normalized to exactly zero using the run's measured root benchmark as the fixed reference.
 - [x] Remote BF16 GEMM validation completed on an NVIDIA H100 80GB HBM3 SXM worker.
+- [x] Provider-neutral LLM completion interface and OpenAI Responses API kernel-generator adapter with fresh-session prompts and usage metadata.
 
 ## Next
 
 - [ ] Generalize the smoke-search CLI into a configuration-driven LLM search entry point.
 - [ ] Add lazy Nsight Compute profiling and cache profiles per node/environment.
 - [ ] Add offline CUTLASS SM90 WGMMA/TMA autotuning and persist the selected configuration; keep its tuning cost separate from MCTS budgets.
-- [ ] Add concrete LLM generator and LLM-prior adapters while preserving `B_gen` and `B_prior` accounting.
+- [ ] Add an LLM strategy-prior adapter while preserving separate `B_prior` accounting.
 - [ ] Add at least three more end-to-end benchmark kernels for the Milestone A minimum suite.
 - [ ] Add periodic root/global-best remeasurement and environment-drift handling.
 
 ## Validation status
 
-- Unit suite: `130 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `138 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.

@@ -76,6 +76,7 @@ def test_generation_workload_and_profile_serialize_to_json() -> None:
         "raw",
         KernelProgram("kernel"),
         "prompt-hash",
+        prompt_text="full prompt",
         input_tokens=10,
         output_tokens=20,
         metadata={"model": "test"},
@@ -96,6 +97,7 @@ def test_generation_workload_and_profile_serialize_to_json() -> None:
     }
 
     assert values["workload"]["shapes"][0]["dimensions"] == {"m": 16, "n": 32}
+    assert values["generation"]["prompt_text"] == "full prompt"
     json.dumps(values)
 
 

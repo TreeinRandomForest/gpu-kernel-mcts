@@ -483,6 +483,7 @@ class MCTS:
             "state_key": result.state_key,
             "reward": result.reward,
             "prompt_hash": attempt.generation.prompt_hash,
+            "prompt_text": attempt.generation.prompt_text,
             "raw_output": attempt.generation.raw_output,
             "input_tokens": attempt.generation.input_tokens,
             "output_tokens": attempt.generation.output_tokens,
