@@ -59,19 +59,35 @@ class WorkerKernelEvaluator:
         program: KernelProgram,
         workload: WorkloadContract,
     ) -> EvaluationResult:
-        payload = {
-            "program": serialize_program(program),
-            "workload": serialize_workload(workload),
-        }
-        digest = hashlib.sha256(
-            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
+        evaluation_id = _worker_evaluation_id(self._run_id, program, workload)
         return self._worker.evaluate(
-            f"{self._run_id}:evaluation:{digest}",
+            evaluation_id,
             program,
             workload,
             "tier0",
         )
+
+
+class WorkerNodeProfiler:
+    """Request a lazy profile of the worker-cached compiled artifact."""
+
+    def __init__(self, worker: GPUWorker, run_id: str) -> None:
+        self._worker = worker
+        self._run_id = run_id
+
+    def lightweight_profile(
+        self,
+        evaluation: EvaluationResult,
+        workload: WorkloadContract,
+    ) -> Mapping[str, object]:
+        if evaluation.program is None:
+            raise ValueError("profiling requires an evaluated program")
+        evaluation_id = _worker_evaluation_id(
+            self._run_id,
+            evaluation.program,
+            workload,
+        )
+        return self._worker.profile(evaluation_id, "lightweight")
 
 
 class RootNormalizedEvaluator:
@@ -260,6 +276,7 @@ def run_mcts_search(
             config=mcts_config,
             seed=seed,
             events=trace,
+            profiler=WorkerNodeProfiler(worker, resolved_run_id),
         )
         mcts_started = True
         return SearchExecution(resolved_run_id, search.run(root_evaluation))
@@ -282,3 +299,18 @@ def run_mcts_search(
     finally:
         if worker is not None:
             provider.release_worker(worker)
+
+
+def _worker_evaluation_id(
+    run_id: str,
+    program: KernelProgram,
+    workload: WorkloadContract,
+) -> str:
+    payload = {
+        "program": serialize_program(program),
+        "workload": serialize_workload(workload),
+    }
+    digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    return f"{run_id}:evaluation:{digest}"

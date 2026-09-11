@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import csv
+import io
 import shutil
 import subprocess
 from pathlib import Path
@@ -27,6 +29,9 @@ class FakeRunner:
         self.compile_stderr = ""
         self.execution_stdout = '{"status":"ok","success":true,"maximum_error":0.01,"mean_error":0.001,"failed_test_id":null,"reference_metadata":{"implementation":"cuBLAS"}}'
         self.execution_returncode = 0
+        self.ncu_stdout = ""
+        self.ncu_stderr = ""
+        self.ncu_returncode = 0
         self.timeout_stage = None
 
     def __call__(self, command, *, timeout, env):
@@ -51,6 +56,15 @@ class FakeRunner:
                 "/*0000*/ HMMA; /*0010*/ EXIT;",
                 "",
             )
+        if command[0] == "/opt/cuda/bin/ncu":
+            if self.timeout_stage == "profile":
+                raise subprocess.TimeoutExpired(command, timeout)
+            return subprocess.CompletedProcess(
+                command,
+                self.ncu_returncode,
+                self.ncu_stdout,
+                self.ncu_stderr,
+            )
         if self.timeout_stage == "execute":
             raise subprocess.TimeoutExpired(command, timeout)
         return subprocess.CompletedProcess(
@@ -66,11 +80,23 @@ def backend(tmp_path, runner, **changes):
         "artifact_root": tmp_path,
         "nvcc": "/opt/cuda/bin/nvcc",
         "cuobjdump": "/opt/cuda/bin/cuobjdump",
+        "ncu": "/opt/cuda/bin/ncu",
         "warmup_count": 2,
         "measurement_count": 3,
         **changes,
     }
     return CudaCppBackend(CudaBackendConfig(**config), runner=runner)
+
+
+def ncu_csv(metrics) -> str:
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        ["ID", "Kernel Name", "Metric Name", "Metric Unit", "Metric Value"]
+    )
+    for index, metric in enumerate(metrics):
+        writer.writerow([index, "bf16_gemm_root", metric, "%", f"{index + 1},234.5"])
+    return output.getvalue()
 
 
 def test_compile_uses_shell_safe_arguments_and_sanitized_environment(tmp_path) -> None:
@@ -133,6 +159,69 @@ def test_correctness_and_benchmark_payloads_are_preserved(tmp_path) -> None:
     assert benchmark.min_us == 10.0
     assert benchmark.max_us == 12.0
     assert benchmark.warmup_count == 2
+
+
+def test_lightweight_profile_extracts_versioned_numeric_ncu_metrics(tmp_path) -> None:
+    runner = FakeRunner()
+    subject = backend(tmp_path, runner)
+    compilation = subject.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    runner.ncu_stdout = ncu_csv(subject.LIGHTWEIGHT_METRICS)
+
+    profile = subject.lightweight_profile(compilation.artifact, BF16_GEMM_WORKLOAD)
+
+    command, timeout, environment = runner.calls[-1]
+    assert command[:7] == [
+        "/opt/cuda/bin/ncu",
+        "--csv",
+        "--page",
+        "raw",
+        "--kernel-name-base",
+        "function",
+        "--kernel-name",
+    ]
+    assert "--launch-count" in command
+    assert command[command.index("--launch-count") + 1] == "1"
+    assert command[command.index("--metrics") + 1] == ",".join(
+        subject.LIGHTWEIGHT_METRICS
+    )
+    assert command[-2:] == ["--warmups=0", "--measurements=1"]
+    assert timeout == 300.0
+    assert environment == {"PATH": os.defpath, "LANG": "C", "LC_ALL": "C"}
+    assert profile["schema_version"] == 1
+    assert profile["profiler"] == "ncu"
+    assert profile["metric_set"] == "lightweight_v1"
+    assert profile["artifact_id"] == compilation.artifact.artifact_id
+    assert profile["summary"]["registers_per_thread"] == 1234.5
+    assert profile["summary"]["instructions_executed"] == 9234.5
+    assert list(profile["metrics"]) == list(subject.LIGHTWEIGHT_METRICS)
+    assert profile["metrics"][subject.LIGHTWEIGHT_METRICS[0]] == {
+        "value": 1234.5,
+        "unit": "%",
+    }
+
+
+def test_lightweight_profile_rejects_missing_metrics_and_tool_failures(tmp_path) -> None:
+    missing_runner = FakeRunner()
+    missing = backend(tmp_path / "missing", missing_runner)
+    compilation = missing.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    missing_runner.ncu_stdout = ncu_csv(missing.LIGHTWEIGHT_METRICS[:-1])
+
+    with pytest.raises(EvaluationInfrastructureError, match="required.*metrics"):
+        missing.lightweight_profile(compilation.artifact, BF16_GEMM_WORKLOAD)
+
+    failed_runner = FakeRunner()
+    failed = backend(tmp_path / "failed-profile", failed_runner)
+    compilation = failed.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    failed_runner.ncu_returncode = 1
+    failed_runner.ncu_stderr = "==ERROR== ERR_NVGPUCTRPERM"
+    with pytest.raises(
+        EvaluationInfrastructureError,
+        match="profiling failed:.*ERR_NVGPUCTRPERM",
+    ):
+        failed.lightweight_profile(compilation.artifact, BF16_GEMM_WORKLOAD)
 
 
 def test_malformed_worker_output_is_infrastructure_failure(tmp_path) -> None:

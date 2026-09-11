@@ -14,6 +14,7 @@ from kernel_mcts.domain import (
     ShapeCase,
     WorkloadContract,
 )
+from kernel_mcts.evaluation import EvaluationInfrastructureError
 from kernel_mcts.providers import EnvironmentManifest, WorkerEndpoint
 from kernel_mcts.serialization import serialize_evaluation
 from kernel_mcts.worker_protocol import (
@@ -61,6 +62,19 @@ class FakeEvaluator:
         )
 
 
+class FakeProfiler:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def lightweight_profile(self, evaluation, workload):
+        self.calls.append((evaluation, workload))
+        return {
+            "schema_version": 1,
+            "profiler": "ncu",
+            "metrics": {"occupancy": {"value": 50.0, "unit": "%"}},
+        }
+
+
 def request_body(evaluation_id="evaluation-1", source="kernel"):
     return json.dumps(
         {
@@ -90,6 +104,7 @@ def test_worker_requires_authentication_for_every_endpoint() -> None:
         ("GET", "/manifest"),
         ("GET", "/calibration"),
         ("POST", "/evaluate"),
+        ("POST", "/profile"),
     ]:
         response = app.handle(method, path, {}, request_body())
         assert response.status == 401
@@ -111,6 +126,74 @@ def test_worker_evaluation_is_idempotent_by_request_id_and_payload() -> None:
     assert first.payload == second.payload
     assert len(evaluator.calls) == 1
     assert conflict.status == 409
+
+
+def test_worker_profiles_cached_evaluation_idempotently() -> None:
+    evaluator = FakeEvaluator()
+    profiler = FakeProfiler()
+    app = WorkerApplication(
+        auth_token="token",
+        manifest=MANIFEST,
+        evaluator=evaluator,
+        profiler=profiler,
+    )
+    headers = {"Authorization": "Bearer token"}
+    evaluated = app.handle("POST", "/evaluate", headers, request_body())
+    body = json.dumps(
+        {"evaluation_id": "evaluation-1", "profile_level": "lightweight"}
+    ).encode()
+
+    first = app.handle("POST", "/profile", headers, body)
+    second = app.handle("POST", "/profile", headers, body)
+
+    assert evaluated.status == 200
+    assert first.status == second.status == 200
+    assert first.payload == second.payload
+    assert len(evaluator.calls) == 1
+    assert len(profiler.calls) == 1
+
+
+def test_worker_rejects_profile_without_cached_evaluation() -> None:
+    app = WorkerApplication(
+        auth_token="token",
+        manifest=MANIFEST,
+        evaluator=FakeEvaluator(),
+        profiler=FakeProfiler(),
+    )
+    body = json.dumps(
+        {"evaluation_id": "missing", "profile_level": "lightweight"}
+    ).encode()
+
+    response = app.handle("POST", "/profile", {"Authorization": "Bearer token"}, body)
+
+    assert response.status == 404
+    assert response.payload == {"error": "evaluation_not_found"}
+
+
+def test_worker_returns_bounded_profiling_diagnostic() -> None:
+    class FailedProfiler:
+        def lightweight_profile(self, evaluation, workload):
+            raise EvaluationInfrastructureError("Nsight Compute failed: metric unavailable")
+
+    app = WorkerApplication(
+        auth_token="token",
+        manifest=MANIFEST,
+        evaluator=FakeEvaluator(),
+        profiler=FailedProfiler(),
+    )
+    headers = {"Authorization": "Bearer token"}
+    app.handle("POST", "/evaluate", headers, request_body())
+    body = json.dumps(
+        {"evaluation_id": "evaluation-1", "profile_level": "lightweight"}
+    ).encode()
+
+    response = app.handle("POST", "/profile", headers, body)
+
+    assert response.status == 500
+    assert response.payload["error"] == "profiling_failed"
+    assert response.payload["diagnostic"] == (
+        "Nsight Compute failed: metric unavailable"
+    )
 
 
 def test_worker_rejects_large_invalid_and_non_tier0_requests() -> None:
@@ -145,10 +228,12 @@ class AppHTTP:
 def test_http_transport_round_trips_manifest_and_evaluation() -> None:
     evaluator = FakeEvaluator()
     calibration = {"benchmark_id": "toy", "benchmark": {"median_us": 1.0}}
+    profiler = FakeProfiler()
     app = WorkerApplication(
         auth_token="token",
         manifest=MANIFEST,
         evaluator=evaluator,
+        profiler=profiler,
         calibration=calibration,
     )
     http = AppHTTP(app)
@@ -160,10 +245,13 @@ def test_http_transport_round_trips_manifest_and_evaluation() -> None:
     manifest = transport.get_environment_manifest()
     returned_calibration = transport.get_calibration()
     result = transport.evaluate("evaluation-1", KernelProgram("kernel"), WORKLOAD, "tier0")
+    profile = transport.profile("evaluation-1", "lightweight")
 
     assert manifest == MANIFEST
     assert returned_calibration == calibration
     assert result == evaluator.evaluate(KernelProgram("kernel"), WORKLOAD)
+    assert profile["profiler"] == "ncu"
+    assert len(profiler.calls) == 1
     assert http.calls[0][2]["Authorization"] == "Bearer token"
     assert all(call[2]["User-Agent"] == "gpu-kernel-mcts/0.1.0" for call in http.calls)
     assert "token" not in repr(transport._endpoint)
@@ -182,6 +270,22 @@ def test_transport_errors_are_sanitized_and_close_is_enforced() -> None:
     with pytest.raises(WorkerProtocolError) as captured:
         transport.get_environment_manifest()
     assert secret not in str(captured.value)
+
+    def profiling_failure_http(method, url, headers, body, timeout):
+        return 500, json.dumps(
+            {
+                "error": "profiling_failed",
+                "error_type": "EvaluationInfrastructureError",
+                "diagnostic": "Nsight Compute failed: metric unavailable",
+            }
+        ).encode()
+
+    profiling_transport = HTTPWorkerTransport(
+        WorkerEndpoint("pod-1", "https://worker.invalid", secret),
+        http=profiling_failure_http,
+    )
+    with pytest.raises(WorkerProtocolError, match="metric unavailable"):
+        profiling_transport.profile("evaluation-1", "lightweight")
 
     transport.close()
     with pytest.raises(WorkerProtocolError, match="closed"):

@@ -56,6 +56,15 @@ class SearchCLIProgress:
             self._write(
                 f"Root evaluation attempt {payload.get('attempt')}: status={status}"
             )
+        elif event_type == "profiling_started":
+            self._write(
+                f"Starting lightweight profile {payload.get('profile_call')} "
+                f"for node {payload.get('node_id')}"
+            )
+        elif event_type == "node_profiled":
+            self._write(
+                f"Lightweight profile completed: profile_call={payload.get('profile_call')}"
+            )
         elif event_type == "generation":
             self._write(
                 "Generation evaluated: "
@@ -78,6 +87,7 @@ class SearchCLIProgress:
             self._write(
                 "Search completed; terminating worker: "
                 f"iterations={payload.get('iterations')}, B_gen={payload.get('b_gen')}, "
+                f"profiles={payload.get('profile_calls')}, "
                 f"best_reward={payload.get('best_reward')}"
             )
         elif event_type == "run_failed":
@@ -130,6 +140,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--network-volume-id")
     parser.add_argument("--data-center-id")
     parser.add_argument("--auto-volume", action="store_true")
+    parser.add_argument(
+        "--ephemeral-storage",
+        action="store_true",
+        help="use only the terminated pod's container disk with no data-center affinity",
+    )
     parser.add_argument("--preferred-data-center-id")
     parser.add_argument("--volume-name", default="gpu-kernel-mcts")
     parser.add_argument("--generation-budget", type=int, default=1)
@@ -183,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
             gpu_type=arguments.gpu_type,
             startup_timeout_seconds=arguments.timeout,
             network_volume_id=network_volume_id,
-            data_center_ids=(data_center_id,),
+            data_center_ids=(data_center_id,) if data_center_id is not None else (),
         ),
         readiness_progress=progress,
     )
@@ -196,6 +211,7 @@ def main(argv: list[str] | None = None) -> int:
                     "H100",
                     form_factor="SXM",
                     minimum_compute_capability="9.0",
+                    required_profilers=("ncu",),
                 ),
                 workload=BF16_GEMM_WORKLOAD,
                 root_program=load_bf16_gemm_root(),
@@ -219,7 +235,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"{generator_label} search completed: run_id={execution.run_id}, "
         f"iterations={result.iterations}, B_gen={result.generations}, "
-        f"nodes={len(result.nodes)}, best_reward={result.best.reward:.6g}"
+        f"profiles={result.profile_calls}, nodes={len(result.nodes)}, "
+        f"best_reward={result.best.reward:.6g}"
     )
     print(f"SQLite trace: {arguments.trace.resolve()}")
     if arguments.best_output is not None:

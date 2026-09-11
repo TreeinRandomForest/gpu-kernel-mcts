@@ -10,7 +10,8 @@ from dataclasses import dataclass
 from typing import Mapping, Protocol
 
 from .domain import EvaluationResult, KernelProgram, WorkloadContract
-from .interfaces import KernelEvaluator
+from .evaluation import EvaluationInfrastructureError
+from .interfaces import KernelEvaluator, NodeProfiler
 from .providers import EnvironmentManifest, WorkerEndpoint, WorkerTransport
 from .serialization import (
     deserialize_environment_manifest,
@@ -56,6 +57,7 @@ class WorkerApplication:
         auth_token: str,
         manifest: EnvironmentManifest,
         evaluator: KernelEvaluator,
+        profiler: NodeProfiler | None = None,
         calibration: Mapping[str, object] | None = None,
         max_request_bytes: int = 2_000_000,
     ) -> None:
@@ -64,10 +66,14 @@ class WorkerApplication:
         self._auth_token = auth_token
         self._manifest = manifest
         self._evaluator = evaluator
+        self._profiler = profiler
         self._calibration = dict(calibration or {})
         self._max_request_bytes = max_request_bytes
         self._lock = threading.Lock()
         self._evaluations: dict[str, tuple[str, dict[str, object]]] = {}
+        self._evaluation_results: dict[str, EvaluationResult] = {}
+        self._evaluation_workloads: dict[str, WorkloadContract] = {}
+        self._profiles: dict[tuple[str, str], dict[str, object]] = {}
 
     def handle(
         self,
@@ -84,6 +90,8 @@ class WorkerApplication:
             return WorkerResponse(200, serialize_environment_manifest(self._manifest))
         if method == "GET" and path == "/calibration":
             return WorkerResponse(200, self._calibration)
+        if method == "POST" and path == "/profile":
+            return self._handle_profile(body)
         if method != "POST" or path != "/evaluate":
             return WorkerResponse(404, {"error": "not_found"})
         if len(body) > self._max_request_bytes:
@@ -116,7 +124,45 @@ class WorkerApplication:
             result = self._evaluator.evaluate(program, workload)
             serialized = serialize_evaluation(result)
             self._evaluations[evaluation_id] = (request_hash, serialized)
+            self._evaluation_results[evaluation_id] = result
+            self._evaluation_workloads[evaluation_id] = workload
             return WorkerResponse(200, serialized)
+
+    def _handle_profile(self, body: bytes) -> WorkerResponse:
+        if len(body) > self._max_request_bytes:
+            return WorkerResponse(413, {"error": "request_too_large"})
+        try:
+            payload = json.loads(body)
+            evaluation_id = payload["evaluation_id"]
+            profile_level = payload["profile_level"]
+            if not isinstance(evaluation_id, str) or not evaluation_id:
+                raise ValueError
+            if profile_level != "lightweight":
+                return WorkerResponse(400, {"error": "unsupported_profile_level"})
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            return WorkerResponse(400, {"error": "invalid_request"})
+        if self._profiler is None:
+            return WorkerResponse(400, {"error": "profiling_unavailable"})
+        with self._lock:
+            cached = self._profiles.get((evaluation_id, profile_level))
+            if cached is not None:
+                return WorkerResponse(200, cached)
+            evaluation = self._evaluation_results.get(evaluation_id)
+            workload = self._evaluation_workloads.get(evaluation_id)
+            if evaluation is None or workload is None:
+                return WorkerResponse(404, {"error": "evaluation_not_found"})
+            try:
+                profile = dict(self._profiler.lightweight_profile(evaluation, workload))
+            except Exception as error:
+                payload = {
+                    "error": "profiling_failed",
+                    "error_type": type(error).__name__,
+                }
+                if isinstance(error, EvaluationInfrastructureError):
+                    payload["diagnostic"] = str(error)[:2_000]
+                return WorkerResponse(500, payload)
+            self._profiles[(evaluation_id, profile_level)] = profile
+            return WorkerResponse(200, profile)
 
     def _authorized(self, headers: Mapping[str, str]) -> bool:
         authorization = next(
@@ -162,6 +208,13 @@ class HTTPWorkerTransport(WorkerTransport):
         }
         return deserialize_evaluation(self._request("POST", "/evaluate", payload))
 
+    def profile(self, evaluation_id: str, profile_level: str) -> Mapping[str, object]:
+        return self._request(
+            "POST",
+            "/profile",
+            {"evaluation_id": evaluation_id, "profile_level": profile_level},
+        )
+
     def close(self) -> None:
         self._closed = True
 
@@ -192,7 +245,9 @@ class HTTPWorkerTransport(WorkerTransport):
         except (OSError, TimeoutError) as error:
             raise WorkerProtocolError("remote worker request failed") from error
         if status != 200:
-            raise WorkerProtocolError(f"remote worker returned HTTP {status}")
+            detail = _protocol_error_detail(response_body)
+            suffix = f": {detail}" if detail else ""
+            raise WorkerProtocolError(f"remote worker returned HTTP {status}{suffix}")
         try:
             value = json.loads(response_body)
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -209,3 +264,29 @@ def _urllib_worker_http(method, url, headers, body, timeout):
             return response.status, response.read()
     except urllib.error.HTTPError as error:
         return error.code, error.read()
+
+
+def _protocol_error_detail(response_body: bytes) -> str | None:
+    """Expose only the worker's allow-listed, bounded diagnostic fields."""
+    try:
+        value = json.loads(response_body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(value, Mapping):
+        return None
+    error = value.get("error")
+    if not isinstance(error, str) or error not in {
+        "profiling_failed",
+        "profiling_unavailable",
+        "evaluation_not_found",
+        "unsupported_profile_level",
+    }:
+        return None
+    parts = [error]
+    error_type = value.get("error_type")
+    if isinstance(error_type, str):
+        parts.append(error_type)
+    diagnostic = value.get("diagnostic")
+    if error == "profiling_failed" and isinstance(diagnostic, str):
+        parts.append(diagnostic[:2_000])
+    return ": ".join(parts)

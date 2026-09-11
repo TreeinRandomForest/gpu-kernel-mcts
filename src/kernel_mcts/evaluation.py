@@ -164,6 +164,7 @@ class BackendKernelEvaluator:
                 correctness=correctness,
                 metadata={"error_type": type(error).__name__},
             )
+
         except EvaluationInfrastructureError as error:
             return self._result(
                 status=ProposalStatus.INFRASTRUCTURE_FAILURE,
@@ -176,6 +177,22 @@ class BackendKernelEvaluator:
                 correctness=correctness,
                 metadata={"error_type": type(error).__name__},
             )
+
+    def lightweight_profile(
+        self,
+        evaluation: EvaluationResult,
+        workload: WorkloadContract,
+    ) -> Mapping[str, object]:
+        if evaluation.status != ProposalStatus.VALID:
+            raise ValueError("only valid evaluations can be profiled")
+        if evaluation.compiled_artifact is None:
+            raise EvaluationInfrastructureError(
+                "cached compiled artifact is unavailable for profiling"
+            )
+        return self.backend.lightweight_profile(
+            evaluation.compiled_artifact,
+            workload,
+        )
 
     def _result(self, **values: object) -> EvaluationResult:
         artifact = values.pop("artifact", None)

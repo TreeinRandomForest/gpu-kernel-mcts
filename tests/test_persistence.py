@@ -71,7 +71,7 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "iterations",
             "iteration_steps",
         } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -204,9 +204,10 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
         assert connection.execute("SELECT count(*) FROM strategy_edges").fetchone() == (2,)
         assert connection.execute("SELECT count(*) FROM realization_edges").fetchone() == (2,)
         assert connection.execute(
-            "SELECT final_b_gen, final_b_prior, final_iterations, best_node_id "
+            "SELECT final_b_gen, final_b_prior, final_profile_calls, "
+            "final_iterations, best_node_id "
             "FROM search_runs WHERE run_id = 'run'"
-        ).fetchone() == (2, 0, 2, result.best.id)
+        ).fetchone() == (2, 0, result.profile_calls, 2, result.best.id)
         assert connection.execute(
             "SELECT selection_mode FROM iteration_steps "
             "WHERE iteration = 2 ORDER BY step"
@@ -225,6 +226,9 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
             "SELECT profile_json FROM nodes WHERE node_id = ?",
             (result.root.id,),
         ).fetchone() == ('{"occupancy": 0.75}',)
+        assert connection.execute(
+            "SELECT count(*) FROM search_events WHERE event_type = 'node_profiled'"
+        ).fetchone() == (result.profile_calls,)
 
 
 def test_final_snapshot_persists_invalid_proposal_counters(tmp_path) -> None:

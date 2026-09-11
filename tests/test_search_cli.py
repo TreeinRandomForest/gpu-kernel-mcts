@@ -74,6 +74,20 @@ def test_search_cli_parser_accepts_manual_volume_pair() -> None:
     assert arguments.data_center_id == "EUR-IS-3"
 
 
+def test_search_cli_parser_accepts_ephemeral_storage() -> None:
+    arguments = build_parser().parse_args(
+        [
+            "--image",
+            "worker:v1",
+            "--trace",
+            "trace.sqlite",
+            "--ephemeral-storage",
+        ]
+    )
+
+    assert arguments.ephemeral_storage
+
+
 def test_openai_search_requires_model_before_provisioning(
     tmp_path, monkeypatch, capsys
 ) -> None:
@@ -136,6 +150,7 @@ def test_openai_search_wires_configured_generator_and_exports_best(
             iterations=3,
             generations=3,
             prior_calls=0,
+            profile_calls=2,
         )
         return SimpleNamespace(run_id="llm-run", result=result)
 
@@ -186,6 +201,7 @@ def test_openai_search_wires_configured_generator_and_exports_best(
     assert search["model_name"] == "test-model"
     assert search["mcts_config"].max_repairs == 1
     assert search["mcts_config"].max_infrastructure_retries == 1
+    assert search["hardware"].required_profilers == ("ncu",)
     assert "OpenAI search completed" in capsys.readouterr().out
 
 
@@ -213,6 +229,8 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
     progress = SearchCLIProgress(trace, readiness, stream)
 
     progress.emit("environment_manifest", {"worker_id": "worker-1"})
+    progress.emit("profiling_started", {"node_id": "node-1", "profile_call": 1})
+    progress.emit("node_profiled", {"profile_call": 1})
     progress.emit(
         "generation",
         {"b_gen": 3, "proposal_status": "VALID", "strategy_id": "coalescing"},
@@ -234,6 +252,8 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
     assert readiness.finished == 1
     assert [event for event, _ in trace.events] == [
         "environment_manifest",
+        "profiling_started",
+        "node_profiled",
         "generation",
         "iteration_completed",
         "new_global_best",
@@ -241,6 +261,8 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
     ]
     output = stream.getvalue()
     assert "Worker ready; starting root evaluation" in output
+    assert "Starting lightweight profile 1 for node node-1" in output
+    assert "Lightweight profile completed: profile_call=1" in output
     assert "B_gen=3, status=VALID, strategy=coalescing" in output
     assert "iteration=2, B_gen=3, status=VALID, backed_up_reward=0.5" in output
     assert "New best: iteration=2, reward=0.5" in output

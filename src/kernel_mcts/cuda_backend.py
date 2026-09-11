@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -38,9 +40,11 @@ class CudaBackendConfig:
     artifact_root: Path
     nvcc: str = "nvcc"
     cuobjdump: str | None = "cuobjdump"
+    ncu: str = "ncu"
     architecture: str = "sm_90"
     compile_timeout_seconds: float = 120.0
     execution_timeout_seconds: float = 120.0
+    profile_timeout_seconds: float = 300.0
     warmup_count: int = 10
     measurement_count: int = 30
     seed: int = 0
@@ -49,7 +53,11 @@ class CudaBackendConfig:
     )
 
     def __post_init__(self) -> None:
-        if self.compile_timeout_seconds <= 0 or self.execution_timeout_seconds <= 0:
+        if (
+            self.compile_timeout_seconds <= 0
+            or self.execution_timeout_seconds <= 0
+            or self.profile_timeout_seconds <= 0
+        ):
             raise ValueError("CUDA backend timeouts must be positive")
         if self.warmup_count < 0 or self.measurement_count < 1:
             raise ValueError("CUDA benchmark counts are invalid")
@@ -86,6 +94,33 @@ class CudaCorrectnessResult:
 
 class CudaCppBackend:
     name = "cuda_cpp"
+    LIGHTWEIGHT_PROFILE_SCHEMA_VERSION = 1
+    LIGHTWEIGHT_METRICS = (
+        "launch__registers_per_thread",
+        "sm__warps_active.avg.pct_of_peak_sustained_active",
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+        "l1tex__throughput.avg.pct_of_peak_sustained_active",
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+        "smsp__inst_executed.sum",
+    )
+    LIGHTWEIGHT_METRIC_ALIASES = {
+        "launch__registers_per_thread": "registers_per_thread",
+        "sm__warps_active.avg.pct_of_peak_sustained_active": "achieved_occupancy_pct",
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed": "sm_throughput_pct",
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": "dram_throughput_pct",
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed": "l2_throughput_pct",
+        "l1tex__throughput.avg.pct_of_peak_sustained_active": "l1tex_throughput_pct",
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": (
+            "tensor_pipe_utilization_pct"
+        ),
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": (
+            "long_scoreboard_warps_per_issue"
+        ),
+        "smsp__inst_executed.sum": "instructions_executed",
+    }
 
     def __init__(
         self,
@@ -225,8 +260,64 @@ class CudaCppBackend:
                 pass
         return hashlib.sha256(artifact.executable.read_bytes()).hexdigest()
 
-    def lightweight_profile(self, artifact, workload):
-        raise NotImplementedError("CUDA profiling is a later phase")
+    def lightweight_profile(
+        self,
+        artifact: CudaArtifact,
+        workload: WorkloadContract,
+    ) -> Mapping[str, object]:
+        shape = workload.shapes[0].dimensions
+        command = [
+            _resolve_tool(self.config.ncu),
+            "--csv",
+            "--page",
+            "raw",
+            "--kernel-name-base",
+            "function",
+            "--kernel-name",
+            str(workload.metadata["entry_point"]),
+            "--launch-count",
+            "1",
+            "--metrics",
+            ",".join(self.LIGHTWEIGHT_METRICS),
+            str(artifact.executable),
+            "--mode=benchmark",
+            f"--M={shape['M']}",
+            f"--N={shape['N']}",
+            f"--K={shape['K']}",
+            f"--rtol={workload.rtol}",
+            f"--atol={workload.atol}",
+            f"--seed={self.config.seed}",
+            "--warmups=0",
+            "--measurements=1",
+        ]
+        try:
+            result = self._runner(
+                command,
+                timeout=self.config.profile_timeout_seconds,
+                env=self.config.subprocess_environment,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise EvaluationInfrastructureError(
+                "Nsight Compute profiling could not be completed"
+            ) from error
+        if result.returncode != 0:
+            diagnostic = _ncu_diagnostic(result.stdout, result.stderr)
+            message = "Nsight Compute profiling failed"
+            if diagnostic:
+                message = f"{message}: {diagnostic}"
+            raise EvaluationInfrastructureError(message)
+        metrics = _parse_ncu_csv(result.stdout, self.LIGHTWEIGHT_METRICS)
+        return {
+            "schema_version": self.LIGHTWEIGHT_PROFILE_SCHEMA_VERSION,
+            "profiler": "ncu",
+            "metric_set": "lightweight_v1",
+            "artifact_id": artifact.artifact_id,
+            "summary": {
+                alias: metrics[name]["value"]
+                for name, alias in self.LIGHTWEIGHT_METRIC_ALIASES.items()
+            },
+            "metrics": metrics,
+        }
 
     def full_profile(self, artifact, workload):
         raise NotImplementedError("CUDA profiling is a later phase")
@@ -303,12 +394,63 @@ def _parse_payload(stdout: str) -> dict[str, object]:
     return value
 
 
+def _parse_ncu_csv(
+    stdout: str,
+    required_metrics: Sequence[str],
+) -> dict[str, dict[str, object]]:
+    rows = list(csv.reader(stdout.splitlines()))
+    header_index = next(
+        (
+            index
+            for index, row in enumerate(rows)
+            if "Metric Name" in row and "Metric Unit" in row and "Metric Value" in row
+        ),
+        None,
+    )
+    if header_index is None:
+        raise EvaluationInfrastructureError("Nsight Compute returned malformed CSV")
+    header = rows[header_index]
+    name_index = header.index("Metric Name")
+    unit_index = header.index("Metric Unit")
+    value_index = header.index("Metric Value")
+    metrics: dict[str, dict[str, object]] = {}
+    for row in rows[header_index + 1 :]:
+        if len(row) <= max(name_index, unit_index, value_index):
+            continue
+        name = row[name_index]
+        if name not in required_metrics:
+            continue
+        try:
+            value = float(row[value_index].replace(",", ""))
+        except ValueError as error:
+            raise EvaluationInfrastructureError(
+                "Nsight Compute returned a non-numeric metric"
+            ) from error
+        if not math.isfinite(value):
+            raise EvaluationInfrastructureError(
+                "Nsight Compute returned a non-finite metric"
+            )
+        metrics[name] = {"value": value, "unit": row[unit_index]}
+    missing = set(required_metrics) - metrics.keys()
+    if missing:
+        raise EvaluationInfrastructureError(
+            "Nsight Compute did not return the required lightweight metrics"
+        )
+    return {name: metrics[name] for name in required_metrics}
+
+
 def _optional_float(value: object) -> float | None:
     return None if value is None else float(value)
 
 
 def _bounded(value: str, limit: int = 64_000) -> str:
     return value[-limit:]
+
+
+def _ncu_diagnostic(stdout: str, stderr: str, limit: int = 2_000) -> str:
+    """Return bounded tool output without including the command or environment."""
+    diagnostic = "\n".join(part.strip() for part in (stderr, stdout) if part.strip())
+    return _bounded(diagnostic, limit)
 
 
 def _resolve_tool(command: str) -> str:

@@ -50,6 +50,7 @@ class SearchResult:
     iterations: int #select -> expand/evaluate -> optional backup cycles
     generations: int #LLM calls for gen incl. repair
     prior_calls: int #B_prior: LLM calls used to obtain strategy priors
+    profile_calls: int #lazy profiler executions, separate from B_gen and B_prior
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +116,7 @@ class MCTS:
         self.events = events or NullEventSink()
         self.nodes = TranspositionTable()
         self.prior_calls = 0
+        self.profile_calls = 0
 
     def run(self, root_evaluation: EvaluationResult) -> SearchResult:
         root = SearchNode(str(uuid4()), root_evaluation)
@@ -156,6 +158,7 @@ class MCTS:
                     "iterations": iterations,
                     "b_gen": self.budget.snapshot().used,
                     "b_prior": self.prior_calls,
+                    "profile_calls": self.profile_calls,
                     "error_type": type(error).__name__,
                     "message": str(error),
                 },
@@ -168,6 +171,7 @@ class MCTS:
             iterations,
             self.budget.snapshot().used,
             self.prior_calls,
+            self.profile_calls,
         )
         self._emit_final_snapshots(result)
         self.events.emit(
@@ -176,6 +180,7 @@ class MCTS:
                 "iterations": result.iterations,
                 "b_gen": result.generations,
                 "b_prior": result.prior_calls,
+                "profile_calls": result.profile_calls,
                 "best_node_id": result.best.id,
                 "best_reward": result.best.reward,
                 "unique_node_count": len(result.nodes),
@@ -211,7 +216,28 @@ class MCTS:
         if node.actions:
             return
         if self.profiler is not None and node.profile is None:
-            node.profile = dict(self.profiler.lightweight_profile(node.evaluation, self.workload))
+            self.profile_calls += 1
+            self.events.emit(
+                "profiling_started",
+                {
+                    "iteration": iteration,
+                    "node_id": node.id,
+                    "profile_level": "lightweight",
+                    "profile_call": self.profile_calls,
+                },
+            )
+            node.profile = dict(
+                self.profiler.lightweight_profile(node.evaluation, self.workload)
+            )
+            self.events.emit(
+                "node_profiled",
+                {
+                    **self._node_payload(node, is_root=False),
+                    "iteration": iteration,
+                    "profile_level": "lightweight",
+                    "profile_call": self.profile_calls,
+                },
+            )
         if self.prior_provider.counts_toward_b_prior:
             self.prior_calls += 1
         priors = validate_priors(

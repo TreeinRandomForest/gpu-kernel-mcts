@@ -161,6 +161,7 @@ class FakeTransport:
         self.evaluation_error = evaluation_error
         self.manifest_calls = 0
         self.evaluations = []
+        self.profiles = []
         self.close_calls = 0
 
     def get_environment_manifest(self):
@@ -172,6 +173,10 @@ class FakeTransport:
         if self.evaluation_error is not None:
             raise self.evaluation_error
         return EvaluationResult(ProposalStatus.VALID, program, "state", 1.0)
+
+    def profile(self, evaluation_id, profile_level):
+        self.profiles.append((evaluation_id, profile_level))
+        return {"profiler": "ncu", "metrics": {}}
 
     def close(self):
         self.close_calls += 1
@@ -214,6 +219,7 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
     worker = runpod.acquire_worker(HardwareSpec("H100", form_factor="SXM"))
     first = worker.evaluate("evaluation-1", KernelProgram("one"), WORKLOAD, "tier0")
     second = worker.evaluate("evaluation-2", KernelProgram("two"), WORKLOAD, "tier0")
+    profile = worker.profile("evaluation-1", "lightweight")
     runpod.release_worker(worker)
     runpod.release_worker(worker)
 
@@ -221,6 +227,8 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
     assert client.requests[0].environment == {"KERNEL_MCTS_WORKER_PORT": "8000"}
     assert transport.manifest_calls == 1
     assert len(transport.evaluations) == 2
+    assert transport.profiles == [("evaluation-1", "lightweight")]
+    assert profile["profiler"] == "ncu"
     assert first.worker_id == second.worker_id == "worker-1"
     assert first.environment_manifest_id == manifest().manifest_id
     assert transport.close_calls == 1
@@ -228,6 +236,8 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
     assert worker.released
     with pytest.raises(RuntimeError, match="released"):
         worker.evaluate("evaluation-3", KernelProgram("three"), WORKLOAD, "tier0")
+    with pytest.raises(RuntimeError, match="released"):
+        worker.profile("evaluation-1", "lightweight")
 
 
 def test_runpod_forwards_optional_readiness_progress() -> None:

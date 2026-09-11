@@ -108,6 +108,12 @@ class GPUWorker(Protocol):
         profile_level: str,
     ) -> EvaluationResult: ...
 
+    def profile(
+        self,
+        evaluation_id: str,
+        profile_level: str,
+    ) -> Mapping[str, object]: ...
+
 
 class GPUProvider(Protocol):
     def acquire_worker(self, hardware: HardwareSpec) -> GPUWorker: ...
@@ -214,6 +220,12 @@ class WorkerTransport(Protocol):
         profile_level: str,
     ) -> EvaluationResult: ...
 
+    def profile(
+        self,
+        evaluation_id: str,
+        profile_level: str,
+    ) -> Mapping[str, object]: ...
+
     def close(self) -> None: ...
 
 
@@ -286,6 +298,15 @@ class RunPodWorker:
                 result.environment_manifest_id or self._manifest.manifest_id
             ),
         )
+
+    def profile(
+        self,
+        evaluation_id: str,
+        profile_level: str,
+    ) -> Mapping[str, object]:
+        if self._released:
+            raise RuntimeError("cannot profile on a released RunPod worker")
+        return self._transport.profile(evaluation_id, profile_level)
 
     def _close(self) -> None:
         if not self._released:

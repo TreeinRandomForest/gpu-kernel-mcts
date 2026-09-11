@@ -69,6 +69,7 @@ class MockWorker:
 
     def __init__(self) -> None:
         self.calls = []
+        self.profile_calls = []
         self.attempts = {}
 
     def get_environment_manifest(self):
@@ -95,6 +96,15 @@ class MockWorker:
             )
         return valid(program, 2.0)
 
+    def profile(self, evaluation_id, profile_level):
+        self.profile_calls.append((evaluation_id, profile_level))
+        return {
+            "schema_version": 1,
+            "profiler": "ncu",
+            "metric_set": "test",
+            "metrics": {"occupancy": {"value": 50.0, "unit": "%"}},
+        }
+
 
 class MockProvider:
     def __init__(self, worker=None) -> None:
@@ -116,9 +126,11 @@ class MockGenerator:
     def __init__(self) -> None:
         self.sources = iter(("candidate-1", "invalid", "candidate-2", "candidate-2"))
         self.calls = 0
+        self.requests = []
 
     def generate(self, request):
         self.calls += 1
+        self.requests.append(request)
         source = next(self.sources)
         return GenerationResult(
             f"generation-{self.calls}",
@@ -200,6 +212,7 @@ def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:
     assert len(execution.result.nodes) == 3
     assert provider.acquisitions == provider.releases == 1
     assert generator.calls == 4
+    assert generator.requests[0].profile["profiler"] == "ncu"
     candidate_ids = [call[0] for call in provider.worker.calls if call[1] == "candidate-1"]
     assert len(candidate_ids) == 2
     assert candidate_ids[0] == candidate_ids[1]
@@ -207,6 +220,8 @@ def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:
     assert len(transposed_ids) == 2
     assert transposed_ids[0] == transposed_ids[1]
     assert {call[3] for call in provider.worker.calls} == {"tier0"}
+    assert provider.worker.profile_calls
+    assert len(provider.worker.profile_calls) == len(set(provider.worker.profile_calls))
 
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT count(*) FROM environment_manifests").fetchone() == (1,)
@@ -223,9 +238,9 @@ def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:
             "SELECT DISTINCT worker_id, environment_manifest_id FROM generations"
         ).fetchall() == [(MANIFEST.worker_id, MANIFEST.manifest_id)]
         assert connection.execute(
-            "SELECT final_b_gen, final_iterations, environment_manifest_id "
+            "SELECT final_b_gen, final_iterations, final_profile_calls, environment_manifest_id "
             "FROM search_runs WHERE run_id = 'mock-run'"
-        ).fetchone() == (4, 3, MANIFEST.manifest_id)
+        ).fetchone() == (4, 3, execution.result.profile_calls, MANIFEST.manifest_id)
         assert connection.execute(
             "SELECT reward FROM nodes WHERE run_id = ? AND node_id = ?",
             (execution.run_id, execution.result.root.id),

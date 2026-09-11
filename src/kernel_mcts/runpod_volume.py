@@ -10,17 +10,31 @@ def resolve_reusable_volume(
     parser: argparse.ArgumentParser,
     arguments: argparse.Namespace,
     api_key: str,
-) -> tuple[str, str]:
-    """Resolve explicit storage or reuse an existing managed volume."""
+) -> tuple[str | None, str | None]:
+    """Resolve explicit, managed-network, or ephemeral pod storage."""
     manual = bool(arguments.network_volume_id or arguments.data_center_id)
+    ephemeral = bool(arguments.ephemeral_storage)
     if bool(arguments.network_volume_id) != bool(arguments.data_center_id):
         parser.error("--network-volume-id and --data-center-id must be supplied together")
     if arguments.auto_volume and manual:
         parser.error("--auto-volume cannot be combined with explicit volume/data-center IDs")
+    if ephemeral and (arguments.auto_volume or manual):
+        parser.error(
+            "--ephemeral-storage cannot be combined with network-volume options"
+        )
+    if ephemeral and arguments.preferred_data_center_id:
+        parser.error(
+            "--preferred-data-center-id cannot be used with --ephemeral-storage"
+        )
     if arguments.preferred_data_center_id and not arguments.auto_volume:
         parser.error("--preferred-data-center-id requires --auto-volume")
-    if not arguments.auto_volume and not manual:
-        parser.error("provide explicit volume/data-center IDs or use --auto-volume")
+    if not arguments.auto_volume and not manual and not ephemeral:
+        parser.error(
+            "provide explicit volume/data-center IDs, --auto-volume, "
+            "or --ephemeral-storage"
+        )
+    if ephemeral:
+        return None, None
     if manual:
         return arguments.network_volume_id, arguments.data_center_id
     selection = RunPodDiscovery(RunPodRESTClient(api_key)).select_volume(

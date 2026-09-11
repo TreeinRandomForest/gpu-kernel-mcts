@@ -103,6 +103,7 @@ def build_application(
         auth_token=token,
         manifest=manifest,
         evaluator=evaluator,
+        profiler=evaluator,
         calibration=calibration,
     )
 

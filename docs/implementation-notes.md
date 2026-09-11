@@ -164,6 +164,20 @@ evaluation. Every retry reuses the stable root evaluation ID and emits a complet
 consume no `B_gen`, create no nodes or backups, and record the final root status,
 attempt count, and sanitized underlying error type before worker cleanup.
 
+Lightweight Nsight Compute profiling is lazy: a valid node is profiled only when it is
+first selected for expansion. The controller requests an authenticated profile of the
+worker-cached evaluation ID, so profiling reuses the compiled artifact and does not
+repeat compilation, correctness, or timing. The worker caches the versioned numeric
+profile, and the node caches it for later visits. Friendly summary fields and raw
+metric names, values, and units are persisted and supplied to subsequent generation
+prompts. Profile calls are counted separately from `B_gen` and `B_prior`. Full NCU
+reports and rule recommendations are not yet collected.
+
+Search and candidate-evaluation CLIs also support explicit ephemeral storage. This
+mode sends neither a network-volume ID nor data-center affinity, uses only the pod's
+container disk, and relies on the mandatory termination lifecycle. Durable traces and
+exported kernels remain on the controller.
+
 ## Known limitations
 
 - The CUDA harness, root, cuBLAS baseline, and fixed CUTLASS baseline have run
@@ -172,4 +186,4 @@ attempt count, and sanitized underlying error type before worker cleanup.
 - CUDA artifact directories are retained because search nodes cache compiled artifacts; run-level cleanup policy is not implemented yet.
 - SASS is normalized and hashed when `cuobjdump` is available. The fallback hashes executable bytes and may deduplicate less reliably across builds.
 - The CUDA backend currently supports only the fixed BF16 GEMM ABI and launch configuration.
-- Profiling methods intentionally raise `NotImplementedError`; lazy profiling is a later phase.
+- Full profiling remains unimplemented; the lightweight metric set still requires H100 validation.

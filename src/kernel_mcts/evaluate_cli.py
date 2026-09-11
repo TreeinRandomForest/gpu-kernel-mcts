@@ -28,6 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--network-volume-id")
     parser.add_argument("--data-center-id")
     parser.add_argument("--auto-volume", action="store_true")
+    parser.add_argument(
+        "--ephemeral-storage",
+        action="store_true",
+        help="use only the terminated pod's container disk with no data-center affinity",
+    )
     parser.add_argument("--preferred-data-center-id")
     parser.add_argument("--volume-name", default="gpu-kernel-mcts")
     parser.add_argument("--timeout", type=float, default=600.0)
@@ -69,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
             gpu_type=arguments.gpu_type,
             startup_timeout_seconds=arguments.timeout,
             network_volume_id=network_volume_id,
-            data_center_ids=(data_center_id,),
+            data_center_ids=(data_center_id,) if data_center_id is not None else (),
         ),
         readiness_progress=progress,
     )

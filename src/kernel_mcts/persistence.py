@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS search_runs (
     best_node_id TEXT,
     final_b_gen INTEGER,
     final_b_prior INTEGER,
+    final_profile_calls INTEGER,
     final_iterations INTEGER,
     workload_json TEXT,
     hardware_json TEXT,
@@ -158,7 +159,7 @@ CREATE TABLE IF NOT EXISTS iteration_steps (
 );
 """
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -168,6 +169,7 @@ SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "best_node_id": "TEXT",
     "final_b_gen": "INTEGER",
     "final_b_prior": "INTEGER",
+    "final_profile_calls": "INTEGER",
     "final_iterations": "INTEGER",
     "workload_json": "TEXT",
     "hardware_json": "TEXT",
@@ -251,6 +253,7 @@ class SQLiteTraceStore:
             "environment_manifest": self._materialize_environment_manifest,
             "node_created": self._materialize_node,
             "node_snapshot": self._materialize_node,
+            "node_profiled": self._materialize_node,
             "strategy_priors": self._materialize_strategy_priors,
             "strategy_edge_snapshot": self._materialize_strategy_edge_snapshot,
             "realization_edge_snapshot": self._materialize_realization_edge_snapshot,
@@ -312,13 +315,14 @@ class SQLiteTraceStore:
         self.connection.execute(
             """UPDATE search_runs SET
                 ended_at = ?, best_node_id = ?, final_b_gen = ?,
-                final_b_prior = ?, final_iterations = ?
+                final_b_prior = ?, final_profile_calls = ?, final_iterations = ?
             WHERE run_id = ?""",
             (
                 created_at,
                 payload.get("best_node_id"),
                 payload.get("b_gen"),
                 payload.get("b_prior"),
+                payload.get("profile_calls"),
                 payload.get("iterations"),
                 self.run_id,
             ),
@@ -329,12 +333,14 @@ class SQLiteTraceStore:
     ) -> None:
         self.connection.execute(
             """UPDATE search_runs SET
-                ended_at = ?, final_b_gen = ?, final_b_prior = ?, final_iterations = ?
+                ended_at = ?, final_b_gen = ?, final_b_prior = ?,
+                final_profile_calls = ?, final_iterations = ?
             WHERE run_id = ?""",
             (
                 created_at,
                 payload.get("b_gen"),
                 payload.get("b_prior"),
+                payload.get("profile_calls"),
                 payload.get("iterations"),
                 self.run_id,
             ),

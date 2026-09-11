@@ -74,6 +74,7 @@ class FakeBackend:
         self.correctness_error = None
         self.benchmark_error = None
         self.binary_hash = "binary-1"
+        self.profile_result = {"profiler": "ncu", "metrics": {}}
 
     def normalize_program(self, program):
         self.calls.append("normalize")
@@ -102,7 +103,8 @@ class FakeBackend:
         return self.binary_hash
 
     def lightweight_profile(self, artifact, workload):
-        raise AssertionError("tier-zero evaluation must not profile")
+        self.calls.append("lightweight_profile")
+        return self.profile_result
 
     def full_profile(self, artifact, workload):
         raise AssertionError("tier-zero evaluation must not profile")
@@ -146,6 +148,18 @@ def test_valid_evaluation_preserves_all_tier_zero_evidence() -> None:
     assert result.worker_id == "worker-1"
     assert result.environment_manifest_id == "manifest-1"
     assert result.launch_config == {"block": [16, 16, 1]}
+
+
+def test_lightweight_profile_reuses_valid_evaluation_artifact() -> None:
+    backend = FakeBackend()
+    subject = evaluator(backend)
+    evaluation = subject.evaluate(PROGRAM, WORKLOAD)
+
+    profile = subject.lightweight_profile(evaluation, WORKLOAD)
+
+    assert profile is backend.profile_result
+    assert backend.calls.count("compile") == 1
+    assert backend.calls[-1] == "lightweight_profile"
 
 
 def test_compile_failure_stops_the_pipeline() -> None:

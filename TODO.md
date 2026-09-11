@@ -32,10 +32,11 @@ completed hardware validation is identified explicitly.
 - [x] Configuration-driven OpenAI MCTS search CLI with uniform priors and best-kernel export.
 - [x] Idempotent root-evaluation infrastructure retries with complete attempt traces and sanitized failure diagnostics.
 - [x] Read-only SQLite trace visualization as a transposition-preserving Graphviz DAG.
+- [x] Lazy Nsight Compute metric extraction cached per node/environment and supplied to generation prompts.
+- [x] Ephemeral RunPod storage mode without network-volume data-center affinity.
 
 ## Next
 
-- [ ] Add lazy Nsight Compute profiling and cache profiles per node/environment.
 - [ ] Add offline CUTLASS SM90 WGMMA/TMA autotuning and persist the selected configuration; keep its tuning cost separate from MCTS budgets.
 - [ ] Add an LLM strategy-prior adapter while preserving separate `B_prior` accounting.
 - [ ] Add at least three more end-to-end benchmark kernels for the Milestone A minimum suite.
@@ -43,10 +44,12 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `151 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `170 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.
+- Lightweight Nsight Compute extraction is covered by GPU-independent command, parser,
+  protocol, caching, and persistence tests but still requires validation on an H100.
 - The guarded one-iteration MCTS smoke search also completed remotely. The subsequent
   root-normalization correction is covered by automated tests but has not yet been
   rerun on the H100.

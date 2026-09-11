@@ -62,14 +62,17 @@ To permit creation of a persistent 50 GB volume, add
 pod termination. The optional `--preferred-data-center-id` restricts both managed
 volume reuse and creation to an available data center selected by the operator.
 
-### Volume-selection rules
+### Storage-selection rules
 
-Every RunPod command must use exactly one volume-selection mode:
+Search and candidate-evaluation commands must use exactly one storage mode:
 
 1. **Manual:** provide both `--network-volume-id` and `--data-center-id`. They
    must refer to the same RunPod data center.
 2. **Automatic:** provide `--auto-volume`. Do not combine it with either manual
    identifier.
+3. **Ephemeral:** provide `--ephemeral-storage`. The pod uses only its container
+   disk, and RunPod may schedule it in any compatible data center. Do not combine
+   this mode with network-volume or preferred-data-center options.
 
 `--preferred-data-center-id` is valid only with `--auto-volume`; it restricts
 automatic selection to that data center, which must currently report the requested
@@ -83,6 +86,12 @@ of persistent, billable storage.
 For `kernel_mcts.search_cli`, automatic mode is always reuse-only. The search CLI
 does not create network volumes and fails before creating a pod if no suitable
 managed volume exists.
+
+`kernel_mcts.search_cli` and `kernel_mcts.evaluate_cli` support ephemeral mode.
+`kernel_mcts.runpod_cli` remains a network-volume lifecycle probe and supports only
+manual or automatic volume selection. Ephemeral storage is appropriate when all
+durable outputs remain on the controller: the worker's compiled artifacts disappear
+when the pod is terminated, while SQLite traces and exported kernels remain local.
 
 This command creates a billable pod. Its `finally` path requests termination, but
 you should also confirm deletion in the RunPod console after any interrupted or
@@ -130,6 +139,13 @@ packaged, correctness-first CUDA implementation that is distinct from the root.
 The command records the root, generation, evaluation, node/edge statistics, backup,
 and final result in the local SQLite file, then terminates the worker in a `finally`
 path. It does not create a network volume.
+
+To avoid network-volume data-center affinity, replace `--auto-volume` and
+`--preferred-data-center-id` with:
+
+```bash
+--ephemeral-storage
+```
 
 ## Evaluate one generated candidate
 
@@ -181,6 +197,16 @@ SQLite trace and exported best kernel, and increase the budget only deliberately
 Root infrastructure failures are retried idempotently according to
 `--max-infrastructure-retries`; each attempt is retained in the SQLite event trace and
 does not consume generation budget.
+
+Search now requires Nsight Compute on the worker and lazily profiles each valid node
+at most once, when that node is first expanded. The profile uses the cached compiled
+artifact and remains separate from `B_gen`. CLI messages delimit profiling calls; the
+structured metric summary is stored in `nodes.profile_json` and included as
+`parent_profile` in later generation prompts. The initial metric set contains launch
+register use, achieved occupancy, SM/DRAM/L2/L1 throughput, tensor-pipe utilization,
+long-scoreboard stalls, and executed instruction count. Validate this path with a
+small generation budget before another expensive search because the metric set has
+not yet run on the remote H100.
 
 ## Visualize a search trace
 

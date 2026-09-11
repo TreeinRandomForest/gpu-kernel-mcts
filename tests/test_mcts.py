@@ -769,9 +769,10 @@ def test_run_failure_is_logged_and_reraised() -> None:
     assert failed == [
         {
             "iterations": 1,
-            "b_gen": 1,
-            "b_prior": 0,
-            "error_type": "RuntimeError",
+                "b_gen": 1,
+                "b_prior": 0,
+                "profile_calls": 0,
+                "error_type": "RuntimeError",
             "message": "generation failed",
         }
     ]
