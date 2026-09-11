@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import sqlite3
 
 import pytest
@@ -76,7 +77,8 @@ class MockWorker:
         self.calls.append((evaluation_id, program.source, workload, profile_level))
         self.attempts[evaluation_id] = self.attempts.get(evaluation_id, 0) + 1
         if program.source == "root":
-            return valid(program, 0.0)
+            # Simulate a worker reward computed against an earlier calibration.
+            return valid(program, 0.25)
         if program.source == "candidate-1" and self.attempts[evaluation_id] == 1:
             return EvaluationResult(ProposalStatus.INFRASTRUCTURE_FAILURE)
         if program.source == "candidate-1":
@@ -151,7 +153,16 @@ def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:
 
     assert execution.result.generations == 4
     assert execution.result.iterations == 3
+    assert execution.result.root.reward == 0.0
     assert execution.result.best.program.source == "candidate-2"
+    candidate_1 = next(
+        node for node in execution.result.nodes if node.program.source == "candidate-1"
+    )
+    candidate_2 = next(
+        node for node in execution.result.nodes if node.program.source == "candidate-2"
+    )
+    assert candidate_1.reward == pytest.approx(math.log(1.6))
+    assert candidate_2.reward == pytest.approx(math.log(2.4))
     assert len(execution.result.nodes) == 3
     assert provider.acquisitions == provider.releases == 1
     assert generator.calls == 4
@@ -181,6 +192,10 @@ def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:
             "SELECT final_b_gen, final_iterations, environment_manifest_id "
             "FROM search_runs WHERE run_id = 'mock-run'"
         ).fetchone() == (4, 3, MANIFEST.manifest_id)
+        assert connection.execute(
+            "SELECT reward FROM nodes WHERE run_id = ? AND node_id = ?",
+            (execution.run_id, execution.result.root.id),
+        ).fetchone() == (0.0,)
 
 
 def test_mock_run_releases_worker_when_search_raises(tmp_path) -> None:

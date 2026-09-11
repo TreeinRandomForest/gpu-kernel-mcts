@@ -121,7 +121,7 @@ class BackendKernelEvaluator:
             correctness_status = CorrectnessStatus.PASS
             benchmark = self.backend.benchmark(artifact, workload)
             _validate_benchmark(benchmark, workload)
-            reward = _weighted_reward(self.root_benchmark, benchmark, workload)
+            reward = root_normalized_reward(self.root_benchmark, benchmark, workload)
             binary_hash = self.backend.binary_fingerprint(
                 artifact,
                 self.context.launch_config,
@@ -206,11 +206,12 @@ def _validate_benchmark(
                 raise CandidateBenchmarkError(f"missing valid timing for shape {key}")
 
 
-def _weighted_reward(
+def root_normalized_reward(
     root: BenchmarkResult,
     candidate: BenchmarkResult,
     workload: WorkloadContract,
 ) -> float:
+    """Return the spec-defined log speedup against one fixed root benchmark."""
     if len(workload.shapes) == 1:
         if root.median_us <= 0 or not math.isfinite(root.median_us):
             raise ValueError("root benchmark median must be finite and positive")
