@@ -1,8 +1,8 @@
 # Implementation status
 
 `spec.md` is the source of truth for Milestone A. This file records implementation
-status only; a checked item means that code and automated tests exist, not that an
-optional hardware integration test has run.
+and validation status. Checked implementation items have automated coverage; any
+completed hardware validation is identified explicitly.
 
 ## Implemented
 
@@ -24,10 +24,11 @@ optional hardware integration test has run.
 - [x] Fixed cuBLAS and pinned CUTLASS diagnostic performance baselines outside the MCTS state space.
 - [x] Provider-to-MCTS orchestration with deterministic mock integration coverage and SQLite traces.
 - [x] Guarded one-generation H100 smoke-search CLI with a packaged valid candidate.
+- [x] Root rewards normalized to exactly zero using the run's measured root benchmark as the fixed reference.
+- [x] Remote BF16 GEMM validation completed on an NVIDIA H100 80GB HBM3 SXM worker.
 
 ## Next
 
-- [ ] Run and record the opt-in BF16 GEMM validation on an H100 SXM worker; see [docs/h100-validation.md](docs/h100-validation.md).
 - [ ] Generalize the smoke-search CLI into a configuration-driven LLM search entry point.
 - [ ] Add lazy Nsight Compute profiling and cache profiles per node/environment.
 - [ ] Add offline CUTLASS SM90 WGMMA/TMA autotuning and persist the selected configuration; keep its tuning cost separate from MCTS budgets.
@@ -38,5 +39,9 @@ optional hardware integration test has run.
 ## Validation status
 
 - Unit suite: `130 passed, 1 skipped` at the time this checklist was last updated.
-- Skipped test: real H100 compilation, cuBLAS correctness, and timing.
-- No claim of GPU correctness or performance should be made until that test passes on the requested hardware class.
+- The opt-in pytest remains skipped in the local unit suite because it requires an
+  attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
+  validation completed through the remote worker lifecycle on 2026-09-11.
+- The guarded one-iteration MCTS smoke search also completed remotely. The subsequent
+  root-normalization correction is covered by automated tests but has not yet been
+  rerun on the H100.

@@ -28,6 +28,12 @@ The result retains the compiled artifact in memory and serializable compilation,
 correctness, timing, launch, worker, and environment evidence. Ordinary MCTS visits
 reuse this result.
 
+At run start, orchestration treats the benchmark from the valid root evaluation as
+the immutable `T_root`. The root retains all measured evidence but receives reward
+exactly `0.0`. Valid candidate rewards are recomputed by the controller from their raw
+benchmarks against that same `T_root`; this prevents an earlier worker-startup
+calibration sample from introducing a nonzero root reward through measurement noise.
+
 Normalized source hashes identify exact or formatting-only duplicates. The compiled
 state key deliberately excludes source text and ephemeral worker identity. It hashes
 the binary fingerprint, workload, launch configuration, and stable hardware/toolchain
@@ -116,7 +122,9 @@ search budget, trace, and backup paths used by a future API-backed generator.
 
 ## Known limitations
 
-- The CUDA harness has not yet been compiled or run on an H100 in the recorded development environment.
+- The CUDA harness, root, cuBLAS baseline, and fixed CUTLASS baseline have run
+  successfully through the remote lifecycle on an H100 SXM. The opt-in pytest remains
+  skipped in ordinary local test runs because no GPU is attached locally.
 - CUDA artifact directories are retained because search nodes cache compiled artifacts; run-level cleanup policy is not implemented yet.
 - SASS is normalized and hashed when `cuobjdump` is available. The fallback hashes executable bytes and may deduplicate less reliably across builds.
 - The CUDA backend currently supports only the fixed BF16 GEMM ABI and launch configuration.

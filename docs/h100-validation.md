@@ -137,6 +137,27 @@ Then run the complete suite on the same revision:
 .venv/bin/python -m pytest -q
 ```
 
+## Recorded validation
+
+On 2026-09-11, the remote lifecycle validation completed on an NVIDIA H100 80GB
+HBM3 SXM worker with compute capability 9.0. For the fixed 4096 x 4096 x 4096 BF16
+GEMM workload, the recorded results were:
+
+- packaged root: correctness passed, maximum error `0.03125`, mean error
+  `4.04688344e-06`, median `28468.4951 us` over 30 samples;
+- cuBLAS baseline: correctness passed with maximum error `0.0`, median
+  `185.376007 us` over 30 samples;
+- fixed untuned CUTLASS baseline: correctness passed with maximum error `0.0`,
+  median `312.7519835 us` over 30 samples.
+
+A guarded one-generation smoke search also completed, producing two valid search
+nodes and a durable local SQLite trace. That run exposed a controller-level reference
+issue: the root had been scored against an earlier startup calibration rather than
+against itself. Orchestration now fixes the newly measured root benchmark for the run,
+assigns the root reward exactly `0.0`, and recomputes every valid candidate's reward
+against that same benchmark. This correction has automated coverage; the remote smoke
+command should be rerun before recording post-fix search rewards.
+
 ## Record the result
 
 Record the following in the run trace or review notes:
