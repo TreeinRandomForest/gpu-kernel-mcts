@@ -182,6 +182,29 @@ Root infrastructure failures are retried idempotently according to
 `--max-infrastructure-retries`; each attempt is retained in the SQLite event trace and
 does not consume generation budget.
 
+## Visualize a search trace
+
+Render the latest run in a trace database as a Graphviz DAG:
+
+```bash
+.venv/bin/python -m kernel_mcts.trace_viz \
+  --trace llm-search.sqlite \
+  --dot search.dot \
+  --png search.png
+```
+
+PNG output requires the Graphviz `dot` executable on `PATH`; DOT output does not need
+an additional Python dependency. Use `--run-id RUN_ID` when the database contains
+multiple runs. Large graphs can be restricted with `--max-depth DEPTH` or
+`--min-edge-visits VISITS`. Existing outputs are never overwritten unless `--force`
+is supplied.
+
+Program nodes show reward, linear speedup, median latency, and aggregate action visits.
+Diamond nodes represent semantic strategies selected by PUCT, and their outgoing
+realization edges show UCB statistics. The renderer preserves transpositions as shared
+program nodes and includes invalid and infrastructure-failure proposals without
+embedding generated source, prompts, or profiler payloads.
+
 Then run the complete suite on the same revision:
 
 ```bash

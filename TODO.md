@@ -31,6 +31,7 @@ completed hardware validation is identified explicitly.
 - [x] Guarded H100 candidate compilation, correctness, benchmark, and JSON-report CLI.
 - [x] Configuration-driven OpenAI MCTS search CLI with uniform priors and best-kernel export.
 - [x] Idempotent root-evaluation infrastructure retries with complete attempt traces and sanitized failure diagnostics.
+- [x] Read-only SQLite trace visualization as a transposition-preserving Graphviz DAG.
 
 ## Next
 
