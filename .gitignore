@@ -224,3 +224,5 @@ __marimo__/
 /search*.png
 /best-kernel*.cu
 /candidate*.cu
+/*.ncu-rep
+
