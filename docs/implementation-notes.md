@@ -99,6 +99,16 @@ processes receive a small allowlisted environment rather than the controller's f
 environment. Credentials must not appear in prompts, manifests, traces, subprocess
 arguments, or error payloads.
 
+## Run orchestration
+
+The provider-neutral orchestration layer starts the SQLite run, acquires one worker,
+records its manifest, evaluates the root, runs one global MCTS, and releases the
+worker in a `finally` path. Remote evaluation IDs are stable hashes of the run,
+program, and workload, so an infrastructure retry is idempotent rather than a second
+logical GPU evaluation. A deterministic mock integration test exercises transient
+infrastructure failure, invalid-generation repair, valid-only node creation, budget
+accounting, trace materialization, and cleanup without LLM or GPU resources.
+
 ## Known limitations
 
 - The CUDA harness has not yet been compiled or run on an H100 in the recorded development environment.
