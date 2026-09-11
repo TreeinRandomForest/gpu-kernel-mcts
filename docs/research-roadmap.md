@@ -115,6 +115,66 @@ Start with policy-guided PUCT and retain measured-leaf backup. Introduce learned
 terms only through explicit ablations, with safeguards against training/test leakage
 and with `Q_mean`, `Q_max`, and raw measured rewards preserved in traces.
 
+## Closing the vendor-baseline gap
+
+Early BF16 GEMM searches improved the naive root substantially but remained far behind
+cuBLAS. A larger generation budget or deeper tree is unlikely to close that gap by
+itself when search is refining a scalar or conventional SIMT implementation while the
+vendor library uses Hopper-specific tensor-core machinery. Expand the reachable
+program families before spending substantially more generation budget.
+
+Add architecture-changing semantic strategies for:
+
+- warp-level and warp-group tiling;
+- WGMMA tensor-core operations;
+- TMA global-to-shared-memory transfers;
+- double- or triple-buffered asynchronous pipelines;
+- swizzled shared-memory layouts and bank-conflict avoidance;
+- register-fragment tiling and occupancy-aware resource control;
+- cooperative, coalesced epilogues; and
+- tile size, pipeline stage, and launch-shape tuning.
+
+Several of these changes must be introduced together to yield a valid program. Include
+a coarse semantic strategy that replaces a conventional GEMM structure with a correct
+Hopper tensor-core template, then let finer strategies optimize its layout, pipeline,
+and launch parameters. This provides a bridge that may be unreachable through small
+local edits alone.
+
+Evaluate structured implementation layers alongside raw CUDA generation:
+
+- CuTe DSL exposes tensors, layouts, tiling, TMA, and WGMMA as structured concepts and
+  could support both LLM transformations and conventional parameter autotuning.
+- Constrained CUTLASS templates offer a lower-risk path to exploring expert kernel
+  configurations, although this studies library-configuration search more than
+  unrestricted kernel generation.
+- Inline PTX may be useful for narrowly scoped WGMMA experiments after the higher-level
+  paths work.
+- Handwritten SASS should not be an initial target because it is fragile, difficult to
+  validate, and tightly coupled to a particular GPU generation.
+
+Profile-guided generation should provide occupancy, register pressure, memory
+throughput, tensor-core utilization, stall reasons, and achieved FLOP/s. Prompts and
+strategy priors can then distinguish incremental tuning opportunities from cases where
+the kernel needs a different computational structure.
+
+Suggested experiment order:
+
+1. Inspect and profile the best valid generated kernel against the root, fixed CUTLASS,
+   and cuBLAS implementations.
+2. Add one Hopper tensor-core macro-strategy and verify that it can produce a valid,
+   correct candidate.
+3. Add structured CuTe DSL or constrained CUTLASS configuration experiments.
+4. Decompose successful tensor-core kernels into finer layout, pipeline, resource, and
+   launch strategies.
+5. Add profile-informed prompts and optional priors.
+6. Only then compare larger `B_gen` values, initially in the 100–300 range. Increasing
+   `max_depth` beyond 10 is lower priority until traces show depth is the limiting
+   factor rather than strategy coverage or stochastic realization breadth.
+
+Keep cuBLAS and fixed CUTLASS results outside the MCTS state space as reference
+baselines. Compare best-found latency and speedup at equal `B_gen`; do not use baseline
+performance to prune otherwise valid nodes.
+
 ## Suggested staging
 
 1. Define and validate a static feature schema on existing BF16 GEMM traces.
