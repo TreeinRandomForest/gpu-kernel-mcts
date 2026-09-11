@@ -1,0 +1,302 @@
+{
+  "candidate_evaluation": {
+    "benchmark": {
+      "max_us": 21489.0234,
+      "mean_us": 21438.965376666667,
+      "median_us": 21431.792,
+      "min_us": 21415.0723,
+      "per_shape_median_us": {},
+      "stddev_us": 21.49019366290418,
+      "timings_us": [
+        21437.4707,
+        21428.6719,
+        21432.0957,
+        21427.5215,
+        21432.3203,
+        21431.3926,
+        21451.8398,
+        21449.5684,
+        21487.4551,
+        21478.1758,
+        21489.0234,
+        21486.9766,
+        21436.5117,
+        21415.0723,
+        21426.4961,
+        21422.8477,
+        21416.9277,
+        21472.5762,
+        21416.4492,
+        21422.9434,
+        21416.1602,
+        21425.5039,
+        21440.0,
+        21429.8555,
+        21431.4883,
+        21432.8965,
+        21430.7188,
+        21426.2402,
+        21437.6973,
+        21436.0645
+      ],
+      "warmup_count": 10
+    },
+    "binary_hash": "0977c432ab0fe55d5605072e6e8b95f96574b4d72ac040ae7232387d37379a96",
+    "compilation": {
+      "artifact_id": "cc7857aeccc21a9c7236f657dc6b7820c8b1e59f5e02826814d109a2b140570e",
+      "artifact_paths": [
+        "/tmp/kernel-mcts-artifacts/cuda-artifact-j6qqb4rz/evaluate"
+      ],
+      "duration_seconds": 3.7081807367503643,
+      "stderr": "",
+      "stdout": ""
+    },
+    "compile_status": "SUCCESS",
+    "correctness": {
+      "failed_test_id": null,
+      "maximum_error": 0.03125,
+      "mean_error": 4.04688344e-06,
+      "reference_metadata": {
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "implementation": "cuBLAS",
+        "seed": 0
+      }
+    },
+    "correctness_status": "PASS",
+    "environment_manifest_id": "37b2b62303cfa74d2b17c63ae27998b143aee32a47d0f3835c8b2cf2ac3d92dd",
+    "invalid_reason": null,
+    "launch_config": {
+      "block": [
+        16,
+        16,
+        1
+      ],
+      "dynamic_shared_memory_bytes": 0,
+      "grid": [
+        "ceil_div(N, 16)",
+        "ceil_div(M, 16)",
+        1
+      ]
+    },
+    "metadata": {},
+    "program": {
+      "backend": "cuda_cpp",
+      "source": "#include <cuda_bf16.h>\n\nextern \"C\" __global__ void bf16_gemm_root(\n    const __nv_bfloat16* __restrict__ A,\n    const __nv_bfloat16* __restrict__ B,\n    __nv_bfloat16* __restrict__ C,\n    int M,\n    int N,\n    int K) {\n    constexpr int TILE = 16;\n\n    __shared__ __nv_bfloat16 a_tile[TILE][TILE];\n    __shared__ __nv_bfloat16 b_tile[TILE][TILE + 1];\n\n    const int tx = threadIdx.x;\n    const int ty = threadIdx.y;\n    const int tid = ty * TILE + tx;\n\n    const int row = blockIdx.y * TILE + ty;\n    const int col = blockIdx.x * TILE + tx;\n\n    const int b_k_lane = tid & (TILE - 1);\n    const int b_col_lane = tid >> 4;\n\n    float accumulator = 0.0f;\n\n    for (int tile_k = 0; tile_k < K; tile_k += TILE) {\n        const int a_col = tile_k + tx;\n        const int b_row = tile_k + b_k_lane;\n        const int b_col = blockIdx.x * TILE + b_col_lane;\n\n        a_tile[ty][tx] =\n            (row < M && a_col < K)\n                ? A[row * K + a_col]\n                : __float2bfloat16(0.0f);\n\n        b_tile[b_k_lane][b_col_lane] =\n            (b_row < K && b_col < N)\n                ? B[b_col * K + b_row]\n                : __float2bfloat16(0.0f);\n\n        __syncthreads();\n\n#pragma unroll\n        for (int k = 0; k < TILE; ++k) {\n            accumulator += __bfloat162float(a_tile[ty][k]) *\n                           __bfloat162float(b_tile[k][tx]);\n        }\n\n        __syncthreads();\n    }\n\n    if (row < M && col < N) {\n        C[row * N + col] = __float2bfloat16(accumulator);\n    }\n}"
+    },
+    "reward": 0.28379166911935794,
+    "source_hash": "635a36158fe634e0291cab7add1f022d6c3e10f394f77657b0e6af543ecd1923",
+    "state_key": "cb42022444e9517b6abdef055314de0b0f2c28af0c8d323e2125f82b93c36226",
+    "status": "VALID",
+    "worker_id": "952ys3zg10p5qw"
+  },
+  "candidate_path": "/home/sanjay/gpu-kernel-mcts/candidate.cu",
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-09-11T19:20:22.151126+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:h100-worker-v3",
+    "container_runtime": null,
+    "dirty_tree": false,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-ca572004-ba33-efc5-5313-083c1c88dc9e",
+    "host_information": {
+      "data_center_id": "EUR-IS-3",
+      "pod_hostname": "952ys3zg10p5qw-644121e2"
+    },
+    "library_versions": {},
+    "manifest_id": "37b2b62303cfa74d2b17c63ae27998b143aee32a47d0f3835c8b2cf2ac3d92dd",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "952ys3zg10p5qw",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": null,
+    "provider": "runpod",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "952ys3zg10p5qw"
+  },
+  "requested_hardware": {
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "H100",
+    "minimum_compute_capability": "9.0",
+    "minimum_tool_versions": {},
+    "required_profilers": []
+  },
+  "root_evaluation": {
+    "benchmark": {
+      "max_us": 28597.4082,
+      "mean_us": 28450.793546666668,
+      "median_us": 28464.767549999997,
+      "min_us": 28062.2402,
+      "per_shape_median_us": {},
+      "stddev_us": 87.87793665444416,
+      "timings_us": [
+        28062.2402,
+        28230.623,
+        28597.4082,
+        28470.2402,
+        28465.8242,
+        28469.5352,
+        28480.9277,
+        28470.9434,
+        28464.6406,
+        28487.2637,
+        28463.873,
+        28457.7598,
+        28469.1855,
+        28462.7207,
+        28459.0078,
+        28461.1836,
+        28462.0801,
+        28468.8965,
+        28459.8711,
+        28462.1758,
+        28467.6152,
+        28466.3047,
+        28460.1914,
+        28464.2559,
+        28469.0547,
+        28464.8945,
+        28509.0566,
+        28470.3359,
+        28464.416,
+        28461.2812
+      ],
+      "warmup_count": 10
+    },
+    "binary_hash": "d2a96dfee1a331dee8bcd11f3139a6d23716ca4cb1ceef5d61352c0cf2a18333",
+    "compilation": {
+      "artifact_id": "369154734df2b708bf508dfa3b097f9f6910064522a70c74142f438d53ea5898",
+      "artifact_paths": [
+        "/tmp/kernel-mcts-artifacts/cuda-artifact-v0n3s_p8/evaluate"
+      ],
+      "duration_seconds": 3.6710857916623354,
+      "stderr": "",
+      "stdout": ""
+    },
+    "compile_status": "SUCCESS",
+    "correctness": {
+      "failed_test_id": null,
+      "maximum_error": 0.03125,
+      "mean_error": 4.04688344e-06,
+      "reference_metadata": {
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "implementation": "cuBLAS",
+        "seed": 0
+      }
+    },
+    "correctness_status": "PASS",
+    "environment_manifest_id": "37b2b62303cfa74d2b17c63ae27998b143aee32a47d0f3835c8b2cf2ac3d92dd",
+    "invalid_reason": null,
+    "launch_config": {
+      "block": [
+        16,
+        16,
+        1
+      ],
+      "dynamic_shared_memory_bytes": 0,
+      "grid": [
+        "ceil_div(N, 16)",
+        "ceil_div(M, 16)",
+        1
+      ]
+    },
+    "metadata": {},
+    "program": {
+      "backend": "cuda_cpp",
+      "source": "#include <cuda_bf16.h>\n\n// Correctness-first baseline for the fixed benchmark contract:\n//   A: [M, K], row-major BF16\n//   B: [K, N], column-major BF16\n//   C: [M, N], row-major BF16\n// Launch with block=(16, 16, 1) and grid=(ceil(N/16), ceil(M/16), 1).\nextern \"C\" __global__ void bf16_gemm_root(\n    const __nv_bfloat16* A,\n    const __nv_bfloat16* B,\n    __nv_bfloat16* C,\n    int M,\n    int N,\n    int K) {\n    constexpr int TILE = 16;\n    __shared__ __nv_bfloat16 a_tile[TILE][TILE];\n    __shared__ __nv_bfloat16 b_tile[TILE][TILE];\n\n    const int row = blockIdx.y * TILE + threadIdx.y;\n    const int col = blockIdx.x * TILE + threadIdx.x;\n    float accumulator = 0.0f;\n\n    for (int tile_k = 0; tile_k < K; tile_k += TILE) {\n        const int a_col = tile_k + threadIdx.x;\n        const int b_row = tile_k + threadIdx.y;\n\n        a_tile[threadIdx.y][threadIdx.x] =\n            row < M && a_col < K ? A[row * K + a_col] : __float2bfloat16(0.0f);\n        b_tile[threadIdx.y][threadIdx.x] =\n            b_row < K && col < N ? B[col * K + b_row] : __float2bfloat16(0.0f);\n        __syncthreads();\n\n#pragma unroll\n        for (int inner = 0; inner < TILE; ++inner) {\n            accumulator += __bfloat162float(a_tile[threadIdx.y][inner]) *\n                           __bfloat162float(b_tile[inner][threadIdx.x]);\n        }\n        __syncthreads();\n    }\n\n    if (row < M && col < N) {\n        C[row * N + col] = __float2bfloat16(accumulator);\n    }\n}\n"
+    },
+    "reward": 0.0,
+    "source_hash": "e0896de153e891a17cbd8c58e8c82b69dbf508ff175ee393b6e93e1139d540a8",
+    "state_key": "74b932b5b633ea3e8255ba361183c0a13a9b7621534f2788c008df6b0915883e",
+    "status": "VALID",
+    "worker_id": "952ys3zg10p5qw"
+  },
+  "run_id": "0eaf2e7e-f301-45e0-97d0-b9c9ce1ac4bd",
+  "workload": {
+    "atol": 0.02,
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "dtype": "bfloat16",
+    "metadata": {
+      "abi": {
+        "launch": {
+          "block": [
+            16,
+            16,
+            1
+          ],
+          "dynamic_shared_memory_bytes": 0,
+          "grid": [
+            "ceil_div(N, 16)",
+            "ceil_div(M, 16)",
+            1
+          ]
+        },
+        "parameters": [
+          "const __nv_bfloat16* A",
+          "const __nv_bfloat16* B",
+          "__nv_bfloat16* C",
+          "int M",
+          "int N",
+          "int K"
+        ]
+      },
+      "accumulation_dtype": "float32",
+      "entry_point": "bf16_gemm_root",
+      "output_dtype": "bfloat16",
+      "target": {
+        "form_factor": "SXM",
+        "gpu_model": "H100",
+        "minimum_compute_capability": "9.0"
+      },
+      "tensors": {
+        "A": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "K"
+          ]
+        },
+        "B": {
+          "layout": "column_major",
+          "shape": [
+            "K",
+            "N"
+          ]
+        },
+        "C": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "N"
+          ]
+        }
+      }
+    },
+    "operation": "gemm",
+    "rtol": 0.02,
+    "shapes": [
+      {
+        "dimensions": {
+          "K": 4096,
+          "M": 4096,
+          "N": 4096
+        },
+        "weight": 1.0
+      }
+    ]
+  }
+}

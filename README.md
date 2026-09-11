@@ -42,6 +42,10 @@ python -m kernel_mcts.llm_cli \
 The output path must not already exist. The command makes one potentially billable
 API request and does not provision a GPU or validate the generated kernel.
 
+Use the guarded remote evaluation procedure in
+[docs/h100-validation.md](docs/h100-validation.md) to compile and correctness-test the
+generated candidate before connecting the LLM adapter to MCTS.
+
 ## Project status
 
 See [TODO.md](TODO.md) for implemented and remaining work. `spec.md` remains the

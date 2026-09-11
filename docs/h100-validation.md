@@ -131,6 +131,28 @@ The command records the root, generation, evaluation, node/edge statistics, back
 and final result in the local SQLite file, then terminates the worker in a `finally`
 path. It does not create a network volume.
 
+## Evaluate one generated candidate
+
+Before connecting an LLM generator to MCTS, compile and correctness-test one reviewed
+candidate through the production worker evaluation path:
+
+```bash
+.venv/bin/python -m kernel_mcts.evaluate_cli \
+  --image REGISTRY/gpu-kernel-mcts:REVISION \
+  --candidate candidate.cu \
+  --report candidate-evaluation.json \
+  --auto-volume \
+  --preferred-data-center-id RUNPOD_DATA_CENTER_ID \
+  --confirm-create-and-terminate
+```
+
+The command is reuse-only for network volumes and refuses to overwrite the report.
+It evaluates the root and candidate on one worker, always terminates the pod, and
+returns exit status `0` only when the candidate compiles, passes correctness, and
+completes benchmarking. Invalid candidates return status `1` after writing their
+compile/correctness evidence. Review compiler diagnostics in the JSON report rather
+than weakening the workload contract or numerical tolerances.
+
 Then run the complete suite on the same revision:
 
 ```bash
@@ -157,6 +179,16 @@ against itself. Orchestration now fixes the newly measured root benchmark for th
 assigns the root reward exactly `0.0`, and recomputes every valid candidate's reward
 against that same benchmark. This correction has automated coverage; the remote smoke
 command should be rerun before recording post-fix search rewards.
+
+The guarded OpenAI generation and candidate-evaluation sequence also completed on
+2026-09-11. `gpt-5.6-terra` generated a global-memory-coalescing candidate using
+`1155` input tokens and `1437` output tokens. On H100, both root and candidate passed
+compilation and correctness with maximum error `0.03125` and mean error
+`4.04688344e-06`. The freshly measured root median was `28464.76755 us`; the
+candidate median was `21431.792 us`, producing root-normalized reward
+`0.2837916691`, or a `1.328x` speedup (`24.7%` lower latency). This remains far below
+the cuBLAS performance reference and is evidence of one successful transformation,
+not a state-of-the-art result.
 
 ## Record the result
 

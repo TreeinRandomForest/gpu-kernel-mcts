@@ -39,6 +39,14 @@ class SearchExecution:
     result: SearchResult
 
 
+@dataclass(frozen=True, slots=True)
+class CandidateEvaluationExecution:
+    run_id: str
+    root: EvaluationResult
+    candidate: EvaluationResult
+    environment_manifest: Mapping[str, object]
+
+
 class WorkerKernelEvaluator:
     """Adapt one run-scoped GPU worker to the search evaluator interface."""
 
@@ -95,6 +103,69 @@ class RootNormalizedEvaluator:
                 workload,
             ),
         )
+
+
+def run_candidate_evaluation(
+    *,
+    provider: GPUProvider,
+    hardware: HardwareSpec,
+    workload: WorkloadContract,
+    root_program: KernelProgram,
+    candidate_program: KernelProgram,
+    run_id: str | None = None,
+    max_infrastructure_retries: int = 1,
+) -> CandidateEvaluationExecution:
+    """Evaluate one candidate against one freshly measured root on one worker."""
+    if max_infrastructure_retries < 0:
+        raise ValueError("max_infrastructure_retries cannot be negative")
+    resolved_run_id = run_id or str(uuid4())
+    worker: GPUWorker | None = None
+    try:
+        worker = provider.acquire_worker(hardware)
+        manifest = worker.get_environment_manifest().as_dict()
+        worker_evaluator = WorkerKernelEvaluator(worker, resolved_run_id)
+        root_evaluation = _evaluate_with_infrastructure_retries(
+            worker_evaluator,
+            root_program,
+            workload,
+            max_infrastructure_retries,
+        )
+        if root_evaluation.status != ProposalStatus.VALID:
+            raise RuntimeError(
+                f"root evaluation must be valid, got {root_evaluation.status.value}"
+            )
+        if root_evaluation.benchmark is None:
+            raise RuntimeError("valid root evaluation must include a benchmark")
+        root_evaluation = replace(root_evaluation, reward=0.0)
+        candidate_evaluation = _evaluate_with_infrastructure_retries(
+            RootNormalizedEvaluator(worker_evaluator, root_evaluation.benchmark),
+            candidate_program,
+            workload,
+            max_infrastructure_retries,
+        )
+        return CandidateEvaluationExecution(
+            resolved_run_id,
+            root_evaluation,
+            candidate_evaluation,
+            manifest,
+        )
+    finally:
+        if worker is not None:
+            provider.release_worker(worker)
+
+
+def _evaluate_with_infrastructure_retries(
+    evaluator: KernelEvaluator,
+    program: KernelProgram,
+    workload: WorkloadContract,
+    retries: int,
+) -> EvaluationResult:
+    result = evaluator.evaluate(program, workload)
+    for _ in range(retries):
+        if result.status != ProposalStatus.INFRASTRUCTURE_FAILURE:
+            break
+        result = evaluator.evaluate(program, workload)
+    return result
 
 
 def run_mcts_search(

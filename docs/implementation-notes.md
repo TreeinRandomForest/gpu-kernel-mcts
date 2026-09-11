@@ -140,9 +140,17 @@ check before provisioning a GPU. It requires an explicit model, configured strat
 new output path, and `--confirm-api-call`; makes exactly one request; writes only the
 extracted candidate source; and prints response identity, resolved model, token usage,
 latency, and output path without printing the prompt, raw response, or API key.
-The guarded command completed successfully with `gpt-5.6-terra` on 2026-09-11;
-the generated source remains unevaluated until it passes remote compilation and
-correctness testing.
+The guarded command completed successfully with `gpt-5.6-terra` on 2026-09-11.
+The generated coalescing candidate subsequently compiled and passed correctness on
+H100. Its median latency was `21431.792 us` versus `28464.76755 us` for the freshly
+measured root, giving reward `0.2837916691` and speedup `1.328x`.
+
+The separate `kernel_mcts.evaluate_cli` command provisions one validated worker,
+measures the packaged root once, and evaluates one candidate through the same tier-zero
+compile, correctness, and benchmark pipeline used by search. Valid candidate rewards
+are normalized against that measured root. Infrastructure failures receive one
+idempotent retry, the worker is released in a `finally` path, and a non-overwritten
+JSON report retains the environment manifest and complete root/candidate evidence.
 
 ## Known limitations
 

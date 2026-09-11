@@ -18,7 +18,7 @@ from kernel_mcts.domain import (
     WorkloadContract,
 )
 from kernel_mcts.generation import GenerationResult
-from kernel_mcts.orchestration import run_mcts_search
+from kernel_mcts.orchestration import run_candidate_evaluation, run_mcts_search
 from kernel_mcts.persistence import SQLiteTraceStore
 from kernel_mcts.priors import UniformStrategyPrior
 from kernel_mcts.providers import EnvironmentManifest, HardwareSpec
@@ -227,3 +227,29 @@ def test_mock_run_releases_worker_when_search_raises(tmp_path) -> None:
     assert provider.acquisitions == provider.releases == 1
     assert row[0] is not None
     assert row[1:] == (1, 1)
+
+
+def test_candidate_evaluation_retries_infrastructure_and_normalizes_reward() -> None:
+    provider = MockProvider()
+
+    execution = run_candidate_evaluation(
+        provider=provider,
+        hardware=HARDWARE,
+        workload=WORKLOAD,
+        root_program=KernelProgram("root"),
+        candidate_program=KernelProgram("candidate-1"),
+        run_id="candidate-run",
+        max_infrastructure_retries=1,
+    )
+
+    assert execution.run_id == "candidate-run"
+    assert execution.root.reward == 0.0
+    assert execution.candidate.status == ProposalStatus.VALID
+    assert execution.candidate.reward == pytest.approx(math.log(1.6))
+    assert execution.environment_manifest["manifest_id"] == MANIFEST.manifest_id
+    assert [call[1] for call in provider.worker.calls] == [
+        "root",
+        "candidate-1",
+        "candidate-1",
+    ]
+    assert provider.acquisitions == provider.releases == 1

@@ -28,6 +28,7 @@ completed hardware validation is identified explicitly.
 - [x] Remote BF16 GEMM validation completed on an NVIDIA H100 80GB HBM3 SXM worker.
 - [x] Provider-neutral LLM completion interface and OpenAI Responses API kernel-generator adapter with fresh-session prompts and usage metadata.
 - [x] Guarded controller-only CLI for one configured OpenAI kernel-generation request.
+- [x] Guarded H100 candidate compilation, correctness, benchmark, and JSON-report CLI.
 
 ## Next
 
@@ -40,7 +41,7 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `142 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `146 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.
@@ -48,4 +49,5 @@ completed hardware validation is identified explicitly.
   root-normalization correction is covered by automated tests but has not yet been
   rerun on the H100.
 - The guarded controller-only OpenAI generation check completed with
-  `gpt-5.6-terra` on 2026-09-11. Its candidate has not yet been compiled or evaluated.
+  `gpt-5.6-terra` on 2026-09-11. The generated candidate subsequently compiled,
+  passed correctness, and achieved a `1.328x` speedup over the packaged root on H100.
