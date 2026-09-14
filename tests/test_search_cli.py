@@ -88,6 +88,89 @@ def test_search_cli_parser_accepts_ephemeral_storage() -> None:
     assert arguments.ephemeral_storage
 
 
+def test_search_cli_parser_accepts_nebius_provider() -> None:
+    arguments = build_parser().parse_args(
+        [
+            "--provider",
+            "nebius",
+            "--image",
+            "worker:v1",
+            "--trace",
+            "trace.sqlite",
+            "--nebius-subnet-id",
+            "subnet-1",
+            "--nebius-project-id",
+            "project-1",
+        ]
+    )
+
+    assert arguments.provider == "nebius"
+    assert arguments.nebius_project_id == "project-1"
+    assert arguments.nebius_platform == "gpu-h100-sxm"
+    assert arguments.nebius_preset == "1gpu-16vcpu-200gb"
+
+
+def test_search_cli_wires_nebius_without_runpod_credentials(
+    tmp_path, monkeypatch
+) -> None:
+    public_key = tmp_path / "id_ed25519.pub"
+    private_key = tmp_path / "id_ed25519"
+    public_key.write_text("ssh-ed25519 AAAAtest user@test\n")
+    private_key.write_text("private")
+    captured = {}
+
+    def fake_provider(config, **kwargs):
+        captured["config"] = config
+        return object()
+
+    def fake_search(**values):
+        node = SimpleNamespace(program=KernelProgram("best"), reward=0.0)
+        return SimpleNamespace(
+            run_id="nebius-run",
+            result=SimpleNamespace(
+                best=node,
+                nodes=(node,),
+                iterations=1,
+                generations=1,
+                profile_calls=1,
+            ),
+        )
+
+    monkeypatch.delenv("RUNPOD_API_KEY", raising=False)
+    monkeypatch.setattr("kernel_mcts.search_cli.create_nebius_provider", fake_provider)
+    monkeypatch.setattr("kernel_mcts.search_cli.run_mcts_search", fake_search)
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.resolve_reusable_volume",
+        lambda *args: pytest.fail("RunPod volume discovery must not run"),
+    )
+
+    result = main(
+        [
+            "--provider",
+            "nebius",
+            "--image",
+            "worker:v1",
+            "--trace",
+            str(tmp_path / "trace.sqlite"),
+            "--nebius-project-id",
+            "project-1",
+            "--nebius-subnet-id",
+            "subnet-1",
+            "--nebius-username",
+            "sanjay",
+            "--nebius-ssh-public-key",
+            str(public_key),
+            "--nebius-ssh-private-key",
+            str(private_key),
+            "--confirm-create-and-terminate",
+        ]
+    )
+
+    assert result == 0
+    assert captured["config"].project_id == "project-1"
+    assert captured["config"].subnet_id == "subnet-1"
+
+
 def test_openai_search_requires_model_before_provisioning(
     tmp_path, monkeypatch, capsys
 ) -> None:
@@ -156,13 +239,16 @@ def test_openai_search_wires_configured_generator_and_exports_best(
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
     monkeypatch.setenv("RUNPOD_API_KEY", "test-runpod-key")
-    monkeypatch.setattr("kernel_mcts.search_cli.OpenAIResponsesClient", FakeOpenAIClient)
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.OpenAIResponsesClient", FakeOpenAIClient
+    )
     monkeypatch.setattr(
         "kernel_mcts.search_cli.resolve_reusable_volume",
         lambda *args: ("volume-1", "EUR-IS-3"),
     )
     monkeypatch.setattr(
-        "kernel_mcts.search_cli.create_runpod_provider", lambda *args, **kwargs: object()
+        "kernel_mcts.search_cli.create_runpod_provider",
+        lambda *args, **kwargs: object(),
     )
     monkeypatch.setattr("kernel_mcts.search_cli.run_mcts_search", fake_search)
 
@@ -245,9 +331,7 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
         },
     )
     progress.emit("new_global_best", {"iteration": 2, "reward": 0.5})
-    progress.emit(
-        "run_completed", {"iterations": 2, "b_gen": 3, "best_reward": 0.5}
-    )
+    progress.emit("run_completed", {"iterations": 2, "b_gen": 3, "best_reward": 0.5})
 
     assert readiness.finished == 1
     assert [event for event, _ in trace.events] == [

@@ -11,6 +11,7 @@ from .config import load_data, parse_strategies
 from .domain import Strategy
 from .generation import GenerationRequest, GenerationResult, KernelGenerator
 from .llm_generation import LLMKernelGenerator
+from .nebius import NebiusConfig, create_nebius_provider
 from .openai_client import OpenAIResponsesClient, OpenAIResponsesConfig
 from .orchestration import run_mcts_search
 from .persistence import SQLiteTraceStore
@@ -52,7 +53,9 @@ class SearchCLIProgress:
             self._write("Worker ready; starting root evaluation")
         elif event_type == "root_evaluation_attempt":
             evaluation = payload.get("evaluation")
-            status = evaluation.get("status") if isinstance(evaluation, Mapping) else None
+            status = (
+                evaluation.get("status") if isinstance(evaluation, Mapping) else None
+            )
             self._write(
                 f"Root evaluation attempt {payload.get('attempt')}: status={status}"
             )
@@ -119,9 +122,7 @@ class ProgressKernelGenerator:
             f"Starting generation call {self._calls}: strategy={request.strategy.id}"
         )
         result = self._generator.generate(request)
-        self._write(
-            f"Generation call {self._calls} returned; evaluating proposal"
-        )
+        self._write(f"Generation call {self._calls} returned; evaluating proposal")
         return result
 
     def _write(self, message: str) -> None:
@@ -135,6 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--image", required=True)
     parser.add_argument("--trace", type=Path, required=True)
+    parser.add_argument("--provider", choices=("runpod", "nebius"), default="runpod")
     parser.add_argument("--api-key-env", default="RUNPOD_API_KEY")
     parser.add_argument("--gpu-type", default="NVIDIA H100 80GB HBM3")
     parser.add_argument("--network-volume-id")
@@ -162,6 +164,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--best-output", type=Path)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--timeout", type=float, default=600.0)
+    parser.add_argument("--nebius-subnet-id")
+    parser.add_argument("--nebius-project-id")
+    parser.add_argument("--nebius-username", default=os.environ.get("USER", "user"))
+    parser.add_argument(
+        "--nebius-ssh-public-key",
+        type=Path,
+        default=Path.home() / ".ssh" / "id_ed25519.pub",
+    )
+    parser.add_argument(
+        "--nebius-ssh-private-key",
+        type=Path,
+        default=Path.home() / ".ssh" / "id_ed25519",
+    )
+    parser.add_argument("--nebius-platform", default="gpu-h100-sxm")
+    parser.add_argument("--nebius-preset", default="1gpu-16vcpu-200gb")
     parser.add_argument("--run-id")
     parser.add_argument(
         "--confirm-create-and-terminate",
@@ -179,29 +196,61 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.generation_budget < 1:
         parser.error("--generation-budget must be positive")
     if arguments.best_output is not None and arguments.best_output.exists():
-        parser.error(f"refusing to overwrite existing best output: {arguments.best_output}")
+        parser.error(
+            f"refusing to overwrite existing best output: {arguments.best_output}"
+        )
     strategies, generator, model_name, mcts_config = _search_components(
         parser, arguments
     )
-    api_key = os.environ.get(arguments.api_key_env)
-    if not api_key:
-        parser.error(f"environment variable {arguments.api_key_env!r} is not set")
-    network_volume_id, data_center_id = resolve_reusable_volume(
-        parser, arguments, api_key
-    )
-
     progress = ReadinessProgress("search worker")
-    provider = create_runpod_provider(
-        RunPodConfig(
-            image=arguments.image,
-            api_key_env=arguments.api_key_env,
-            gpu_type=arguments.gpu_type,
-            startup_timeout_seconds=arguments.timeout,
-            network_volume_id=network_volume_id,
-            data_center_ids=(data_center_id,) if data_center_id is not None else (),
-        ),
-        readiness_progress=progress,
-    )
+    if arguments.provider == "runpod":
+        api_key = os.environ.get(arguments.api_key_env)
+        if not api_key:
+            parser.error(f"environment variable {arguments.api_key_env!r} is not set")
+        network_volume_id, data_center_id = resolve_reusable_volume(
+            parser, arguments, api_key
+        )
+        provider = create_runpod_provider(
+            RunPodConfig(
+                image=arguments.image,
+                api_key_env=arguments.api_key_env,
+                gpu_type=arguments.gpu_type,
+                startup_timeout_seconds=arguments.timeout,
+                network_volume_id=network_volume_id,
+                data_center_ids=(data_center_id,) if data_center_id is not None else (),
+            ),
+            readiness_progress=progress,
+        )
+    else:
+        if not arguments.nebius_project_id or not arguments.nebius_subnet_id:
+            parser.error(
+                "--nebius-project-id and --nebius-subnet-id are required "
+                "with --provider=nebius"
+            )
+        if any(
+            (
+                arguments.network_volume_id,
+                arguments.data_center_id,
+                arguments.auto_volume,
+                arguments.ephemeral_storage,
+                arguments.preferred_data_center_id,
+            )
+        ):
+            parser.error("RunPod volume options cannot be used with --provider=nebius")
+        provider = create_nebius_provider(
+            NebiusConfig(
+                image=arguments.image,
+                project_id=arguments.nebius_project_id,
+                subnet_id=arguments.nebius_subnet_id,
+                ssh_public_key=arguments.nebius_ssh_public_key,
+                ssh_private_key=arguments.nebius_ssh_private_key,
+                username=arguments.nebius_username,
+                platform=arguments.nebius_platform,
+                preset=arguments.nebius_preset,
+                startup_timeout_seconds=arguments.timeout,
+            ),
+            readiness_progress=progress,
+        )
     try:
         with SQLiteTraceStore(arguments.trace) as trace:
             reporting_trace = SearchCLIProgress(trace, progress)

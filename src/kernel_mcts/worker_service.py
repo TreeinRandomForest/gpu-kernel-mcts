@@ -27,15 +27,19 @@ def build_application(
 ) -> WorkerApplication:
     environment = os.environ if environ is None else environ
     token = environment.get("KERNEL_MCTS_WORKER_TOKEN")
-    pod_id = environment.get("RUNPOD_POD_ID")
-    if not token or not pod_id:
-        raise RuntimeError("worker token and RUNPOD_POD_ID are required")
+    worker_id = environment.get("KERNEL_MCTS_WORKER_ID") or environment.get(
+        "RUNPOD_POD_ID"
+    )
+    if not token or not worker_id:
+        raise RuntimeError("worker token and worker ID are required")
     _report_stage(progress, "environment_manifest")
     manifest = capture_environment_manifest(environment)
     backend = CudaCppBackend(
         CudaBackendConfig(
             artifact_root=Path(
-                environment.get("KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts")
+                environment.get(
+                    "KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts"
+                )
             )
         )
     )
@@ -56,7 +60,9 @@ def build_application(
     vendor_results = VendorBaselineSuite(
         VendorBaselineConfig(
             artifact_root=Path(
-                environment.get("KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts")
+                environment.get(
+                    "KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts"
+                )
             ),
             cutlass_path=Path(environment.get("CUTLASS_PATH", "/opt/cutlass")),
         )
@@ -65,7 +71,7 @@ def build_application(
         backend=backend,
         root_benchmark=root_benchmark,
         context=EvaluationContext(
-            worker_id=pod_id,
+            worker_id=worker_id,
             environment_manifest_id=manifest.manifest_id,
             launch_config=BF16_GEMM_WORKLOAD.metadata["abi"]["launch"],
             hardware_toolchain={
@@ -118,7 +124,9 @@ class WorkerBootstrap:
         self._application: WorkerApplication | None = None
         self._failure_code: str | None = None
 
-    def initialize(self, factory: Callable[[Callable[[str], None]], WorkerApplication]) -> None:
+    def initialize(
+        self, factory: Callable[[Callable[[str], None]], WorkerApplication]
+    ) -> None:
         try:
             application = factory(self.set_stage)
         except Exception as error:
@@ -160,9 +168,12 @@ def _report_stage(progress: Callable[[str], None] | None, stage: str) -> None:
 
 def capture_environment_manifest(environ=None) -> EnvironmentManifest:
     environment = os.environ if environ is None else environ
-    pod_id = environment.get("RUNPOD_POD_ID")
-    if not pod_id:
-        raise RuntimeError("RUNPOD_POD_ID is required")
+    worker_id = environment.get("KERNEL_MCTS_WORKER_ID") or environment.get(
+        "RUNPOD_POD_ID"
+    )
+    if not worker_id:
+        raise RuntimeError("KERNEL_MCTS_WORKER_ID is required")
+    provider = environment.get("KERNEL_MCTS_PROVIDER", "runpod")
     gpu_line = _command(
         [
             "nvidia-smi",
@@ -186,11 +197,14 @@ def capture_environment_manifest(environ=None) -> EnvironmentManifest:
     cuobjdump_version = _optional_command(["cuobjdump", "--version"])
     if cuobjdump_version:
         toolchains["cuobjdump"] = cuobjdump_version
-    gpu_count = int(environment.get("RUNPOD_GPU_COUNT", "1"))
+    gpu_count = int(
+        environment.get("KERNEL_MCTS_GPU_COUNT")
+        or environment.get("RUNPOD_GPU_COUNT", "1")
+    )
     return EnvironmentManifest(
-        worker_id=pod_id,
-        provider="runpod",
-        pod_id=pod_id,
+        worker_id=worker_id,
+        provider=provider,
+        pod_id=worker_id,
         gpu_model=gpu_model,
         gpu_count=gpu_count,
         gpu_uuid=gpu_uuid,
@@ -211,7 +225,9 @@ def capture_environment_manifest(environ=None) -> EnvironmentManifest:
     )
 
 
-def serve(application: WorkerApplication, host: str = "0.0.0.0", port: int = 8000) -> None:
+def serve(
+    application: WorkerApplication, host: str = "0.0.0.0", port: int = 8000
+) -> None:
     _serve(application.handle, host, port)
 
 
