@@ -205,8 +205,8 @@ structured metric summary is stored in `nodes.profile_json` and included as
 `parent_profile` in later generation prompts. The initial metric set contains launch
 register use, achieved occupancy, SM/DRAM/L2/L1 throughput, tensor-pipe utilization,
 long-scoreboard stalls, and executed instruction count. Validate this path with a
-small generation budget before another expensive search because the metric set has
-not yet run on the remote H100.
+small generation budget before another expensive search. The metric set completed
+successfully through the Nebius H100 SXM smoke lifecycle on 2026-09-14.
 
 ## Run through a Nebius H100 SXM VM
 
@@ -234,8 +234,9 @@ The default Nebius resource selection is platform `gpu-h100-sxm`, preset
 `ubuntu24.04-cuda13.0` image family. The provider always deletes the temporary VM and
 disk after the run. On 2026-09-14, a manual Nebius H100 SXM VM check successfully
 collected numeric NCU metrics both directly on the VM and from the worker image run
-with `--cap-add=SYS_ADMIN`; the complete provider lifecycle still requires the smoke
-validation above.
+with `--cap-add=SYS_ADMIN`. The complete automated lifecycle subsequently provisioned
+the VM, evaluated and profiled the root, generated and evaluated one candidate,
+persisted the trace, and terminated the worker successfully.
 
 ## Visualize a search trace
 

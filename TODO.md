@@ -45,17 +45,17 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `181 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `184 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.
 - Lightweight Nsight Compute extraction is covered by GPU-independent command, parser,
-  protocol, caching, and persistence tests. Manual numeric metric collection succeeded
-  on a Nebius H100 SXM host and privileged worker container; the automated Nebius
-  provider smoke lifecycle remains to be validated.
-- The guarded one-iteration MCTS smoke search also completed remotely. The subsequent
-  root-normalization correction is covered by automated tests but has not yet been
-  rerun on the H100.
+  protocol, caching, and persistence tests. Numeric metric collection succeeded on a
+  Nebius H100 SXM host, in the privileged worker container, and through the automated
+  provider smoke lifecycle on 2026-09-14.
+- The guarded one-iteration MCTS smoke search completed through the Nebius provider on
+  2026-09-14. It also validated root normalization: the unchanged root remained the
+  global best with reward zero when the generated candidate was slower.
 - The guarded controller-only OpenAI generation check completed with
   `gpt-5.6-terra` on 2026-09-11. The generated candidate subsequently compiled,
   passed correctness, and achieved a `1.328x` speedup over the packaged root on H100.
