@@ -55,6 +55,8 @@ Speculative post–Milestone A ideas are tracked separately in
 The configured semantic optimization actions and their relationship to GPU execution
 and NCU evidence are explained in
 [docs/strategy-guide.md](docs/strategy-guide.md).
+Profiled search results and follow-up decisions are recorded in
+[docs/experiments/nebius-bgen10-profiled-search.md](docs/experiments/nebius-bgen10-profiled-search.md).
 
 ## Starting a new agent session
 
