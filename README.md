@@ -56,7 +56,10 @@ The configured semantic optimization actions and their relationship to GPU execu
 and NCU evidence are explained in
 [docs/strategy-guide.md](docs/strategy-guide.md).
 Profiled search results and follow-up decisions are recorded in
-[docs/experiments/nebius-bgen10-profiled-search.md](docs/experiments/nebius-bgen10-profiled-search.md).
+[the B_gen=10 report](docs/experiments/nebius-bgen10-profiled-search.md) and
+[the B_gen=50, c_puct=12 report](docs/experiments/nebius-bgen50-cpuct12-profiled-search.md).
+The controlled follow-up with the multi-accumulator strategy is documented in
+[its B_gen=50 report](docs/experiments/nebius-bgen50-cpuct12-multiacc.md).
 
 ## Starting a new agent session
 
