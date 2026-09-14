@@ -52,6 +52,9 @@ See [TODO.md](TODO.md) for implemented and remaining work. `spec.md` remains the
 source of truth for Milestone A behavior and architecture.
 Speculative post–Milestone A ideas are tracked separately in
 [docs/research-roadmap.md](docs/research-roadmap.md).
+The configured semantic optimization actions and their relationship to GPU execution
+and NCU evidence are explained in
+[docs/strategy-guide.md](docs/strategy-guide.md).
 
 ## Starting a new agent session
 

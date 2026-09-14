@@ -24,4 +24,24 @@ strategies:
     prompts:
       cuda_cpp: |
         Specialize the implementation for the allowed workload shapes and launch choices.
-
+  - id: tensor_core_output_tiling
+    description: Assign independent tensor-core output tiles to warps
+    prompts:
+      cuda_cpp: |
+        Redesign the BF16 GEMM around tensor-core MMA so each warp owns and accumulates
+        a distinct output tile instead of splitting K across warps and reducing partial
+        results through shared memory. Preserve the fixed ABI and launch configuration.
+        If a block must cover a larger output region, safely group the fixed logical
+        block coordinates, make non-owner blocks return, and ensure every output is
+        written exactly once. Keep FP32 accumulation and the declared A, B, and C
+        layouts. Use the parent profile to improve tensor-pipe utilization.
+  - id: pipeline_tensor_core_data_movement
+    description: Pipeline tensor-core operands through shared memory
+    prompts:
+      cuda_cpp: |
+        Build a tiled BF16 tensor-core GEMM whose warps compute independent output
+        tiles, and overlap global-memory movement with MMA work using safe staged or
+        asynchronous copies where supported. Use coalesced and vectorized accesses,
+        shared-memory layouts that avoid bank conflicts, and FP32 accumulators.
+        Preserve the fixed ABI, launch configuration, tensor layouts, and exact output
+        coverage. Do not introduce a cross-warp reduction of partial K accumulations.
