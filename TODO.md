@@ -34,6 +34,7 @@ completed hardware validation is identified explicitly.
 - [x] Read-only SQLite trace visualization as a transposition-preserving Graphviz DAG.
 - [x] Lazy Nsight Compute metric extraction cached per node/environment and supplied to generation prompts.
 - [x] Ephemeral RunPod storage mode without network-volume data-center affinity.
+- [x] Nebius H100 SXM VM provider with an SSH-tunneled, NCU-capable worker container and exception-safe VM/disk deletion.
 
 ## Next
 
@@ -44,12 +45,14 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `170 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `181 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.
 - Lightweight Nsight Compute extraction is covered by GPU-independent command, parser,
-  protocol, caching, and persistence tests but still requires validation on an H100.
+  protocol, caching, and persistence tests. Manual numeric metric collection succeeded
+  on a Nebius H100 SXM host and privileged worker container; the automated Nebius
+  provider smoke lifecycle remains to be validated.
 - The guarded one-iteration MCTS smoke search also completed remotely. The subsequent
   root-normalization correction is covered by automated tests but has not yet been
   rerun on the H100.

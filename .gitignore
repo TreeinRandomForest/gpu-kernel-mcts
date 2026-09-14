@@ -225,4 +225,4 @@ __marimo__/
 /best-kernel*.cu
 /candidate*.cu
 /*.ncu-rep
-
+*.swp

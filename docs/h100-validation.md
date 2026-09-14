@@ -208,6 +208,35 @@ long-scoreboard stalls, and executed instruction count. Validate this path with 
 small generation budget before another expensive search because the metric set has
 not yet run on the remote H100.
 
+## Run through a Nebius H100 SXM VM
+
+Configure and authenticate the `nebius` CLI, identify the subnet used by the target
+project, and ensure the selected SSH public/private key pair exists locally. The
+provider creates a billable H100 SXM VM and temporary boot disk, runs the worker
+container with GPU access and `CAP_SYS_ADMIN`, and tunnels the authenticated worker
+port over SSH:
+
+```bash
+.venv/bin/python -m kernel_mcts.search_cli \
+  --provider nebius \
+  --image REGISTRY/gpu-kernel-mcts:REVISION \
+  --trace nebius-smoke.sqlite \
+  --nebius-project-id NEBIUS_PROJECT_ID \
+  --nebius-subnet-id NEBIUS_SUBNET_ID \
+  --nebius-username NEBIUS_VM_USERNAME \
+  --nebius-ssh-public-key ~/.ssh/id_ed25519.pub \
+  --nebius-ssh-private-key ~/.ssh/id_ed25519 \
+  --confirm-create-and-terminate
+```
+
+The default Nebius resource selection is platform `gpu-h100-sxm`, preset
+`1gpu-16vcpu-200gb`, a 200 GiB `network_ssd` boot disk, and the
+`ubuntu24.04-cuda13.0` image family. The provider always deletes the temporary VM and
+disk after the run. On 2026-09-14, a manual Nebius H100 SXM VM check successfully
+collected numeric NCU metrics both directly on the VM and from the worker image run
+with `--cap-add=SYS_ADMIN`; the complete provider lifecycle still requires the smoke
+validation above.
+
 ## Visualize a search trace
 
 Render the latest run in a trace database as a Graphviz DAG:

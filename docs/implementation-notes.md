@@ -105,6 +105,16 @@ processes receive a small allowlisted environment rather than the controller's f
 environment. Credentials must not appear in prompts, manifests, traces, subprocess
 arguments, or error payloads.
 
+`NebiusProvider` uses the authenticated `nebius` CLI to create one temporary
+`gpu-h100-sxm` VM and boot disk per search run. It reaches the VM only through SSH,
+starts the same worker image with `--gpus all --cap-add=SYS_ADMIN`, and exposes the
+worker to the controller through a loopback-only SSH tunnel. The ephemeral worker
+token is uploaded through SSH standard input in a mode-0600 file, never placed in a
+process argument, and removed immediately after container launch. Release closes the
+tunnel, deletes the VM, and then deletes its boot disk, including on startup,
+manifest-validation, and search failures. The SSH private key and Nebius CLI
+credentials remain controller-local.
+
 ## Run orchestration
 
 The provider-neutral orchestration layer starts the SQLite run, acquires one worker,
