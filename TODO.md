@@ -42,6 +42,8 @@ completed hardware validation is identified explicitly.
 - [ ] Add an LLM strategy-prior adapter while preserving separate `B_prior` accounting.
 - [ ] Add at least three more end-to-end benchmark kernels for the Milestone A minimum suite.
 - [ ] Add periodic root/global-best remeasurement and environment-drift handling.
+- [ ] Add strategy applicability metadata and filter actions by operation, dtype,
+  backend, hardware capabilities, and workload constraints before MCTS selection.
 
 ## Validation status
 

@@ -202,5 +202,8 @@ exported kernels remain on the controller.
 - CUDA artifact directories are retained because search nodes cache compiled artifacts; run-level cleanup policy is not implemented yet.
 - SASS is normalized and hashed when `cuobjdump` is available. The fallback hashes executable bytes and may deduplicate less reliably across builds.
 - The CUDA backend currently supports only the fixed BF16 GEMM ABI and launch configuration.
+- Strategy configuration does not yet express applicability by operation, dtype,
+  backend, hardware capability, or workload constraint. All configured strategies are
+  currently exposed to MCTS, so the production catalog remains tailored to BF16 GEMM.
 - Full profiling remains unimplemented; the lightweight metric set has been validated
   through the automated Nebius H100 SXM worker lifecycle.

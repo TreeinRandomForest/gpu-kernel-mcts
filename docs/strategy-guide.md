@@ -10,6 +10,39 @@ This guide assumes familiarity with grids, thread blocks, warps, streaming
 multiprocessors (SMs), and the GPU memory hierarchy. It does not assume prior
 experience with WMMA, tensor-core kernel design, or MCTS.
 
+## Strategy scope and applicability
+
+The configured strategies are not universally applicable to every GPU kernel.
+Coalescing, vectorized access, synchronization reduction, register-pressure reduction,
+and shape specialization are broad optimization categories, but each is useful only
+when the program and workload satisfy its assumptions. For example, vectorization
+requires safe alignment, and synchronization can be removed only when memory
+dependencies permit it.
+
+The tensor-core output-tiling, pipelining, and multi-accumulator strategies are
+matrix-operation strategies. Their current CUDA prompts are specialized further to
+the fixed BF16 GEMM workload and launch contract. They should not be offered unchanged
+for arbitrary reductions, elementwise kernels, scans, or workloads without compatible
+tensor-core operations.
+
+The current configuration has no machine-readable applicability constraints. As the
+benchmark suite grows, strategy definitions should declare requirements such as:
+
+```yaml
+applicability:
+  operations: [gemm]
+  dtypes: [bfloat16, float16]
+  backends: [cuda_cpp]
+  hardware_capabilities: [tensor_cores]
+```
+
+The strategy layer should filter the configured catalog against the workload,
+backend, hardware manifest, and legal launch constraints before constructing MCTS
+actions. This avoids spending generation budget on transformations that cannot apply.
+Semantic strategy IDs can remain stable while backend- and workload-specific prompt
+variants provide concrete implementation guidance. Applicability filtering is planned
+work and is not implemented by the current search.
+
 ## Fixed workload and launch constraints
 
 The current benchmark is a 4096 x 4096 x 4096 BF16 GEMM with FP32 accumulation. A
