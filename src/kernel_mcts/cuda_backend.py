@@ -271,6 +271,8 @@ class CudaCppBackend:
             "--csv",
             "--page",
             "raw",
+            "--log-file",
+            "stdout",
             "--kernel-name-base",
             "function",
             "--kernel-name",
@@ -306,7 +308,14 @@ class CudaCppBackend:
             if diagnostic:
                 message = f"{message}: {diagnostic}"
             raise EvaluationInfrastructureError(message)
-        metrics = _parse_ncu_csv(result.stdout, self.LIGHTWEIGHT_METRICS)
+        metrics = _parse_ncu_csv(
+            _ncu_csv_output(
+                result.stdout,
+                result.stderr,
+                self.LIGHTWEIGHT_METRICS,
+            ),
+            self.LIGHTWEIGHT_METRICS,
+        )
         return {
             "schema_version": self.LIGHTWEIGHT_PROFILE_SCHEMA_VERSION,
             "profiler": "ncu",
@@ -408,7 +417,7 @@ def _parse_ncu_csv(
         None,
     )
     if header_index is None:
-        raise EvaluationInfrastructureError("Nsight Compute returned malformed CSV")
+        return _parse_ncu_wide_csv(rows, required_metrics)
     header = rows[header_index]
     name_index = header.index("Metric Name")
     unit_index = header.index("Metric Unit")
@@ -439,8 +448,71 @@ def _parse_ncu_csv(
     return {name: metrics[name] for name in required_metrics}
 
 
+def _parse_ncu_wide_csv(
+    rows: Sequence[Sequence[str]],
+    required_metrics: Sequence[str],
+) -> dict[str, dict[str, object]]:
+    header_index = next(
+        (
+            index
+            for index, row in enumerate(rows)
+            if all(metric in row for metric in required_metrics)
+        ),
+        None,
+    )
+    if header_index is None or header_index + 1 >= len(rows):
+        raise EvaluationInfrastructureError("Nsight Compute returned malformed CSV")
+    header = rows[header_index]
+    metric_columns = {metric: header.index(metric) for metric in required_metrics}
+    maximum_column = max(metric_columns.values())
+    units = rows[header_index + 1]
+    for row in rows[header_index + 2 :]:
+        if len(row) <= maximum_column:
+            continue
+        try:
+            values = {
+                metric: float(row[column].replace(",", ""))
+                for metric, column in metric_columns.items()
+            }
+        except ValueError:
+            continue
+        if not all(math.isfinite(value) for value in values.values()):
+            raise EvaluationInfrastructureError(
+                "Nsight Compute returned a non-finite metric"
+            )
+        return {
+            metric: {
+                "value": values[metric],
+                "unit": units[column] if len(units) > column else "",
+            }
+            for metric, column in metric_columns.items()
+        }
+    raise EvaluationInfrastructureError(
+        "Nsight Compute returned non-numeric lightweight metrics"
+    )
+
+
 def _optional_float(value: object) -> float | None:
     return None if value is None else float(value)
+
+
+def _ncu_csv_output(
+    stdout: str,
+    stderr: str,
+    required_metrics: Sequence[str],
+) -> str:
+    """Select the stream containing Nsight Compute's CSV report."""
+    header_fields = ("Metric Name", "Metric Unit", "Metric Value")
+    for output in (stderr, stdout):
+        long_format = all(field in output for field in header_fields)
+        wide_format = all(metric in output for metric in required_metrics)
+        if long_format or wide_format:
+            return output
+    diagnostic = _ncu_diagnostic(stdout, stderr)
+    message = "Nsight Compute returned malformed CSV"
+    if diagnostic:
+        message = f"{message}: {diagnostic}"
+    raise EvaluationInfrastructureError(message)
 
 
 def _bounded(value: str, limit: int = 64_000) -> str:

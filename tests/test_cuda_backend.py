@@ -99,6 +99,21 @@ def ncu_csv(metrics) -> str:
     return output.getvalue()
 
 
+def ncu_wide_csv(metrics) -> str:
+    output = io.StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+    writer.writerow(["ID", "Kernel Name", *metrics])
+    writer.writerow(["", "", *("%" for _ in metrics)])
+    writer.writerow(
+        [
+            0,
+            "bf16_gemm_root",
+            *(f"{index + 1},234.5" for index, _ in enumerate(metrics)),
+        ]
+    )
+    return output.getvalue()
+
+
 def test_compile_uses_shell_safe_arguments_and_sanitized_environment(tmp_path) -> None:
     runner = FakeRunner()
     subject = backend(tmp_path, runner)
@@ -166,16 +181,19 @@ def test_lightweight_profile_extracts_versioned_numeric_ncu_metrics(tmp_path) ->
     subject = backend(tmp_path, runner)
     compilation = subject.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
     assert compilation.artifact is not None
-    runner.ncu_stdout = ncu_csv(subject.LIGHTWEIGHT_METRICS)
+    runner.ncu_stdout = '{"status":"ok","timings_us":[10.0]}'
+    runner.ncu_stderr = ncu_csv(subject.LIGHTWEIGHT_METRICS)
 
     profile = subject.lightweight_profile(compilation.artifact, BF16_GEMM_WORKLOAD)
 
     command, timeout, environment = runner.calls[-1]
-    assert command[:7] == [
+    assert command[:9] == [
         "/opt/cuda/bin/ncu",
         "--csv",
         "--page",
         "raw",
+        "--log-file",
+        "stdout",
         "--kernel-name-base",
         "function",
         "--kernel-name",
@@ -199,6 +217,46 @@ def test_lightweight_profile_extracts_versioned_numeric_ncu_metrics(tmp_path) ->
         "value": 1234.5,
         "unit": "%",
     }
+
+
+def test_lightweight_profile_accepts_ncu_csv_on_stdout(tmp_path) -> None:
+    runner = FakeRunner()
+    subject = backend(tmp_path, runner)
+    compilation = subject.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    runner.ncu_stdout = ncu_csv(subject.LIGHTWEIGHT_METRICS)
+
+    profile = subject.lightweight_profile(compilation.artifact, BF16_GEMM_WORKLOAD)
+
+    assert list(profile["metrics"]) == list(subject.LIGHTWEIGHT_METRICS)
+
+
+def test_lightweight_profile_accepts_ncu_wide_csv(tmp_path) -> None:
+    runner = FakeRunner()
+    subject = backend(tmp_path, runner)
+    compilation = subject.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    runner.ncu_stdout = ncu_wide_csv(subject.LIGHTWEIGHT_METRICS)
+
+    profile = subject.lightweight_profile(compilation.artifact, BF16_GEMM_WORKLOAD)
+
+    assert profile["summary"]["registers_per_thread"] == 1234.5
+    assert profile["summary"]["instructions_executed"] == 9234.5
+    assert profile["metrics"][subject.LIGHTWEIGHT_METRICS[0]]["unit"] == "%"
+
+
+def test_lightweight_profile_reports_bounded_malformed_output(tmp_path) -> None:
+    runner = FakeRunner()
+    subject = backend(tmp_path, runner)
+    compilation = subject.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    runner.ncu_stdout = "unexpected profiler output"
+
+    with pytest.raises(
+        EvaluationInfrastructureError,
+        match="malformed CSV: unexpected profiler output",
+    ):
+        subject.lightweight_profile(compilation.artifact, BF16_GEMM_WORKLOAD)
 
 
 def test_lightweight_profile_rejects_missing_metrics_and_tool_failures(tmp_path) -> None:
