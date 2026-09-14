@@ -183,6 +183,12 @@ metric names, values, and units are persisted and supplied to subsequent generat
 prompts. Profile calls are counted separately from `B_gen` and `B_prior`. Full NCU
 reports and rule recommendations are not yet collected.
 
+After budget exhaustion, the final global-best node is also lightweight-profiled
+before worker release if it has no cached profile. The trace labels this call with the
+`final_best` trigger, updates the persisted node profile, and includes it in the run's
+profile-call count. A best node already profiled during expansion is not profiled
+again.
+
 Search and candidate-evaluation CLIs also support explicit ephemeral storage. This
 mode sends neither a network-volume ID nor data-center affinity, uses only the pod's
 container disk, and relies on the mandatory termination lifecycle. Durable traces and

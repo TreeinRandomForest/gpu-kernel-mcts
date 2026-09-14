@@ -166,7 +166,7 @@ def test_profiler_receives_cached_evaluation() -> None:
 
     root_evaluation = valid_evaluation("0", "state:0", 0.0)
     profiler = RecordingProfiler()
-    MCTS(
+    result = MCTS(
         strategies=STRATEGIES,
         workload=WORKLOAD,
         generator=ToyGenerator(),
@@ -176,7 +176,71 @@ def test_profiler_receives_cached_evaluation() -> None:
         profiler=profiler,
     ).run(root_evaluation)
 
-    assert profiler.evaluations == [root_evaluation]
+    assert profiler.evaluations == [root_evaluation, result.best.evaluation]
+    assert result.profile_calls == 2
+    assert result.best.profile == {"profiled": True}
+
+
+def test_final_best_profile_is_persisted_with_distinct_trigger() -> None:
+    class Profiler:
+        def lightweight_profile(self, evaluation, workload):
+            return {"state_key": evaluation.state_key}
+
+    events = RecordingEvents()
+    result = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        profiler=Profiler(),
+        events=events,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    profile_events = [
+        payload for event, payload in events.events if event == "node_profiled"
+    ]
+    assert [payload["trigger"] for payload in profile_events] == [
+        "expansion",
+        "final_best",
+    ]
+    assert profile_events[-1]["node_id"] == result.best.id
+    assert profile_events[-1]["profile"] == {"state_key": result.best.state_key}
+
+
+def test_final_best_is_not_reprofiled_when_expansion_already_profiled_it() -> None:
+    class Evaluator:
+        def evaluate(self, program, workload):
+            reward = 2.0 if program.source == "1" else 1.0
+            return valid_evaluation(program.source, f"state:{program.source}", reward)
+
+    class Profiler:
+        def lightweight_profile(self, evaluation, workload):
+            return {"state_key": evaluation.state_key}
+
+    events = RecordingEvents()
+    result = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=Evaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(2),
+        config=MCTSConfig(k_max=1),
+        profiler=Profiler(),
+        events=events,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    profile_events = [
+        payload for event, payload in events.events if event == "node_profiled"
+    ]
+    assert result.best.program.source == "1"
+    assert result.profile_calls == 2
+    assert [payload["trigger"] for payload in profile_events] == [
+        "expansion",
+        "expansion",
+    ]
 
 
 def test_mcts_charges_and_logs_repair_generation() -> None:

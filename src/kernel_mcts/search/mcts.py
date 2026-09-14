@@ -50,7 +50,7 @@ class SearchResult:
     iterations: int #select -> expand/evaluate -> optional backup cycles
     generations: int #LLM calls for gen incl. repair
     prior_calls: int #B_prior: LLM calls used to obtain strategy priors
-    profile_calls: int #lazy profiler executions, separate from B_gen and B_prior
+    profile_calls: int #profiler executions, separate from B_gen and B_prior
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +151,8 @@ class MCTS:
                         "new_global_best",
                         {"iteration": iterations, "node_id": leaf.id, "reward": leaf.reward},
                     )
+            if self.profiler is not None and best.profile is None:
+                self._profile_node(best, iterations, "final_best")
         except Exception as error:
             self.events.emit(
                 "run_failed",
@@ -216,28 +218,7 @@ class MCTS:
         if node.actions:
             return
         if self.profiler is not None and node.profile is None:
-            self.profile_calls += 1
-            self.events.emit(
-                "profiling_started",
-                {
-                    "iteration": iteration,
-                    "node_id": node.id,
-                    "profile_level": "lightweight",
-                    "profile_call": self.profile_calls,
-                },
-            )
-            node.profile = dict(
-                self.profiler.lightweight_profile(node.evaluation, self.workload)
-            )
-            self.events.emit(
-                "node_profiled",
-                {
-                    **self._node_payload(node, is_root=False),
-                    "iteration": iteration,
-                    "profile_level": "lightweight",
-                    "profile_call": self.profile_calls,
-                },
-            )
+            self._profile_node(node, iteration, "expansion")
         if self.prior_provider.counts_toward_b_prior:
             self.prior_calls += 1
         priors = validate_priors(
@@ -313,6 +294,7 @@ class MCTS:
                     child.id,
                 )
             )
+
             if child.id in seen:
                 self._backup(path, child.reward, iteration)
                 return IterationOutcome(
@@ -329,6 +311,39 @@ class MCTS:
             steps=tuple(steps),
             leaf=node,
             backed_up_reward=node.reward,
+        )
+
+    def _profile_node(
+        self,
+        node: SearchNode,
+        iteration: int | None,
+        trigger: str,
+    ) -> None:
+        assert self.profiler is not None
+        self.profile_calls += 1
+        profile_call = self.profile_calls
+        self.events.emit(
+            "profiling_started",
+            {
+                "iteration": iteration,
+                "node_id": node.id,
+                "profile_level": "lightweight",
+                "profile_call": profile_call,
+                "trigger": trigger,
+            },
+        )
+        node.profile = dict(
+            self.profiler.lightweight_profile(node.evaluation, self.workload)
+        )
+        self.events.emit(
+            "node_profiled",
+            {
+                **self._node_payload(node, is_root=False),
+                "iteration": iteration,
+                "profile_level": "lightweight",
+                "profile_call": profile_call,
+                "trigger": trigger,
+            },
         )
 
     def _select_action(self, node: SearchNode) -> StrategyEdge:

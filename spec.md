@@ -1306,11 +1306,18 @@ profile if no cached profile exists
 
 The purpose of lightweight profiling is to guide the next LLM optimization step.
 
+After the search budget is exhausted, the final global-best node should also receive
+a lightweight profile before worker release if it has no cached profile. This single
+post-search diagnostic profile supports analysis of the winning kernel and remains
+separate from `B_gen` and `B_prior`. Do not reprofile the final best if it was already
+profiled during expansion.
+
 Conceptually:
 
 ```text
 timing evaluates nodes
 profiling informs expansions
+final-best profiling informs post-search analysis
 ```
 
 The initial implementation may use a small set of metrics such as:
