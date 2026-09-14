@@ -45,3 +45,18 @@ strategies:
         shared-memory layouts that avoid bank conflicts, and FP32 accumulators.
         Preserve the fixed ABI, launch configuration, tensor layouts, and exact output
         coverage. Do not introduce a cross-warp reduction of partial K accumulations.
+  - id: tensor_core_multi_accumulator
+    description: Increase tensor-core work per warp and operand-loading stage
+    prompts:
+      cuda_cpp: |
+        Redesign the BF16 tensor-core GEMM so each warp owns multiple independent
+        accumulator fragments and performs several MMA operations for every staged A
+        and B operand tile. Increase useful arithmetic per synchronization and
+        data-movement stage by reusing staged operands across a larger warp-level
+        output tile. Preserve FP32 accumulation, exact output ownership, the fixed ABI,
+        launch configuration, and tensor layouts. Safely group logical block
+        coordinates if a physical block covers a larger output region. Balance the
+        number of accumulator fragments against register pressure and occupancy, stay
+        within shared-memory limits, and retain effective double buffering or
+        asynchronous copies. Do not split K across warps or reduce partial
+        accumulations through shared memory.

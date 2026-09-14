@@ -9,9 +9,11 @@ def test_production_strategies_include_tensor_core_structural_actions() -> None:
     assert {
         "tensor_core_output_tiling",
         "pipeline_tensor_core_data_movement",
+        "tensor_core_multi_accumulator",
     } <= by_id.keys()
     for strategy_id in (
         "tensor_core_output_tiling",
         "pipeline_tensor_core_data_movement",
+        "tensor_core_multi_accumulator",
     ):
         assert by_id[strategy_id].prompt_for("cuda_cpp").strip()

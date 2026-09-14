@@ -108,6 +108,25 @@ Loads should be coalesced and, when alignment permits, vectorized or asynchronou
 Shared-memory layouts must avoid bank conflicts. The strategy should not recreate the
 cross-warp partial-K reduction that limited the observed WMMA design.
 
+### Multiple accumulator fragments per warp
+
+`tensor_core_multi_accumulator` asks each warp to own several independent accumulator
+fragments rather than only one 16 x 16 result. A staged A or B operand can then feed
+multiple MMA operations before the block waits for another global-memory transfer.
+This increases arithmetic work per pipeline stage and amortizes synchronization,
+address calculation, and copy latency.
+
+The strategy was added after the profiled B_gen=50 search produced a correct
+double-buffered `cp.async` kernel but measured less than 8% tensor-pipe utilization.
+That kernel performed only one 16 x 16 x 16 MMA per warp in each K stage, leaving
+little computation with which to hide operand-delivery latency.
+
+More accumulator fragments consume more registers, and larger physical output tiles
+may consume more shared memory. The generator must balance this reuse against
+occupancy and spilling. Each warp must retain unambiguous output ownership, and any
+grouping of the fixed logical block coordinates must avoid missing or duplicate
+writes.
+
 ## Interpreting the lightweight NCU profile
 
 The profile is evidence, not an automatic diagnosis. Useful relationships include:
@@ -133,7 +152,7 @@ can become a search node. A valid kernel may remain in the search even when it i
 slower than its parent. Invalid generations and repairs consume generation budget but
 are not backed up as measured rewards.
 
-The current production configuration contains seven strategies. `spec.md` describes
+The current production configuration contains eight strategies. `spec.md` describes
 an initial set of approximately 22 NVIDIA-derived prompts, so expanding and validating
 the strategy catalog remains future work rather than an implied change to MCTS
 semantics.
