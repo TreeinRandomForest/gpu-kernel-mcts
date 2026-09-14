@@ -72,6 +72,24 @@ def test_search_cli_parser_accepts_manual_volume_pair() -> None:
 
     assert arguments.network_volume_id == "volume-1"
     assert arguments.data_center_id == "EUR-IS-3"
+    assert arguments.c_puct == 1.5
+
+
+def test_search_cli_rejects_nonpositive_c_puct(capsys) -> None:
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--image",
+                "worker:v1",
+                "--trace",
+                "trace.sqlite",
+                "--c-puct",
+                "0",
+                "--confirm-create-and-terminate",
+            ]
+        )
+
+    assert "--c-puct must be positive" in capsys.readouterr().err
 
 
 def test_search_cli_parser_accepts_ephemeral_storage() -> None:
@@ -124,6 +142,7 @@ def test_search_cli_wires_nebius_without_runpod_credentials(
         return object()
 
     def fake_search(**values):
+        captured["search"] = values
         node = SimpleNamespace(program=KernelProgram("best"), reward=0.0)
         return SimpleNamespace(
             run_id="nebius-run",
@@ -162,6 +181,8 @@ def test_search_cli_wires_nebius_without_runpod_credentials(
             str(public_key),
             "--nebius-ssh-private-key",
             str(private_key),
+            "--c-puct",
+            "2.5",
             "--confirm-create-and-terminate",
         ]
     )
@@ -169,6 +190,7 @@ def test_search_cli_wires_nebius_without_runpod_credentials(
     assert result == 0
     assert captured["config"].project_id == "project-1"
     assert captured["config"].subnet_id == "subnet-1"
+    assert captured["search"]["mcts_config"].c_puct == 2.5
 
 
 def test_openai_search_requires_model_before_provisioning(
@@ -266,6 +288,8 @@ def test_openai_search_wires_configured_generator_and_exports_best(
             str(strategies),
             "--generation-budget",
             "3",
+            "--c-puct",
+            "12",
             "--network-volume-id",
             "volume-1",
             "--data-center-id",
@@ -286,6 +310,7 @@ def test_openai_search_wires_configured_generator_and_exports_best(
     assert search["generation_budget"] == 3
     assert search["model_name"] == "test-model"
     assert search["mcts_config"].max_repairs == 1
+    assert search["mcts_config"].c_puct == 12
     assert search["mcts_config"].max_infrastructure_retries == 1
     assert search["hardware"].required_profilers == ("ncu",)
     assert "OpenAI search completed" in capsys.readouterr().out

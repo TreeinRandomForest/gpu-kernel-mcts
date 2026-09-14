@@ -159,6 +159,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--llm-timeout", type=float, default=180.0)
     parser.add_argument("--max-repairs", type=int, default=1)
     parser.add_argument("--max-infrastructure-retries", type=int, default=1)
+    parser.add_argument("--c-puct", type=float, default=1.5)
     parser.add_argument("--k-max", type=int, default=4)
     parser.add_argument("--max-depth", type=int, default=10)
     parser.add_argument("--best-output", type=Path)
@@ -195,6 +196,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--confirm-create-and-terminate is required")
     if arguments.generation_budget < 1:
         parser.error("--generation-budget must be positive")
+    if arguments.c_puct <= 0:
+        parser.error("--c-puct must be positive")
     if arguments.best_output is not None and arguments.best_output.exists():
         parser.error(
             f"refusing to overwrite existing best output: {arguments.best_output}"
@@ -311,6 +314,7 @@ def _search_components(
             SmokeKernelGenerator(),
             None,
             MCTSConfig(
+                c_puct=arguments.c_puct,
                 k_max=1,
                 max_repairs=0,
                 max_depth=arguments.max_depth,
@@ -346,6 +350,7 @@ def _search_components(
         generator,
         arguments.model,
         MCTSConfig(
+            c_puct=arguments.c_puct,
             k_max=arguments.k_max,
             max_depth=arguments.max_depth,
             max_repairs=arguments.max_repairs,
