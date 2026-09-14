@@ -43,6 +43,7 @@ class LLMKernelGenerator:
             output_tokens=completion.output_tokens,
             latency_seconds=completion.latency_seconds,
             metadata=metadata,
+            instructions_text=completion.instructions_text,
         )
 
 

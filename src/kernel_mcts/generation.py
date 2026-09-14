@@ -29,6 +29,7 @@ class GenerationResult:
     latency_seconds: float | None = None
     metadata: Mapping[str, object] | None = None
     prompt_text: str | None = None
+    instructions_text: str | None = None
 
 
 class KernelGenerator(Protocol):

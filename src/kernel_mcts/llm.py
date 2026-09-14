@@ -13,6 +13,7 @@ class LLMCompletion:
     output_tokens: int | None = None
     latency_seconds: float | None = None
     metadata: Mapping[str, object] = field(default_factory=dict)
+    instructions_text: str | None = None
 
 
 class LLMClient(Protocol):

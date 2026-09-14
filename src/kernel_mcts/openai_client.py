@@ -8,6 +8,12 @@ from typing import Any
 from .llm import LLMCompletion
 
 
+OPENAI_GENERATION_INSTRUCTIONS = (
+    "Return only the complete replacement kernel source. "
+    "Do not use Markdown fences or explanatory prose."
+)
+
+
 @dataclass(frozen=True, slots=True)
 class OpenAIResponsesConfig:
     model: str
@@ -55,10 +61,7 @@ class OpenAIResponsesClient:
         started = perf_counter()
         response = self._client.responses.create(
             model=self.config.model,
-            instructions=(
-                "Return only the complete replacement kernel source. "
-                "Do not use Markdown fences or explanatory prose."
-            ),
+            instructions=OPENAI_GENERATION_INSTRUCTIONS,
             input=prompt,
             max_output_tokens=self.config.max_output_tokens,
             reasoning={"effort": self.config.reasoning_effort},
@@ -80,4 +83,5 @@ class OpenAIResponsesClient:
                 "max_output_tokens": self.config.max_output_tokens,
                 "store": self.config.store,
             },
+            instructions_text=OPENAI_GENERATION_INSTRUCTIONS,
         )

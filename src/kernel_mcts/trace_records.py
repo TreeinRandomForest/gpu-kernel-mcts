@@ -62,6 +62,7 @@ class GenerationRecord:
     correctness_status: CorrectnessStatus = CorrectnessStatus.NOT_TESTED
     prompt_hash: str | None = None
     prompt_text: str | None = None
+    instructions_text: str | None = None
     raw_output: str | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None

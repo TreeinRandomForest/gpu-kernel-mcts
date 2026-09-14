@@ -50,6 +50,7 @@ class FakeLLMClient:
             output_tokens=200,
             latency_seconds=1.5,
             metadata={"provider": "fake"},
+            instructions_text="fixed API instructions",
         )
 
 
@@ -87,6 +88,7 @@ def test_llm_generator_builds_complete_fresh_prompt_and_records_metadata() -> No
     assert result.input_tokens == 100
     assert result.output_tokens == 200
     assert result.latency_seconds == 1.5
+    assert result.instructions_text == "fixed API instructions"
     assert result.metadata == {
         "provider": "fake",
         "generator": "llm",

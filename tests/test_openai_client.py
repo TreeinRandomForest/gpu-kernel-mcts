@@ -4,7 +4,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from kernel_mcts.openai_client import OpenAIResponsesClient, OpenAIResponsesConfig
+from kernel_mcts.openai_client import (
+    OPENAI_GENERATION_INSTRUCTIONS,
+    OpenAIResponsesClient,
+    OpenAIResponsesConfig,
+)
 
 
 class FakeResponses:
@@ -43,13 +47,11 @@ def test_responses_client_makes_independent_unstored_request() -> None:
     assert result.output_tokens == 45
     assert result.latency_seconds is not None
     assert result.metadata["provider"] == "openai"
+    assert result.instructions_text == OPENAI_GENERATION_INSTRUCTIONS
     assert responses.calls == [
         {
             "model": "test-model",
-            "instructions": (
-                "Return only the complete replacement kernel source. "
-                "Do not use Markdown fences or explanatory prose."
-            ),
+            "instructions": OPENAI_GENERATION_INSTRUCTIONS,
             "input": "optimize this kernel",
             "max_output_tokens": 4096,
             "reasoning": {"effort": "high"},

@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS generations (
     correctness_status TEXT NOT NULL,
     prompt_hash TEXT,
     prompt_text TEXT,
+    api_instructions TEXT,
     raw_output TEXT,
     input_tokens INTEGER,
     output_tokens INTEGER,
@@ -159,7 +160,7 @@ CREATE TABLE IF NOT EXISTS iteration_steps (
 );
 """
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -179,6 +180,10 @@ SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "model_name": "TEXT",
 }
 
+GENERATION_ADDITIONAL_COLUMNS = {
+    "api_instructions": "TEXT",
+}
+
 
 class SQLiteTraceStore:
     def __init__(self, path: str | Path) -> None:
@@ -193,6 +198,7 @@ class SQLiteTraceStore:
         self.connection.executescript(SCHEMA)
         if current_version < SCHEMA_VERSION:
             self._migrate_search_runs()
+            self._migrate_generations()
             self.connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.connection.commit()
         self.run_id: str | None = None
@@ -239,6 +245,19 @@ class SQLiteTraceStore:
         for name, sql_type in SEARCH_RUN_ADDITIONAL_COLUMNS.items():
             if name not in existing:
                 self.connection.execute(f"ALTER TABLE search_runs ADD COLUMN {name} {sql_type}")
+
+    def _migrate_generations(self) -> None:
+        existing = {
+            row[1]
+            for row in self.connection.execute(
+                "PRAGMA table_info(generations)"
+            ).fetchall()
+        }
+        for name, sql_type in GENERATION_ADDITIONAL_COLUMNS.items():
+            if name not in existing:
+                self.connection.execute(
+                    f"ALTER TABLE generations ADD COLUMN {name} {sql_type}"
+                )
 
     def _materialize_event(
         self,
@@ -426,11 +445,11 @@ class SQLiteTraceStore:
                 strategy_id, repair_attempt, proposal_status, strategy_prior,
                 parent_visit_count, parent_action_q_mean, parent_action_q_max,
                 invalid_reason, compile_status, correctness_status, prompt_hash,
-                prompt_text, raw_output, input_tokens, output_tokens,
+                prompt_text, api_instructions, raw_output, input_tokens, output_tokens,
                 llm_latency_seconds, candidate_program, state_key, reward,
                 benchmark_json, metadata_json, worker_id,
                 environment_manifest_id, created_node_id, reused_node
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 payload["generation_id"],
@@ -450,6 +469,7 @@ class SQLiteTraceStore:
                 payload["correctness_status"],
                 payload.get("prompt_hash"),
                 payload.get("prompt_text"),
+                payload.get("api_instructions"),
                 payload.get("raw_output"),
                 payload.get("input_tokens"),
                 payload.get("output_tokens"),

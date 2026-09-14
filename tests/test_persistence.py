@@ -71,7 +71,7 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "iterations",
             "iteration_steps",
         } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -111,6 +111,29 @@ def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
         ).fetchone() == ("toy",)
 
 
+def test_trace_store_additively_migrates_generation_instructions(tmp_path) -> None:
+    path = tmp_path / "trace.sqlite"
+    with sqlite3.connect(path) as connection:
+        connection.execute("PRAGMA user_version = 3")
+        connection.execute(
+            """CREATE TABLE generations (
+                generation_id TEXT PRIMARY KEY,
+                run_id TEXT NOT NULL,
+                b_gen INTEGER NOT NULL
+            )"""
+        )
+
+    with SQLiteTraceStore(path):
+        pass
+
+    with sqlite3.connect(path) as connection:
+        columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(generations)").fetchall()
+        }
+        assert "api_instructions" in columns
+
+
 def test_trace_store_rejects_newer_schema(tmp_path) -> None:
     path = tmp_path / "trace.sqlite"
     with sqlite3.connect(path) as connection:
@@ -148,6 +171,7 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
                 KernelProgram(str(value)),
                 "prompt-hash",
                 prompt_text="full generation prompt",
+                instructions_text="fixed API instructions",
                 input_tokens=10,
                 output_tokens=5,
             )
@@ -219,9 +243,16 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
         ).fetchone() == (1.5, 2.0)
         assert connection.execute(
             "SELECT compile_status, correctness_status, input_tokens, output_tokens, "
-            "prompt_text "
+            "prompt_text, api_instructions "
             "FROM generations ORDER BY b_gen LIMIT 1"
-        ).fetchone() == ("SUCCESS", "PASS", 10, 5, "full generation prompt")
+        ).fetchone() == (
+            "SUCCESS",
+            "PASS",
+            10,
+            5,
+            "full generation prompt",
+            "fixed API instructions",
+        )
         assert connection.execute(
             "SELECT profile_json FROM nodes WHERE node_id = ?",
             (result.root.id,),
