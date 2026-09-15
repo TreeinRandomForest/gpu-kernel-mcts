@@ -30,6 +30,21 @@
       <div id="graph-container"><svg id="graph" role="img" aria-label="MCTS search graph"><g id="viewport"></g></svg></div>
       <p class="hint">Click a kernel for A; Shift-click for B. Drag to pan and scroll to zoom.</p>
     </section>
+    <section class="analysis-grid">
+      <article class="panel">
+        <div class="panel-title"><h2>Iteration playback</h2><button id="play-iterations">Play</button></div>
+        <label class="iteration-control">Iteration <input id="iteration-slider" type="range" min="0" max="0" value="0"><output id="iteration-value">0</output></label>
+        <div id="iteration-summary" class="metadata">No completed iterations.</div>
+        <svg id="reward-timeline" role="img" aria-label="Cumulative best reward by generation budget"></svg>
+      </article>
+      <article class="panel">
+        <h2>Strategy outcomes</h2>
+        <p class="hint">Calls include repairs. Proposal outcomes are terminal iteration outcomes.</p>
+        <div class="table-wrap"><table id="strategy-table">
+          <thead><tr><th>Strategy</th><th>Visits</th><th>Calls</th><th>Repairs</th><th>Valid calls</th><th>Valid proposals</th><th>Mean reward</th><th>Best reward</th></tr></thead><tbody></tbody>
+        </table></div>
+      </article>
+    </section>
     <section class="panel" id="decision-panel">
       <div class="panel-title">
         <h2>Selection decision</h2>

@@ -37,6 +37,8 @@ completed hardware validation is identified explicitly.
 - [x] Nebius H100 SXM VM provider with an SSH-tunneled, NCU-capable worker container and exception-safe VM/disk deletion.
 - [x] Exact immutable PUCT, progressive-widening, and UCB decision snapshots with
   browser-based decision-math inspection.
+- [x] Trace-browser iteration playback, cumulative-best timeline, and per-strategy
+  visit, validity, repair, and reward summaries.
 
 ## Next
 
@@ -46,8 +48,8 @@ completed hardware validation is identified explicitly.
 - [ ] Add periodic root/global-best remeasurement and environment-drift handling.
 - [ ] Add strategy applicability metadata and filter actions by operation, dtype,
   backend, hardware capabilities, and workload constraints before MCTS selection.
-- [ ] Extend the local trace browser with iteration playback, cross-run comparison,
-  strategy diagnostics, and exact decision-math views once those records exist.
+- [ ] Extend the local trace browser with cross-run comparison and export of selected
+  paths, kernels, diffs, and profiles.
 
 ## Validation status
 

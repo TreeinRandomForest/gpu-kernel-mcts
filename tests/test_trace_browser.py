@@ -191,6 +191,58 @@ def test_graph_exposes_exact_selection_decision_candidates(tmp_path) -> None:
     assert decision["ucb_candidates"][0]["selected"] == 1
 
 
+def test_graph_analysis_builds_playback_and_strategy_summaries(tmp_path) -> None:
+    path = _browser_trace(tmp_path)
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "UPDATE generations SET iteration = 1 WHERE generation_id = 'g-left'"
+        )
+        connection.execute(
+            """INSERT INTO generations(
+                generation_id, run_id, iteration, b_gen, parent_node_id,
+                strategy_id, repair_attempt, proposal_status, invalid_reason,
+                compile_status, correctness_status, metadata_json, reused_node
+            ) VALUES ('g-repair', 'run-1', 2, 2, 'root', 'tile', 1,
+                      'INVALID', 'COMPILE_FAILURE', 'FAIL', 'NOT_TESTED', '{}', 0)"""
+        )
+        connection.executemany(
+            """INSERT INTO iterations(
+                run_id, iteration, status, selected_strategy_id, leaf_node_id,
+                backed_up_reward, b_gen, b_prior
+            ) VALUES ('run-1', ?, ?, ?, ?, ?, ?, 0)""",
+            [
+                (1, "VALID", "tile", "left", 0.4, 1),
+                (2, "INVALID", "tile", None, None, 2),
+                (3, "VALID", "stage", "right", 0.7, 3),
+            ],
+        )
+
+    catalog = TraceCatalog(tmp_path)
+    trace_id = catalog.list_traces()[0]["trace_id"]
+    graph = catalog.graph(trace_id, "run-1")
+
+    assert next(node for node in graph["nodes"] if node["node_id"] == "left")[
+        "created_iteration"
+    ] == 1
+    assert next(
+        edge
+        for edge in graph["realizations"]
+        if edge["parent_node_id"] == "root" and edge["child_node_id"] == "left"
+    )["created_iteration"] == 1
+    timeline = graph["analysis"]["timeline"]
+    assert [item["cumulative_best_reward"] for item in timeline] == [0.4, 0.4, 0.7]
+    assert timeline[-1]["cumulative_best_node_id"] == "right"
+    tile = next(
+        item for item in graph["analysis"]["strategies"] if item["strategy_id"] == "tile"
+    )
+    assert tile["calls"] == 2
+    assert tile["repair_calls"] == 1
+    assert tile["valid_calls"] == 1
+    assert tile["invalid_calls"] == 1
+    assert tile["completed_proposals"] == 2
+    assert tile["valid_outcomes"] == 1
+
+
 def test_trace_directory_must_exist(tmp_path) -> None:
     with pytest.raises(TraceBrowserError, match="does not exist"):
         TraceCatalog(tmp_path / "missing")

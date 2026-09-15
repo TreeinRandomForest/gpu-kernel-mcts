@@ -107,7 +107,7 @@ class TraceCatalog:
                 (run_id,),
             ).fetchall()
             failures = connection.execute(
-                """SELECT generation_id, b_gen, repair_attempt, parent_node_id,
+                """SELECT generation_id, iteration, b_gen, repair_attempt, parent_node_id,
                           strategy_id, proposal_status, invalid_reason, compile_status,
                           correctness_status
                    FROM generations
@@ -117,6 +117,30 @@ class TraceCatalog:
             ).fetchall()
             root_id = self._root_id(connection, run_id, nodes, realizations)
             depths = self._depths(root_id, realizations)
+            creation_iterations = {
+                str(row["created_node_id"]): int(row["created_iteration"])
+                for row in connection.execute(
+                    """SELECT created_node_id, min(iteration) AS created_iteration
+                       FROM generations
+                       WHERE run_id = ? AND created_node_id IS NOT NULL
+                             AND iteration IS NOT NULL
+                       GROUP BY created_node_id""",
+                    (run_id,),
+                ).fetchall()
+            }
+            realization_iterations = {
+                (str(row["parent_node_id"]), str(row["strategy_id"]), str(row["created_node_id"])):
+                int(row["created_iteration"])
+                for row in connection.execute(
+                    """SELECT parent_node_id, strategy_id, created_node_id,
+                              min(iteration) AS created_iteration
+                       FROM generations
+                       WHERE run_id = ? AND created_node_id IS NOT NULL
+                             AND iteration IS NOT NULL
+                       GROUP BY parent_node_id, strategy_id, created_node_id""",
+                    (run_id,),
+                ).fetchall()
+            }
             action_visits: dict[str, int] = {}
             for strategy in strategies:
                 parent = str(strategy["parent_node_id"])
@@ -145,13 +169,31 @@ class TraceCatalog:
                         ),
                         "profiled": row["profile_json"] is not None,
                         "depth": depths.get(str(row["node_id"])),
+                        "created_iteration": (
+                            0
+                            if str(row["node_id"]) == root_id
+                            else creation_iterations.get(str(row["node_id"]))
+                        ),
                         "action_visits": action_visits.get(str(row["node_id"]), 0),
                     }
                     for row in nodes
                 ],
                 "strategies": [self._strategy(row) for row in strategies],
-                "realizations": [dict(row) for row in realizations],
+                "realizations": [
+                    {
+                        **dict(row),
+                        "created_iteration": realization_iterations.get(
+                            (
+                                str(row["parent_node_id"]),
+                                str(row["strategy_id"]),
+                                str(row["child_node_id"]),
+                            )
+                        ),
+                    }
+                    for row in realizations
+                ],
                 "failures": [dict(row) for row in failures],
+                "analysis": self._analysis(connection, run_id, root_id, nodes),
             }
 
     def node(self, trace_id: str, run_id: str, node_id: str) -> dict[str, object]:
@@ -301,6 +343,121 @@ class TraceCatalog:
             ]
             decisions.append(decision)
         return decisions
+
+    def _analysis(
+        self,
+        connection: sqlite3.Connection,
+        run_id: str,
+        root_id: str | None,
+        nodes: Sequence[sqlite3.Row],
+    ) -> dict[str, object]:
+        node_by_id = {str(row["node_id"]): row for row in nodes}
+        root_reward = (
+            float(node_by_id[root_id]["reward"])
+            if root_id is not None and root_id in node_by_id
+            else 0.0
+        )
+        best_reward = root_reward
+        best_node_id = root_id
+        timeline: list[dict[str, object]] = []
+        for row in connection.execute(
+            """SELECT iteration, status, selected_strategy_id, leaf_node_id,
+                      backed_up_reward, b_gen, b_prior
+               FROM iterations WHERE run_id = ? ORDER BY iteration""",
+            (run_id,),
+        ).fetchall():
+            leaf_id = str(row["leaf_node_id"]) if row["leaf_node_id"] is not None else None
+            reward = row["backed_up_reward"]
+            if reward is not None and float(reward) > best_reward:
+                best_reward = float(reward)
+                best_node_id = leaf_id
+            best_node = node_by_id.get(best_node_id) if best_node_id is not None else None
+            benchmark = _json_value(best_node["benchmark_json"], {}) if best_node else {}
+            timeline.append(
+                {
+                    **dict(row),
+                    "cumulative_best_reward": best_reward,
+                    "cumulative_best_speedup": math.exp(best_reward),
+                    "cumulative_best_node_id": best_node_id,
+                    "cumulative_best_median_us": (
+                        benchmark.get("median_us") if isinstance(benchmark, Mapping) else None
+                    ),
+                }
+            )
+
+        edge_rows = connection.execute(
+            """SELECT strategy_id, sum(visits) AS visits,
+                      sum(proposal_count) AS proposals,
+                      sum(generation_attempt_count) AS generation_attempts,
+                      sum(repair_generation_count) AS repair_generations,
+                      sum(valid_proposal_count) AS valid_proposals,
+                      sum(invalid_proposal_count) AS invalid_proposals,
+                      count(*) AS parent_edges
+               FROM strategy_edges WHERE run_id = ? GROUP BY strategy_id""",
+            (run_id,),
+        ).fetchall()
+        generation_rows = {
+            str(row["strategy_id"]): row
+            for row in connection.execute(
+                """SELECT strategy_id, count(*) AS calls,
+                          sum(CASE WHEN repair_attempt > 0 THEN 1 ELSE 0 END) AS repair_calls,
+                          sum(CASE WHEN proposal_status = 'VALID' THEN 1 ELSE 0 END) AS valid_calls,
+                          sum(CASE WHEN proposal_status = 'INVALID' THEN 1 ELSE 0 END) AS invalid_calls,
+                          sum(CASE WHEN proposal_status = 'INFRASTRUCTURE_FAILURE' THEN 1 ELSE 0 END) AS infrastructure_calls,
+                          avg(CASE WHEN proposal_status = 'VALID' THEN reward END) AS mean_valid_reward,
+                          max(CASE WHEN proposal_status = 'VALID' THEN reward END) AS max_valid_reward
+                   FROM generations WHERE run_id = ? GROUP BY strategy_id""",
+                (run_id,),
+            ).fetchall()
+        }
+        iteration_rows = {
+            str(row["selected_strategy_id"]): row
+            for row in connection.execute(
+                """SELECT selected_strategy_id, count(*) AS completed_proposals,
+                          sum(CASE WHEN status = 'VALID' THEN 1 ELSE 0 END) AS valid_outcomes,
+                          sum(CASE WHEN status = 'INVALID' THEN 1 ELSE 0 END) AS invalid_outcomes,
+                          sum(CASE WHEN status = 'INFRASTRUCTURE_FAILURE' THEN 1 ELSE 0 END) AS infrastructure_outcomes
+                   FROM iterations
+                   WHERE run_id = ? AND selected_strategy_id IS NOT NULL
+                   GROUP BY selected_strategy_id""",
+                (run_id,),
+            ).fetchall()
+        }
+        strategy_ids = sorted(
+            {str(row["strategy_id"]) for row in edge_rows}
+            | set(generation_rows)
+            | set(iteration_rows)
+        )
+        edges = {str(row["strategy_id"]): row for row in edge_rows}
+        analytics = []
+        for strategy_id in strategy_ids:
+            edge = edges.get(strategy_id)
+            calls = generation_rows.get(strategy_id)
+            outcomes = iteration_rows.get(strategy_id)
+            analytics.append(
+                {
+                    "strategy_id": strategy_id,
+                    **self._row_with_defaults(
+                        edge,
+                        ("visits", "proposals", "generation_attempts", "repair_generations", "valid_proposals", "invalid_proposals", "parent_edges"),
+                    ),
+                    **self._row_with_defaults(
+                        calls,
+                        ("calls", "repair_calls", "valid_calls", "invalid_calls", "infrastructure_calls", "mean_valid_reward", "max_valid_reward"),
+                    ),
+                    **self._row_with_defaults(
+                        outcomes,
+                        ("completed_proposals", "valid_outcomes", "invalid_outcomes", "infrastructure_outcomes"),
+                    ),
+                }
+            )
+        return {"timeline": timeline, "strategies": analytics}
+
+    @staticmethod
+    def _row_with_defaults(
+        row: sqlite3.Row | None, fields: Sequence[str]
+    ) -> dict[str, object]:
+        return {field: (row[field] if row is not None else None) for field in fields}
 
     def _run_summaries(self, connection: sqlite3.Connection) -> list[dict[str, object]]:
         return [

@@ -2,7 +2,7 @@
 
 const state = {
   traces: [], trace: null, run: null, graph: null, a: null, b: null,
-  scale: 1, x: 30, y: 30,
+  scale: 1, x: 30, y: 30, iteration: 0, playTimer: null,
 };
 const $ = id => document.getElementById(id);
 const query = values => new URLSearchParams(values).toString();
@@ -49,6 +49,11 @@ function chooseTrace() {
 }
 
 async function loadRun() {
+  if (state.playTimer) {
+    clearInterval(state.playTimer);
+    state.playTimer = null;
+    $("play-iterations").textContent = "Play";
+  }
   state.run = $("run-select").value;
   state.a = null;
   state.b = null;
@@ -62,12 +67,107 @@ async function loadRun() {
       ? "Decision-time PUCT/UCB scores available."
       : "Edge values shown are final statistics. Existing traces do not contain exact historical PUCT/UCB candidate scores.";
     clearSelections();
+    loadAnalysis();
     loadDecisions();
     renderGraph();
     fitGraph();
   } catch (error) {
     showError(error);
   }
+}
+
+function loadAnalysis() {
+  const analysis = state.graph.analysis || {timeline: [], strategies: []};
+  const maximum = analysis.timeline.length
+    ? Math.max(...analysis.timeline.map(item => item.iteration))
+    : 0;
+  state.iteration = maximum;
+  $("iteration-slider").max = maximum;
+  $("iteration-slider").value = maximum;
+  $("iteration-value").textContent = maximum;
+  showIteration();
+  drawTimeline();
+  $("strategy-table").querySelector("tbody").innerHTML = analysis.strategies.map(row => {
+    const callRate = row.calls ? `${row.valid_calls}/${row.calls}` : "—";
+    const proposalRate = row.completed_proposals ? `${row.valid_outcomes}/${row.completed_proposals}` : "—";
+    return `<tr><td>${escapeHtml(row.strategy_id)}</td><td>${row.visits ?? 0}</td>` +
+      `<td>${row.calls ?? 0}</td><td>${row.repair_calls ?? 0}</td><td>${callRate}</td>` +
+      `<td>${proposalRate}</td><td>${number(row.mean_valid_reward)}</td>` +
+      `<td>${number(row.max_valid_reward)}</td></tr>`;
+  }).join("");
+}
+
+function showIteration() {
+  const timeline = state.graph?.analysis?.timeline || [];
+  const point = timeline.find(item => item.iteration === state.iteration);
+  $("iteration-value").textContent = state.iteration;
+  if (!point) {
+    $("iteration-summary").textContent = state.iteration === 0
+      ? "Root state before the first iteration."
+      : "No completed iteration record.";
+  } else {
+    $("iteration-summary").textContent = `status ${point.status} · B_gen ${point.b_gen} · ` +
+      `strategy ${point.selected_strategy_id || "—"} · backed-up reward ${number(point.backed_up_reward)} · ` +
+      `best ${number(point.cumulative_best_speedup, 3)}× (${short(point.cumulative_best_node_id)})`;
+    const decisions = state.graph.selection_decisions || [];
+    const decisionIndex = decisions.findIndex(item => item.iteration === state.iteration);
+    if (decisionIndex >= 0) {
+      $("decision-select").value = String(decisionIndex);
+      showDecision(decisionIndex);
+    }
+  }
+  renderGraph();
+  drawTimeline();
+}
+
+function drawTimeline() {
+  const svg = $("reward-timeline");
+  const timeline = state.graph?.analysis?.timeline || [];
+  svg.innerHTML = "";
+  if (!timeline.length) return;
+  const width = 600, height = 170, left = 42, right = 12, top = 12, bottom = 28;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  const maximumX = Math.max(1, ...timeline.map(item => item.b_gen));
+  const rewards = [0, ...timeline.map(item => item.cumulative_best_reward)];
+  const minimumY = Math.min(...rewards), maximumY = Math.max(...rewards);
+  const spanY = Math.max(0.1, maximumY - minimumY);
+  const x = value => left + value / maximumX * (width - left - right);
+  const y = value => top + (maximumY - value) / spanY * (height - top - bottom);
+  svg.appendChild(svgElement("path", {d: `M${left},${top} V${height-bottom} H${width-right}`, class: "timeline-axis"}));
+  const path = timeline.map((item, index) => `${index ? "L" : "M"}${x(item.b_gen)},${y(item.cumulative_best_reward)}`).join(" ");
+  svg.appendChild(svgElement("path", {d: path, class: "timeline-line"}));
+  timeline.forEach(item => {
+    const point = svgElement("circle", {cx: x(item.b_gen), cy: y(item.cumulative_best_reward), r: 4, class: "timeline-point"});
+    point.addEventListener("click", () => setIteration(item.iteration));
+    hover(point, `iteration ${item.iteration}\nB_gen ${item.b_gen}\nbest reward ${number(item.cumulative_best_reward)}\n${number(item.cumulative_best_speedup, 3)}×`);
+    svg.appendChild(point);
+  });
+  const current = timeline.find(item => item.iteration === state.iteration);
+  if (current) svg.appendChild(svgElement("line", {x1: x(current.b_gen), x2: x(current.b_gen), y1: top, y2: height-bottom, class: "timeline-current"}));
+  const xLabel = svgElement("text", {x: width-right, y: height-8, "text-anchor": "end", class: "graph-label graph-sub"});
+  xLabel.textContent = `B_gen ${maximumX}`; svg.appendChild(xLabel);
+  const yLabel = svgElement("text", {x: 5, y: top+8, class: "graph-label graph-sub"});
+  yLabel.textContent = `r ${number(maximumY, 2)}`; svg.appendChild(yLabel);
+}
+
+function setIteration(value) {
+  state.iteration = Number(value);
+  $("iteration-slider").value = state.iteration;
+  showIteration();
+}
+
+function togglePlayback() {
+  if (state.playTimer) {
+    clearInterval(state.playTimer); state.playTimer = null; $("play-iterations").textContent = "Play"; return;
+  }
+  const maximum = Number($("iteration-slider").max);
+  if (!maximum) return;
+  if (state.iteration >= maximum) setIteration(0);
+  $("play-iterations").textContent = "Pause";
+  state.playTimer = setInterval(() => {
+    if (state.iteration >= maximum) { togglePlayback(); return; }
+    setIteration(state.iteration + 1);
+  }, 700);
 }
 
 function loadDecisions() {
@@ -120,14 +220,20 @@ function clearSelections() {
 function visibleGraph() {
   const maxDepth = $("max-depth").value === "" ? Infinity : Number($("max-depth").value);
   const minVisits = Number($("min-visits").value || 0);
-  const nodes = state.graph.nodes.filter(node => node.depth == null || node.depth <= maxDepth);
+  const nodes = state.graph.nodes.filter(node =>
+    (node.depth == null || node.depth <= maxDepth) &&
+    (node.created_iteration == null || node.created_iteration <= state.iteration)
+  );
   const nodeIds = new Set(nodes.map(node => node.node_id));
   const realizations = state.graph.realizations.filter(edge =>
-    nodeIds.has(edge.parent_node_id) && nodeIds.has(edge.child_node_id) && edge.descents >= minVisits
+    nodeIds.has(edge.parent_node_id) && nodeIds.has(edge.child_node_id) && edge.descents >= minVisits &&
+    (edge.created_iteration == null || edge.created_iteration <= state.iteration)
   );
   const keys = new Set(realizations.map(edge => `${edge.parent_node_id}\u0000${edge.strategy_id}`));
   const failures = $("show-failures").checked && minVisits === 0
-    ? state.graph.failures.filter(item => nodeIds.has(item.parent_node_id))
+    ? state.graph.failures.filter(item =>
+      nodeIds.has(item.parent_node_id) && (item.iteration == null || item.iteration <= state.iteration)
+    )
     : [];
   failures.forEach(item => keys.add(`${item.parent_node_id}\u0000${item.strategy_id}`));
   const strategies = state.graph.strategies.filter(item =>
@@ -365,6 +471,8 @@ $("run-select").addEventListener("change", loadRun);
 $("reload").addEventListener("click", loadCatalog);
 $("fit-graph").addEventListener("click", fitGraph);
 $("decision-select").addEventListener("change", event => showDecision(event.target.value));
+$("iteration-slider").addEventListener("input", event => setIteration(event.target.value));
+$("play-iterations").addEventListener("click", togglePlayback);
 ["max-depth", "min-visits", "show-failures"].forEach(id => $(id).addEventListener("change", renderGraph));
 installPanZoom();
 loadCatalog().catch(showError);

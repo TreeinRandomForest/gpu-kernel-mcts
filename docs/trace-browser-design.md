@@ -69,9 +69,9 @@ selection, budgets, evaluation, or backup.
 
 ## Phase 4: algorithm analysis
 
-- Add iteration playback and a cumulative-best-reward timeline.
+- Add iteration playback and a cumulative-best-reward timeline. **Implemented.**
 - Compare runs with different strategy sets, priors, `c_puct`, or generation budgets.
-- Plot strategy validity, repair, visit, and reward distributions.
+- Plot strategy validity, repair, visit, and reward summaries. **Implemented.**
 - Add exact decision-math tables after Phase 3 traces exist.
 - Export selected paths, kernels, diffs, and profiles for experiment reports.
 

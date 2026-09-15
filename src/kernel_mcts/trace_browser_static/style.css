@@ -33,9 +33,15 @@ button:hover { border-color: var(--blue); }
 .failure-box { fill: #3b1719; stroke: var(--red); }
 .graph-label { fill: var(--text); font: 11px ui-monospace, monospace; pointer-events: none; }
 .graph-sub { fill: var(--muted); font-size: 10px; }
-.selection-grid, .comparison-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.selection-grid, .comparison-grid, .analysis-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
 .decision-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; }
 .selected-row { background: #173b2b; color: #aff5b4; }
+.iteration-control { display: grid; grid-template-columns: auto 1fr auto; margin: 12px 0; }
+#reward-timeline { width: 100%; height: 170px; background: #0d1117; border: 1px solid var(--border); border-radius: 5px; }
+.timeline-axis { stroke: #6e7681; stroke-width: 1; }
+.timeline-line { fill: none; stroke: var(--green); stroke-width: 2.5; }
+.timeline-point { fill: var(--green); cursor: pointer; }
+.timeline-current { stroke: var(--gold); stroke-width: 2; }
 .node-panel { min-height: 360px; }
 .metadata { color: var(--muted); padding: 8px 0; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -54,6 +60,6 @@ th:first-child, td:first-child { text-align: left; }
 #tooltip { position: fixed; z-index: 20; pointer-events: none; max-width: 360px; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: #010409; box-shadow: 0 4px 20px #000; white-space: pre-line; font-size: 12px; }
 @media (max-width: 900px) {
   header { align-items: flex-start; flex-direction: column; }
-  .selection-grid, .comparison-grid, .decision-grid { grid-template-columns: 1fr; }
+  .selection-grid, .comparison-grid, .analysis-grid, .decision-grid { grid-template-columns: 1fr; }
   #graph-container { height: 420px; }
 }
