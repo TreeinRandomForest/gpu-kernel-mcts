@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 
 from kernel_mcts.budget import GenerationBudget
 import pytest
@@ -349,6 +350,49 @@ def test_puct_uses_priors_after_an_action_visit() -> None:
     )
 
     assert mcts._select_action(node).strategy_id == "high-prior"
+
+
+def test_selection_score_snapshots_use_exact_puct_and_ucb_terms() -> None:
+    node = SearchNode("root", valid_evaluation("0", "state:0", 0.0))
+    first = StrategyEdge("a", 0.75, visits=3, value_sum=6.0, q_max=3.0)
+    second = StrategyEdge("b", 0.25, visits=1, value_sum=1.0, q_max=1.5)
+    node.actions = {"a": first, "b": second}
+    first.realizations = {
+        "child-a": RealizationEdge("child-a", descents=2, value_sum=3.0),
+        "child-b": RealizationEdge("child-b", descents=1, value_sum=2.0),
+    }
+    mcts = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        config=MCTSConfig(c_puct=2.0, c_ucb=1.25),
+        seed=0,
+    )
+
+    selected, puct, total = mcts._select_action_with_scores(node)
+    assert total == 4
+    assert selected.strategy_id == "a"
+    first_score = next(item for item in puct if item["strategy_id"] == "a")
+    assert first_score["exploit_term"] == 2.0
+    assert first_score["explore_term"] == pytest.approx(2.0 * 0.75 * 2.0 / 4.0)
+    assert first_score["total_score"] == pytest.approx(
+        first_score["exploit_term"] + first_score["explore_term"]
+    )
+
+    realization, ucb = mcts._select_realization_with_scores(first)
+    expected = {
+        item["child_node_id"]: item["q_mean"]
+        + 1.25 * math.sqrt(math.log1p(3) / (1 + item["descents"]))
+        for item in ucb
+    }
+    assert realization.child_id == max(expected, key=expected.get)
+    assert all(
+        item["total_score"] == pytest.approx(expected[item["child_node_id"]])
+        for item in ucb
+    )
 
 
 class FixedGenerator:

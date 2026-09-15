@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kernel MCTS Trace Explorer</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div><h1>Kernel MCTS Trace Explorer</h1><p id="run-summary">Choose a trace and run.</p></div>
+    <div class="selectors">
+      <label>Trace <select id="trace-select"></select></label>
+      <label>Run <select id="run-select"></select></label>
+      <button id="reload">Reload</button>
+    </div>
+  </header>
+  <main>
+    <section class="graph-panel panel">
+      <div class="panel-title">
+        <h2>MCTS DAG</h2>
+        <div class="filters">
+          <label>Max depth <input id="max-depth" type="number" min="0" placeholder="all"></label>
+          <label>Min descents <input id="min-visits" type="number" min="0" value="0"></label>
+          <label><input id="show-failures" type="checkbox" checked> failures</label>
+          <button id="fit-graph">Fit</button>
+        </div>
+      </div>
+      <p class="notice" id="score-notice"></p>
+      <div id="graph-container"><svg id="graph" role="img" aria-label="MCTS search graph"><g id="viewport"></g></svg></div>
+      <p class="hint">Click a kernel for A; Shift-click for B. Drag to pan and scroll to zoom.</p>
+    </section>
+    <section class="panel" id="decision-panel">
+      <div class="panel-title">
+        <h2>Selection decision</h2>
+        <label>Iteration / step <select id="decision-select"></select></label>
+      </div>
+      <div id="decision-summary" class="metadata">This trace has no exact decision snapshots.</div>
+      <div class="decision-grid">
+        <div><h3>PUCT candidates</h3><div class="table-wrap"><table id="puct-table">
+          <thead><tr><th>Strategy</th><th>P</th><th>N</th><th>Q</th><th>Explore</th><th>Total</th></tr></thead><tbody></tbody>
+        </table></div></div>
+        <div><h3>UCB realizations</h3><div class="table-wrap"><table id="ucb-table">
+          <thead><tr><th>Child</th><th>N</th><th>Q</th><th>Explore</th><th>Total</th></tr></thead><tbody></tbody>
+        </table></div></div>
+      </div>
+    </section>
+    <section class="selection-grid">
+      <article class="panel node-panel">
+        <div class="panel-title"><h2>Node A</h2><span id="node-a-title">not selected</span></div>
+        <div id="node-a-meta" class="metadata"></div>
+        <details><summary>Profile</summary><pre id="node-a-profile"></pre></details>
+        <pre id="node-a-source" class="source"></pre>
+      </article>
+      <article class="panel node-panel">
+        <div class="panel-title"><h2>Node B</h2><span id="node-b-title">Shift-click a node</span></div>
+        <div id="node-b-meta" class="metadata"></div>
+        <details><summary>Profile</summary><pre id="node-b-profile"></pre></details>
+        <pre id="node-b-source" class="source"></pre>
+      </article>
+    </section>
+    <section class="comparison-grid">
+      <article class="panel"><h2>Strategy relationship</h2><div id="relationship" class="relationship empty">Select two nodes.</div></article>
+      <article class="panel">
+        <h2>Profile comparison (B − A)</h2>
+        <div class="table-wrap"><table id="profile-table">
+          <thead><tr><th>Metric</th><th>A</th><th>B</th><th>Delta</th><th>%</th></tr></thead><tbody></tbody>
+        </table></div>
+      </article>
+    </section>
+    <section class="panel"><h2>Source diff (A → B)</h2><pre id="source-diff" class="source diff">Select two nodes.</pre></section>
+  </main>
+  <div id="tooltip" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>

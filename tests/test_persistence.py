@@ -1,3 +1,4 @@
+import math
 import sqlite3
 
 import pytest
@@ -70,8 +71,11 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "realization_edges",
             "iterations",
             "iteration_steps",
+            "selection_decisions",
+            "puct_candidates",
+            "ucb_candidates",
         } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -225,6 +229,9 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
         assert connection.execute("SELECT count(*) FROM nodes").fetchone() == (3,)
         assert connection.execute("SELECT count(*) FROM iterations").fetchone() == (2,)
         assert connection.execute("SELECT count(*) FROM iteration_steps").fetchone() == (3,)
+        assert connection.execute("SELECT count(*) FROM selection_decisions").fetchone() == (3,)
+        assert connection.execute("SELECT count(*) FROM puct_candidates").fetchone() == (3,)
+        assert connection.execute("SELECT count(*) FROM ucb_candidates").fetchone() == (1,)
         assert connection.execute("SELECT count(*) FROM strategy_edges").fetchone() == (2,)
         assert connection.execute("SELECT count(*) FROM realization_edges").fetchone() == (2,)
         assert connection.execute(
@@ -236,6 +243,22 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
             "SELECT selection_mode FROM iteration_steps "
             "WHERE iteration = 2 ORDER BY step"
         ).fetchall() == [("UCB",), ("EXPAND",)]
+        assert connection.execute(
+            """SELECT selection_mode, total_action_visits, existing_children,
+                      allowed_children
+               FROM selection_decisions WHERE iteration = 2 ORDER BY step"""
+        ).fetchall() == [("UCB", 1, 1, 1), ("EXPAND", 0, 0, 1)]
+        puct = connection.execute(
+            """SELECT exploit_term, explore_term, total_score, selected
+               FROM puct_candidates WHERE iteration = 2 AND step = 0"""
+        ).fetchone()
+        assert puct == pytest.approx((1.0, 0.75, 1.75, 1))
+        ucb = connection.execute(
+            """SELECT exploit_term, explore_term, total_score, selected
+               FROM ucb_candidates WHERE iteration = 2 AND step = 0"""
+        ).fetchone()
+        ucb_explore = math.sqrt(math.log1p(1) / 2)
+        assert ucb == pytest.approx((1.0, ucb_explore, 1.0 + ucb_explore, 1))
         assert connection.execute(
             "SELECT q_mean, q_max FROM strategy_edges "
             "WHERE parent_node_id = ? AND strategy_id = 'increment'",

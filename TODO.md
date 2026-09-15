@@ -35,6 +35,8 @@ completed hardware validation is identified explicitly.
 - [x] Lazy Nsight Compute metric extraction cached per node/environment and supplied to generation prompts.
 - [x] Ephemeral RunPod storage mode without network-volume data-center affinity.
 - [x] Nebius H100 SXM VM provider with an SSH-tunneled, NCU-capable worker container and exception-safe VM/disk deletion.
+- [x] Exact immutable PUCT, progressive-widening, and UCB decision snapshots with
+  browser-based decision-math inspection.
 
 ## Next
 
@@ -44,6 +46,8 @@ completed hardware validation is identified explicitly.
 - [ ] Add periodic root/global-best remeasurement and environment-drift handling.
 - [ ] Add strategy applicability metadata and filter actions by operation, dtype,
   backend, hardware capabilities, and workload constraints before MCTS selection.
+- [ ] Extend the local trace browser with iteration playback, cross-run comparison,
+  strategy diagnostics, and exact decision-math views once those records exist.
 
 ## Validation status
 

@@ -19,6 +19,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "kernel_mcts.benchmarks" = ["kernels/*.cu"]
+"kernel_mcts.trace_browser_static" = ["*.html", "*.css", "*.js"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

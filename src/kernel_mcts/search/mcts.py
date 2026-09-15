@@ -65,6 +65,11 @@ class SelectionStep:
     strategy_id: str
     selection_mode: SelectionMode
     child_node_id: str | None = None
+    total_action_visits: int = 0
+    puct_candidates: tuple[Mapping[str, object], ...] = ()
+    existing_children: int = 0
+    allowed_children: int = 0
+    ucb_candidates: tuple[Mapping[str, object], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,10 +254,14 @@ class MCTS:
         seen = {node.id}
         while traversal_depth < self.config.max_depth:
             self._ensure_actions(node, iteration)
-            action = self._select_action(node) #puct -> StrategyEdge
+            action, puct_candidates, total_action_visits = self._select_action_with_scores(
+                node
+            )  # PUCT -> StrategyEdge
             # Use the prospective valid visit so the first selection allows one child.
             prospective_visits = action.visits + 1
-            if len(action.realizations) < self._allowed_children(prospective_visits): #progressive widening
+            allowed_children = self._allowed_children(prospective_visits)
+            existing_children = len(action.realizations)
+            if existing_children < allowed_children:  # progressive widening
                 outcome = self._expand(node, action, iteration)
                 steps.append(
                     SelectionStep(
@@ -260,6 +269,10 @@ class MCTS:
                         action.strategy_id,
                         SelectionMode.EXPAND,
                         outcome.node.id if outcome.node is not None else None,
+                        total_action_visits,
+                        puct_candidates,
+                        existing_children,
+                        allowed_children,
                     )
                 )
                 if outcome.status != ProposalStatus.VALID:
@@ -282,7 +295,7 @@ class MCTS:
                     selected_strategy_id=action.strategy_id,
                     backed_up_reward=leaf.reward,
                 )
-            realization = self._select_realization(action)
+            realization, ucb_candidates = self._select_realization_with_scores(action)
             path.append(SelectedEdge(node.id, action, realization))
             traversal_depth += 1
             child = next(item for item in self.nodes.values() if item.id == realization.child_id)
@@ -292,6 +305,11 @@ class MCTS:
                     action.strategy_id,
                     SelectionMode.UCB,
                     child.id,
+                    total_action_visits,
+                    puct_candidates,
+                    existing_children,
+                    allowed_children,
+                    ucb_candidates,
                 )
             )
 
@@ -347,33 +365,73 @@ class MCTS:
         )
 
     def _select_action(self, node: SearchNode) -> StrategyEdge:
+        selected, _, _ = self._select_action_with_scores(node)
+        return selected
+
+    def _select_action_with_scores(
+        self, node: SearchNode
+    ) -> tuple[StrategyEdge, tuple[Mapping[str, object], ...], int]:
         total = sum(edge.visits for edge in node.actions.values())
         exploration_scale = math.sqrt(total)
-        scored = [
-            (
-                edge.q_mean
-                + self.config.c_puct
+        scored: list[tuple[float, StrategyEdge, float]] = []
+        for edge in node.actions.values():
+            explore = (
+                self.config.c_puct
                 * edge.prior
                 * exploration_scale
-                / (1 + edge.visits),
-                edge,
+                / (1 + edge.visits)
             )
-            for edge in node.actions.values()
-        ]
-        best_score = max(score for score, _ in scored)
-        tied = [edge for score, edge in scored if score == best_score]
-        return self.rng.choice(tied)
+            scored.append((edge.q_mean + explore, edge, explore))
+        best_score = max(score for score, _, _ in scored)
+        tied = [edge for score, edge, _ in scored if score == best_score]
+        selected = self.rng.choice(tied)
+        candidates = tuple(
+            {
+                "strategy_id": edge.strategy_id,
+                "prior": edge.prior,
+                "visits": edge.visits,
+                "q_mean": edge.q_mean,
+                "q_max": edge.q_max if math.isfinite(edge.q_max) else None,
+                "exploit_term": edge.q_mean,
+                "explore_term": explore,
+                "total_score": score,
+                "selected": edge is selected,
+            }
+            for score, edge, explore in scored
+        )
+        return selected, candidates, total
 
     def _allowed_children(self, visits: int) -> int:
         #progressive widening budget
         return min(self.config.k_max, math.ceil(self.config.c_pw * visits ** self.config.alpha_pw))
 
     def _select_realization(self, action: StrategyEdge) -> RealizationEdge:
-        return max(
-            action.realizations.values(),
-            key=lambda edge: edge.q_mean
-            + self.config.c_ucb * math.sqrt(math.log1p(action.visits) / (1 + edge.descents)),
+        selected, _ = self._select_realization_with_scores(action)
+        return selected
+
+    def _select_realization_with_scores(
+        self, action: StrategyEdge
+    ) -> tuple[RealizationEdge, tuple[Mapping[str, object], ...]]:
+        scored: list[tuple[float, RealizationEdge, float]] = []
+        for edge in action.realizations.values():
+            explore = self.config.c_ucb * math.sqrt(
+                math.log1p(action.visits) / (1 + edge.descents)
+            )
+            scored.append((edge.q_mean + explore, edge, explore))
+        selected = max(scored, key=lambda item: item[0])[1]
+        candidates = tuple(
+            {
+                "child_node_id": edge.child_id,
+                "descents": edge.descents,
+                "q_mean": edge.q_mean,
+                "exploit_term": edge.q_mean,
+                "explore_term": explore,
+                "total_score": score,
+                "selected": edge is selected,
+            }
+            for score, edge, explore in scored
         )
+        return selected, candidates
 
     def _expand(
         self,
@@ -577,6 +635,16 @@ class MCTS:
                     "strategy_id": step.strategy_id,
                     "selection_mode": step.selection_mode.value,
                     "child_node_id": step.child_node_id,
+                    "total_action_visits": step.total_action_visits,
+                    "c_puct": self.config.c_puct,
+                    "c_ucb": self.config.c_ucb,
+                    "c_pw": self.config.c_pw,
+                    "alpha_pw": self.config.alpha_pw,
+                    "k_max": self.config.k_max,
+                    "existing_children": step.existing_children,
+                    "allowed_children": step.allowed_children,
+                    "puct_candidates": list(step.puct_candidates),
+                    "ucb_candidates": list(step.ucb_candidates),
                 }
                 for index, step in enumerate(outcome.steps)
             ],

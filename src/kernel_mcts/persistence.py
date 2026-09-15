@@ -158,9 +158,60 @@ CREATE TABLE IF NOT EXISTS iteration_steps (
     PRIMARY KEY (run_id, iteration, step),
     FOREIGN KEY (run_id, iteration) REFERENCES iterations(run_id, iteration)
 );
+CREATE TABLE IF NOT EXISTS selection_decisions (
+    run_id TEXT NOT NULL,
+    iteration INTEGER NOT NULL,
+    step INTEGER NOT NULL,
+    node_id TEXT NOT NULL,
+    selected_strategy_id TEXT NOT NULL,
+    selection_mode TEXT NOT NULL,
+    selected_child_node_id TEXT,
+    total_action_visits INTEGER NOT NULL,
+    c_puct REAL NOT NULL,
+    c_ucb REAL NOT NULL,
+    c_pw REAL NOT NULL,
+    alpha_pw REAL NOT NULL,
+    k_max INTEGER NOT NULL,
+    existing_children INTEGER NOT NULL,
+    allowed_children INTEGER NOT NULL,
+    PRIMARY KEY (run_id, iteration, step),
+    FOREIGN KEY (run_id, iteration) REFERENCES iterations(run_id, iteration)
+);
+CREATE TABLE IF NOT EXISTS puct_candidates (
+    run_id TEXT NOT NULL,
+    iteration INTEGER NOT NULL,
+    step INTEGER NOT NULL,
+    strategy_id TEXT NOT NULL,
+    prior REAL NOT NULL,
+    visits INTEGER NOT NULL,
+    q_mean REAL NOT NULL,
+    q_max REAL,
+    exploit_term REAL NOT NULL,
+    explore_term REAL NOT NULL,
+    total_score REAL NOT NULL,
+    selected INTEGER NOT NULL,
+    PRIMARY KEY (run_id, iteration, step, strategy_id),
+    FOREIGN KEY (run_id, iteration, step)
+        REFERENCES selection_decisions(run_id, iteration, step)
+);
+CREATE TABLE IF NOT EXISTS ucb_candidates (
+    run_id TEXT NOT NULL,
+    iteration INTEGER NOT NULL,
+    step INTEGER NOT NULL,
+    child_node_id TEXT NOT NULL,
+    descents INTEGER NOT NULL,
+    q_mean REAL NOT NULL,
+    exploit_term REAL NOT NULL,
+    explore_term REAL NOT NULL,
+    total_score REAL NOT NULL,
+    selected INTEGER NOT NULL,
+    PRIMARY KEY (run_id, iteration, step, child_node_id),
+    FOREIGN KEY (run_id, iteration, step)
+        REFERENCES selection_decisions(run_id, iteration, step)
+);
 """
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -613,6 +664,78 @@ class SQLiteTraceStore:
                     step["strategy_id"],
                     step["selection_mode"],
                     step.get("child_node_id"),
+                ),
+            )
+            self._materialize_selection_decision(payload["iteration"], step)
+
+    def _materialize_selection_decision(
+        self, iteration: object, step: Mapping[str, object]
+    ) -> None:
+        self.connection.execute(
+            """INSERT INTO selection_decisions(
+                run_id, iteration, step, node_id, selected_strategy_id,
+                selection_mode, selected_child_node_id, total_action_visits,
+                c_puct, c_ucb, c_pw, alpha_pw, k_max, existing_children,
+                allowed_children
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                self.run_id,
+                iteration,
+                step["step"],
+                step["node_id"],
+                step["strategy_id"],
+                step["selection_mode"],
+                step.get("child_node_id"),
+                step.get("total_action_visits", 0),
+                step.get("c_puct", 0.0),
+                step.get("c_ucb", 0.0),
+                step.get("c_pw", 0.0),
+                step.get("alpha_pw", 0.0),
+                step.get("k_max", 0),
+                step.get("existing_children", 0),
+                step.get("allowed_children", 0),
+            ),
+        )
+        for candidate_value in step.get("puct_candidates", []):
+            candidate = _mapping(candidate_value, "PUCT candidate")
+            self.connection.execute(
+                """INSERT INTO puct_candidates(
+                    run_id, iteration, step, strategy_id, prior, visits,
+                    q_mean, q_max, exploit_term, explore_term, total_score, selected
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    self.run_id,
+                    iteration,
+                    step["step"],
+                    candidate["strategy_id"],
+                    candidate["prior"],
+                    candidate["visits"],
+                    candidate["q_mean"],
+                    candidate.get("q_max"),
+                    candidate["exploit_term"],
+                    candidate["explore_term"],
+                    candidate["total_score"],
+                    int(bool(candidate["selected"])),
+                ),
+            )
+        for candidate_value in step.get("ucb_candidates", []):
+            candidate = _mapping(candidate_value, "UCB candidate")
+            self.connection.execute(
+                """INSERT INTO ucb_candidates(
+                    run_id, iteration, step, child_node_id, descents, q_mean,
+                    exploit_term, explore_term, total_score, selected
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    self.run_id,
+                    iteration,
+                    step["step"],
+                    candidate["child_node_id"],
+                    candidate["descents"],
+                    candidate["q_mean"],
+                    candidate["exploit_term"],
+                    candidate["explore_term"],
+                    candidate["total_score"],
+                    int(bool(candidate["selected"])),
                 ),
             )
 
