@@ -66,6 +66,64 @@ Compare raw-source prompts, raw source plus AST/IR summaries, and constrained
 structured transformations. Measure correctness rate, compilation rate, semantic
 diversity, speedup, prompt size, and generation cost.
 
+## Typed computation and schedule graphs
+
+Investigate a representation more constrained and hardware-aware than either raw
+source or a conventional syntax AST. Separate the immutable mathematical computation
+from its GPU schedule:
+
+- the computation graph describes operations such as matrix multiplication,
+  reduction, conversion, and epilogue functions; and
+- the schedule graph describes tiling, ownership, memory placement, data movement,
+  synchronization, and pipelining.
+
+Graph values should represent tensors, tiles, or fragments and carry machine-checkable
+properties such as:
+
+- shape, element type, and accumulation type;
+- logical and physical layout;
+- global, shared, or register memory placement;
+- alignment and vectorization requirements;
+- thread, warp, warp-group, or CTA ownership; and
+- lifetime and pipeline stage.
+
+Edges or operations can represent ordinary copies, TMA transfers, tiled loads,
+`ldmatrix`, MMA or WGMMA instructions, reductions, conversions, barriers, and stores.
+A verifier should reject incompatible shapes, layouts, ownership, address spaces, and
+synchronization before source generation or GPU evaluation. Static resource estimates
+could also reject only proven launch or capacity violations while leaving uncertain
+performance decisions to search.
+
+Semantic strategies would become typed graph rewrites rather than unrestricted source
+rewrites. Examples include enlarging a CTA tile, splitting one accumulator into several
+MMA fragments, changing warp ownership, adding a pipeline stage, applying a
+shared-memory swizzle, or replacing a global-to-shared copy with TMA. Canonical graph
+serialization could improve transposition detection and make transformations easier to
+audit.
+
+The validated graph should lower through deterministic renderers, initially to a
+known-correct CUDA or CuTe DSL template. CuTe DSL would therefore be an implementation
+target rather than necessarily the search representation. This distinction matters:
+free-form generation in a higher-level language may exchange CUDA errors for DSL type
+or layout errors, whereas a typed graph or restricted configuration schema can prevent
+many invalid proposals before compilation.
+
+Start with a small GEMM-specific schedule schema rather than a general GPU compiler IR.
+Expose a limited set of parameters and rewrites for CTA tiles, warp layouts, MMA atoms,
+pipeline stages, memory-copy mechanisms, shared-memory layouts, and epilogues. Compare
+four proposal formats under equal generation budgets:
+
+1. unrestricted CUDA source;
+2. CUDA AST transformations;
+3. unrestricted CuTe DSL; and
+4. typed schedule-graph or configuration transformations rendered deterministically.
+
+Measure compile-valid and correctness-valid proposals per generation call, repair
+frequency, unique semantic schedules, compile latency, best kernel latency, and cost per
+valid improvement. A successful prototype should demonstrate that the structured
+representation improves proposal efficiency without preventing architecture-changing
+transformations.
+
 ## Analytical strategy priors
 
 Map predicted bottlenecks and transformation opportunities to a normalized prior over
