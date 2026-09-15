@@ -71,6 +71,7 @@ selection, budgets, evaluation, or backup.
 
 - Add iteration playback and a cumulative-best-reward timeline. **Implemented.**
 - Compare runs with different strategy sets, priors, `c_puct`, or generation budgets.
+  **Implemented.**
 - Plot strategy validity, repair, visit, and reward summaries. **Implemented.**
 - Add exact decision-math tables after Phase 3 traces exist.
 - Export selected paths, kernels, diffs, and profiles for experiment reports.

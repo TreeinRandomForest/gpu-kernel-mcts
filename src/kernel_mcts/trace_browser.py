@@ -270,6 +270,108 @@ class TraceCatalog:
             ),
         }
 
+    def compare_runs(
+        self,
+        trace_a: str,
+        run_a: str,
+        trace_b: str,
+        run_b: str,
+    ) -> dict[str, object]:
+        graph_a = self.graph(trace_a, run_a)
+        graph_b = self.graph(trace_b, run_b)
+        summary_a = graph_a["run"]
+        summary_b = graph_b["run"]
+        assert isinstance(summary_a, Mapping) and isinstance(summary_b, Mapping)
+        strategies_a = {
+            str(item["strategy_id"]): item
+            for item in graph_a["analysis"]["strategies"]
+        }
+        strategies_b = {
+            str(item["strategy_id"]): item
+            for item in graph_b["analysis"]["strategies"]
+        }
+        strategy_fields = (
+            "visits",
+            "calls",
+            "repair_calls",
+            "valid_calls",
+            "completed_proposals",
+            "valid_outcomes",
+            "mean_valid_reward",
+            "max_valid_reward",
+        )
+        strategy_comparison = []
+        for strategy_id in sorted(strategies_a.keys() | strategies_b.keys()):
+            left = strategies_a.get(strategy_id, {})
+            right = strategies_b.get(strategy_id, {})
+            strategy_comparison.append(
+                {
+                    "strategy_id": strategy_id,
+                    **{
+                        f"{field}_a": left.get(field)
+                        for field in strategy_fields
+                    },
+                    **{
+                        f"{field}_b": right.get(field)
+                        for field in strategy_fields
+                    },
+                }
+            )
+
+        differences = self._mapping_differences(
+            {
+                "benchmark_id": summary_a.get("benchmark_id"),
+                "algorithm": summary_a.get("algorithm"),
+                "model_name": summary_a.get("model_name"),
+                "seed": summary_a.get("seed"),
+                "generation_budget": summary_a.get("generation_budget"),
+                "config": summary_a.get("config"),
+                "workload": summary_a.get("workload"),
+                "hardware": summary_a.get("hardware"),
+            },
+            {
+                "benchmark_id": summary_b.get("benchmark_id"),
+                "algorithm": summary_b.get("algorithm"),
+                "model_name": summary_b.get("model_name"),
+                "seed": summary_b.get("seed"),
+                "generation_budget": summary_b.get("generation_budget"),
+                "config": summary_b.get("config"),
+                "workload": summary_b.get("workload"),
+                "hardware": summary_b.get("hardware"),
+            },
+        )
+        best_a = graph_a.get("best_node_id")
+        best_b = graph_b.get("best_node_id")
+        node_a = self.node(trace_a, run_a, str(best_a)) if best_a is not None else None
+        node_b = self.node(trace_b, run_b, str(best_b)) if best_b is not None else None
+        return {
+            "run_a": summary_a,
+            "run_b": summary_b,
+            "timeline_a": graph_a["analysis"]["timeline"],
+            "timeline_b": graph_b["analysis"]["timeline"],
+            "differences": differences,
+            "comparable_workload": (
+                summary_a.get("benchmark_id") == summary_b.get("benchmark_id")
+                and summary_a.get("workload") == summary_b.get("workload")
+            ),
+            "comparable_hardware": summary_a.get("hardware") == summary_b.get("hardware"),
+            "summary_deltas": {
+                field: self._numeric_delta(summary_a.get(field), summary_b.get(field))
+                for field in (
+                    "b_gen",
+                    "iterations",
+                    "node_count",
+                    "best_reward",
+                    "best_speedup",
+                )
+            },
+            "strategies": strategy_comparison,
+            "best_profile_comparison": self._profile_comparison(
+                node_a.get("profile") if node_a else None,
+                node_b.get("profile") if node_b else None,
+            ),
+        }
+
     def _resolve(self, trace_id: str) -> Path:
         for entry in self.list_traces():
             if entry["trace_id"] == trace_id:
@@ -514,6 +616,7 @@ class TraceCatalog:
             "best_reward": best_reward,
             "best_speedup": math.exp(float(best_reward)) if best_reward is not None else None,
             "config": _json_value(run["config_json"], {}),
+            "workload": _json_value(run["workload_json"], {}),
             "hardware": _json_value(run["hardware_json"], {}),
         }
 
@@ -661,6 +764,32 @@ class TraceCatalog:
             for metric in sorted(left.keys() | right.keys())
         ]
 
+    @staticmethod
+    def _mapping_differences(
+        first: Mapping[str, object], second: Mapping[str, object]
+    ) -> list[dict[str, object]]:
+        def flatten(value: object, prefix: str = "") -> dict[str, object]:
+            if not isinstance(value, Mapping):
+                return {prefix: value}
+            result: dict[str, object] = {}
+            for key, child in value.items():
+                name = f"{prefix}.{key}" if prefix else str(key)
+                result.update(flatten(child, name))
+            return result
+
+        left, right = flatten(first), flatten(second)
+        return [
+            {"field": field, "a": left.get(field), "b": right.get(field)}
+            for field in sorted(left.keys() | right.keys())
+            if left.get(field) != right.get(field)
+        ]
+
+    @staticmethod
+    def _numeric_delta(first: object, second: object) -> float | None:
+        if isinstance(first, (int, float)) and isinstance(second, (int, float)):
+            return float(second) - float(first)
+        return None
+
 
 class TraceBrowserHandler(BaseHTTPRequestHandler):
     catalog: TraceCatalog
@@ -684,6 +813,16 @@ class TraceBrowserHandler(BaseHTTPRequestHandler):
                 self._json(
                     self.catalog.compare(
                         query["trace"], query["run"], query["a"], query["b"]
+                    )
+                )
+                return
+            if parsed.path == "/api/compare-runs":
+                self._json(
+                    self.catalog.compare_runs(
+                        query["trace_a"],
+                        query["run_a"],
+                        query["trace_b"],
+                        query["run_b"],
                     )
                 )
                 return

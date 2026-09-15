@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import shutil
 
 import pytest
 
@@ -246,3 +247,56 @@ def test_graph_analysis_builds_playback_and_strategy_summaries(tmp_path) -> None
 def test_trace_directory_must_exist(tmp_path) -> None:
     with pytest.raises(TraceBrowserError, match="does not exist"):
         TraceCatalog(tmp_path / "missing")
+
+
+def test_cross_run_comparison_aligns_timelines_strategies_and_configuration(tmp_path) -> None:
+    first = _browser_trace(tmp_path)
+    with sqlite3.connect(first) as connection:
+        connection.execute(
+            """INSERT INTO iterations(
+                run_id, iteration, status, selected_strategy_id, leaf_node_id,
+                backed_up_reward, b_gen, b_prior
+            ) VALUES ('run-1', 1, 'VALID', 'stage', 'right', 0.7, 5, 0)"""
+        )
+    second = tmp_path / "second.sqlite"
+    shutil.copyfile(first, second)
+    with sqlite3.connect(second) as connection:
+        connection.execute(
+            """UPDATE search_runs SET config_json = '{"c_puct":6}',
+                      generation_budget = 20, final_b_gen = 10,
+                      model_name = 'other-model'
+               WHERE run_id = 'run-1'"""
+        )
+        connection.execute("UPDATE nodes SET reward = 1.0 WHERE node_id = 'right'")
+        connection.execute(
+            """UPDATE iterations SET backed_up_reward = 1.0, b_gen = 10
+               WHERE run_id = 'run-1' AND iteration = 1"""
+        )
+
+    catalog = TraceCatalog(tmp_path)
+    traces = {entry["name"]: entry for entry in catalog.list_traces()}
+    comparison = catalog.compare_runs(
+        traces["run.sqlite"]["trace_id"],
+        "run-1",
+        traces["second.sqlite"]["trace_id"],
+        "run-1",
+    )
+
+    assert comparison["comparable_workload"] is True
+    assert comparison["comparable_hardware"] is True
+    assert comparison["timeline_a"][-1]["b_gen"] == 5
+    assert comparison["timeline_b"][-1]["b_gen"] == 10
+    assert comparison["run_b"]["best_speedup"] == pytest.approx(2.7182818)
+    assert comparison["summary_deltas"]["best_reward"] == pytest.approx(0.3)
+    differences = {item["field"]: item for item in comparison["differences"]}
+    assert differences["config.c_puct"] == {"field": "config.c_puct", "a": 12, "b": 6}
+    assert differences["model_name"]["b"] == "other-model"
+    assert next(
+        item for item in comparison["strategies"] if item["strategy_id"] == "stage"
+    )["visits_a"] == 1
+    occupancy = next(
+        item
+        for item in comparison["best_profile_comparison"]
+        if item["metric"] == "metrics.occupancy"
+    )
+    assert occupancy["delta"] == 0

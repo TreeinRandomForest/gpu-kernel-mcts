@@ -27,13 +27,27 @@ async function loadCatalog() {
     `<option value="${item.trace_id}" ${item.error ? "disabled" : ""}>` +
     `${escapeHtml(item.name)}${item.error ? " (invalid)" : ""}</option>`
   ).join("");
+  $("compare-trace").innerHTML = state.traces.map(item =>
+    `<option value="${item.trace_id}" ${item.error ? "disabled" : ""}>` +
+    `${escapeHtml(item.name)}${item.error ? " (invalid)" : ""}</option>`
+  ).join("");
   const first = state.traces.find(item => !item.error && item.runs.length);
   if (!first) {
     $("run-summary").textContent = "No supported SQLite traces found.";
     return;
   }
   $("trace-select").value = first.trace_id;
+  $("compare-trace").value = first.trace_id;
+  chooseCompareTrace();
   chooseTrace();
+}
+
+function chooseCompareTrace() {
+  const trace = state.traces.find(item => item.trace_id === $("compare-trace").value);
+  $("compare-run").innerHTML = (trace?.runs || []).map(run =>
+    `<option value="${run.run_id}">${escapeHtml(run.started_at)} · ` +
+    `${escapeHtml(run.benchmark_id)} · ${short(run.run_id)}</option>`
+  ).join("");
 }
 
 function chooseTrace() {
@@ -168,6 +182,95 @@ function togglePlayback() {
     if (state.iteration >= maximum) { togglePlayback(); return; }
     setIteration(state.iteration + 1);
   }, 700);
+}
+
+async function compareRuns() {
+  const traceB = $("compare-trace").value;
+  const runB = $("compare-run").value;
+  if (!state.trace || !state.run || !traceB || !runB) return;
+  try {
+    const value = await api(`/api/compare-runs?${query({
+      trace_a: state.trace.trace_id, run_a: state.run, trace_b: traceB, run_b: runB,
+    })}`);
+    const a = value.run_a, b = value.run_b;
+    const warnings = [];
+    if (!value.comparable_workload) warnings.push("workloads differ");
+    if (!value.comparable_hardware) warnings.push("hardware differs");
+    const warning = warnings.length ? ` Warning: ${warnings.join(" and ")}.` : "";
+    $("run-comparison-summary").textContent = `A: ${short(a.run_id)} · best ${number(a.best_speedup, 3)}× · ` +
+      `B_gen ${a.b_gen}. B: ${short(b.run_id)} · best ${number(b.best_speedup, 3)}× · ` +
+      `B_gen ${b.b_gen}. Δbest=${number(value.summary_deltas.best_speedup, 3)}×.${warning}`;
+    drawRunComparison(value.timeline_a, value.timeline_b);
+    $("run-difference-table").querySelector("tbody").innerHTML = value.differences.map(row =>
+      `<tr><td>${escapeHtml(row.field)}</td><td>${escapeHtml(formatValue(row.a))}</td>` +
+      `<td>${escapeHtml(formatValue(row.b))}</td></tr>`
+    ).join("") || '<tr><td colspan="3">No recorded differences.</td></tr>';
+    $("best-profile-table").querySelector("tbody").innerHTML = value.best_profile_comparison.map(row =>
+      `<tr><td>${escapeHtml(row.metric)}</td><td>${number(row.a)}</td><td>${number(row.b)}</td>` +
+      `<td>${number(row.delta)}</td><td>${number(row.percent_change, 2)}</td></tr>`
+    ).join("") || '<tr><td colspan="5">One or both best nodes were not profiled.</td></tr>';
+    $("run-strategy-table").querySelector("tbody").innerHTML = value.strategies.map(row =>
+      `<tr><td>${escapeHtml(row.strategy_id)}</td>` +
+      `<td>${pair(row.visits_a, row.visits_b)}</td><td>${pair(row.calls_a, row.calls_b)}</td>` +
+      `<td>${pair(row.repair_calls_a, row.repair_calls_b)}</td>` +
+      `<td>${ratioPair(row.valid_calls_a, row.calls_a, row.valid_calls_b, row.calls_b)}</td>` +
+      `<td>${ratioPair(row.valid_outcomes_a, row.completed_proposals_a, row.valid_outcomes_b, row.completed_proposals_b)}</td>` +
+      `<td>${number(row.max_valid_reward_a)} / ${number(row.max_valid_reward_b)}</td></tr>`
+    ).join("");
+  } catch (error) {
+    showError(error);
+  }
+}
+
+function pair(a, b) { return `${a ?? 0} / ${b ?? 0}`; }
+function ratioPair(va, ta, vb, tb) {
+  const left = ta ? `${va}/${ta}` : "—";
+  const right = tb ? `${vb}/${tb}` : "—";
+  return `${left} / ${right}`;
+}
+function formatValue(value) {
+  if (value == null) return "—";
+  return typeof value === "object" ? JSON.stringify(value) : String(value);
+}
+function drawRunComparison(timelineA, timelineB) {
+  const svg = $("run-comparison-chart");
+  svg.innerHTML = "";
+  if (!timelineA.length && !timelineB.length) return;
+  const width = 900, height = 190, left = 55, right = 15, top = 14, bottom = 32;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  const seriesA = [{b_gen: 0, cumulative_best_reward: 0}, ...timelineA];
+  const seriesB = [{b_gen: 0, cumulative_best_reward: 0}, ...timelineB];
+  const maximumX = Math.max(1, ...seriesA.map(item => item.b_gen), ...seriesB.map(item => item.b_gen));
+  const rewards = [...seriesA, ...seriesB].map(item => item.cumulative_best_reward);
+  const minimumY = Math.min(...rewards), maximumY = Math.max(...rewards);
+  const plotMaximumY = maximumY - minimumY < 0.1 ? minimumY + 0.1 : maximumY;
+  const spanY = plotMaximumY - minimumY;
+  const x = value => left + value / maximumX * (width-left-right);
+  const y = value => top + (plotMaximumY-value) / spanY * (height-top-bottom);
+  svg.appendChild(svgElement("path", {d: `M${left},${top} V${height-bottom} H${width-right}`, class: "timeline-axis"}));
+  const xTicks = [...new Set(Array.from({length: 6}, (_, index) => Math.round(maximumX * index / 5)))];
+  xTicks.forEach(value => {
+    svg.appendChild(svgElement("line", {x1: x(value), x2: x(value), y1: height-bottom, y2: height-bottom+5, class: "timeline-tick"}));
+    const label = svgElement("text", {x: x(value), y: height-10, "text-anchor": "middle", class: "graph-label graph-sub"});
+    label.textContent = value; svg.appendChild(label);
+  });
+  Array.from({length: 6}, (_, index) => minimumY + spanY * index / 5).forEach(value => {
+    svg.appendChild(svgElement("line", {x1: left-5, x2: left, y1: y(value), y2: y(value), class: "timeline-tick"}));
+    const label = svgElement("text", {x: left-8, y: y(value)+3, "text-anchor": "end", class: "graph-label graph-sub"});
+    label.textContent = number(value, 2); svg.appendChild(label);
+  });
+  const addSeries = (series, klass, label, labelY, labelClass) => {
+    const path = series.map((item,index) => `${index ? "L" : "M"}${x(item.b_gen)},${y(item.cumulative_best_reward)}`).join(" ");
+    svg.appendChild(svgElement("path", {d: path, class: klass}));
+    const textNode = svgElement("text", {x: width-80, y: labelY, class: `graph-label ${labelClass}`});
+    textNode.textContent = label; svg.appendChild(textNode);
+  };
+  addSeries(seriesA, "timeline-line", "A", 22, "timeline-label-a");
+  addSeries(seriesB, "timeline-line-b", "B", 40, "timeline-label-b");
+  const xLabel = svgElement("text", {x: width-right, y: height-10, "text-anchor": "end", class: "graph-label graph-sub"});
+  xLabel.textContent = "B_gen"; svg.appendChild(xLabel);
+  const yLabel = svgElement("text", {x: 6, y: top+8, class: "graph-label graph-sub"});
+  yLabel.textContent = "reward"; svg.appendChild(yLabel);
 }
 
 function loadDecisions() {
@@ -467,12 +570,14 @@ function showError(error) {
 }
 
 $("trace-select").addEventListener("change", chooseTrace);
+$("compare-trace").addEventListener("change", chooseCompareTrace);
 $("run-select").addEventListener("change", loadRun);
 $("reload").addEventListener("click", loadCatalog);
 $("fit-graph").addEventListener("click", fitGraph);
 $("decision-select").addEventListener("change", event => showDecision(event.target.value));
 $("iteration-slider").addEventListener("input", event => setIteration(event.target.value));
 $("play-iterations").addEventListener("click", togglePlayback);
+$("compare-runs").addEventListener("click", compareRuns);
 ["max-depth", "min-visits", "show-failures"].forEach(id => $(id).addEventListener("change", renderGraph));
 installPanZoom();
 loadCatalog().catch(showError);

@@ -45,6 +45,30 @@
         </table></div>
       </article>
     </section>
+    <section class="panel">
+      <div class="panel-title">
+        <h2>Cross-run comparison</h2>
+        <div class="selectors">
+          <label>Trace B <select id="compare-trace"></select></label>
+          <label>Run B <select id="compare-run"></select></label>
+          <button id="compare-runs">Compare with loaded run A</button>
+        </div>
+      </div>
+      <p id="run-comparison-summary" class="metadata">Choose a second run to compare search behavior.</p>
+      <svg id="run-comparison-chart" role="img" aria-label="Cumulative best reward comparison"></svg>
+      <div class="comparison-grid">
+        <div><h3>Configuration differences</h3><div class="table-wrap"><table id="run-difference-table">
+          <thead><tr><th>Field</th><th>Run A</th><th>Run B</th></tr></thead><tbody></tbody>
+        </table></div></div>
+        <div><h3>Best-node profile differences</h3><div class="table-wrap"><table id="best-profile-table">
+          <thead><tr><th>Metric</th><th>A</th><th>B</th><th>Delta</th><th>%</th></tr></thead><tbody></tbody>
+        </table></div></div>
+      </div>
+      <h3>Strategy comparison</h3>
+      <div class="table-wrap"><table id="run-strategy-table">
+        <thead><tr><th>Strategy</th><th>Visits A/B</th><th>Calls A/B</th><th>Repairs A/B</th><th>Valid calls A/B</th><th>Valid proposals A/B</th><th>Best reward A/B</th></tr></thead><tbody></tbody>
+      </table></div>
+    </section>
     <section class="panel" id="decision-panel">
       <div class="panel-title">
         <h2>Selection decision</h2>

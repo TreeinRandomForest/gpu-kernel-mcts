@@ -39,6 +39,8 @@ completed hardware validation is identified explicitly.
   browser-based decision-math inspection.
 - [x] Trace-browser iteration playback, cumulative-best timeline, and per-strategy
   visit, validity, repair, and reward summaries.
+- [x] Cross-run trace-browser comparison of reward progress, strategy allocation,
+  validity, configuration, hardware, and best-node profiles.
 
 ## Next
 
@@ -48,8 +50,8 @@ completed hardware validation is identified explicitly.
 - [ ] Add periodic root/global-best remeasurement and environment-drift handling.
 - [ ] Add strategy applicability metadata and filter actions by operation, dtype,
   backend, hardware capabilities, and workload constraints before MCTS selection.
-- [ ] Extend the local trace browser with cross-run comparison and export of selected
-  paths, kernels, diffs, and profiles.
+- [ ] Export selected trace-browser paths, kernels, diffs, profiles, and decision
+  records as a reproducible analysis bundle.
 
 ## Validation status
 
