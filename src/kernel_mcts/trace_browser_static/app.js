@@ -318,6 +318,8 @@ function clearSelections() {
   $("relationship").className = "relationship empty";
   $("source-diff").textContent = "Select two nodes.";
   $("profile-table").querySelector("tbody").innerHTML = "";
+  $("export-bundle").disabled = true;
+  $("export-status").textContent = "";
 }
 
 function visibleGraph() {
@@ -469,7 +471,10 @@ async function selectNode(nodeId, selectB) {
     else state.a = detail;
     showNode(selectB ? "b" : "a", detail);
     renderGraph();
-    if (state.a && state.b) await compare();
+    if (state.a && state.b) {
+      $("export-bundle").disabled = false;
+      await compare();
+    }
   } catch (error) {
     showError(error);
   }
@@ -521,6 +526,34 @@ function showDiff(diff) {
       ? "diff-add" : line.startsWith("-") && !line.startsWith("---") ? "diff-remove" : "";
     return `<span class="${klass}">${escapeHtml(line)}</span>`;
   }).join("\n");
+}
+
+async function exportBundle() {
+  if (!state.a || !state.b) return;
+  const button = $("export-bundle");
+  button.disabled = true;
+  $("export-status").textContent = "Building analysis bundle…";
+  try {
+    const response = await fetch(`/api/export?${query({
+      trace: state.trace.trace_id, run: state.run, a: state.a.node_id, b: state.b.node_id,
+    })}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match ? match[1] : "mcts-analysis.zip";
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+    URL.revokeObjectURL(url);
+    $("export-status").textContent = `Downloaded ${filename}`;
+  } catch (error) {
+    $("export-status").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function hover(element, message) {
@@ -578,6 +611,7 @@ $("decision-select").addEventListener("change", event => showDecision(event.targ
 $("iteration-slider").addEventListener("input", event => setIteration(event.target.value));
 $("play-iterations").addEventListener("click", togglePlayback);
 $("compare-runs").addEventListener("click", compareRuns);
+$("export-bundle").addEventListener("click", exportBundle);
 ["max-depth", "min-visits", "show-failures"].forEach(id => $(id).addEventListener("change", renderGraph));
 installPanZoom();
 loadCatalog().catch(showError);

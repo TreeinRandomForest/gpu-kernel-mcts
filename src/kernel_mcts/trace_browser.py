@@ -3,10 +3,12 @@ from __future__ import annotations
 import argparse
 import difflib
 import hashlib
+import io
 import json
 import math
 import sqlite3
 import webbrowser
+import zipfile
 from collections import deque
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -371,6 +373,159 @@ class TraceCatalog:
                 node_b.get("profile") if node_b else None,
             ),
         }
+
+    def export_bundle(
+        self, trace_id: str, run_id: str, node_a: str, node_b: str
+    ) -> tuple[str, bytes]:
+        graph = self.graph(trace_id, run_id)
+        first = self.node(trace_id, run_id, node_a)
+        second = self.node(trace_id, run_id, node_b)
+        comparison = self.compare(trace_id, run_id, node_a, node_b)
+        relationship = comparison["relationship"]
+        assert isinstance(relationship, Mapping)
+        path_edges = self._relationship_edges(relationship)
+        path_keys = {
+            (
+                str(edge["parent_node_id"]),
+                str(edge["strategy_id"]),
+                str(edge["child_node_id"]),
+            )
+            for edge in path_edges
+        }
+        relevant_decisions = [
+            decision
+            for decision in graph["selection_decisions"]
+            if (
+                str(decision["node_id"]),
+                str(decision["selected_strategy_id"]),
+                str(decision["selected_child_node_id"]),
+            )
+            in path_keys
+        ]
+        run_context = self._export_run_context(trace_id, run_id)
+        manifest = {
+            "format": "kernel-mcts-trace-analysis",
+            "format_version": 1,
+            "trace": run_context,
+            "selection": {"node_a": node_a, "node_b": node_b},
+            "node_a": self._node_export_metadata(first),
+            "node_b": self._node_export_metadata(second),
+            "relationship": relationship,
+            "profile_comparison": comparison["profile_comparison"],
+            "relevant_decision_count": len(relevant_decisions),
+        }
+        report = self._export_report(manifest, path_edges)
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            self._zip_json(archive, "manifest.json", manifest)
+            archive.writestr("report.md", report)
+            archive.writestr("node-a.cu", str(first["program_text"]))
+            archive.writestr("node-b.cu", str(second["program_text"]))
+            archive.writestr("source.diff", str(comparison["source_diff"]))
+            self._zip_json(archive, "node-a.json", first)
+            self._zip_json(archive, "node-b.json", second)
+            self._zip_json(archive, "profile-a.json", first.get("profile"))
+            self._zip_json(archive, "profile-b.json", second.get("profile"))
+            self._zip_json(archive, "relationship.json", relationship)
+            self._zip_json(archive, "decisions.json", relevant_decisions)
+            self._zip_json(archive, "run.json", run_context)
+        def safe(value: str) -> str:
+            return "".join(
+                character for character in value if character.isalnum()
+            )[:12]
+        filename = (
+            f"mcts-analysis-{safe(run_id) or 'run'}-"
+            f"{safe(node_a) or 'a'}-{safe(node_b) or 'b'}.zip"
+        )
+        return filename, output.getvalue()
+
+    def _export_run_context(self, trace_id: str, run_id: str) -> dict[str, object]:
+        path = self._resolve(trace_id)
+        with _connection(path) as connection:
+            run = self._run(connection, run_id)
+            result = dict(run)
+            for name in ("config_json", "workload_json", "hardware_json", "toolchain_json"):
+                result[name.removesuffix("_json")] = _json_value(result.pop(name, None), {})
+            manifest_id = run["environment_manifest_id"]
+            environment = None
+            if manifest_id is not None and self._has_table(connection, "environment_manifests"):
+                row = connection.execute(
+                    "SELECT manifest_json FROM environment_manifests WHERE manifest_id = ?",
+                    (manifest_id,),
+                ).fetchone()
+                environment = _json_value(row["manifest_json"], None) if row else None
+            return {
+                "database": path.relative_to(self.trace_dir).as_posix(),
+                "run": result,
+                "environment_manifest": environment,
+            }
+
+    @staticmethod
+    def _relationship_edges(
+        relationship: Mapping[str, object]
+    ) -> list[Mapping[str, object]]:
+        if relationship.get("kind") in ("A_ANCESTOR_OF_B", "B_ANCESTOR_OF_A"):
+            return list(relationship.get("path", []))
+        if relationship.get("kind") == "COMMON_ANCESTOR":
+            return [
+                *relationship.get("path_to_a", []),
+                *relationship.get("path_to_b", []),
+            ]
+        return []
+
+    @staticmethod
+    def _node_export_metadata(node: Mapping[str, object]) -> dict[str, object]:
+        return {
+            key: value
+            for key, value in node.items()
+            if key != "program_text"
+        }
+
+    @staticmethod
+    def _zip_json(archive: zipfile.ZipFile, name: str, value: object) -> None:
+        archive.writestr(name, json.dumps(value, indent=2, sort_keys=True) + "\n")
+
+    @staticmethod
+    def _export_report(
+        manifest: Mapping[str, object], path_edges: Sequence[Mapping[str, object]]
+    ) -> str:
+        first = manifest["node_a"]
+        second = manifest["node_b"]
+        assert isinstance(first, Mapping) and isinstance(second, Mapping)
+        path_lines = [
+            f"{index}. `{edge['parent_node_id']}` --`{edge['strategy_id']}`--> "
+            f"`{edge['child_node_id']}`"
+            for index, edge in enumerate(path_edges, 1)
+        ]
+        if not path_lines:
+            path_lines = ["The selected nodes have no directed relationship in the trace."]
+        return "\n".join(
+            [
+                "# MCTS kernel comparison",
+                "",
+                f"- Run: `{manifest['trace']['run']['run_id']}`",
+                f"- Node A: `{manifest['selection']['node_a']}`",
+                f"- Node B: `{manifest['selection']['node_b']}`",
+                f"- A reward/speedup: `{first['reward']}` / `{first['speedup']:.6g}x`",
+                f"- B reward/speedup: `{second['reward']}` / `{second['speedup']:.6g}x`",
+                f"- Relevant decision snapshots: `{manifest['relevant_decision_count']}`",
+                "",
+                "## Strategy path",
+                "",
+                *path_lines,
+                "",
+                "## Contents",
+                "",
+                "- `node-a.cu`, `node-b.cu`: selected kernel sources",
+                "- `source.diff`: unified A-to-B source diff",
+                "- `profile-a.json`, `profile-b.json`: cached profiles",
+                "- `relationship.json`: DAG relationship and strategy path",
+                "- `decisions.json`: relevant PUCT/PW/UCB snapshots",
+                "- `run.json`: run configuration and environment manifest",
+                "- `manifest.json`: versioned machine-readable bundle index",
+                "",
+            ]
+        )
 
     def _resolve(self, trace_id: str) -> Path:
         for entry in self.list_traces():
@@ -826,6 +981,12 @@ class TraceBrowserHandler(BaseHTTPRequestHandler):
                     )
                 )
                 return
+            if parsed.path == "/api/export":
+                filename, payload = self.catalog.export_bundle(
+                    query["trace"], query["run"], query["a"], query["b"]
+                )
+                self._download(filename, payload)
+                return
             self._static(parsed.path)
         except KeyError as error:
             self._error(HTTPStatus.BAD_REQUEST, f"missing query parameter: {error.args[0]}")
@@ -848,6 +1009,15 @@ class TraceBrowserHandler(BaseHTTPRequestHandler):
 
     def _error(self, status: HTTPStatus, message: str) -> None:
         self._json({"error": message}, status)
+
+    def _download(self, filename: str, payload: bytes) -> None:
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/zip")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
 
     def _static(self, request_path: str) -> None:
         names = {

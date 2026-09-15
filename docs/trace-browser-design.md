@@ -74,7 +74,8 @@ selection, budgets, evaluation, or backup.
   **Implemented.**
 - Plot strategy validity, repair, visit, and reward summaries. **Implemented.**
 - Add exact decision-math tables after Phase 3 traces exist.
-- Export selected paths, kernels, diffs, and profiles for experiment reports.
+- Export selected paths, kernels, diffs, profiles, relevant decisions, and run context
+  as a versioned ZIP analysis bundle. **Implemented.**
 
 ## Testing
 

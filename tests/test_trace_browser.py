@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import io
+import json
 import sqlite3
 import shutil
+import zipfile
 
 import pytest
 
@@ -300,3 +303,54 @@ def test_cross_run_comparison_aligns_timelines_strategies_and_configuration(tmp_
         if item["metric"] == "metrics.occupancy"
     )
     assert occupancy["delta"] == 0
+
+
+def test_export_bundle_contains_sources_diff_profiles_path_and_decisions(tmp_path) -> None:
+    path = _browser_trace(tmp_path)
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """INSERT INTO iterations(
+                run_id, iteration, status, selected_strategy_id, leaf_node_id,
+                backed_up_reward, b_gen, b_prior
+            ) VALUES ('run-1', 1, 'VALID', 'stage', 'right', 0.7, 1, 0)"""
+        )
+        connection.execute(
+            """INSERT INTO selection_decisions(
+                run_id, iteration, step, node_id, selected_strategy_id,
+                selection_mode, selected_child_node_id, total_action_visits,
+                c_puct, c_ucb, c_pw, alpha_pw, k_max, existing_children,
+                allowed_children
+            ) VALUES ('run-1', 1, 0, 'root', 'stage', 'EXPAND', 'right', 0,
+                      12, 1, 1, 0.5, 4, 0, 1)"""
+        )
+
+    catalog = TraceCatalog(tmp_path)
+    trace_id = catalog.list_traces()[0]["trace_id"]
+    filename, payload = catalog.export_bundle(trace_id, "run-1", "root", "right")
+
+    assert filename.endswith(".zip")
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        assert set(archive.namelist()) == {
+            "manifest.json",
+            "report.md",
+            "node-a.cu",
+            "node-b.cu",
+            "source.diff",
+            "node-a.json",
+            "node-b.json",
+            "profile-a.json",
+            "profile-b.json",
+            "relationship.json",
+            "decisions.json",
+            "run.json",
+        }
+        assert archive.read("node-a.cu") == b"root source\n"
+        assert archive.read("node-b.cu") == b"right source\n"
+        assert b"-root source" in archive.read("source.diff")
+        manifest = json.loads(archive.read("manifest.json"))
+        assert manifest["format_version"] == 1
+        assert manifest["relationship"]["kind"] == "A_ANCESTOR_OF_B"
+        assert manifest["relevant_decision_count"] == 1
+        decisions = json.loads(archive.read("decisions.json"))
+        assert decisions[0]["selected_strategy_id"] == "stage"
+        assert b"stage" in archive.read("report.md")
