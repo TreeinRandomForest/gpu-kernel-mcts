@@ -267,6 +267,19 @@ def test_cli_client_starts_privileged_worker_behind_ssh_tunnel(tmp_path) -> None
     assert endpoint.worker_id == "instance-1"
     assert endpoint.address == "http://127.0.0.1:43210"
     commands = [command for command, _, _ in runner.calls]
+    ssh_commands = [command for command in commands if command[0] == "ssh"]
+    known_hosts_options = {
+        item
+        for command in ssh_commands
+        for item in command
+        if item.startswith("UserKnownHostsFile=")
+    }
+    assert len(known_hosts_options) == 1
+    known_hosts = Path(known_hosts_options.pop().partition("=")[2])
+    assert known_hosts.is_file()
+    assert known_hosts != config(tmp_path).ssh_private_key.parent / "known_hosts"
+    assert all("GlobalKnownHostsFile=/dev/null" in command for command in ssh_commands)
+    assert all("StrictHostKeyChecking=accept-new" in command for command in ssh_commands)
     docker = next(command for command in commands if "docker" in command)
     assert "--gpus" in docker
     assert "--cap-add=SYS_ADMIN" in docker
@@ -278,6 +291,7 @@ def test_cli_client_starts_privileged_worker_behind_ssh_tunnel(tmp_path) -> None
 
     client.terminate_instance("instance-1")
     assert tunnel.terminated == 1
+    assert not known_hosts.exists()
     assert any(
         command[1:4] == ["compute", "instance", "delete"]
         for command, _, _ in runner.calls

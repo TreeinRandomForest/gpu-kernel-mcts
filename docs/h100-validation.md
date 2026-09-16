@@ -232,7 +232,10 @@ port over SSH:
 The default Nebius resource selection is platform `gpu-h100-sxm`, preset
 `1gpu-16vcpu-200gb`, a 200 GiB `network_ssd` boot disk, and the
 `ubuntu24.04-cuda13.0` image family. The provider always deletes the temporary VM and
-disk after the run. On 2026-09-14, a manual Nebius H100 SXM VM check successfully
+disk after the run. SSH uses a fresh run-scoped known-hosts file so recycled public IP
+addresses cannot conflict with keys from earlier ephemeral VMs; the temporary file is
+removed during instance cleanup without modifying the user's normal SSH known-hosts
+file. On 2026-09-14, a manual Nebius H100 SXM VM check successfully
 collected numeric NCU metrics both directly on the VM and from the worker image run
 with `--cap-add=SYS_ADMIN`. The complete automated lifecycle subsequently provisioned
 the VM, evaluated and profiled the root, generated and evaluated one candidate,

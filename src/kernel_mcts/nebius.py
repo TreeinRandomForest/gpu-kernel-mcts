@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import secrets
 import socket
 import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -140,6 +142,7 @@ class NebiusCLIClient:
         self._port_factory = port_factory
         self._worker_status = worker_status
         self._tunnels: dict[str, Tunnel] = {}
+        self._known_hosts: dict[str, Path] = {}
 
     def create_instance(self) -> NebiusInstance:
         public_key = self.config.ssh_public_key.read_text(encoding="utf-8").strip()
@@ -257,7 +260,8 @@ class NebiusCLIClient:
                 self._check_deadline(deadline, "public IP")
                 self._sleep(self.config.poll_interval_seconds)
 
-        ssh_base = self._ssh_base(public_ip)
+        known_hosts = self._known_hosts_file(instance.instance_id)
+        ssh_base = self._ssh_base(public_ip, known_hosts)
         while True:
             result = self._runner(
                 [*ssh_base, f"{self.config.username}@{public_ip}", "true"],
@@ -356,25 +360,32 @@ class NebiusCLIClient:
 
     def terminate_instance(self, instance_id: str) -> None:
         tunnel = self._tunnels.pop(instance_id, None)
-        if tunnel is not None:
-            tunnel.terminate()
+        try:
+            if tunnel is not None:
+                tunnel.terminate()
+                try:
+                    tunnel.wait(timeout=5.0)
+                except subprocess.TimeoutExpired:
+                    tunnel.kill()
+                    tunnel.wait(timeout=5.0)
+        finally:
             try:
-                tunnel.wait(timeout=5.0)
-            except subprocess.TimeoutExpired:
-                tunnel.kill()
-                tunnel.wait(timeout=5.0)
-        self._mutation_command(
-            [
-                self.config.nebius_command,
-                "compute",
-                "instance",
-                "delete",
-                "--id",
-                instance_id,
-                "--format",
-                "json",
-            ]
-        )
+                self._mutation_command(
+                    [
+                        self.config.nebius_command,
+                        "compute",
+                        "instance",
+                        "delete",
+                        "--id",
+                        instance_id,
+                        "--format",
+                        "json",
+                    ]
+                )
+            finally:
+                known_hosts = self._known_hosts.pop(instance_id, None)
+                if known_hosts is not None:
+                    known_hosts.unlink(missing_ok=True)
 
     def delete_disk(self, disk_id: str) -> None:
         self._mutation_command(
@@ -390,7 +401,7 @@ class NebiusCLIClient:
             ]
         )
 
-    def _ssh_base(self, public_ip: str) -> list[str]:
+    def _ssh_base(self, public_ip: str, known_hosts: Path) -> list[str]:
         del public_ip
         return [
             self.config.ssh_command,
@@ -401,8 +412,23 @@ class NebiusCLIClient:
             "-o",
             "StrictHostKeyChecking=accept-new",
             "-o",
+            f"UserKnownHostsFile={known_hosts}",
+            "-o",
+            "GlobalKnownHostsFile=/dev/null",
+            "-o",
             "ConnectTimeout=10",
         ]
+
+    def _known_hosts_file(self, instance_id: str) -> Path:
+        existing = self._known_hosts.get(instance_id)
+        if existing is not None:
+            return existing
+        descriptor, name = tempfile.mkstemp(prefix="kernel-mcts-nebius-known-hosts-")
+        os.close(descriptor)
+        path = Path(name)
+        path.chmod(0o600)
+        self._known_hosts[instance_id] = path
+        return path
 
     def _json_command(
         self, command: Sequence[str], *, input: str | None = None
