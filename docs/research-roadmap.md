@@ -233,6 +233,49 @@ Keep cuBLAS and fixed CUTLASS results outside the MCTS state space as reference
 baselines. Compare best-found latency and speedup at equal `B_gen`; do not use baseline
 performance to prune otherwise valid nodes.
 
+## Forward-pass graph partitioning and fusion
+
+A longer-term target is optimization across a model forward pass rather than within one
+isolated kernel. The search input would be a typed computation/dataflow graph, and a
+state would describe both its partition into executable kernels and the schedules of
+those kernels.
+
+Graph-level semantic strategies could:
+
+- fuse adjacent operators or GEMM epilogues;
+- remove intermediate global-memory materializations;
+- recompute cheap values instead of storing and reloading them;
+- propagate or change tensor layouts across operator boundaries;
+- move fusion boundaries to balance locality against resource pressure;
+- form persistent regions; and
+- overlap computation, data movement, and communication where dependencies allow.
+
+Kernel-level strategies would then optimize each resulting region using CuTe DSL or
+another deterministic backend. They could select tiles, layouts, memory placement,
+TMA transfers, warp-group ownership, tensor-core operations, pipelines, and epilogues.
+The dataflow representation should track where every value resides, its layout and
+lifetime, and its producer-consumer dependencies. Cached profiling evidence could
+identify global-memory traffic, exposed synchronization, register or shared-memory
+pressure, occupancy limits, and pipeline imbalance.
+
+The goal should generally be an efficient partition into several fused kernels, not a
+literal single kernel for an entire forward pass. Excessive fusion can increase live
+state, register spilling, shared-memory demand, synchronization, compile complexity,
+and load imbalance; different operators may also require incompatible parallel
+decompositions. Fusion boundaries are therefore search decisions rather than an
+assumption that more fusion is always better.
+
+This direction naturally creates a two-level search:
+
+1. graph search chooses partitions, fusion, recomputation, and inter-operator layouts;
+2. schedule search optimizes the implementation of each fused region.
+
+Initial experiments should use a short, common subgraph such as GEMM plus bias,
+activation, residual, or normalization. Compare unfused library calls, a manually
+fused reference, and searched partitions under identical correctness and end-to-end
+latency measurement. Only after those experiments should the graph grow toward a full
+transformer block or forward pass.
+
 ## Suggested staging
 
 1. Define and validate a static feature schema on existing BF16 GEMM traces.
