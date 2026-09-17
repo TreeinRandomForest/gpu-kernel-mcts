@@ -33,6 +33,7 @@ def serialize_benchmark(benchmark: BenchmarkResult | None) -> dict[str, Any] | N
         "stddev_us": benchmark.stddev_us,
         "min_us": benchmark.min_us,
         "max_us": benchmark.max_us,
+        "gpu_operating_state": _json_value(benchmark.gpu_operating_state),
     }
 
 
@@ -164,6 +165,7 @@ def deserialize_evaluation(value: Mapping[str, Any]) -> EvaluationResult:
             benchmark_value.get("stddev_us"),
             benchmark_value.get("min_us"),
             benchmark_value.get("max_us"),
+            benchmark_value.get("gpu_operating_state", {}),
         )
         if isinstance(benchmark_value, Mapping)
         else None

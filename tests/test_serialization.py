@@ -33,7 +33,12 @@ def test_complete_evaluation_serializes_to_json() -> None:
         program=KernelProgram("kernel"),
         state_key="state",
         reward=0.5,
-        benchmark=BenchmarkResult((1.0, 2.0), 1.5, {"n=1": 1.5}),
+        benchmark=BenchmarkResult(
+            (1.0, 2.0),
+            1.5,
+            {"n=1": 1.5},
+            gpu_operating_state={"before": {"temperature.gpu": 55.0}},
+        ),
         metadata={"registers": 32},
         compile_status=CompileStatus.SUCCESS,
         correctness_status=CorrectnessStatus.PASS,
@@ -52,6 +57,9 @@ def test_complete_evaluation_serializes_to_json() -> None:
     assert serialized["compile_status"] == "SUCCESS"
     assert serialized["correctness_status"] == "PASS"
     assert serialized["benchmark"]["timings_us"] == [1.0, 2.0]
+    assert serialized["benchmark"]["gpu_operating_state"] == {
+        "before": {"temperature.gpu": 55.0}
+    }
     assert serialized["launch_config"] == {"block": [256, 1, 1]}
     assert serialized["compilation"] == {
         "artifact_id": "artifact",

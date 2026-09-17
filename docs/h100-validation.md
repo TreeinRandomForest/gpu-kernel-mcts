@@ -224,6 +224,18 @@ the metric-set ID, schema version, architecture, NCU version, and exact resolved
 metric names. Run a one-generation Nebius smoke search before using this set for an
 expensive experiment; the initial SM90 definition remains pending hardware validation.
 
+For long searches, enable diagnostic root/global-best drift checks, for example:
+
+```bash
+--measurement-drift-interval 25 \
+--measurement-drift-threshold 0.05
+```
+
+The threshold is a fractional latency change. These probes are persisted but do not
+alter the fixed root normalization or any cached MCTS value. Normal benchmark records
+also include pre/post GPU temperature, clock, power, utilization, and throttling
+telemetry where `nvidia-smi` exposes it.
+
 ## Run provenance
 
 `kernel_mcts.search_cli` captures the controller repository's Git commit and dirty

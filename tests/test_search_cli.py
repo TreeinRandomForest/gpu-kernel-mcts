@@ -76,6 +76,8 @@ def test_search_cli_parser_accepts_manual_volume_pair() -> None:
     assert arguments.c_puct == 1.5
     assert not arguments.include_incoming_profile_delta
     assert arguments.profile_metric_set == "lightweight_v1"
+    assert arguments.measurement_drift_interval == 0
+    assert arguments.measurement_drift_threshold == 0.05
 
 
 def test_search_cli_parser_accepts_incoming_profile_delta_ablation() -> None:
@@ -182,8 +184,9 @@ def test_search_cli_wires_nebius_without_runpod_credentials(
                 best=node,
                 nodes=(node,),
                 iterations=1,
-                generations=1,
-                profile_calls=1,
+                    generations=1,
+                    profile_calls=1,
+                    drift_probe_calls=0,
             ),
         )
 
@@ -291,7 +294,8 @@ def test_openai_search_wires_configured_generator_and_exports_best(
             iterations=3,
             generations=3,
             prior_calls=0,
-            profile_calls=2,
+                profile_calls=2,
+                drift_probe_calls=0,
         )
         return SimpleNamespace(run_id="llm-run", result=result)
 

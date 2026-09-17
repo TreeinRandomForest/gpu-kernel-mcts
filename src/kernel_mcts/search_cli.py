@@ -164,6 +164,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--c-puct", type=float, default=1.5)
     parser.add_argument("--k-max", type=int, default=4)
     parser.add_argument("--max-depth", type=int, default=10)
+    parser.add_argument("--measurement-drift-interval", type=int, default=0)
+    parser.add_argument("--measurement-drift-threshold", type=float, default=0.05)
     parser.add_argument(
         "--profile-metric-set",
         choices=PROFILE_METRIC_SET_IDS,
@@ -326,7 +328,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"{generator_label} search completed: run_id={execution.run_id}, "
         f"iterations={result.iterations}, B_gen={result.generations}, "
-        f"profiles={result.profile_calls}, nodes={len(result.nodes)}, "
+        f"profiles={result.profile_calls}, drift_probes={result.drift_probe_calls}, "
+        f"nodes={len(result.nodes)}, "
         f"best_reward={result.best.reward:.6g}"
     )
     print(f"SQLite trace: {arguments.trace.resolve()}")
@@ -362,6 +365,8 @@ def _search_components(
                     arguments.include_incoming_profile_delta
                 ),
                 profile_metric_set=arguments.profile_metric_set,
+                measurement_drift_interval=arguments.measurement_drift_interval,
+                measurement_drift_threshold=arguments.measurement_drift_threshold,
             ),
         )
 
@@ -400,6 +405,8 @@ def _search_components(
             max_infrastructure_retries=arguments.max_infrastructure_retries,
             include_incoming_profile_delta=arguments.include_incoming_profile_delta,
             profile_metric_set=arguments.profile_metric_set,
+            measurement_drift_interval=arguments.measurement_drift_interval,
+            measurement_drift_threshold=arguments.measurement_drift_threshold,
         ),
     )
 

@@ -131,6 +131,19 @@ logical GPU evaluation. A deterministic mock integration test exercises transien
 infrastructure failure, invalid-generation repair, valid-only node creation, budget
 accounting, trace materialization, and cleanup without LLM or GPU resources.
 
+CUDA benchmarks capture best-effort `nvidia-smi` snapshots immediately before and
+after timing, including temperature, SM and memory clocks, power draw/limit,
+performance state, utilization, and active clock-event reasons. These subprocesses
+run outside the CUDA-event timing interval. The serialized benchmark retains both
+snapshots for every root, candidate, and explicit drift measurement.
+
+An optional measurement-drift policy remeasures the root and current global best
+after a configured number of newly created valid nodes. It emits complete
+`measurement_drift_probe` events with latency ratios, telemetry, and a configurable
+suspect threshold. Probes do not create search nodes, consume `B_gen`, update cached
+benchmarks, redefine `T_root`, or change selection and backup values. Enable it with
+`--measurement-drift-interval`; the default zero disables the extra GPU work.
+
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:
 the one-shot generator performs no LLM call, while `B_gen=1` still exercises the same

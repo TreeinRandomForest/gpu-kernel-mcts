@@ -87,6 +87,7 @@ class BenchmarkResult:
     stddev_us: float | None = None
     min_us: float | None = None
     max_us: float | None = None
+    gpu_operating_state: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

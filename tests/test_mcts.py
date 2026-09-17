@@ -800,6 +800,48 @@ class RecordingEvents:
         self.events.append((event_type, payload))
 
 
+def test_explicit_drift_policy_remeasures_without_changing_cached_rewards() -> None:
+    class DriftMonitor:
+        def __init__(self):
+            self.calls = []
+
+        def remeasure(self, evaluation, workload):
+            self.calls.append(evaluation.state_key)
+            assert evaluation.benchmark is not None
+            return EvaluationResult(
+                ProposalStatus.VALID,
+                evaluation.program,
+                evaluation.state_key,
+                evaluation.reward,
+                BenchmarkResult((1.1,), 1.1),
+            )
+
+    monitor = DriftMonitor()
+    events = RecordingEvents()
+    result = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=ToyGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(2),
+        config=MCTSConfig(
+            k_max=1,
+            measurement_drift_interval=1,
+            measurement_drift_threshold=0.05,
+        ),
+        events=events,
+        drift_monitor=monitor,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    probes = [payload for event, payload in events.events if event == "measurement_drift_probe"]
+    assert result.drift_probe_calls == 4
+    assert len(probes) == 4
+    assert all(payload["suspect"] for payload in probes)
+    assert result.root.reward == 0.0
+    assert result.best.reward == 2.0
+
+
 def test_llm_prior_is_counted_reported_and_logged() -> None:
     provider = CountingLLMPrior()
     events = RecordingEvents()
@@ -966,6 +1008,7 @@ def test_run_failure_is_logged_and_reraised() -> None:
                 "b_gen": 1,
                 "b_prior": 0,
                 "profile_calls": 0,
+                "drift_probe_calls": 0,
                 "error_type": "RuntimeError",
             "message": "generation failed",
         }

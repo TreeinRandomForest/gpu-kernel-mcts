@@ -9,7 +9,7 @@ from uuid import uuid4
 from ..budget import GenerationBudget
 from ..domain import EvaluationResult, ProposalStatus, Strategy, WorkloadContract
 from ..generation import GenerationRequest, KernelGenerator
-from ..interfaces import EventSink, KernelEvaluator, NodeProfiler, NullEventSink, StrategyPriorProvider
+from ..interfaces import EventSink, KernelEvaluator, MeasurementDriftMonitor, NodeProfiler, NullEventSink, StrategyPriorProvider
 from ..priors import validate_priors
 from ..profiling import PROFILE_METRIC_SET_IDS
 from ..proposals import GenerationAttempt, run_proposal
@@ -35,6 +35,8 @@ class MCTSConfig:
     max_infrastructure_retries: int = 1
     include_incoming_profile_delta: bool = False
     profile_metric_set: str = "lightweight_v1"
+    measurement_drift_interval: int = 0
+    measurement_drift_threshold: float = 0.05
 
     def __post_init__(self) -> None:
         if self.k_max < 1 or self.max_depth < 1:
@@ -45,6 +47,8 @@ class MCTSConfig:
             raise ValueError("invalid progressive-widening configuration")
         if self.profile_metric_set not in PROFILE_METRIC_SET_IDS:
             raise ValueError("unknown profile metric set")
+        if self.measurement_drift_interval < 0 or self.measurement_drift_threshold < 0:
+            raise ValueError("measurement drift settings cannot be negative")
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +60,7 @@ class SearchResult:
     generations: int #LLM calls for gen incl. repair
     prior_calls: int #B_prior: LLM calls used to obtain strategy priors
     profile_calls: int #profiler executions, separate from B_gen and B_prior
+    drift_probe_calls: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +113,7 @@ class MCTS:
         config: MCTSConfig = MCTSConfig(),
         seed: int = 0,
         profiler: NodeProfiler | None = None,
+        drift_monitor: MeasurementDriftMonitor | None = None,
         events: EventSink | None = None,
     ) -> None:
         if not strategies:
@@ -123,10 +129,13 @@ class MCTS:
         self.seed = seed
         self.rng = Random(seed)
         self.profiler = profiler
+        self.drift_monitor = drift_monitor
         self.events = events or NullEventSink()
         self.nodes = TranspositionTable()
         self.prior_calls = 0
         self.profile_calls = 0
+        self.drift_probe_calls = 0
+        self._last_drift_node_count = 1
 
     def run(self, root_evaluation: EvaluationResult) -> SearchResult:
         root = SearchNode(str(uuid4()), root_evaluation)
@@ -161,6 +170,7 @@ class MCTS:
                         "new_global_best",
                         {"iteration": iterations, "node_id": leaf.id, "reward": leaf.reward},
                     )
+                self._maybe_probe_measurement_drift(root, best, iterations)
             if self.profiler is not None and best.profile is None:
                 self._profile_node(best, iterations, "final_best")
         except Exception as error:
@@ -171,6 +181,7 @@ class MCTS:
                     "b_gen": self.budget.snapshot().used,
                     "b_prior": self.prior_calls,
                     "profile_calls": self.profile_calls,
+                    "drift_probe_calls": self.drift_probe_calls,
                     "error_type": type(error).__name__,
                     "message": str(error),
                 },
@@ -184,6 +195,7 @@ class MCTS:
             self.budget.snapshot().used,
             self.prior_calls,
             self.profile_calls,
+            self.drift_probe_calls,
         )
         self._emit_final_snapshots(result)
         self.events.emit(
@@ -193,12 +205,49 @@ class MCTS:
                 "b_gen": result.generations,
                 "b_prior": result.prior_calls,
                 "profile_calls": result.profile_calls,
+                "drift_probe_calls": result.drift_probe_calls,
                 "best_node_id": result.best.id,
                 "best_reward": result.best.reward,
                 "unique_node_count": len(result.nodes),
             },
         )
         return result
+
+    def _maybe_probe_measurement_drift(
+        self, root: SearchNode, best: SearchNode, iteration: int
+    ) -> None:
+        interval = self.config.measurement_drift_interval
+        if self.drift_monitor is None or interval == 0:
+            return
+        node_count = len(tuple(self.nodes.values()))
+        if node_count - self._last_drift_node_count < interval:
+            return
+        self._last_drift_node_count = node_count
+        for role, node in (("root", root), ("best", best)):
+            if role == "best" and best is root:
+                continue
+            self.drift_probe_calls += 1
+            probe = self.drift_monitor.remeasure(node.evaluation, self.workload)
+            original = node.evaluation.benchmark
+            measured = probe.benchmark
+            ratio = None
+            if original is not None and measured is not None:
+                ratio = measured.median_us / original.median_us
+            self.events.emit(
+                "measurement_drift_probe",
+                {
+                    "iteration": iteration,
+                    "role": role,
+                    "node_id": node.id,
+                    "probe_call": self.drift_probe_calls,
+                    "status": probe.status.value,
+                    "original_benchmark": serialize_evaluation(node.evaluation).get("benchmark"),
+                    "probe_benchmark": serialize_evaluation(probe).get("benchmark"),
+                    "latency_ratio": ratio,
+                    "threshold": self.config.measurement_drift_threshold,
+                    "suspect": ratio is not None and abs(ratio - 1.0) > self.config.measurement_drift_threshold,
+                },
+            )
 
     def _emit_final_snapshots(self, result: SearchResult) -> None:
         for node in result.nodes:

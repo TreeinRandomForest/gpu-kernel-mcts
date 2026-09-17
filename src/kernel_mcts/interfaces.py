@@ -31,6 +31,12 @@ class NodeProfiler(Protocol):
     ) -> Mapping[str, object]: ...
 
 
+class MeasurementDriftMonitor(Protocol):
+    def remeasure(
+        self, evaluation: EvaluationResult, workload: WorkloadContract
+    ) -> EvaluationResult: ...
+
+
 class EventSink(Protocol):
     def emit(self, event_type: str, payload: Mapping[str, object]) -> None: ...
 

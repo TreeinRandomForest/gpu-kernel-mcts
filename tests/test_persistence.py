@@ -99,7 +99,7 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "puct_candidates",
             "ucb_candidates",
         } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:

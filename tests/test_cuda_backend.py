@@ -34,6 +34,7 @@ class FakeRunner:
         self.ncu_stderr = ""
         self.ncu_returncode = 0
         self.ncu_query_stdout = ""
+        self.gpu_state_stdout = ""
         self.timeout_stage = None
 
     def __call__(self, command, *, timeout, env):
@@ -74,6 +75,8 @@ class FakeRunner:
                 self.ncu_stdout,
                 self.ncu_stderr,
             )
+        if command[0].endswith("nvidia-smi") and self.gpu_state_stdout:
+            return subprocess.CompletedProcess(command, 0, self.gpu_state_stdout, "")
         if self.timeout_stage == "execute":
             raise subprocess.TimeoutExpired(command, timeout)
         return subprocess.CompletedProcess(
@@ -183,6 +186,25 @@ def test_correctness_and_benchmark_payloads_are_preserved(tmp_path) -> None:
     assert benchmark.min_us == 10.0
     assert benchmark.max_us == 12.0
     assert benchmark.warmup_count == 2
+
+
+def test_benchmark_captures_gpu_operating_state_outside_timing(tmp_path) -> None:
+    runner = FakeRunner()
+    runner.gpu_state_stdout = "55, 1410, 1593, 301.5, 700, P0, 98, 12, None"
+    subject = backend(tmp_path, runner)
+    compilation = subject.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    runner.execution_stdout = '{"status":"ok","timings_us":[10.0,12.0,11.0]}'
+
+    benchmark = subject.benchmark(compilation.artifact, BF16_GEMM_WORKLOAD)
+
+    assert benchmark.gpu_operating_state["before"]["temperature.gpu"] == 55.0
+    assert benchmark.gpu_operating_state["after"]["clocks.sm"] == 1410.0
+    assert benchmark.gpu_operating_state["after"]["pstate"] == "P0"
+    calls = [call[0][0] for call in runner.calls[-3:]]
+    assert calls[0].endswith("nvidia-smi")
+    assert calls[1].endswith("evaluate")
+    assert calls[2].endswith("nvidia-smi")
 
 
 def test_lightweight_profile_extracts_versioned_numeric_ncu_metrics(tmp_path) -> None:

@@ -100,6 +100,22 @@ class WorkerNodeProfiler:
         )
 
 
+class WorkerMeasurementDriftMonitor:
+    def __init__(self, worker: GPUWorker, run_id: str) -> None:
+        self._worker = worker
+        self._run_id = run_id
+        self._calls = 0
+
+    def remeasure(
+        self, evaluation: EvaluationResult, workload: WorkloadContract
+    ) -> EvaluationResult:
+        if evaluation.program is None:
+            raise ValueError("drift remeasurement requires an evaluated program")
+        self._calls += 1
+        evaluation_id = f"{_worker_evaluation_id(self._run_id, evaluation.program, workload)}-drift-{self._calls}"
+        return self._worker.evaluate(evaluation_id, evaluation.program, workload, "tier0")
+
+
 class RootNormalizedEvaluator:
     """Normalize valid worker results against this run's measured root."""
 
@@ -298,6 +314,7 @@ def run_mcts_search(
                 resolved_run_id,
                 mcts_config.profile_metric_set,
             ),
+            drift_monitor=WorkerMeasurementDriftMonitor(worker, resolved_run_id),
         )
         mcts_started = True
         return SearchExecution(resolved_run_id, search.run(root_evaluation))

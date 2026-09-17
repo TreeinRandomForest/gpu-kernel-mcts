@@ -49,6 +49,7 @@ class CudaBackendConfig:
     nvcc: str = "nvcc"
     cuobjdump: str | None = "cuobjdump"
     ncu: str = "ncu"
+    nvidia_smi: str | None = "nvidia-smi"
     architecture: str = "sm_90"
     ncu_version: str | None = None
     compile_timeout_seconds: float = 120.0
@@ -208,7 +209,9 @@ class CudaCppBackend:
         artifact: CudaArtifact,
         workload: WorkloadContract,
     ) -> BenchmarkResult:
+        before = self._gpu_operating_state()
         payload = self._execute(artifact, workload, "benchmark")
+        after = self._gpu_operating_state()
         timings = tuple(float(value) for value in payload["timings_us"])
         if len(timings) != self.config.measurement_count:
             raise EvaluationInfrastructureError("worker returned an unexpected timing count")
@@ -220,7 +223,54 @@ class CudaCppBackend:
             stddev_us=statistics.pstdev(timings),
             min_us=min(timings),
             max_us=max(timings),
+            gpu_operating_state={"before": before, "after": after},
         )
+
+    def _gpu_operating_state(self) -> Mapping[str, object]:
+        if self.config.nvidia_smi is None:
+            return {"status": "unavailable"}
+        fields = (
+            "temperature.gpu",
+            "clocks.sm",
+            "clocks.mem",
+            "power.draw",
+            "power.limit",
+            "pstate",
+            "utilization.gpu",
+            "utilization.memory",
+            "clocks_event_reasons.active",
+        )
+        command = [
+            _resolve_tool(self.config.nvidia_smi),
+            f"--query-gpu={','.join(fields)}",
+            "--format=csv,noheader,nounits",
+            "--id=0",
+        ]
+        try:
+            result = self._runner(
+                command,
+                timeout=min(10.0, self.config.execution_timeout_seconds),
+                env=self.config.subprocess_environment,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return {"status": "unavailable"}
+        if result.returncode != 0:
+            return {"status": "unavailable"}
+        rows = list(csv.reader(result.stdout.splitlines()))
+        if len(rows) != 1 or len(rows[0]) != len(fields):
+            return {"status": "unavailable"}
+        values: dict[str, object] = {"status": "observed"}
+        numeric = set(fields) - {"pstate", "clocks_event_reasons.active"}
+        for name, raw in zip(fields, rows[0]):
+            value = raw.strip()
+            if name in numeric:
+                try:
+                    values[name] = float(value)
+                except ValueError:
+                    values[name] = None
+            else:
+                values[name] = value
+        return values
 
     def binary_fingerprint(
         self,

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS search_runs (
     final_b_gen INTEGER,
     final_b_prior INTEGER,
     final_profile_calls INTEGER,
+    final_drift_probe_calls INTEGER,
     final_iterations INTEGER,
     workload_json TEXT,
     hardware_json TEXT,
@@ -211,7 +212,7 @@ CREATE TABLE IF NOT EXISTS ucb_candidates (
 );
 """
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -222,6 +223,7 @@ SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "final_b_gen": "INTEGER",
     "final_b_prior": "INTEGER",
     "final_profile_calls": "INTEGER",
+    "final_drift_probe_calls": "INTEGER",
     "final_iterations": "INTEGER",
     "workload_json": "TEXT",
     "hardware_json": "TEXT",
@@ -388,7 +390,8 @@ class SQLiteTraceStore:
         self.connection.execute(
             """UPDATE search_runs SET
                 ended_at = ?, best_node_id = ?, final_b_gen = ?,
-                final_b_prior = ?, final_profile_calls = ?, final_iterations = ?
+                final_b_prior = ?, final_profile_calls = ?,
+                final_drift_probe_calls = ?, final_iterations = ?
             WHERE run_id = ?""",
             (
                 created_at,
@@ -396,6 +399,7 @@ class SQLiteTraceStore:
                 payload.get("b_gen"),
                 payload.get("b_prior"),
                 payload.get("profile_calls"),
+                payload.get("drift_probe_calls"),
                 payload.get("iterations"),
                 self.run_id,
             ),
@@ -407,13 +411,15 @@ class SQLiteTraceStore:
         self.connection.execute(
             """UPDATE search_runs SET
                 ended_at = ?, final_b_gen = ?, final_b_prior = ?,
-                final_profile_calls = ?, final_iterations = ?
+                final_profile_calls = ?, final_drift_probe_calls = ?,
+                final_iterations = ?
             WHERE run_id = ?""",
             (
                 created_at,
                 payload.get("b_gen"),
                 payload.get("b_prior"),
                 payload.get("profile_calls"),
+                payload.get("drift_probe_calls"),
                 payload.get("iterations"),
                 self.run_id,
             ),

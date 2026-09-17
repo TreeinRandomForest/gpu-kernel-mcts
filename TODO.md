@@ -43,6 +43,8 @@ completed hardware validation is identified explicitly.
   validity, configuration, hardware, and best-node profiles.
 - [x] Downloadable, versioned trace-analysis bundles containing selected kernels,
   source diff, profiles, strategy relationship, relevant decisions, and run context.
+- [x] Per-benchmark GPU operating-state telemetry and explicit periodic root/best
+  drift probes that preserve fixed reward normalization.
 
 ## Next
 
@@ -57,7 +59,6 @@ completed hardware validation is identified explicitly.
   `B_gen`.
 - [ ] Add an LLM strategy-prior adapter while preserving separate `B_prior` accounting.
 - [ ] Add at least three more end-to-end benchmark kernels for the Milestone A minimum suite.
-- [ ] Add periodic root/global-best remeasurement and environment-drift handling.
 - [ ] Add strategy applicability metadata and filter actions by operation, dtype,
   backend, hardware capabilities, and workload constraints before MCTS selection.
 
