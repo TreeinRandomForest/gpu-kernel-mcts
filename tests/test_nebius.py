@@ -239,6 +239,104 @@ def test_cli_client_deletes_disk_if_instance_creation_fails(tmp_path) -> None:
     )
 
 
+def test_cli_client_recovers_created_instance_from_failed_command_output(
+    tmp_path,
+) -> None:
+    class FailedAfterCreateRunner(RecordingRunner):
+        def __call__(self, command, *, input=None, timeout=None):
+            command = list(command)
+            if command[1:4] == ["compute", "instance", "create"]:
+                self.calls.append((command, input, timeout))
+                name = json.loads(input)["metadata"]["name"]
+                return subprocess.CompletedProcess(
+                    command,
+                    1,
+                    json.dumps(
+                        {"metadata": {"id": "instance-leaked", "name": name}}
+                    ),
+                    "operation timed out",
+                )
+            return super().__call__(command, input=input, timeout=timeout)
+
+    runner = FailedAfterCreateRunner()
+    client = NebiusCLIClient(config(tmp_path), runner=runner)
+
+    with pytest.raises(NebiusError, match="operation timed out"):
+        client.create_instance()
+
+    mutations = [
+        command[1:4]
+        for command, _, _ in runner.calls
+        if command[1:4]
+        in (["compute", "instance", "delete"], ["compute", "disk", "delete"])
+    ]
+    assert mutations == [
+        ["compute", "instance", "delete"],
+        ["compute", "disk", "delete"],
+    ]
+
+
+def test_cli_client_finds_failed_instance_by_exact_generated_name(tmp_path) -> None:
+    class FailedWithListRunner(RecordingRunner):
+        def __call__(self, command, *, input=None, timeout=None):
+            command = list(command)
+            if command[1:4] == ["compute", "instance", "create"]:
+                self.calls.append((command, input, timeout))
+                return subprocess.CompletedProcess(command, 1, "", "request failed")
+            if command[1:4] == ["compute", "instance", "list"]:
+                self.calls.append((command, input, timeout))
+                create_input = next(
+                    value
+                    for called, value, _ in self.calls
+                    if called[1:4] == ["compute", "instance", "create"]
+                )
+                name = json.loads(create_input)["metadata"]["name"]
+                output = {
+                    "items": [
+                        {"metadata": {"id": "unrelated", "name": name + "-old"}},
+                        {"metadata": {"id": "instance-found", "name": name}},
+                    ]
+                }
+                return subprocess.CompletedProcess(command, 0, json.dumps(output), "")
+            return super().__call__(command, input=input, timeout=timeout)
+
+    runner = FailedWithListRunner()
+    client = NebiusCLIClient(config(tmp_path), runner=runner)
+
+    with pytest.raises(NebiusError, match="request failed"):
+        client.create_instance()
+
+    instance_delete = next(
+        command
+        for command, _, _ in runner.calls
+        if command[1:4] == ["compute", "instance", "delete"]
+    )
+    assert instance_delete[instance_delete.index("--id") + 1] == "instance-found"
+
+
+def test_cli_client_redacts_and_bounds_command_failure_diagnostics(tmp_path) -> None:
+    class SecretFailureRunner(RecordingRunner):
+        def __call__(self, command, *, input=None, timeout=None):
+            if list(command)[1:4] == ["compute", "disk", "create"]:
+                return subprocess.CompletedProcess(
+                    command,
+                    2,
+                    "",
+                    "token=super-secret " + "x" * 3000,
+                )
+            return super().__call__(command, input=input, timeout=timeout)
+
+    client = NebiusCLIClient(config(tmp_path), runner=SecretFailureRunner())
+
+    with pytest.raises(NebiusError) as caught:
+        client.create_instance()
+
+    message = str(caught.value)
+    assert "super-secret" not in message
+    assert "token=[REDACTED]" in message
+    assert len(message) < 2100
+
+
 def test_cli_client_starts_privileged_worker_behind_ssh_tunnel(tmp_path) -> None:
     class Tunnel:
         def __init__(self):

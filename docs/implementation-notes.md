@@ -115,6 +115,12 @@ tunnel, deletes the VM, and then deletes its boot disk, including on startup,
 manifest-validation, and search failures. The SSH private key and Nebius CLI
 credentials remain controller-local.
 
+If the Nebius CLI reports a failed instance-create command after the VM was
+actually created, the client recovers the VM by its unique generated name and
+deletes the VM before deleting its attached boot disk. CLI failures include a
+bounded, secret-redacted stderr diagnostic; incomplete cleanup identifies the
+resource IDs that may require manual removal.
+
 ## Run orchestration
 
 The provider-neutral orchestration layer starts the SQLite run, acquires one worker,

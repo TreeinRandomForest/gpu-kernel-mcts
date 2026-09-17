@@ -33,6 +33,14 @@ class NebiusError(RuntimeError):
     """A sanitized Nebius provisioning or remote-worker failure."""
 
 
+class _NebiusCommandError(NebiusError):
+    """Internal command failure retaining output for resource recovery."""
+
+    def __init__(self, message: str, result: subprocess.CompletedProcess[str]) -> None:
+        super().__init__(message)
+        self.result = result
+
+
 @dataclass(frozen=True, slots=True)
 class NebiusConfig:
     image: str
@@ -185,9 +193,10 @@ class NebiusCLIClient:
             "    ssh_authorized_keys:\n"
             f"      - {public_key}\n"
         )
+        instance_name = f"{self.config.resource_name_prefix}-vm-{suffix}"
         request = {
             "metadata": {
-                "name": f"{self.config.resource_name_prefix}-vm-{suffix}",
+                "name": instance_name,
                 "parent_id": self.config.project_id,
             },
             "spec": {
@@ -225,13 +234,67 @@ class NebiusCLIClient:
                 input=json.dumps(request),
             )
             instance_id = _metadata_id(instance_value, "instance")
-        except Exception:
+        except Exception as create_error:
+            instance_id = self._recover_failed_instance_id(
+                create_error, instance_name
+            )
+            cleanup_errors: list[str] = []
+            if instance_id is not None:
+                try:
+                    self.terminate_instance(instance_id)
+                except Exception as error:
+                    cleanup_errors.append(f"instance {instance_id}: {error}")
             try:
                 self.delete_disk(disk_id)
-            except Exception:
-                pass
+            except Exception as error:
+                cleanup_errors.append(f"disk {disk_id}: {error}")
+            if cleanup_errors:
+                residuals = "; ".join(cleanup_errors)
+                raise NebiusError(
+                    f"Nebius instance creation failed ({create_error}); "
+                    f"cleanup was incomplete: {residuals}"
+                ) from create_error
             raise
         return NebiusInstance(instance_id, disk_id)
+
+    def _recover_failed_instance_id(
+        self, error: Exception, instance_name: str
+    ) -> str | None:
+        if isinstance(error, _NebiusCommandError):
+            instance_id = _resource_id_from_json(
+                error.result.stdout, expected_name=instance_name
+            )
+            if instance_id is not None:
+                return instance_id
+        try:
+            value = self._json_command(
+                [
+                    self.config.nebius_command,
+                    "compute",
+                    "instance",
+                    "list",
+                    "--parent-id",
+                    self.config.project_id,
+                    "--format",
+                    "json",
+                ]
+            )
+        except Exception:
+            return None
+        items = value.get("items", ())
+        if not isinstance(items, list):
+            return None
+        for item in items:
+            if not isinstance(item, Mapping):
+                continue
+            metadata = item.get("metadata")
+            if not isinstance(metadata, Mapping):
+                continue
+            if metadata.get("name") == instance_name:
+                resource_id = metadata.get("id")
+                if isinstance(resource_id, str) and resource_id:
+                    return resource_id
+        return None
 
     def wait_until_ready(
         self,
@@ -458,7 +521,7 @@ class NebiusCLIClient:
             command, input=input, timeout=self.config.startup_timeout_seconds
         )
         if result.returncode != 0:
-            raise NebiusError("Nebius CLI command failed")
+            raise _NebiusCommandError(_command_error_message(result), result)
         try:
             value = json.loads(result.stdout)
         except json.JSONDecodeError as error:
@@ -473,7 +536,7 @@ class NebiusCLIClient:
             timeout=self.config.startup_timeout_seconds,
         )
         if result.returncode != 0:
-            raise NebiusError("Nebius CLI command failed")
+            raise _NebiusCommandError(_command_error_message(result), result)
 
     def _check_deadline(self, deadline: float, stage: str) -> None:
         if self._monotonic() >= deadline:
@@ -695,6 +758,38 @@ def _unused_local_port() -> int:
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         return int(listener.getsockname()[1])
+
+
+def _resource_id_from_json(output: str, *, expected_name: str) -> str | None:
+    try:
+        value = json.loads(output)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(value, Mapping):
+        return None
+    metadata = value.get("metadata")
+    name = metadata.get("name") if isinstance(metadata, Mapping) else None
+    identifier = metadata.get("id") if isinstance(metadata, Mapping) else None
+    if (
+        name == expected_name
+        and isinstance(identifier, str)
+        and re.fullmatch(r"[A-Za-z0-9_-]+", identifier)
+    ):
+        return identifier
+    return None
+
+
+def _command_error_message(result: subprocess.CompletedProcess[str]) -> str:
+    diagnostic = re.sub(r"[\x00-\x1f\x7f]+", " ", result.stderr).strip()
+    diagnostic = re.sub(
+        r"(?i)\b(api[_ -]?key|authorization|password|secret|token)\b"
+        r"\s*[:=]\s*[^\s,;]+",
+        r"\1=[REDACTED]",
+        diagnostic,
+    )
+    diagnostic = re.sub(r"\s+", " ", diagnostic)[:2000]
+    suffix = f": {diagnostic}" if diagnostic else ""
+    return f"Nebius CLI command failed with exit code {result.returncode}{suffix}"
 
 
 def _metadata_id(value: Mapping[str, object], resource: str) -> str:
