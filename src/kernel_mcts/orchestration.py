@@ -71,9 +71,15 @@ class WorkerKernelEvaluator:
 class WorkerNodeProfiler:
     """Request a lazy profile of the worker-cached compiled artifact."""
 
-    def __init__(self, worker: GPUWorker, run_id: str) -> None:
+    def __init__(
+        self,
+        worker: GPUWorker,
+        run_id: str,
+        metric_set: str = "lightweight_v1",
+    ) -> None:
         self._worker = worker
         self._run_id = run_id
+        self._metric_set = metric_set
 
     def lightweight_profile(
         self,
@@ -87,7 +93,11 @@ class WorkerNodeProfiler:
             evaluation.program,
             workload,
         )
-        return self._worker.profile(evaluation_id, "lightweight")
+        return self._worker.profile(
+            evaluation_id,
+            "lightweight",
+            self._metric_set,
+        )
 
 
 class RootNormalizedEvaluator:
@@ -276,7 +286,11 @@ def run_mcts_search(
             config=mcts_config,
             seed=seed,
             events=trace,
-            profiler=WorkerNodeProfiler(worker, resolved_run_id),
+            profiler=WorkerNodeProfiler(
+                worker,
+                resolved_run_id,
+                mcts_config.profile_metric_set,
+            ),
         )
         mcts_started = True
         return SearchExecution(resolved_run_id, search.run(root_evaluation))

@@ -208,6 +208,22 @@ long-scoreboard stalls, and executed instruction count. Validate this path with 
 small generation budget before another expensive search. The metric set completed
 successfully through the Nebius H100 SXM smoke lifecycle on 2026-09-14.
 
+Searches default to the unchanged `lightweight_v1` set. The richer set is selected
+with:
+
+```bash
+--profile-metric-set diagnostic_v2
+```
+
+`diagnostic_v2` is defined for SM90 and NCU 2025.1 and adds DRAM byte counts, L2 hit
+rate, local-memory traffic as spill evidence, eligible-warps and issue activity,
+shared-memory bank conflicts, tensor instructions, and selected warp-stall reasons.
+On its first use, the worker queries the metrics available on device 0 and fails with
+a bounded missing-metric list rather than silently dropping counters. Profiles record
+the metric-set ID, schema version, architecture, NCU version, and exact resolved
+metric names. Run a one-generation Nebius smoke search before using this set for an
+expensive experiment; the initial SM90 definition remains pending hardware validation.
+
 ## Run through a Nebius H100 SXM VM
 
 Configure and authenticate the `nebius` CLI, identify the subnet used by the target

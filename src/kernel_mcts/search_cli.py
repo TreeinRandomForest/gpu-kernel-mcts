@@ -16,6 +16,7 @@ from .openai_client import OpenAIResponsesClient, OpenAIResponsesConfig
 from .orchestration import run_mcts_search
 from .persistence import SQLiteTraceStore
 from .priors import UniformStrategyPrior
+from .profiling import PROFILE_METRIC_SET_IDS
 from .providers import HardwareSpec, RunPodConfig
 from .runpod import create_runpod_provider
 from .runpod_cli import ReadinessProgress
@@ -162,6 +163,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--c-puct", type=float, default=1.5)
     parser.add_argument("--k-max", type=int, default=4)
     parser.add_argument("--max-depth", type=int, default=10)
+    parser.add_argument(
+        "--profile-metric-set",
+        choices=PROFILE_METRIC_SET_IDS,
+        default="lightweight_v1",
+        help="versioned, worker-allowlisted NCU metric set",
+    )
     parser.add_argument(
         "--include-incoming-profile-delta",
         action="store_true",
@@ -330,6 +337,7 @@ def _search_components(
                 include_incoming_profile_delta=(
                     arguments.include_incoming_profile_delta
                 ),
+                profile_metric_set=arguments.profile_metric_set,
             ),
         )
 
@@ -367,6 +375,7 @@ def _search_components(
             max_repairs=arguments.max_repairs,
             max_infrastructure_retries=arguments.max_infrastructure_retries,
             include_incoming_profile_delta=arguments.include_incoming_profile_delta,
+            profile_metric_set=arguments.profile_metric_set,
         ),
     )
 

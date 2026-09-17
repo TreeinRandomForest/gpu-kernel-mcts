@@ -112,6 +112,7 @@ class GPUWorker(Protocol):
         self,
         evaluation_id: str,
         profile_level: str,
+        metric_set: str = "lightweight_v1",
     ) -> Mapping[str, object]: ...
 
 
@@ -224,6 +225,7 @@ class WorkerTransport(Protocol):
         self,
         evaluation_id: str,
         profile_level: str,
+        metric_set: str = "lightweight_v1",
     ) -> Mapping[str, object]: ...
 
     def close(self) -> None: ...
@@ -303,10 +305,11 @@ class RunPodWorker:
         self,
         evaluation_id: str,
         profile_level: str,
+        metric_set: str = "lightweight_v1",
     ) -> Mapping[str, object]:
         if self._released:
             raise RuntimeError("cannot profile on a released RunPod worker")
-        return self._transport.profile(evaluation_id, profile_level)
+        return self._transport.profile(evaluation_id, profile_level, metric_set)
 
     def _close(self) -> None:
         if not self._released:

@@ -96,8 +96,13 @@ class MockWorker:
             )
         return valid(program, 2.0)
 
-    def profile(self, evaluation_id, profile_level):
-        self.profile_calls.append((evaluation_id, profile_level))
+    def profile(
+        self,
+        evaluation_id,
+        profile_level,
+        metric_set="lightweight_v1",
+    ):
+        self.profile_calls.append((evaluation_id, profile_level, metric_set))
         return {
             "schema_version": 1,
             "profiler": "ncu",
@@ -193,6 +198,7 @@ def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:
                 k_max=1,
                 max_repairs=1,
                 max_infrastructure_retries=1,
+                profile_metric_set="diagnostic_v2",
             ),
             run_id="mock-run",
         )
@@ -222,6 +228,7 @@ def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:
     assert {call[3] for call in provider.worker.calls} == {"tier0"}
     assert provider.worker.profile_calls
     assert len(provider.worker.profile_calls) == len(set(provider.worker.profile_calls))
+    assert {call[2] for call in provider.worker.profile_calls} == {"diagnostic_v2"}
 
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT count(*) FROM environment_manifests").fetchone() == (1,)
@@ -241,6 +248,10 @@ def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:
             "SELECT final_b_gen, final_iterations, final_profile_calls, environment_manifest_id "
             "FROM search_runs WHERE run_id = 'mock-run'"
         ).fetchone() == (4, 3, execution.result.profile_calls, MANIFEST.manifest_id)
+        assert connection.execute(
+            "SELECT json_extract(config_json, '$.mcts.profile_metric_set') "
+            "FROM search_runs WHERE run_id = 'mock-run'"
+        ).fetchone() == ("diagnostic_v2",)
         assert connection.execute(
             "SELECT reward FROM nodes WHERE run_id = ? AND node_id = ?",
             (execution.run_id, execution.result.root.id),

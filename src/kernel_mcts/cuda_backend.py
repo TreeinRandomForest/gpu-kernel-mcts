@@ -23,6 +23,13 @@ from .evaluation import (
     CandidateTimeoutError,
     EvaluationInfrastructureError,
 )
+from .profiling import (
+    LIGHTWEIGHT_V1_ALIASES,
+    LIGHTWEIGHT_V1_METRICS,
+    ProfileMetricSet,
+    normalize_ncu_version,
+    resolve_profile_metric_set,
+)
 
 
 class CommandRunner(Protocol):
@@ -42,6 +49,7 @@ class CudaBackendConfig:
     cuobjdump: str | None = "cuobjdump"
     ncu: str = "ncu"
     architecture: str = "sm_90"
+    ncu_version: str | None = None
     compile_timeout_seconds: float = 120.0
     execution_timeout_seconds: float = 120.0
     profile_timeout_seconds: float = 300.0
@@ -95,32 +103,8 @@ class CudaCorrectnessResult:
 class CudaCppBackend:
     name = "cuda_cpp"
     LIGHTWEIGHT_PROFILE_SCHEMA_VERSION = 1
-    LIGHTWEIGHT_METRICS = (
-        "launch__registers_per_thread",
-        "sm__warps_active.avg.pct_of_peak_sustained_active",
-        "sm__throughput.avg.pct_of_peak_sustained_elapsed",
-        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
-        "lts__throughput.avg.pct_of_peak_sustained_elapsed",
-        "l1tex__throughput.avg.pct_of_peak_sustained_active",
-        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
-        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
-        "smsp__inst_executed.sum",
-    )
-    LIGHTWEIGHT_METRIC_ALIASES = {
-        "launch__registers_per_thread": "registers_per_thread",
-        "sm__warps_active.avg.pct_of_peak_sustained_active": "achieved_occupancy_pct",
-        "sm__throughput.avg.pct_of_peak_sustained_elapsed": "sm_throughput_pct",
-        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": "dram_throughput_pct",
-        "lts__throughput.avg.pct_of_peak_sustained_elapsed": "l2_throughput_pct",
-        "l1tex__throughput.avg.pct_of_peak_sustained_active": "l1tex_throughput_pct",
-        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": (
-            "tensor_pipe_utilization_pct"
-        ),
-        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": (
-            "long_scoreboard_warps_per_issue"
-        ),
-        "smsp__inst_executed.sum": "instructions_executed",
-    }
+    LIGHTWEIGHT_METRICS = LIGHTWEIGHT_V1_METRICS
+    LIGHTWEIGHT_METRIC_ALIASES = LIGHTWEIGHT_V1_ALIASES
 
     def __init__(
         self,
@@ -130,6 +114,7 @@ class CudaCppBackend:
     ) -> None:
         self.config = config
         self._runner = runner or _run_command
+        self._validated_profile_metric_sets: set[str] = set()
 
     def normalize_program(self, program: KernelProgram) -> str:
         without_comments = re.sub(r"//[^\n]*|/\*.*?\*/", " ", program.source, flags=re.S)
@@ -264,7 +249,18 @@ class CudaCppBackend:
         self,
         artifact: CudaArtifact,
         workload: WorkloadContract,
+        metric_set: str = "lightweight_v1",
     ) -> Mapping[str, object]:
+        try:
+            definition = resolve_profile_metric_set(
+                metric_set,
+                self.config.architecture,
+                self.config.ncu_version,
+            )
+        except ValueError as error:
+            raise EvaluationInfrastructureError(str(error)) from error
+        self._validate_profile_metric_set(definition)
+        metrics_to_collect = definition.metrics
         shape = workload.shapes[0].dimensions
         command = [
             _resolve_tool(self.config.ncu),
@@ -280,7 +276,7 @@ class CudaCppBackend:
             "--launch-count",
             "1",
             "--metrics",
-            ",".join(self.LIGHTWEIGHT_METRICS),
+            ",".join(metrics_to_collect),
             str(artifact.executable),
             "--mode=benchmark",
             f"--M={shape['M']}",
@@ -312,21 +308,71 @@ class CudaCppBackend:
             _ncu_csv_output(
                 result.stdout,
                 result.stderr,
-                self.LIGHTWEIGHT_METRICS,
+                metrics_to_collect,
             ),
-            self.LIGHTWEIGHT_METRICS,
+            metrics_to_collect,
         )
         return {
-            "schema_version": self.LIGHTWEIGHT_PROFILE_SCHEMA_VERSION,
+            "schema_version": definition.schema_version,
             "profiler": "ncu",
-            "metric_set": "lightweight_v1",
+            "metric_set": definition.id,
+            "target": {
+                "architecture": self.config.architecture,
+                "ncu_version": normalize_ncu_version(self.config.ncu_version),
+            },
+            "resolved_metrics": list(metrics_to_collect),
             "artifact_id": artifact.artifact_id,
             "summary": {
                 alias: metrics[name]["value"]
-                for name, alias in self.LIGHTWEIGHT_METRIC_ALIASES.items()
+                for name, alias in definition.aliases.items()
             },
             "metrics": metrics,
         }
+
+    def _validate_profile_metric_set(self, definition: ProfileMetricSet) -> None:
+        if (
+            definition.id == "lightweight_v1"
+            or definition.id in self._validated_profile_metric_sets
+        ):
+            return
+        command = [
+            _resolve_tool(self.config.ncu),
+            "--query-metrics-mode",
+            "all",
+            "--devices",
+            "0",
+        ]
+        try:
+            result = self._runner(
+                command,
+                timeout=self.config.profile_timeout_seconds,
+                env=self.config.subprocess_environment,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise EvaluationInfrastructureError(
+                "Nsight Compute metric validation could not be completed"
+            ) from error
+        if result.returncode != 0:
+            diagnostic = _ncu_diagnostic(result.stdout, result.stderr)
+            suffix = f": {diagnostic}" if diagnostic else ""
+            raise EvaluationInfrastructureError(
+                f"Nsight Compute metric validation failed{suffix}"
+            )
+        available = {
+            token.strip(" ,:\"'")
+            for token in f"{result.stdout}\n{result.stderr}".split()
+            if "__" in token
+        }
+        missing = [metric for metric in definition.metrics if metric not in available]
+        if missing:
+            preview = ", ".join(missing[:8])
+            if len(missing) > 8:
+                preview = f"{preview}, ..."
+            raise EvaluationInfrastructureError(
+                f"Nsight Compute metric set {definition.id!r} is unavailable; "
+                f"missing: {preview}"
+            )
+        self._validated_profile_metric_sets.add(definition.id)
 
     def full_profile(self, artifact, workload):
         raise NotImplementedError("CUDA profiling is a later phase")

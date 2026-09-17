@@ -98,7 +98,12 @@ class FakeTransport:
         self.evaluations.append(evaluation_id)
         return EvaluationResult(ProposalStatus.VALID, program, "key", 1.0)
 
-    def profile(self, evaluation_id, profile_level):
+    def profile(
+        self,
+        evaluation_id,
+        profile_level,
+        metric_set="lightweight_v1",
+    ):
         self.profiles.append(evaluation_id)
         return {"profiler": "ncu"}
 

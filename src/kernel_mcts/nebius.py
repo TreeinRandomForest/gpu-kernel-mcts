@@ -516,10 +516,15 @@ class NebiusWorker:
             or self._manifest.manifest_id,
         )
 
-    def profile(self, evaluation_id: str, profile_level: str) -> Mapping[str, object]:
+    def profile(
+        self,
+        evaluation_id: str,
+        profile_level: str,
+        metric_set: str = "lightweight_v1",
+    ) -> Mapping[str, object]:
         if self._released:
             raise RuntimeError("cannot profile on a released Nebius worker")
-        return self._transport.profile(evaluation_id, profile_level)
+        return self._transport.profile(evaluation_id, profile_level, metric_set)
 
 
 class NebiusProvider:

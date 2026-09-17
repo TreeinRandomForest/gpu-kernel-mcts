@@ -182,6 +182,7 @@ class BackendKernelEvaluator:
         self,
         evaluation: EvaluationResult,
         workload: WorkloadContract,
+        metric_set: str = "lightweight_v1",
     ) -> Mapping[str, object]:
         if evaluation.status != ProposalStatus.VALID:
             raise ValueError("only valid evaluations can be profiled")
@@ -192,6 +193,7 @@ class BackendKernelEvaluator:
         return self.backend.lightweight_profile(
             evaluation.compiled_artifact,
             workload,
+            metric_set,
         )
 
     def _result(self, **values: object) -> EvaluationResult:

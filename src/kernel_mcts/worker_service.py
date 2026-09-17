@@ -40,7 +40,9 @@ def build_application(
                 environment.get(
                     "KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts"
                 )
-            )
+            ),
+            architecture=f"sm_{manifest.compute_capability.replace('.', '')}",
+            ncu_version=manifest.profiler_versions.get("ncu"),
         )
     )
     _report_stage(progress, "root_compile")

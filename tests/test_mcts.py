@@ -206,6 +206,9 @@ def test_final_best_profile_is_persisted_with_distinct_trigger() -> None:
         "expansion",
         "final_best",
     ]
+    assert all(
+        payload["metric_set"] == "lightweight_v1" for payload in profile_events
+    )
     assert profile_events[-1]["node_id"] == result.best.id
     assert profile_events[-1]["profile"] == {"state_key": result.best.state_key}
 
@@ -320,6 +323,11 @@ def test_profile_delta_is_disabled_by_default() -> None:
     ).run(valid_evaluation("0", "state:0", 0.0))
 
     assert all(request.incoming_profile_delta is None for request in generator.requests)
+
+
+def test_mcts_rejects_unknown_profile_metric_set() -> None:
+    with pytest.raises(ValueError, match="unknown profile metric set"):
+        MCTSConfig(profile_metric_set="unknown")
 
 
 def test_mcts_charges_and_logs_repair_generation() -> None:

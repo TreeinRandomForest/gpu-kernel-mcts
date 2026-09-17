@@ -174,8 +174,13 @@ class FakeTransport:
             raise self.evaluation_error
         return EvaluationResult(ProposalStatus.VALID, program, "state", 1.0)
 
-    def profile(self, evaluation_id, profile_level):
-        self.profiles.append((evaluation_id, profile_level))
+    def profile(
+        self,
+        evaluation_id,
+        profile_level,
+        metric_set="lightweight_v1",
+    ):
+        self.profiles.append((evaluation_id, profile_level, metric_set))
         return {"profiler": "ncu", "metrics": {}}
 
     def close(self):
@@ -227,7 +232,9 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
     assert client.requests[0].environment == {"KERNEL_MCTS_WORKER_PORT": "8000"}
     assert transport.manifest_calls == 1
     assert len(transport.evaluations) == 2
-    assert transport.profiles == [("evaluation-1", "lightweight")]
+    assert transport.profiles == [
+        ("evaluation-1", "lightweight", "lightweight_v1")
+    ]
     assert profile["profiler"] == "ncu"
     assert first.worker_id == second.worker_id == "worker-1"
     assert first.environment_manifest_id == manifest().manifest_id

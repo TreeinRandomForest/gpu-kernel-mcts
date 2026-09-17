@@ -11,6 +11,7 @@ from ..domain import EvaluationResult, ProposalStatus, Strategy, WorkloadContrac
 from ..generation import GenerationRequest, KernelGenerator
 from ..interfaces import EventSink, KernelEvaluator, NodeProfiler, NullEventSink, StrategyPriorProvider
 from ..priors import validate_priors
+from ..profiling import PROFILE_METRIC_SET_IDS
 from ..proposals import GenerationAttempt, run_proposal
 from ..serialization import (
     serialize_evaluation,
@@ -33,6 +34,7 @@ class MCTSConfig:
     max_repairs: int = 2
     max_infrastructure_retries: int = 1
     include_incoming_profile_delta: bool = False
+    profile_metric_set: str = "lightweight_v1"
 
     def __post_init__(self) -> None:
         if self.k_max < 1 or self.max_depth < 1:
@@ -41,6 +43,8 @@ class MCTSConfig:
             raise ValueError("retry limits cannot be negative")
         if self.c_pw <= 0 or not 0 <= self.alpha_pw <= 1:
             raise ValueError("invalid progressive-widening configuration")
+        if self.profile_metric_set not in PROFILE_METRIC_SET_IDS:
+            raise ValueError("unknown profile metric set")
 
 
 @dataclass(frozen=True, slots=True)
@@ -352,6 +356,7 @@ class MCTS:
                 "iteration": iteration,
                 "node_id": node.id,
                 "profile_level": "lightweight",
+                "metric_set": self.config.profile_metric_set,
                 "profile_call": profile_call,
                 "trigger": trigger,
             },
@@ -365,6 +370,7 @@ class MCTS:
                 **self._node_payload(node, is_root=False),
                 "iteration": iteration,
                 "profile_level": "lightweight",
+                "metric_set": self.config.profile_metric_set,
                 "profile_call": profile_call,
                 "trigger": trigger,
             },

@@ -102,7 +102,7 @@ class FakeBackend:
         self.calls.append("fingerprint")
         return self.binary_hash
 
-    def lightweight_profile(self, artifact, workload):
+    def lightweight_profile(self, artifact, workload, metric_set="lightweight_v1"):
         self.calls.append("lightweight_profile")
         return self.profile_result
 

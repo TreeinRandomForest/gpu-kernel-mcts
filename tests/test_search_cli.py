@@ -74,6 +74,7 @@ def test_search_cli_parser_accepts_manual_volume_pair() -> None:
     assert arguments.data_center_id == "EUR-IS-3"
     assert arguments.c_puct == 1.5
     assert not arguments.include_incoming_profile_delta
+    assert arguments.profile_metric_set == "lightweight_v1"
 
 
 def test_search_cli_parser_accepts_incoming_profile_delta_ablation() -> None:
@@ -88,6 +89,21 @@ def test_search_cli_parser_accepts_incoming_profile_delta_ablation() -> None:
     )
 
     assert arguments.include_incoming_profile_delta
+
+
+def test_search_cli_parser_accepts_diagnostic_profile_metric_set() -> None:
+    arguments = build_parser().parse_args(
+        [
+            "--image",
+            "worker:v1",
+            "--trace",
+            "trace.sqlite",
+            "--profile-metric-set",
+            "diagnostic_v2",
+        ]
+    )
+
+    assert arguments.profile_metric_set == "diagnostic_v2"
 
 
 def test_search_cli_rejects_nonpositive_c_puct(capsys) -> None:

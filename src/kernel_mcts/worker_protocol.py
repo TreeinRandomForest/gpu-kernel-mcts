@@ -12,6 +12,7 @@ from typing import Mapping, Protocol
 from .domain import EvaluationResult, KernelProgram, WorkloadContract
 from .evaluation import EvaluationInfrastructureError
 from .interfaces import KernelEvaluator, NodeProfiler
+from .profiling import PROFILE_METRIC_SET_IDS
 from .providers import EnvironmentManifest, WorkerEndpoint, WorkerTransport
 from .serialization import (
     deserialize_environment_manifest,
@@ -73,7 +74,7 @@ class WorkerApplication:
         self._evaluations: dict[str, tuple[str, dict[str, object]]] = {}
         self._evaluation_results: dict[str, EvaluationResult] = {}
         self._evaluation_workloads: dict[str, WorkloadContract] = {}
-        self._profiles: dict[tuple[str, str], dict[str, object]] = {}
+        self._profiles: dict[tuple[str, str, str], dict[str, object]] = {}
 
     def handle(
         self,
@@ -135,16 +136,21 @@ class WorkerApplication:
             payload = json.loads(body)
             evaluation_id = payload["evaluation_id"]
             profile_level = payload["profile_level"]
+            metric_set = payload.get("metric_set", "lightweight_v1")
             if not isinstance(evaluation_id, str) or not evaluation_id:
                 raise ValueError
             if profile_level != "lightweight":
                 return WorkerResponse(400, {"error": "unsupported_profile_level"})
+            if not isinstance(metric_set, str) or not metric_set:
+                raise ValueError
+            if metric_set not in PROFILE_METRIC_SET_IDS:
+                return WorkerResponse(400, {"error": "unsupported_metric_set"})
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             return WorkerResponse(400, {"error": "invalid_request"})
         if self._profiler is None:
             return WorkerResponse(400, {"error": "profiling_unavailable"})
         with self._lock:
-            cached = self._profiles.get((evaluation_id, profile_level))
+            cached = self._profiles.get((evaluation_id, profile_level, metric_set))
             if cached is not None:
                 return WorkerResponse(200, cached)
             evaluation = self._evaluation_results.get(evaluation_id)
@@ -152,7 +158,21 @@ class WorkerApplication:
             if evaluation is None or workload is None:
                 return WorkerResponse(404, {"error": "evaluation_not_found"})
             try:
-                profile = dict(self._profiler.lightweight_profile(evaluation, workload))
+                profile = dict(
+                    self._profiler.lightweight_profile(
+                        evaluation,
+                        workload,
+                        metric_set,
+                    )
+                )
+                if profile.get("metric_set") != metric_set:
+                    return WorkerResponse(
+                        500,
+                        {
+                            "error": "profiling_failed",
+                            "error_type": "ProfileMetricSetMismatch",
+                        },
+                    )
             except Exception as error:
                 payload = {
                     "error": "profiling_failed",
@@ -161,7 +181,7 @@ class WorkerApplication:
                 if isinstance(error, EvaluationInfrastructureError):
                     payload["diagnostic"] = str(error)[:2_000]
                 return WorkerResponse(500, payload)
-            self._profiles[(evaluation_id, profile_level)] = profile
+            self._profiles[(evaluation_id, profile_level, metric_set)] = profile
             return WorkerResponse(200, profile)
 
     def _authorized(self, headers: Mapping[str, str]) -> bool:
@@ -208,12 +228,26 @@ class HTTPWorkerTransport(WorkerTransport):
         }
         return deserialize_evaluation(self._request("POST", "/evaluate", payload))
 
-    def profile(self, evaluation_id: str, profile_level: str) -> Mapping[str, object]:
-        return self._request(
+    def profile(
+        self,
+        evaluation_id: str,
+        profile_level: str,
+        metric_set: str = "lightweight_v1",
+    ) -> Mapping[str, object]:
+        profile = self._request(
             "POST",
             "/profile",
-            {"evaluation_id": evaluation_id, "profile_level": profile_level},
+            {
+                "evaluation_id": evaluation_id,
+                "profile_level": profile_level,
+                "metric_set": metric_set,
+            },
         )
+        if profile.get("metric_set") != metric_set:
+            raise WorkerProtocolError(
+                "remote worker returned unexpected profile metric set"
+            )
+        return profile
 
     def close(self) -> None:
         self._closed = True
@@ -280,6 +314,7 @@ def _protocol_error_detail(response_body: bytes) -> str | None:
         "profiling_unavailable",
         "evaluation_not_found",
         "unsupported_profile_level",
+        "unsupported_metric_set",
     }:
         return None
     parts = [error]

@@ -19,6 +19,7 @@ from kernel_mcts.evaluation import (
     EvaluationInfrastructureError,
 )
 from kernel_mcts.domain import BenchmarkResult
+from kernel_mcts.profiling import resolve_profile_metric_set
 
 
 class FakeRunner:
@@ -32,6 +33,7 @@ class FakeRunner:
         self.ncu_stdout = ""
         self.ncu_stderr = ""
         self.ncu_returncode = 0
+        self.ncu_query_stdout = ""
         self.timeout_stage = None
 
     def __call__(self, command, *, timeout, env):
@@ -59,6 +61,13 @@ class FakeRunner:
         if command[0] == "/opt/cuda/bin/ncu":
             if self.timeout_stage == "profile":
                 raise subprocess.TimeoutExpired(command, timeout)
+            if "--query-metrics-mode" in command:
+                return subprocess.CompletedProcess(
+                    command,
+                    self.ncu_returncode,
+                    self.ncu_query_stdout,
+                    "",
+                )
             return subprocess.CompletedProcess(
                 command,
                 self.ncu_returncode,
@@ -217,6 +226,61 @@ def test_lightweight_profile_extracts_versioned_numeric_ncu_metrics(tmp_path) ->
         "value": 1234.5,
         "unit": "%",
     }
+
+
+def test_diagnostic_profile_validates_and_collects_sm90_metrics(tmp_path) -> None:
+    runner = FakeRunner()
+    subject = backend(tmp_path, runner, ncu_version="Version 2025.1.1.0")
+    compilation = subject.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    definition = resolve_profile_metric_set(
+        "diagnostic_v2",
+        "sm_90",
+        "Version 2025.1.1.0",
+    )
+    runner.ncu_query_stdout = "\n".join(definition.metrics)
+    runner.ncu_stderr = ncu_csv(definition.metrics)
+
+    profile = subject.lightweight_profile(
+        compilation.artifact,
+        BF16_GEMM_WORKLOAD,
+        "diagnostic_v2",
+    )
+
+    query_command = runner.calls[-2][0]
+    profile_command = runner.calls[-1][0]
+    assert query_command[1:] == [
+        "--query-metrics-mode",
+        "all",
+        "--devices",
+        "0",
+    ]
+    assert profile_command[profile_command.index("--metrics") + 1] == ",".join(
+        definition.metrics
+    )
+    assert profile["schema_version"] == 2
+    assert profile["metric_set"] == "diagnostic_v2"
+    assert profile["target"] == {
+        "architecture": "sm_90",
+        "ncu_version": "2025.1",
+    }
+    assert profile["resolved_metrics"] == list(definition.metrics)
+    assert "shared_bank_conflicts" in profile["summary"]
+
+
+def test_diagnostic_profile_rejects_missing_ncu_metrics(tmp_path) -> None:
+    runner = FakeRunner()
+    subject = backend(tmp_path, runner, ncu_version="2025.1")
+    compilation = subject.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    runner.ncu_query_stdout = "launch__registers_per_thread"
+
+    with pytest.raises(EvaluationInfrastructureError, match="missing:"):
+        subject.lightweight_profile(
+            compilation.artifact,
+            BF16_GEMM_WORKLOAD,
+            "diagnostic_v2",
+        )
 
 
 def test_lightweight_profile_accepts_ncu_csv_on_stdout(tmp_path) -> None:

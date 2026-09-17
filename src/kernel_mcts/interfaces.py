@@ -24,7 +24,10 @@ class StrategyPriorProvider(Protocol):
 
 class NodeProfiler(Protocol):
     def lightweight_profile(
-        self, evaluation: EvaluationResult, workload: WorkloadContract
+        self,
+        evaluation: EvaluationResult,
+        workload: WorkloadContract,
+        metric_set: str = "lightweight_v1",
     ) -> Mapping[str, object]: ...
 
 

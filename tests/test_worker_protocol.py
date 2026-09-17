@@ -66,11 +66,12 @@ class FakeProfiler:
     def __init__(self) -> None:
         self.calls = []
 
-    def lightweight_profile(self, evaluation, workload):
-        self.calls.append((evaluation, workload))
+    def lightweight_profile(self, evaluation, workload, metric_set="lightweight_v1"):
+        self.calls.append((evaluation, workload, metric_set))
         return {
             "schema_version": 1,
             "profiler": "ncu",
+            "metric_set": metric_set,
             "metrics": {"occupancy": {"value": 50.0, "unit": "%"}},
         }
 
@@ -153,6 +154,75 @@ def test_worker_profiles_cached_evaluation_idempotently() -> None:
     assert len(profiler.calls) == 1
 
 
+def test_worker_caches_profile_metric_sets_separately() -> None:
+    profiler = FakeProfiler()
+    app = WorkerApplication(
+        auth_token="token",
+        manifest=MANIFEST,
+        evaluator=FakeEvaluator(),
+        profiler=profiler,
+    )
+    headers = {"Authorization": "Bearer token"}
+    app.handle("POST", "/evaluate", headers, request_body())
+
+    for metric_set in ("lightweight_v1", "diagnostic_v2", "diagnostic_v2"):
+        response = app.handle(
+            "POST",
+            "/profile",
+            headers,
+            json.dumps(
+                {
+                    "evaluation_id": "evaluation-1",
+                    "profile_level": "lightweight",
+                    "metric_set": metric_set,
+                }
+            ).encode(),
+        )
+        assert response.status == 200
+        assert response.payload["metric_set"] == metric_set
+
+    assert [call[2] for call in profiler.calls] == [
+        "lightweight_v1",
+        "diagnostic_v2",
+    ]
+
+
+def test_worker_rejects_unknown_profile_metric_set() -> None:
+    app = WorkerApplication(
+        auth_token="token",
+        manifest=MANIFEST,
+        evaluator=FakeEvaluator(),
+        profiler=FakeProfiler(),
+    )
+    body = json.dumps(
+        {
+            "evaluation_id": "evaluation-1",
+            "profile_level": "lightweight",
+            "metric_set": "arbitrary_metrics",
+        }
+    ).encode()
+
+    response = app.handle("POST", "/profile", {"Authorization": "Bearer token"}, body)
+
+    assert response.status == 400
+    assert response.payload == {"error": "unsupported_metric_set"}
+
+
+def test_transport_rejects_stale_worker_profile_metric_set() -> None:
+    def stale_http(method, url, headers, body, timeout):
+        return 200, json.dumps(
+            {"profiler": "ncu", "metric_set": "lightweight_v1"}
+        ).encode()
+
+    transport = HTTPWorkerTransport(
+        WorkerEndpoint("pod-1", "https://worker.invalid", "token"),
+        http=stale_http,
+    )
+
+    with pytest.raises(WorkerProtocolError, match="unexpected profile metric set"):
+        transport.profile("evaluation-1", "lightweight", "diagnostic_v2")
+
+
 def test_worker_rejects_profile_without_cached_evaluation() -> None:
     app = WorkerApplication(
         auth_token="token",
@@ -172,7 +242,7 @@ def test_worker_rejects_profile_without_cached_evaluation() -> None:
 
 def test_worker_returns_bounded_profiling_diagnostic() -> None:
     class FailedProfiler:
-        def lightweight_profile(self, evaluation, workload):
+        def lightweight_profile(self, evaluation, workload, metric_set="lightweight_v1"):
             raise EvaluationInfrastructureError("Nsight Compute failed: metric unavailable")
 
     app = WorkerApplication(
