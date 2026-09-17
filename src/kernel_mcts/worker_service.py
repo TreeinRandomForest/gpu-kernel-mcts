@@ -223,7 +223,11 @@ def capture_environment_manifest(environ=None) -> EnvironmentManifest:
         container_image=environment.get("KERNEL_MCTS_CONTAINER_IMAGE"),
         container_digest=environment.get("KERNEL_MCTS_CONTAINER_DIGEST"),
         project_git_commit=environment.get("KERNEL_MCTS_GIT_COMMIT"),
-        dirty_tree=False,
+        dirty_tree=(
+            environment.get("KERNEL_MCTS_DIRTY_TREE") == "1"
+            if environment.get("KERNEL_MCTS_DIRTY_TREE") in {"0", "1"}
+            else None
+        ),
     )
 
 

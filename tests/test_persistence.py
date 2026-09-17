@@ -49,6 +49,30 @@ def test_trace_store_records_run_model_name(tmp_path) -> None:
         ).fetchone() == ("test-model",)
 
 
+def test_trace_store_records_controller_git_provenance(tmp_path) -> None:
+    path = tmp_path / "trace.sqlite"
+    with SQLiteTraceStore(path) as store:
+        store.start_run(
+            "run",
+            "toy",
+            "mcts",
+            {
+                "git_commit": "a" * 40,
+                "dirty_tree": False,
+                "worker_image": "registry/worker:v10",
+                "reasoning_effort": "medium",
+            },
+        )
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT git_commit, dirty_tree, "
+            "json_extract(config_json, '$.worker_image'), "
+            "json_extract(config_json, '$.reasoning_effort') "
+            "FROM search_runs WHERE run_id = 'run'"
+        ).fetchone() == ("a" * 40, 0, "registry/worker:v10", "medium")
+
+
 def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
     path = tmp_path / "trace.sqlite"
     with SQLiteTraceStore(path) as store:

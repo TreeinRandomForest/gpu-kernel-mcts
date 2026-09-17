@@ -138,6 +138,9 @@ class RunPodConfig:
     pod_name: str = "gpu-kernel-mcts"
     network_volume_id: str | None = None
     data_center_ids: tuple[str, ...] = ()
+    project_git_commit: str | None = None
+    project_dirty_tree: bool | None = None
+    container_digest: str | None = None
 
     def __post_init__(self) -> None:
         if not self.image:
@@ -357,7 +360,26 @@ class RunPodProvider:
                     worker_protocol=self.config.worker_protocol,
                     name=self.config.pod_name,
                     environment={
-                        "KERNEL_MCTS_WORKER_PORT": str(self.config.worker_port)
+                        "KERNEL_MCTS_WORKER_PORT": str(self.config.worker_port),
+                        **(
+                            {"KERNEL_MCTS_GIT_COMMIT": self.config.project_git_commit}
+                            if self.config.project_git_commit is not None
+                            else {}
+                        ),
+                        **(
+                            {
+                                "KERNEL_MCTS_DIRTY_TREE": (
+                                    "1" if self.config.project_dirty_tree else "0"
+                                )
+                            }
+                            if self.config.project_dirty_tree is not None
+                            else {}
+                        ),
+                        **(
+                            {"KERNEL_MCTS_CONTAINER_DIGEST": self.config.container_digest}
+                            if self.config.container_digest is not None
+                            else {}
+                        ),
                     },
                     network_volume_id=self.config.network_volume_id,
                     data_center_ids=self.config.data_center_ids,

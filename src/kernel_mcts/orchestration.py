@@ -214,6 +214,7 @@ def run_mcts_search(
     seed: int = 0,
     run_id: str | None = None,
     model_name: str | None = None,
+    run_metadata: Mapping[str, object] | None = None,
 ) -> SearchExecution:
     """Run one global MCTS search on one acquired worker with durable traces."""
     budget = GenerationBudget(generation_budget)
@@ -226,6 +227,12 @@ def run_mcts_search(
     }
     if model_name is not None:
         run_config["model_name"] = model_name
+    if run_metadata is not None:
+        reserved = set(run_config) & set(run_metadata)
+        if reserved:
+            names = ", ".join(sorted(reserved))
+            raise ValueError(f"run metadata overrides reserved keys: {names}")
+        run_config.update(run_metadata)
     trace.start_run(
         resolved_run_id,
         workload.benchmark_id,

@@ -52,6 +52,9 @@ class NebiusConfig:
     resource_name_prefix: str = "gpu-kernel-mcts"
     nebius_command: str = "nebius"
     ssh_command: str = "ssh"
+    project_git_commit: str | None = None
+    project_dirty_tree: bool | None = None
+    container_digest: str | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -283,6 +286,24 @@ class NebiusCLIClient:
                 "KERNEL_MCTS_PROVIDER=nebius",
                 f"KERNEL_MCTS_WORKER_PORT={self.config.worker_port}",
                 f"KERNEL_MCTS_CONTAINER_IMAGE={self.config.image}",
+                *(
+                    (f"KERNEL_MCTS_GIT_COMMIT={self.config.project_git_commit}",)
+                    if self.config.project_git_commit is not None
+                    else ()
+                ),
+                *(
+                    (
+                        "KERNEL_MCTS_DIRTY_TREE="
+                        f"{1 if self.config.project_dirty_tree else 0}",
+                    )
+                    if self.config.project_dirty_tree is not None
+                    else ()
+                ),
+                *(
+                    (f"KERNEL_MCTS_CONTAINER_DIGEST={self.config.container_digest}",)
+                    if self.config.container_digest is not None
+                    else ()
+                ),
                 "",
             )
         )

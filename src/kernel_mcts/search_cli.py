@@ -17,6 +17,7 @@ from .orchestration import run_mcts_search
 from .persistence import SQLiteTraceStore
 from .priors import UniformStrategyPrior
 from .profiling import PROFILE_METRIC_SET_IDS
+from .provenance import capture_repository_state, image_digest_from_reference
 from .providers import HardwareSpec, RunPodConfig
 from .runpod import create_runpod_provider
 from .runpod_cli import ReadinessProgress
@@ -220,6 +221,22 @@ def main(argv: list[str] | None = None) -> int:
     strategies, generator, model_name, mcts_config = _search_components(
         parser, arguments
     )
+    repository = capture_repository_state(Path(__file__).resolve().parents[2])
+    image_digest = image_digest_from_reference(arguments.image)
+    provenance: dict[str, object] = {
+        "worker_image": arguments.image,
+        "reasoning_effort": (
+            arguments.reasoning_effort
+            if arguments.generator == "openai"
+            else "not_applicable"
+        ),
+    }
+    if repository.commit is not None:
+        provenance["git_commit"] = repository.commit
+    if repository.dirty is not None:
+        provenance["dirty_tree"] = repository.dirty
+    if image_digest is not None:
+        provenance["worker_image_digest"] = image_digest
     progress = ReadinessProgress("search worker")
     if arguments.provider == "runpod":
         api_key = os.environ.get(arguments.api_key_env)
@@ -236,6 +253,9 @@ def main(argv: list[str] | None = None) -> int:
                 startup_timeout_seconds=arguments.timeout,
                 network_volume_id=network_volume_id,
                 data_center_ids=(data_center_id,) if data_center_id is not None else (),
+                project_git_commit=repository.commit,
+                project_dirty_tree=repository.dirty,
+                container_digest=image_digest,
             ),
             readiness_progress=progress,
         )
@@ -266,6 +286,9 @@ def main(argv: list[str] | None = None) -> int:
                 platform=arguments.nebius_platform,
                 preset=arguments.nebius_preset,
                 startup_timeout_seconds=arguments.timeout,
+                project_git_commit=repository.commit,
+                project_dirty_tree=repository.dirty,
+                container_digest=image_digest,
             ),
             readiness_progress=progress,
         )
@@ -291,6 +314,7 @@ def main(argv: list[str] | None = None) -> int:
                 seed=arguments.seed,
                 run_id=arguments.run_id,
                 model_name=model_name,
+                run_metadata=provenance,
             )
     finally:
         progress.finish()

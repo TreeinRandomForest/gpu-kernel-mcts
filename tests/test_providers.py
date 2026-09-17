@@ -219,7 +219,13 @@ def test_runpod_missing_key_fails_before_api_activity() -> None:
 def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
     client = FakeClient()
     transport = FakeTransport()
-    runpod = provider(client, transport)
+    runpod = provider(
+        client,
+        transport,
+        project_git_commit="a" * 40,
+        project_dirty_tree=False,
+        container_digest="sha256:" + "b" * 64,
+    )
 
     worker = runpod.acquire_worker(HardwareSpec("H100", form_factor="SXM"))
     first = worker.evaluate("evaluation-1", KernelProgram("one"), WORKLOAD, "tier0")
@@ -229,7 +235,12 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
     runpod.release_worker(worker)
 
     assert len(client.requests) == 1
-    assert client.requests[0].environment == {"KERNEL_MCTS_WORKER_PORT": "8000"}
+    assert client.requests[0].environment == {
+        "KERNEL_MCTS_WORKER_PORT": "8000",
+        "KERNEL_MCTS_GIT_COMMIT": "a" * 40,
+        "KERNEL_MCTS_DIRTY_TREE": "0",
+        "KERNEL_MCTS_CONTAINER_DIGEST": "sha256:" + "b" * 64,
+    }
     assert transport.manifest_calls == 1
     assert len(transport.evaluations) == 2
     assert transport.profiles == [

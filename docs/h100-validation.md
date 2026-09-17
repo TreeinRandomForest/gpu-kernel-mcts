@@ -224,6 +224,21 @@ the metric-set ID, schema version, architecture, NCU version, and exact resolved
 metric names. Run a one-generation Nebius smoke search before using this set for an
 expensive experiment; the initial SM90 definition remains pending hardware validation.
 
+## Run provenance
+
+`kernel_mcts.search_cli` captures the controller repository's Git commit and dirty
+state before provisioning. It stores those values in `search_runs`, includes the
+exact requested worker image and reasoning effort in `config_json`, and passes the
+commit and dirty state into the worker environment manifest. Only the commit hash and
+dirty Boolean are persisted; filenames and diff contents are not logged.
+
+An image reference containing an immutable digest, such as
+`REGISTRY/worker@sha256:DIGEST`, also records that digest separately. A mutable tag is
+preserved exactly but cannot prove that two runs used identical image contents. For a
+controlled experiment, commit the intended changes, ensure `git status --short` is
+empty, build and push the worker, and prefer an immutable digest reference when one is
+available.
+
 ## Run through a Nebius H100 SXM VM
 
 Configure and authenticate the `nebius` CLI, identify the subnet used by the target

@@ -259,8 +259,9 @@ class SQLiteTraceStore:
     ) -> None:
         self.connection.execute(
             """INSERT INTO search_runs(
-                run_id, benchmark_id, algorithm, config_json, started_at, model_name
-            ) VALUES (?, ?, ?, ?, ?, ?)""",
+                run_id, benchmark_id, algorithm, config_json, started_at, model_name,
+                git_commit, dirty_tree
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 run_id,
                 benchmark_id,
@@ -268,6 +269,8 @@ class SQLiteTraceStore:
                 json.dumps(config, sort_keys=True),
                 _now(),
                 config.get("model_name"),
+                config.get("git_commit"),
+                config.get("dirty_tree"),
             ),
         )
         self.connection.commit()

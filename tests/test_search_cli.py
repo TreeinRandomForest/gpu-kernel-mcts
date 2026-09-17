@@ -10,6 +10,7 @@ from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from kernel_mcts.domain import KernelProgram, Strategy
 from kernel_mcts.generation import GenerationRequest, GenerationResult
 from kernel_mcts.llm_generation import LLMKernelGenerator
+from kernel_mcts.provenance import RepositoryState
 from kernel_mcts.search_cli import (
     ProgressKernelGenerator,
     SearchCLIProgress,
@@ -190,6 +191,10 @@ def test_search_cli_wires_nebius_without_runpod_credentials(
     monkeypatch.setattr("kernel_mcts.search_cli.create_nebius_provider", fake_provider)
     monkeypatch.setattr("kernel_mcts.search_cli.run_mcts_search", fake_search)
     monkeypatch.setattr(
+        "kernel_mcts.search_cli.capture_repository_state",
+        lambda path: RepositoryState("a" * 40, False),
+    )
+    monkeypatch.setattr(
         "kernel_mcts.search_cli.resolve_reusable_volume",
         lambda *args: pytest.fail("RunPod volume discovery must not run"),
     )
@@ -304,6 +309,10 @@ def test_openai_search_wires_configured_generator_and_exports_best(
         lambda *args, **kwargs: object(),
     )
     monkeypatch.setattr("kernel_mcts.search_cli.run_mcts_search", fake_search)
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.capture_repository_state",
+        lambda path: RepositoryState("a" * 40, False),
+    )
 
     result = main(
         [
@@ -340,6 +349,12 @@ def test_openai_search_wires_configured_generator_and_exports_best(
     assert [strategy.id for strategy in search["strategies"]] == ["coalescing"]
     assert search["generation_budget"] == 3
     assert search["model_name"] == "test-model"
+    assert search["run_metadata"] == {
+        "worker_image": "worker:v1",
+        "reasoning_effort": "medium",
+        "git_commit": "a" * 40,
+        "dirty_tree": False,
+    }
     assert search["mcts_config"].max_repairs == 1
     assert search["mcts_config"].c_puct == 12
     assert search["mcts_config"].max_infrastructure_retries == 1

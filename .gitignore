@@ -224,5 +224,8 @@ __marimo__/
 /search*.png
 /best-kernel*.cu
 /candidate*.cu
+/nebius-best*.cu
+/nebius-*-best*.cu
+/log-nebius-*
 /*.ncu-rep
 *.swp
