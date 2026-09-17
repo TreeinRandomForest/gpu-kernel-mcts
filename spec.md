@@ -1824,6 +1824,64 @@ binary/SASS fingerprinting
 
 Do not implement CuTe DSL or a searchable `CutlassCppBackend` during Milestone A.
 
+## 29.1 Initial Post-Milestone A CuTe DSL Target
+
+The first CuTe DSL experiment is a fixed, non-searchable Hopper BF16 GEMM
+baseline. It is an explicit post-Milestone A extension and does not expand the
+Milestone A completion criteria.
+
+The initial kernel must implement the existing `bf16_gemm_4096_h100` workload
+without changing its mathematical or measurement contract:
+
+```text
+M = N = K = 4096
+input dtype = BF16
+accumulator dtype = FP32
+output dtype = BF16
+rtol = 2e-2
+atol = 2e-2
+warmup count = 10
+measurement count = 30
+target = NVIDIA H100 SXM / SM90a
+```
+
+Input initialization, matrix layouts, reference computation, correctness
+checks, synchronization, and CUDA-event timing must match the existing CUDA
+C++, cuBLAS, and fixed CUTLASS evaluations. The experiment must not claim a
+performance comparison if these contracts differ.
+
+Begin from a pinned, official Hopper dense-GEMM CuTe DSL implementation and
+adapt it to this contract. The intended architectural mechanisms are Hopper
+Tensor Core matrix operations, TMA-based global-to-shared-memory movement, and
+staged shared-memory pipelines. Exact tile shapes, layouts, pipeline depths,
+and epilogue organization are backend configuration rather than changes to the
+workload.
+
+The initial implementation sequence is:
+
+1. pin the CuTe DSL/CUTLASS, CUDA toolkit, driver, and container versions;
+2. run an official Hopper CuTe DSL example on the target worker;
+3. adapt one fixed kernel to `bf16_gemm_4096_h100`;
+4. run compile/JIT, correctness, benchmark, telemetry, and Nsight Compute
+   profiling through a standalone evaluation path;
+5. persist the source, backend configuration, environment manifest, generated
+   artifact fingerprint, correctness result, timing samples, and profile;
+6. compare it with the tuned CUDA C++, fixed CUTLASS, and cuBLAS results under
+   the identical evaluation contract.
+
+This fixed baseline is diagnostic only. It must not become an MCTS node,
+consume `B_gen`, affect selection or backup, or require changes to MCTS search
+semantics.
+
+Only after the fixed implementation is correct, reproducible, and measurable
+may a searchable `CuTeDSLBackend` be proposed. That later proposal should use a
+typed schedule/configuration representation with deterministic rendering and
+static legality checks. Initial searchable parameters may include CTA tile
+shape, WGMMA atom and warp-group arrangement, pipeline stages, TMA copy layout,
+shared-memory swizzle, cluster shape, and epilogue policy. Standalone tuning of
+these parameters remains separately budgeted by `B_tune`; tuning trials do not
+become MCTS nodes unless a later specification explicitly changes that rule.
+
 Milestone A may include fixed vendor/library performance references, such as
 cuBLAS and a pinned CUTLASS kernel, for calibration and reporting. These are
 diagnostic baselines only: they must use the same workload contract,
