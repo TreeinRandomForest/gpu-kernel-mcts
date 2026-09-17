@@ -45,6 +45,8 @@ completed hardware validation is identified explicitly.
   source diff, profiles, strategy relationship, relevant decisions, and run context.
 - [x] Per-benchmark GPU operating-state telemetry and explicit periodic root/best
   drift probes that preserve fixed reward normalization.
+- [x] Optional post-search random/grid autotuning framework for explicitly annotated
+  CUDA templates, with separate `B_tune` accounting and SQLite trial records.
 
 ## Next
 

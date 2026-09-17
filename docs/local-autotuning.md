@@ -1,6 +1,6 @@
 # Local kernel autotuning
 
-This document records a proposed experiment beyond the current Milestone A search.
+This document records an experimental extension beyond the current Milestone A search.
 It does not override `spec.md`. The initial goal is to determine how much of the gap
 between the best generated CUDA kernel and cuBLAS comes from precise configuration
 choices rather than a missing kernel architecture.
@@ -29,6 +29,34 @@ Post-search tuning avoids multiplying tuning cost across every node and does not
 change PUCT, progressive widening, UCB, backup, or the MCTS result. Tuning attempts
 use a separate `B_tune`; they do not consume `B_gen` and are not backed up through
 the tree. The untuned MCTS best and the tuned best must both be retained and reported.
+
+The controller implements this as an optional phase:
+
+```bash
+--autotune \
+--tuning-budget 20 \
+--tuning-method random \
+--tuned-best-output tuned-best.cu
+```
+
+It is disabled by default. The worker remains alive until the phase completes.
+`random` and deterministic `grid` ordering are currently supported; Ax/BoTorch is a
+future candidate-selection method.
+
+Eligible constants must be declared explicitly. Autotuning never guesses which
+numeric literals are safe to change:
+
+```cpp
+// KERNEL_MCTS_TUNE BLOCK_M=64,128
+// KERNEL_MCTS_TUNE PIPELINE_STAGES=1,2,3
+#define BLOCK_M 128
+#define PIPELINE_STAGES 2
+```
+
+An unannotated final kernel produces a persisted `tuning_skipped` result. Each selected
+configuration replaces only its corresponding integer `#define`. The current schema
+assumes the listed cross-product is safe to attempt; compile and correctness failures
+still consume `B_tune` and are retained.
 
 The GPU is required for black-box compile, correctness, and latency measurements.
 For tens or hundreds of observations, surrogate fitting and acquisition optimization
@@ -143,7 +171,7 @@ Begin with random or Sobol sampling over the statically legal configurations. Th
 provides a simple baseline and validates the parameterization, renderer, evaluator,
 and trace records.
 
-Ax can then serve as the candidate-suggestion layer, using Sobol initialization and
+Ax can later serve as the candidate-suggestion layer, using Sobol initialization and
 BoTorch-based Bayesian optimization. Our SQLite trace remains the source of truth.
 Compare adaptive optimization against random/Sobol sampling under the same `B_tune`;
 a small, mostly categorical space may not benefit from a Gaussian-process model.
@@ -177,4 +205,3 @@ configuration trial, even though they do not produce a latency observation.
    and cuBLAS under the same workload and measurement policy.
 7. Use the remaining performance gap and profiles to decide whether the next step is
    additional CUDA parameters or a CuTe DSL WGMMA/TMA kernel family.
-

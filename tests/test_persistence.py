@@ -21,7 +21,7 @@ from kernel_mcts.persistence import SQLiteTraceStore
 from kernel_mcts.priors import UniformStrategyPrior
 from kernel_mcts.providers import EnvironmentManifest
 from kernel_mcts.search import MCTS, MCTSConfig
-from kernel_mcts.serialization import serialize_environment_manifest
+from kernel_mcts.serialization import serialize_environment_manifest, serialize_evaluation
 
 
 def test_trace_store_records_run_and_event(tmp_path) -> None:
@@ -97,9 +97,11 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "iteration_steps",
             "selection_decisions",
             "puct_candidates",
-            "ucb_candidates",
-        } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
+                "ucb_candidates",
+                "tuning_runs",
+                "tuning_trials",
+            } <= tables
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -404,3 +406,51 @@ def test_environment_manifest_event_is_persisted_and_linked_to_run(tmp_path) -> 
         assert connection.execute(
             "SELECT environment_manifest_id FROM search_runs WHERE run_id = 'run'"
         ).fetchone() == (manifest.manifest_id,)
+
+
+def test_tuning_trials_are_materialized_separately_from_search_nodes(tmp_path) -> None:
+    evaluation = EvaluationResult(
+        ProposalStatus.VALID,
+        KernelProgram("#define TILE 128"),
+        "tuned-state",
+        1.25,
+        BenchmarkResult((2.0,), 2.0),
+    )
+    path = tmp_path / "trace.sqlite"
+    with SQLiteTraceStore(path) as store:
+        store.start_run("run", "toy", "mcts", {})
+        store.emit(
+            "tuning_started",
+            {
+                "budget": 2,
+                "method": "grid",
+                "seed": 0,
+                "parameters": [{"name": "TILE", "choices": [64, 128]}],
+            },
+        )
+        store.emit(
+            "tuning_trial",
+            {
+                "trial": 1,
+                "b_tune": 1,
+                "parameters": {"TILE": 128},
+                "evaluation": serialize_evaluation(evaluation),
+            },
+        )
+        store.emit(
+            "tuning_completed",
+            {
+                "b_tune": 1,
+                "best_parameters": {"TILE": 128},
+                "best_evaluation": serialize_evaluation(evaluation),
+            },
+        )
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT status, budget, method, b_tune, best_reward FROM tuning_runs"
+        ).fetchone() == ("COMPLETED", 2, "grid", 1, 1.25)
+        assert connection.execute(
+            "SELECT proposal_status, reward, program_text FROM tuning_trials"
+        ).fetchone() == ("VALID", 1.25, "#define TILE 128")
+        assert connection.execute("SELECT count(*) FROM nodes").fetchone() == (0,)

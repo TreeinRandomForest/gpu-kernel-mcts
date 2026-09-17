@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Mapping, TextIO
 
+from .autotuning import TuningConfig
 from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from .config import load_data, parse_strategies
 from .domain import Strategy
@@ -90,11 +91,28 @@ class SearchCLIProgress:
             )
         elif event_type == "run_completed":
             self._write(
-                "Search completed; terminating worker: "
+                "MCTS completed: "
                 f"iterations={payload.get('iterations')}, B_gen={payload.get('b_gen')}, "
                 f"profiles={payload.get('profile_calls')}, "
                 f"best_reward={payload.get('best_reward')}"
             )
+        elif event_type == "tuning_started":
+            self._write(
+                f"Starting post-search autotuning: method={payload.get('method')}, "
+                f"budget={payload.get('budget')}"
+            )
+        elif event_type == "tuning_trial":
+            evaluation = payload.get("evaluation")
+            status = evaluation.get("status") if isinstance(evaluation, Mapping) else None
+            reward = evaluation.get("reward") if isinstance(evaluation, Mapping) else None
+            self._write(
+                f"Tuning trial completed: B_tune={payload.get('b_tune')}, "
+                f"status={status}, reward={reward}"
+            )
+        elif event_type == "tuning_completed":
+            self._write(f"Post-search autotuning completed: B_tune={payload.get('b_tune')}")
+        elif event_type == "tuning_skipped":
+            self._write(f"Post-search autotuning skipped: {payload.get('reason')}")
         elif event_type == "run_failed":
             self._write(
                 f"Search failed: error_type={payload.get('error_type')}, "
@@ -152,6 +170,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--preferred-data-center-id")
     parser.add_argument("--volume-name", default="gpu-kernel-mcts")
     parser.add_argument("--generation-budget", type=int, default=1)
+    parser.add_argument("--autotune", action="store_true")
+    parser.add_argument("--tuning-budget", type=int, default=20)
+    parser.add_argument("--tuning-method", choices=("random", "grid"), default="random")
+    parser.add_argument("--tuned-best-output", type=Path)
     parser.add_argument("--generator", choices=("smoke", "openai"), default="smoke")
     parser.add_argument("--model")
     parser.add_argument("--strategies", type=Path)
@@ -219,6 +241,14 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.best_output is not None and arguments.best_output.exists():
         parser.error(
             f"refusing to overwrite existing best output: {arguments.best_output}"
+        )
+    if arguments.tuned_best_output is not None and not arguments.autotune:
+        parser.error("--tuned-best-output requires --autotune")
+    if arguments.autotune and arguments.tuning_budget < 1:
+        parser.error("--tuning-budget must be positive")
+    if arguments.tuned_best_output is not None and arguments.tuned_best_output.exists():
+        parser.error(
+            f"refusing to overwrite existing tuned output: {arguments.tuned_best_output}"
         )
     strategies, generator, model_name, mcts_config = _search_components(
         parser, arguments
@@ -317,6 +347,15 @@ def main(argv: list[str] | None = None) -> int:
                 run_id=arguments.run_id,
                 model_name=model_name,
                 run_metadata=provenance,
+                tuning_config=(
+                    TuningConfig(
+                        arguments.tuning_budget,
+                        arguments.tuning_method,
+                        arguments.seed,
+                    )
+                    if arguments.autotune
+                    else None
+                ),
             )
     finally:
         progress.finish()
@@ -324,6 +363,15 @@ def main(argv: list[str] | None = None) -> int:
     result = execution.result
     if arguments.best_output is not None:
         arguments.best_output.write_text(result.best.program.source, encoding="utf-8")
+    if (
+        arguments.tuned_best_output is not None
+        and execution.tuning is not None
+        and execution.tuning.best is not None
+        and execution.tuning.best.program is not None
+    ):
+        arguments.tuned_best_output.write_text(
+            execution.tuning.best.program.source, encoding="utf-8"
+        )
     generator_label = "OpenAI" if arguments.generator == "openai" else "Smoke"
     print(
         f"{generator_label} search completed: run_id={execution.run_id}, "
@@ -333,8 +381,24 @@ def main(argv: list[str] | None = None) -> int:
         f"best_reward={result.best.reward:.6g}"
     )
     print(f"SQLite trace: {arguments.trace.resolve()}")
+    if execution.tuning is not None:
+        if execution.tuning.skipped_reason is not None:
+            print(f"Autotuning skipped: {execution.tuning.skipped_reason}")
+        else:
+            tuned_reward = (
+                execution.tuning.best.reward
+                if execution.tuning.best is not None
+                else result.best.reward
+            )
+            print(
+                f"Autotuning completed: B_tune={execution.tuning.used}, "
+                f"best_reward={tuned_reward:.6g}, "
+                f"improved={execution.tuning.improved}"
+            )
     if arguments.best_output is not None:
         print(f"Best kernel: {arguments.best_output.resolve()}")
+    if arguments.tuned_best_output is not None and arguments.tuned_best_output.exists():
+        print(f"Tuned best kernel: {arguments.tuned_best_output.resolve()}")
     return 0
 
 

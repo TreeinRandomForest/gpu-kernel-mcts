@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, replace
 from typing import Callable, Mapping, Protocol, Sequence
 from uuid import uuid4
 
+from .autotuning import PostSearchAutotuner, TuningConfig, TuningResult
 from .budget import GenerationBudget
 from .domain import (
     BenchmarkResult,
@@ -37,6 +38,7 @@ class SearchTraceStore(EventSink, Protocol):
 class SearchExecution:
     run_id: str
     result: SearchResult
+    tuning: TuningResult | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -231,6 +233,7 @@ def run_mcts_search(
     run_id: str | None = None,
     model_name: str | None = None,
     run_metadata: Mapping[str, object] | None = None,
+    tuning_config: TuningConfig | None = None,
 ) -> SearchExecution:
     """Run one global MCTS search on one acquired worker with durable traces."""
     budget = GenerationBudget(generation_budget)
@@ -317,7 +320,15 @@ def run_mcts_search(
             drift_monitor=WorkerMeasurementDriftMonitor(worker, resolved_run_id),
         )
         mcts_started = True
-        return SearchExecution(resolved_run_id, search.run(root_evaluation))
+        result = search.run(root_evaluation)
+        tuning = (
+            PostSearchAutotuner(evaluator, workload, tuning_config, trace).run(
+                result.best.evaluation
+            )
+            if tuning_config is not None
+            else None
+        )
+        return SearchExecution(resolved_run_id, result, tuning)
     except Exception as error:
         if not mcts_started:
             payload: dict[str, object] = {

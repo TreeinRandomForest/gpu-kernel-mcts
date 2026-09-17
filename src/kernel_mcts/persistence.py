@@ -210,9 +210,33 @@ CREATE TABLE IF NOT EXISTS ucb_candidates (
     FOREIGN KEY (run_id, iteration, step)
         REFERENCES selection_decisions(run_id, iteration, step)
 );
+CREATE TABLE IF NOT EXISTS tuning_runs (
+    run_id TEXT PRIMARY KEY REFERENCES search_runs(run_id),
+    status TEXT NOT NULL,
+    budget INTEGER,
+    method TEXT,
+    seed INTEGER,
+    parameters_json TEXT,
+    b_tune INTEGER NOT NULL DEFAULT 0,
+    best_reward REAL,
+    best_parameters_json TEXT,
+    skipped_reason TEXT
+);
+CREATE TABLE IF NOT EXISTS tuning_trials (
+    run_id TEXT NOT NULL REFERENCES search_runs(run_id),
+    trial INTEGER NOT NULL,
+    b_tune INTEGER NOT NULL,
+    parameters_json TEXT NOT NULL,
+    proposal_status TEXT NOT NULL,
+    reward REAL,
+    program_text TEXT,
+    benchmark_json TEXT,
+    evaluation_json TEXT NOT NULL,
+    PRIMARY KEY (run_id, trial)
+);
 """
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -335,10 +359,84 @@ class SQLiteTraceStore:
             "generation": self._materialize_generation,
             "backup": self._materialize_backup,
             "iteration_completed": self._materialize_iteration,
+            "tuning_started": self._materialize_tuning_started,
+            "tuning_trial": self._materialize_tuning_trial,
+            "tuning_completed": self._materialize_tuning_completed,
+            "tuning_skipped": self._materialize_tuning_skipped,
         }
         handler = handlers.get(event_type)
         if handler is not None:
             handler(payload, created_at)
+
+    def _materialize_tuning_started(
+        self, payload: Mapping[str, object], created_at: str
+    ) -> None:
+        self.connection.execute(
+            """INSERT OR REPLACE INTO tuning_runs(
+                run_id, status, budget, method, seed, parameters_json, b_tune
+            ) VALUES (?, 'RUNNING', ?, ?, ?, ?, 0)""",
+            (
+                self.run_id,
+                payload.get("budget"),
+                payload.get("method"),
+                payload.get("seed"),
+                _json(payload.get("parameters", [])),
+            ),
+        )
+
+    def _materialize_tuning_trial(
+        self, payload: Mapping[str, object], created_at: str
+    ) -> None:
+        evaluation = _mapping(payload.get("evaluation"), "tuning evaluation")
+        program = evaluation.get("program")
+        program_text = program.get("source") if isinstance(program, Mapping) else None
+        self.connection.execute(
+            """INSERT INTO tuning_trials(
+                run_id, trial, b_tune, parameters_json, proposal_status,
+                reward, program_text, benchmark_json, evaluation_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                self.run_id,
+                payload["trial"],
+                payload["b_tune"],
+                _json(payload.get("parameters", {})),
+                evaluation["status"],
+                evaluation.get("reward"),
+                program_text,
+                _optional_json(evaluation.get("benchmark")),
+                _json(evaluation),
+            ),
+        )
+        self.connection.execute(
+            "UPDATE tuning_runs SET b_tune = ? WHERE run_id = ?",
+            (payload["b_tune"], self.run_id),
+        )
+
+    def _materialize_tuning_completed(
+        self, payload: Mapping[str, object], created_at: str
+    ) -> None:
+        best = payload.get("best_evaluation")
+        reward = best.get("reward") if isinstance(best, Mapping) else None
+        self.connection.execute(
+            """UPDATE tuning_runs SET status = 'COMPLETED', b_tune = ?,
+                best_reward = ?, best_parameters_json = ? WHERE run_id = ?""",
+            (
+                payload.get("b_tune", 0),
+                reward,
+                _json(payload.get("best_parameters", {})),
+                self.run_id,
+            ),
+        )
+
+    def _materialize_tuning_skipped(
+        self, payload: Mapping[str, object], created_at: str
+    ) -> None:
+        self.connection.execute(
+            """INSERT OR REPLACE INTO tuning_runs(
+                run_id, status, b_tune, skipped_reason
+            ) VALUES (?, 'SKIPPED', 0, ?)""",
+            (self.run_id, payload.get("reason")),
+        )
 
     def _materialize_environment_manifest(
         self, payload: Mapping[str, object], created_at: str

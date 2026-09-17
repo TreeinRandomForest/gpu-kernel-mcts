@@ -144,6 +144,13 @@ suspect threshold. Probes do not create search nodes, consume `B_gen`, update ca
 benchmarks, redefine `T_root`, or change selection and backup values. Enable it with
 `--measurement-drift-interval`; the default zero disables the extra GPU work.
 
+Optional post-search autotuning keeps the worker alive after MCTS and tunes only an
+explicitly annotated final-best CUDA template. It has independent `B_tune` accounting
+and random/grid candidate ordering. Trials undergo the normal compile, correctness,
+benchmark, and telemetry pipeline but never become MCTS nodes or alter backups.
+Dedicated `tuning_runs` and `tuning_trials` tables preserve every attempt. Unannotated
+kernels are recorded as skipped rather than modified heuristically.
+
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:
 the one-shot generator performs no LLM call, while `B_gen=1` still exercises the same

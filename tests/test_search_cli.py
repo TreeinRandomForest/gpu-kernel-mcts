@@ -109,6 +109,28 @@ def test_search_cli_parser_accepts_diagnostic_profile_metric_set() -> None:
     assert arguments.profile_metric_set == "diagnostic_v2"
 
 
+def test_search_cli_parser_accepts_optional_post_search_tuning() -> None:
+    arguments = build_parser().parse_args(
+        [
+            "--image",
+            "worker:v1",
+            "--trace",
+            "trace.sqlite",
+            "--autotune",
+            "--tuning-budget",
+            "12",
+            "--tuning-method",
+            "grid",
+            "--tuned-best-output",
+            "tuned.cu",
+        ]
+    )
+
+    assert arguments.autotune
+    assert arguments.tuning_budget == 12
+    assert arguments.tuning_method == "grid"
+
+
 def test_search_cli_rejects_nonpositive_c_puct(capsys) -> None:
     with pytest.raises(SystemExit):
         main(
@@ -180,13 +202,14 @@ def test_search_cli_wires_nebius_without_runpod_credentials(
         node = SimpleNamespace(program=KernelProgram("best"), reward=0.0)
         return SimpleNamespace(
             run_id="nebius-run",
+            tuning=None,
             result=SimpleNamespace(
                 best=node,
                 nodes=(node,),
                 iterations=1,
-                    generations=1,
-                    profile_calls=1,
-                    drift_probe_calls=0,
+                generations=1,
+                profile_calls=1,
+                drift_probe_calls=0,
             ),
         )
 
@@ -294,10 +317,10 @@ def test_openai_search_wires_configured_generator_and_exports_best(
             iterations=3,
             generations=3,
             prior_calls=0,
-                profile_calls=2,
-                drift_probe_calls=0,
+            profile_calls=2,
+            drift_probe_calls=0,
         )
-        return SimpleNamespace(run_id="llm-run", result=result)
+        return SimpleNamespace(run_id="llm-run", result=result, tuning=None)
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
     monkeypatch.setenv("RUNPOD_API_KEY", "test-runpod-key")
@@ -425,7 +448,7 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
     assert "B_gen=3, status=VALID, strategy=coalescing" in output
     assert "iteration=2, B_gen=3, status=VALID, backed_up_reward=0.5" in output
     assert "New best: iteration=2, reward=0.5" in output
-    assert "Search completed; terminating worker" in output
+    assert "MCTS completed" in output
 
 
 def test_progress_generator_reports_start_and_evaluation_handoff() -> None:
