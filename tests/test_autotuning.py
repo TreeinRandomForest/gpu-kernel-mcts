@@ -73,6 +73,21 @@ def test_parses_and_renders_explicit_integer_tuning_parameters() -> None:
     assert "#define STAGES 2" in rendered.source
 
 
+def test_parses_and_renders_zero_valued_tuning_choice() -> None:
+    source = """// KERNEL_MCTS_TUNE SMEM_PADDING=0,8,16
+#define SMEM_PADDING 8
+kernel
+"""
+
+    parameters = parse_tuning_parameters(KernelProgram(source))
+    rendered = render_configuration(KernelProgram(source), {"SMEM_PADDING": 0})
+
+    assert [(item.name, item.choices) for item in parameters] == [
+        ("SMEM_PADDING", (0, 8, 16))
+    ]
+    assert "#define SMEM_PADDING 0" in rendered.source
+
+
 def test_post_search_tuner_has_separate_bounded_trials_and_best() -> None:
     events = Events()
     result = PostSearchAutotuner(

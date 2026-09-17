@@ -74,7 +74,7 @@ def parse_tuning_parameters(program: KernelProgram) -> tuple[TuningParameter, ..
         if name in seen:
             raise ValueError(f"duplicate tuning parameter {name}")
         choices = tuple(dict.fromkeys(int(value.strip()) for value in match.group(2).split(",")))
-        if len(choices) < 2 or any(value <= 0 for value in choices):
+        if len(choices) < 2:
             raise ValueError(f"invalid choices for tuning parameter {name}")
         define = re.compile(rf"^\s*#define\s+{re.escape(name)}\s+[0-9]+\s*$", re.MULTILINE)
         if define.search(program.source) is None:
