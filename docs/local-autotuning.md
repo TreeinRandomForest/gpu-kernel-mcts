@@ -58,6 +58,33 @@ configuration replaces only its corresponding integer `#define`. The current sch
 assumes the listed cross-product is safe to attempt; compile and correctness failures
 still consume `B_tune` and are retained.
 
+## Standalone tuning
+
+An existing annotated CUDA file can be tuned without rerunning MCTS:
+
+```bash
+.venv/bin/python -m kernel_mcts.autotune_cli \
+  --input annotated-kernel.cu \
+  --output tuned-kernel.cu \
+  --trace standalone-tuning.sqlite \
+  --image docker.io/USER/gpu-kernel-mcts:REVISION \
+  --tuning-budget 20 \
+  --tuning-method random \
+  --nebius-project-id PROJECT_ID \
+  --nebius-subnet-id SUBNET_ID \
+  --nebius-username USER \
+  --nebius-ssh-private-key "$HOME/.ssh/nebius" \
+  --nebius-ssh-public-key "$HOME/.ssh/nebius.pub" \
+  --confirm-create-and-terminate
+```
+
+The command validates the file and its annotations before provisioning. It evaluates
+the input configuration once as the baseline without charging `B_tune`, then uses one
+warm worker for all tuning trials. The baseline, environment manifest, complete trial
+evaluations, and best configuration are stored in the trace. The VM is released on
+success or failure. The initial CLI supports the Nebius H100 SXM provider and the
+fixed BF16 GEMM workload.
+
 The GPU is required for black-box compile, correctness, and latency measurements.
 For tens or hundreds of observations, surrogate fitting and acquisition optimization
 can run on the controller CPU; GPU-accelerated or variational GP fitting should not be

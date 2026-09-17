@@ -49,6 +49,13 @@ class CandidateEvaluationExecution:
     environment_manifest: Mapping[str, object]
 
 
+@dataclass(frozen=True, slots=True)
+class StandaloneTuningExecution:
+    run_id: str
+    baseline: EvaluationResult
+    tuning: TuningResult
+
+
 class WorkerKernelEvaluator:
     """Adapt one run-scoped GPU worker to the search evaluator interface."""
 
@@ -345,6 +352,57 @@ def run_mcts_search(
                     payload["root_error_type"] = underlying
             trace.emit("run_failed", payload)
         raise
+    finally:
+        if worker is not None:
+            provider.release_worker(worker)
+
+
+def run_standalone_autotuning(
+    *,
+    provider: GPUProvider,
+    hardware: HardwareSpec,
+    workload: WorkloadContract,
+    program: KernelProgram,
+    tuning_config: TuningConfig,
+    trace: SearchTraceStore,
+    run_id: str | None = None,
+    run_metadata: Mapping[str, object] | None = None,
+) -> StandaloneTuningExecution:
+    """Tune one annotated program on one run-scoped worker."""
+    resolved_run_id = run_id or str(uuid4())
+    config: dict[str, object] = {
+        "tuning": asdict(tuning_config),
+        "seed": tuning_config.seed,
+    }
+    if run_metadata:
+        config.update(run_metadata)
+    trace.start_run(
+        resolved_run_id,
+        workload.benchmark_id,
+        "standalone_autotuning",
+        config,
+    )
+    worker: GPUWorker | None = None
+    try:
+        worker = provider.acquire_worker(hardware)
+        trace.emit("environment_manifest", worker.get_environment_manifest().as_dict())
+        evaluator = WorkerKernelEvaluator(worker, resolved_run_id)
+        baseline = evaluator.evaluate(program, workload)
+        trace.emit(
+            "tuning_baseline_evaluated",
+            {"evaluation": serialize_evaluation(baseline)},
+        )
+        if baseline.status != ProposalStatus.VALID or baseline.benchmark is None:
+            raise RuntimeError(
+                f"tuning baseline must be valid, got {baseline.status.value}"
+            )
+        tuning = PostSearchAutotuner(
+            evaluator,
+            workload,
+            tuning_config,
+            trace,
+        ).run(baseline)
+        return StandaloneTuningExecution(resolved_run_id, baseline, tuning)
     finally:
         if worker is not None:
             provider.release_worker(worker)

@@ -47,6 +47,8 @@ completed hardware validation is identified explicitly.
   drift probes that preserve fixed reward normalization.
 - [x] Optional post-search random/grid autotuning framework for explicitly annotated
   CUDA templates, with separate `B_tune` accounting and SQLite trial records.
+- [x] Standalone Nebius autotuning CLI for an existing annotated CUDA kernel, with
+  pre-provision validation and exception-safe worker release.
 
 ## Next
 
