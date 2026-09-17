@@ -46,7 +46,15 @@ completed hardware validation is identified explicitly.
 
 ## Next
 
-- [ ] Add offline CUTLASS SM90 WGMMA/TMA autotuning and persist the selected configuration; keep its tuning cost separate from MCTS budgets.
+- [ ] Add bounded local autotuning for parameterized kernel families, initially for
+  CUTLASS SM90 WGMMA/TMA configurations. Keep the algorithm fixed while tuning
+  discrete choices such as tile sizes, pipeline stages, warp layout, vector width,
+  shared-memory layout, and launch geometry. Start with constrained grid/random
+  search, then compare TPE or Bayesian optimization against random search under an
+  equal, separately reported `B_tune` budget. Persist every attempted configuration,
+  including compile/correctness failures and timings, and expose the best valid tuned
+  configuration as the strategy realization without charging mechanical trials to
+  `B_gen`.
 - [ ] Add an LLM strategy-prior adapter while preserving separate `B_prior` accounting.
 - [ ] Add at least three more end-to-end benchmark kernels for the Milestone A minimum suite.
 - [ ] Add periodic root/global-best remeasurement and environment-drift handling.
