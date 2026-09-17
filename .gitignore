@@ -229,3 +229,4 @@ __marimo__/
 /log-nebius-*
 /*.ncu-rep
 *.swp
+*-tuned-*.cu

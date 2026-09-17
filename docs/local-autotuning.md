@@ -55,7 +55,8 @@ numeric literals are safe to change:
 
 An unannotated final kernel produces a persisted `tuning_skipped` result. Each selected
 configuration replaces only its corresponding integer `#define`. The current schema
-assumes the listed cross-product is safe to attempt; compile and correctness failures
+accepts non-negative integer choices and assumes the listed cross-product is safe to
+attempt; compile and correctness failures
 still consume `B_tune` and are retained.
 
 ## Standalone tuning
