@@ -17,6 +17,12 @@ LIGHTWEIGHT_V1_METRICS = (
     "smsp__inst_executed.sum",
 )
 
+# NCU reports launch metadata during profiling but does not include it in
+# ``--query-metrics-mode all`` device-metric output.
+NCU_QUERY_VALIDATION_EXEMPT_METRICS = frozenset(
+    {"launch__registers_per_thread"}
+)
+
 LIGHTWEIGHT_V1_ALIASES = {
     "launch__registers_per_thread": "registers_per_thread",
     "sm__warps_active.avg.pct_of_peak_sustained_active": "achieved_occupancy_pct",

@@ -26,6 +26,7 @@ from .evaluation import (
 from .profiling import (
     LIGHTWEIGHT_V1_ALIASES,
     LIGHTWEIGHT_V1_METRICS,
+    NCU_QUERY_VALIDATION_EXEMPT_METRICS,
     ProfileMetricSet,
     normalize_ncu_version,
     resolve_profile_metric_set,
@@ -363,7 +364,12 @@ class CudaCppBackend:
             for token in f"{result.stdout}\n{result.stderr}".split()
             if "__" in token
         }
-        missing = [metric for metric in definition.metrics if metric not in available]
+        missing = [
+            metric
+            for metric in definition.metrics
+            if metric not in available
+            and metric not in NCU_QUERY_VALIDATION_EXEMPT_METRICS
+        ]
         if missing:
             preview = ", ".join(missing[:8])
             if len(missing) > 8:

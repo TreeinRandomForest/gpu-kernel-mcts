@@ -283,6 +283,28 @@ def test_diagnostic_profile_rejects_missing_ncu_metrics(tmp_path) -> None:
         )
 
 
+def test_diagnostic_profile_accepts_launch_metric_absent_from_query(tmp_path) -> None:
+    runner = FakeRunner()
+    subject = backend(tmp_path, runner, ncu_version="2025.1")
+    compilation = subject.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    assert compilation.artifact is not None
+    definition = resolve_profile_metric_set("diagnostic_v2", "sm_90", "2025.1")
+    runner.ncu_query_stdout = "\n".join(
+        metric
+        for metric in definition.metrics
+        if metric != "launch__registers_per_thread"
+    )
+    runner.ncu_stderr = ncu_csv(definition.metrics)
+
+    profile = subject.lightweight_profile(
+        compilation.artifact,
+        BF16_GEMM_WORKLOAD,
+        "diagnostic_v2",
+    )
+
+    assert profile["summary"]["registers_per_thread"] == 1234.5
+
+
 def test_lightweight_profile_accepts_ncu_csv_on_stdout(tmp_path) -> None:
     runner = FakeRunner()
     subject = backend(tmp_path, runner)
