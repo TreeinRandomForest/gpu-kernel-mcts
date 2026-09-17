@@ -8,7 +8,7 @@ model="sol"
 cpuct=12
 profile_set="diagnostic_v2"
 
-variant=${profile_set}-deltas-off
+variant=${profile_set}-deltas-on
 
 log=log-${provider}-${model}-bgen${gen_budget}-cpuct${cpuct}-variant${variant}
 
@@ -16,6 +16,7 @@ log=log-${provider}-${model}-bgen${gen_budget}-cpuct${cpuct}-variant${variant}
       --provider "$provider" \
       --image docker.io/saarora/gpu-kernel-mcts:h100-worker-v11 \
       --trace "${provider}-${model}-bgen${gen_budget}-cpuct${cpuct}-variant${variant}.sqlite" \
+      --include-incoming-profile-delta \
       --nebius-project-id project-e00aymjmpr00grzcky46ba \
       --nebius-subnet-id vpcsubnet-e00a30bhyztjvq7yaz \
       --nebius-username sanjay \
@@ -38,4 +39,3 @@ log=log-${provider}-${model}-bgen${gen_budget}-cpuct${cpuct}-variant${variant}
 
 
 #  systemd-inhibit --what=sleep:idle --why="GPU MCTS search" --mode=block bash ./run.sh
-
