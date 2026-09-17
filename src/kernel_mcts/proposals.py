@@ -68,6 +68,7 @@ def run_proposal(
                 workload=request.workload,
                 hardware=request.hardware,
                 profile=request.profile,
+                incoming_profile_delta=request.incoming_profile_delta,
                 attempt=attempt_number + 1,
                 previous_program=generation.program,
                 previous_result=evaluation,

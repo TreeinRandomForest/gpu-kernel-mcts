@@ -244,6 +244,84 @@ def test_final_best_is_not_reprofiled_when_expansion_already_profiled_it() -> No
     ]
 
 
+def test_opt_in_profile_delta_uses_active_incoming_edge() -> None:
+    class RecordingGenerator(ToyGenerator):
+        def __init__(self) -> None:
+            super().__init__()
+            self.requests = []
+
+        def generate(self, request):
+            self.requests.append(request)
+            return super().generate(request)
+
+    class Profiler:
+        def lightweight_profile(self, evaluation, workload):
+            value = int(evaluation.program.source)
+            return {
+                "summary": {
+                    "occupancy": 90.0 - value * 10.0,
+                    "registers": 32 + value * 8,
+                }
+            }
+
+    generator = RecordingGenerator()
+    MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=generator,
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(2),
+        config=MCTSConfig(
+            k_max=1,
+            max_repairs=0,
+            include_incoming_profile_delta=True,
+        ),
+        profiler=Profiler(),
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    assert generator.requests[0].incoming_profile_delta is None
+    delta = generator.requests[1].incoming_profile_delta
+    assert delta is not None
+    assert delta["basis"] == "selected_incoming_edge"
+    assert delta["strategy_id"] == "a"
+    assert delta["reward_delta"] == 1.0
+    assert delta["speedup_ratio"] == pytest.approx(math.e)
+    assert delta["summary_delta"] == {
+        "occupancy": -10.0,
+        "registers": 8.0,
+    }
+
+
+def test_profile_delta_is_disabled_by_default() -> None:
+    class RecordingGenerator(ToyGenerator):
+        def __init__(self) -> None:
+            super().__init__()
+            self.requests = []
+
+        def generate(self, request):
+            self.requests.append(request)
+            return super().generate(request)
+
+    class Profiler:
+        def lightweight_profile(self, evaluation, workload):
+            return {"summary": {"occupancy": 50.0}}
+
+    generator = RecordingGenerator()
+    MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=generator,
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(2),
+        config=MCTSConfig(k_max=1, max_repairs=0),
+        profiler=Profiler(),
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    assert all(request.incoming_profile_delta is None for request in generator.requests)
+
+
 def test_mcts_charges_and_logs_repair_generation() -> None:
     class RepairGenerator:
         def __init__(self) -> None:

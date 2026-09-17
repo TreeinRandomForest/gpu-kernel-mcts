@@ -162,6 +162,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--c-puct", type=float, default=1.5)
     parser.add_argument("--k-max", type=int, default=4)
     parser.add_argument("--max-depth", type=int, default=10)
+    parser.add_argument(
+        "--include-incoming-profile-delta",
+        action="store_true",
+        help=(
+            "include the selected incoming edge's profile delta in generation "
+            "prompts (path-dependent ablation; disabled by default)"
+        ),
+    )
     parser.add_argument("--best-output", type=Path)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--timeout", type=float, default=600.0)
@@ -319,6 +327,9 @@ def _search_components(
                 max_repairs=0,
                 max_depth=arguments.max_depth,
                 max_infrastructure_retries=arguments.max_infrastructure_retries,
+                include_incoming_profile_delta=(
+                    arguments.include_incoming_profile_delta
+                ),
             ),
         )
 
@@ -355,6 +366,7 @@ def _search_components(
             max_depth=arguments.max_depth,
             max_repairs=arguments.max_repairs,
             max_infrastructure_retries=arguments.max_infrastructure_retries,
+            include_incoming_profile_delta=arguments.include_incoming_profile_delta,
         ),
     )
 

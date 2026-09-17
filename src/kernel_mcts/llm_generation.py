@@ -67,6 +67,10 @@ def build_generation_prompt(request: GenerationRequest) -> str:
         ],
         "attempt": request.attempt,
     }
+    if request.incoming_profile_delta is not None:
+        payload["incoming_profile_delta"] = _json_value(
+            request.incoming_profile_delta
+        )
     if request.previous_program is not None or request.previous_result is not None:
         payload["repair"] = {
             "previous_candidate": (

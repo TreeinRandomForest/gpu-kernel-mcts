@@ -80,6 +80,7 @@ def test_llm_generator_builds_complete_fresh_prompt_and_records_metadata() -> No
     assert payload["strategy"]["id"] == "shared_memory"
     assert payload["strategy"]["backend_prompt"].startswith("Stage reusable")
     assert payload["parent_profile"] == {"occupancy": 0.5}
+    assert "incoming_profile_delta" not in payload
     assert "bf16_gemm_root" in payload["parent_kernel"]
     assert result.generation_id == "response-1"
     assert result.program == KernelProgram("optimized source")
@@ -96,6 +97,19 @@ def test_llm_generator_builds_complete_fresh_prompt_and_records_metadata() -> No
         "model": "test-model",
         "response_id": "response-1",
     }
+
+
+def test_generation_prompt_includes_opt_in_incoming_profile_delta() -> None:
+    delta = {
+        "basis": "selected_incoming_edge",
+        "strategy_id": "shared_memory",
+        "reward_delta": 0.5,
+        "summary_delta": {"occupancy": -10.0},
+    }
+
+    prompt = build_generation_prompt(request(incoming_profile_delta=delta))
+
+    assert json.loads(prompt)["incoming_profile_delta"] == delta
 
 
 def test_repair_prompt_contains_failed_candidate_and_bounded_diagnostics() -> None:

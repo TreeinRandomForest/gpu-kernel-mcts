@@ -32,6 +32,7 @@ class MCTSConfig:
     max_depth: int = 10
     max_repairs: int = 2
     max_infrastructure_retries: int = 1
+    include_incoming_profile_delta: bool = False
 
     def __post_init__(self) -> None:
         if self.k_max < 1 or self.max_depth < 1:
@@ -262,7 +263,12 @@ class MCTS:
             allowed_children = self._allowed_children(prospective_visits)
             existing_children = len(action.realizations)
             if existing_children < allowed_children:  # progressive widening
-                outcome = self._expand(node, action, iteration)
+                outcome = self._expand(
+                    node,
+                    action,
+                    iteration,
+                    incoming_edge=path[-1] if path else None,
+                )
                 steps.append(
                     SelectionStep(
                         node.id,
@@ -438,6 +444,7 @@ class MCTS:
         parent: SearchNode,
         action: StrategyEdge,
         iteration: int | None = None,
+        incoming_edge: SelectedEdge | None = None,
     ) -> ExpansionOutcome:
         action.proposal_count += 1
         outcome = run_proposal(
@@ -450,6 +457,9 @@ class MCTS:
                 workload=self.workload,
                 hardware=self.hardware,
                 profile=parent.profile,
+                incoming_profile_delta=self._incoming_profile_delta(
+                    parent, incoming_edge
+                ),
             ),
             max_repairs=self.config.max_repairs,
             max_infrastructure_retries=self.config.max_infrastructure_retries,
@@ -502,6 +512,48 @@ class MCTS:
                 {**self._node_payload(child), **relationship},
             )
         return ExpansionOutcome(ProposalStatus.VALID, child)
+
+    def _incoming_profile_delta(
+        self,
+        node: SearchNode,
+        incoming_edge: SelectedEdge | None,
+    ) -> Mapping[str, object] | None:
+        """Describe the active incoming edge for an opt-in path-dependent ablation."""
+        if not self.config.include_incoming_profile_delta or incoming_edge is None:
+            return None
+        predecessor = next(
+            item
+            for item in self.nodes.values()
+            if item.id == incoming_edge.parent_node_id
+        )
+        if predecessor.profile is None or node.profile is None:
+            return None
+        previous_summary = predecessor.profile.get("summary")
+        current_summary = node.profile.get("summary")
+        summary_delta: dict[str, float] = {}
+        if isinstance(previous_summary, Mapping) and isinstance(
+            current_summary, Mapping
+        ):
+            for key in sorted(previous_summary.keys() & current_summary.keys()):
+                previous = previous_summary[key]
+                current = current_summary[key]
+                if (
+                    isinstance(previous, (int, float))
+                    and not isinstance(previous, bool)
+                    and isinstance(current, (int, float))
+                    and not isinstance(current, bool)
+                ):
+                    summary_delta[str(key)] = float(current) - float(previous)
+        reward_delta = node.reward - predecessor.reward
+        return {
+            "basis": "selected_incoming_edge",
+            "from_node_id": predecessor.id,
+            "to_node_id": node.id,
+            "strategy_id": incoming_edge.strategy.strategy_id,
+            "reward_delta": reward_delta,
+            "speedup_ratio": math.exp(reward_delta),
+            "summary_delta": summary_delta,
+        }
 
     def _backup(self, path: list[SelectedEdge], reward: float, iteration: int | None = None) -> None:
         for selected in path:

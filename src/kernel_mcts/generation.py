@@ -13,6 +13,7 @@ class GenerationRequest:
     workload: WorkloadContract
     hardware: Mapping[str, object]
     profile: Mapping[str, object] | None
+    incoming_profile_delta: Mapping[str, object] | None = None
     attempt: int = 0 #repair attempts
     previous_program: KernelProgram | None = None #track for repair
     previous_result: EvaluationResult | None = None #track for repair

@@ -241,6 +241,17 @@ with `--cap-add=SYS_ADMIN`. The complete automated lifecycle subsequently provis
 the VM, evaluated and profiled the root, generated and evaluated one candidate,
 persisted the trace, and terminated the worker successfully.
 
+For the path-dependence ablation, add:
+
+```bash
+--include-incoming-profile-delta
+```
+
+This opt-in flag adds the selected incoming edge's reward, speedup, and numeric NCU
+summary deltas to later generation prompts. It does not change state keys or cached
+nodes. The default remains disabled because `spec.md` defines optimization history as
+outside the search state. Use distinct trace names for enabled and disabled runs.
+
 ## Visualize a search trace
 
 Render the latest run in a trace database as a Graphviz DAG:

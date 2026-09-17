@@ -46,8 +46,15 @@ class RepairEvaluator:
         return EvaluationResult(ProposalStatus.VALID, program, "good-state", 1.0)
 
 
-def request() -> GenerationRequest:
-    return GenerationRequest(KernelProgram("root"), STRATEGY, WORKLOAD, {}, None)
+def request(*, incoming_profile_delta=None) -> GenerationRequest:
+    return GenerationRequest(
+        KernelProgram("root"),
+        STRATEGY,
+        WORKLOAD,
+        {},
+        None,
+        incoming_profile_delta=incoming_profile_delta,
+    )
 
 
 def test_repair_generation_is_charged_and_receives_failure_context() -> None:
@@ -57,7 +64,7 @@ def test_repair_generation_is_charged_and_receives_failure_context() -> None:
         generator=generator,
         evaluator=RepairEvaluator(),
         budget=budget,
-        request=request(),
+        request=request(incoming_profile_delta={"reward_delta": 0.5}),
         max_repairs=2,
         max_infrastructure_retries=0,
     )
@@ -68,6 +75,7 @@ def test_repair_generation_is_charged_and_receives_failure_context() -> None:
     assert generator.requests[1].attempt == 1
     assert generator.requests[1].previous_program == KernelProgram("bad")
     assert generator.requests[1].previous_result is outcome.attempts[0].evaluation
+    assert generator.requests[1].incoming_profile_delta == {"reward_delta": 0.5}
 
 
 def test_global_budget_prevents_repair_call() -> None:
