@@ -65,6 +65,14 @@ completed hardware validation is identified explicitly.
 - [ ] Add at least three more end-to-end benchmark kernels for the Milestone A minimum suite.
 - [ ] Add strategy applicability metadata and filter actions by operation, dtype,
   backend, hardware capabilities, and workload constraints before MCTS selection.
+- [ ] Add post-optimization sensitivity analysis for optimized kernels. Evaluate each
+  fixed kernel over controlled perturbations of input dimensions, aspect ratios,
+  alignment/divisibility, and supported input/output/accumulation dtypes. For every
+  case, rerun correctness and compare latency with cuBLAS measured under the identical
+  case and environment. Report absolute latency, throughput, the kernel-to-cuBLAS
+  latency ratio, and degradation relative to the kernel's optimized workload. Keep
+  this diagnostic sweep separately budgeted from `B_gen` and `B_tune`, and retain
+  invalid or unsupported cases rather than silently excluding them.
 
 ## Validation status
 
