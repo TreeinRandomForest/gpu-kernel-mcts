@@ -46,7 +46,8 @@ median latency ratios against the same-run cuBLAS result. The CuTe evaluation
 uses a small C++ input generator to reproduce the
 existing `std::mt19937` BF16 input stream, calls the same `cublasGemmEx`
 reference contract, applies `atol=rtol=0.02`, and records 30 separate CUDA-event
-timing samples after 10 warmups. The last stdout line is JSON containing the
+timing samples in one continuous sequence after 10 warmups. The last stdout line
+is JSON containing the
 fixed configuration, full correctness statistics, timing samples and summary,
 and the SHA-256 of the pinned NVIDIA example.
 

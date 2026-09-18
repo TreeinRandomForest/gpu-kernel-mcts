@@ -271,7 +271,7 @@ def _run_with_repository_hooks(
             raise AssertionError("CuTe DSL result failed repository correctness tolerances")
 
     def sample_benchmark(callable, **keywords):
-        timings.extend(_collect_timing_samples(original_benchmark, callable, keywords))
+        timings.extend(_collect_timing_samples(callable, keywords, torch))
         return statistics.fmean(timings)
 
     kernel_type.is_valid_dtypes = staticmethod(bf16_validator)
@@ -340,24 +340,37 @@ def _run_with_repository_hooks(
 
 
 def _collect_timing_samples(
-    benchmark: Callable[..., float], callable: Callable[..., Any], keywords: Mapping[str, Any]
+    kernel_callable: Callable[..., Any], keywords: Mapping[str, Any], torch
 ) -> list[float]:
-    requested = int(keywords["iterations"])
+    if keywords.get("use_cuda_graphs", False) or keywords.get("use_cupti", False):
+        raise ValueError("repository timing requires direct CUDA-event measurement")
+    if int(keywords.get("workspace_count", 1)) != 1:
+        raise ValueError("repository timing requires one reusable workspace")
+    workspace = keywords.get("kernel_arguments")
+    if workspace is None:
+        generator = keywords.get("workspace_generator")
+        if not callable(generator):
+            raise ValueError("repository timing requires kernel arguments")
+        workspace = generator()
+    arguments = workspace.args
+    named_arguments = workspace.kwargs
     warmups = int(keywords["warmup_iterations"])
-    common = dict(keywords)
-    common.pop("iterations")
-    common.pop("warmup_iterations")
-    return [
-        float(
-            benchmark(
-                callable,
-                iterations=1,
-                warmup_iterations=warmups if index == 0 else 0,
-                **common,
-            )
-        )
-        for index in range(requested)
-    ]
+    measurements = int(keywords["iterations"])
+
+    for _ in range(warmups):
+        kernel_callable(*arguments, **named_arguments)
+    torch.cuda.synchronize()
+
+    start = torch.cuda.Event(enable_timing=True)
+    stop = torch.cuda.Event(enable_timing=True)
+    timings = []
+    for _ in range(measurements):
+        start.record()
+        kernel_callable(*arguments, **named_arguments)
+        stop.record()
+        stop.synchronize()
+        timings.append(float(start.elapsed_time(stop)) * 1_000.0)
+    return timings
 
 
 class _CublasReference:

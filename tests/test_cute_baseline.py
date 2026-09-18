@@ -69,28 +69,51 @@ def test_feasibility_runner_uses_fixed_bf16_contract_and_marks_limitations(tmp_p
 
 
 def test_collects_individual_samples_after_one_warmup_sequence() -> None:
-    calls = []
-
-    def benchmark(callable, **keywords):
-        calls.append(keywords)
-        callable()
-        return float(len(calls))
-
+    clock = [0.0]
     launches = []
+
+    class Event:
+        def __init__(self, *, enable_timing):
+            assert enable_timing is True
+            self.time = None
+
+        def record(self):
+            self.time = clock[0]
+
+        def synchronize(self):
+            pass
+
+        def elapsed_time(self, other):
+            return other.time - self.time
+
+    synchronizations = []
+    torch = SimpleNamespace(
+        cuda=SimpleNamespace(
+            Event=Event,
+            synchronize=lambda: synchronizations.append(True),
+        )
+    )
+
+    def launch(value):
+        launches.append(value)
+        clock[0] += 0.25
+
     samples = _collect_timing_samples(
-        benchmark,
-        lambda: launches.append(True),
+        launch,
         {
             "iterations": 3,
             "warmup_iterations": 2,
-            "stream": "stream",
+            "workspace_generator": lambda: SimpleNamespace(
+                args=("workspace",), kwargs={}
+            ),
+            "workspace_count": 1,
         },
+        torch,
     )
 
-    assert samples == [1.0, 2.0, 3.0]
-    assert [call["warmup_iterations"] for call in calls] == [2, 0, 0]
-    assert all(call["iterations"] == 1 for call in calls)
-    assert launches == [True, True, True]
+    assert samples == [250.0, 250.0, 250.0]
+    assert synchronizations == [True]
+    assert launches == ["workspace"] * 5
 
 
 def test_pinned_example_tensor_helpers_are_reached_through_cutlass_module() -> None:
