@@ -22,6 +22,12 @@ RUN python3 -m venv /opt/venv \
 WORKDIR /opt/kernel-mcts
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN python -m pip install --no-cache-dir .
+RUN nvcc -std=c++17 -O2 \
+        src/kernel_mcts/benchmarks/kernels/bf16_input_generator.cu \
+        -o /usr/local/bin/kernel-mcts-bf16-inputs \
+    && nvcc -std=c++17 -O2 -shared -Xcompiler=-fPIC \
+        src/kernel_mcts/benchmarks/kernels/bf16_reference.cu \
+        -lcublas -o /usr/local/lib/kernel-mcts-bf16-reference.so \
+    && python -m pip install --no-cache-dir .
 
-CMD ["python", "-m", "kernel_mcts.cute_baseline_cli"]
+ENTRYPOINT ["python", "-m", "kernel_mcts.cute_baseline_cli"]

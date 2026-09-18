@@ -1,0 +1,408 @@
+from __future__ import annotations
+
+import hashlib
+import importlib
+import importlib.util
+import ctypes
+import statistics
+import subprocess
+import tempfile
+from pathlib import Path
+from types import ModuleType
+from typing import Any, Callable, Mapping
+
+from .domain import BenchmarkResult
+from .serialization import serialize_benchmark
+
+
+DEFAULT_EXAMPLE = Path(
+    "/opt/cutlass/examples/python/CuTeDSL/cute/hopper/kernel/dense_gemm/dense_gemm.py"
+)
+DEFAULT_INPUT_GENERATOR = Path("/usr/local/bin/kernel-mcts-bf16-inputs")
+DEFAULT_REFERENCE_LIBRARY = Path("/usr/local/lib/kernel-mcts-bf16-reference.so")
+
+
+def run_same_worker_comparison(
+    vendor_runner: Callable[[], Mapping[str, object]],
+    cute_runner: Callable[[], Mapping[str, Any]],
+    environment_manifest: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Run all fixed baselines sequentially and summarize median latency ratios."""
+    vendor = vendor_runner()
+    cute = dict(cute_runner())
+    implementations: dict[str, Any] = {}
+    for name in ("cublas", "cutlass"):
+        result = vendor[name]
+        correctness = result["correctness"]
+        if not isinstance(correctness, Mapping) or not correctness.get("success"):
+            raise RuntimeError(f"{name} baseline failed correctness")
+        benchmark = result["benchmark"]
+        if not isinstance(benchmark, BenchmarkResult):
+            raise TypeError(f"{name} baseline returned an invalid benchmark")
+        implementations[name] = {
+            "correctness": correctness,
+            "benchmark": serialize_benchmark(benchmark),
+        }
+    if not cute.get("comparable_to_repository_baselines"):
+        raise RuntimeError("CuTe DSL result did not complete the comparable contract")
+    cute_correctness = cute.get("correctness")
+    if not isinstance(cute_correctness, Mapping) or not cute_correctness.get("success"):
+        raise RuntimeError("CuTe DSL baseline failed correctness")
+    implementations["cute_dsl"] = cute
+
+    medians = {
+        name: float(result["benchmark"]["median_us"])
+        for name, result in implementations.items()
+    }
+    cublas_median = medians["cublas"]
+    return {
+        "status": "ok",
+        "benchmark_id": "bf16_gemm_4096_h100",
+        "execution_order": ["cublas", "cutlass", "cute_dsl"],
+        "environment_manifest": dict(environment_manifest),
+        "implementations": implementations,
+        "comparison": {
+            "median_us": medians,
+            "latency_ratio_vs_cublas": {
+                name: median / cublas_median for name, median in medians.items()
+            },
+            "speedup_vs_cutlass": medians["cutlass"] / medians["cute_dsl"],
+        },
+    }
+
+
+def run_hopper_bf16_feasibility(
+    example_path: Path = DEFAULT_EXAMPLE,
+    *,
+    example_module: ModuleType | None = None,
+    cutlass_module: ModuleType | None = None,
+) -> Mapping[str, Any]:
+    """Run the pinned Hopper example with its dtype guard extended to BF16.
+
+    This is deliberately labelled a feasibility result: NVIDIA's example owns
+    input generation, reference checking, and aggregated timing, so its result
+    is not yet comparable with the repository's CUDA-event sample protocol.
+    """
+    example = example_module or _load_example(example_path)
+    if cutlass_module is None:
+        import cutlass as imported_cutlass
+
+        cutlass_module = imported_cutlass
+
+    kernel_type = example.HopperWgmmaGemmKernel
+    original_validator = kernel_type.is_valid_dtypes
+
+    def bf16_validator(a_dtype, b_dtype, acc_dtype, c_dtype, a_major, b_major):
+        exact_bf16_contract = (
+            a_dtype == cutlass_module.BFloat16
+            and b_dtype == cutlass_module.BFloat16
+            and c_dtype == cutlass_module.BFloat16
+            and acc_dtype == cutlass_module.Float32
+            and a_major == "k"
+            and b_major == "k"
+        )
+        return exact_bf16_contract or original_validator(
+            a_dtype, b_dtype, acc_dtype, c_dtype, a_major, b_major
+        )
+
+    kernel_type.is_valid_dtypes = staticmethod(bf16_validator)
+    try:
+        mean_us = example.run(
+            mnkl=(4096, 4096, 4096, 1),
+            a_dtype=cutlass_module.BFloat16,
+            b_dtype=cutlass_module.BFloat16,
+            c_dtype=cutlass_module.BFloat16,
+            acc_dtype=cutlass_module.Float32,
+            a_major="k",
+            b_major="k",
+            c_major="n",
+            tile_shape_mn=(128, 256),
+            cluster_shape_mn=(1, 1),
+            tolerance=2.0e-2,
+            warmup_iterations=10,
+            iterations=30,
+            skip_ref_check=False,
+            use_cold_l2=False,
+        )
+    finally:
+        kernel_type.is_valid_dtypes = original_validator
+
+    return {
+        "status": "ok",
+        "implementation": "cute_dsl_hopper_dense_gemm_v4.5.1_adapted_bf16",
+        "contract": {
+            "mnkl": [4096, 4096, 4096, 1],
+            "input_dtype": "bfloat16",
+            "accumulator_dtype": "float32",
+            "output_dtype": "bfloat16",
+            "a_major": "k",
+            "b_major": "k",
+            "c_major": "n",
+            "tile_shape_mn": [128, 256],
+            "cluster_shape_mn": [1, 1],
+            "warmup_count": 10,
+            "measurement_count": 30,
+        },
+        "correctness": {"success": True, "example_tolerance": 2.0e-2},
+        "benchmark": {"aggregate_mean_us": float(mean_us)},
+        "comparable_to_repository_baselines": False,
+        "comparability_blockers": [
+            "the NVIDIA example generates different deterministic inputs",
+            "the NVIDIA example uses atol=0.02 and rtol=0.001 rather than the workload's separate tolerances",
+            "the NVIDIA example returns an aggregate time rather than all CUDA-event samples",
+        ],
+        "example_sha256": _sha256(example_path) if example_path.is_file() else None,
+    }
+
+
+def run_hopper_bf16_comparable(
+    example_path: Path = DEFAULT_EXAMPLE,
+    input_generator: Path = DEFAULT_INPUT_GENERATOR,
+    reference_library: Path = DEFAULT_REFERENCE_LIBRARY,
+) -> Mapping[str, Any]:
+    """Evaluate the pinned Hopper kernel under the repository benchmark contract."""
+    import cutlass
+    import torch
+
+    example = _load_example(example_path)
+    if not input_generator.is_file():
+        raise RuntimeError(f"BF16 input generator is unavailable: {input_generator}")
+    reference = _CublasReference(reference_library)
+
+    with tempfile.TemporaryDirectory(prefix="kernel-mcts-cute-inputs-") as directory:
+        root = Path(directory)
+        a_path = root / "a.bf16"
+        b_path = root / "b.bf16"
+        subprocess.run(
+            [
+                str(input_generator),
+                "4096",
+                "4096",
+                "4096",
+                "0",
+                str(a_path),
+                str(b_path),
+            ],
+            check=True,
+            timeout=120,
+        )
+        a_cpu = torch.from_file(
+            str(a_path), shared=False, size=4096 * 4096, dtype=torch.bfloat16
+        ).reshape(4096, 4096, 1)
+        b_cpu = torch.from_file(
+            str(b_path), shared=False, size=4096 * 4096, dtype=torch.bfloat16
+        ).reshape(4096, 4096, 1)
+        c_cpu = torch.zeros((4096, 4096, 1), dtype=torch.bfloat16)
+        result = _run_with_repository_hooks(
+            example,
+            cutlass,
+            torch,
+            (a_cpu, b_cpu, c_cpu),
+            reference,
+        )
+
+    result["example_sha256"] = _sha256(example_path)
+    return result
+
+
+def _run_with_repository_hooks(
+    example, cutlass, torch, inputs, reference
+) -> dict[str, Any]:
+    kernel_type = example.HopperWgmmaGemmKernel
+    tensor_helpers = _tensor_helpers()
+    original_validator = kernel_type.is_valid_dtypes
+    original_tensor_factory = tensor_helpers.create_and_permute_torch_tensor
+    original_einsum = torch.einsum
+    original_assert_close = torch.testing.assert_close
+    original_benchmark = example.testing.benchmark
+    tensor_index = 0
+    timings: list[float] = []
+    correctness: dict[str, Any] = {}
+
+    def bf16_validator(a_dtype, b_dtype, acc_dtype, c_dtype, a_major, b_major):
+        return (
+            a_dtype == cutlass.BFloat16
+            and b_dtype == cutlass.BFloat16
+            and c_dtype == cutlass.BFloat16
+            and acc_dtype == cutlass.Float32
+            and a_major == "k"
+            and b_major == "k"
+        ) or original_validator(
+            a_dtype, b_dtype, acc_dtype, c_dtype, a_major, b_major
+        )
+
+    def tensor_factory(*_arguments, **_keywords):
+        nonlocal tensor_index
+        tensor = inputs[tensor_index % 3]
+        tensor_index += 1
+        return tensor.clone()
+
+    def cublas_reference(equation, a, b):
+        if equation != "mkl,nkl->mnl":
+            return original_einsum(equation, a, b)
+        a_gpu = a[..., 0].to(device="cuda", dtype=torch.bfloat16)
+        b_gpu = b[..., 0].to(device="cuda", dtype=torch.bfloat16)
+        c_gpu = torch.empty((4096, 4096), device="cuda", dtype=torch.bfloat16)
+        reference(a_gpu.data_ptr(), b_gpu.data_ptr(), c_gpu.data_ptr(), 4096, 4096, 4096)
+        torch.cuda.synchronize()
+        return c_gpu.to(torch.float32).cpu().unsqueeze(-1)
+
+    def repository_assert_close(actual, expected, **_ignored):
+        actual_f32 = actual.to(torch.float32)
+        expected_f32 = expected.to(torch.float32)
+        error = (actual_f32 - expected_f32).abs()
+        allowed = 2.0e-2 + 2.0e-2 * expected_f32.abs()
+        finite = torch.isfinite(actual_f32)
+        success = bool(torch.all(finite & (error <= allowed)).item())
+        correctness.update(
+            {
+                "success": success,
+                "maximum_error": float(error.max().item()),
+                "mean_error": float(error.mean().item()),
+                "failed_test_id": None if success else "fixed_shape",
+                "reference_metadata": {
+                    "implementation": "cuBLAS",
+                    "compute_type": "CUBLAS_COMPUTE_32F",
+                    "seed": 0,
+                },
+            }
+        )
+        if not success:
+            raise AssertionError("CuTe DSL result failed repository correctness tolerances")
+
+    def sample_benchmark(callable, **keywords):
+        timings.extend(_collect_timing_samples(original_benchmark, callable, keywords))
+        return statistics.fmean(timings)
+
+    kernel_type.is_valid_dtypes = staticmethod(bf16_validator)
+    tensor_helpers.create_and_permute_torch_tensor = tensor_factory
+    torch.einsum = cublas_reference
+    torch.testing.assert_close = repository_assert_close
+    example.testing.benchmark = sample_benchmark
+    try:
+        example.run(
+            mnkl=(4096, 4096, 4096, 1),
+            a_dtype=cutlass.BFloat16,
+            b_dtype=cutlass.BFloat16,
+            c_dtype=cutlass.BFloat16,
+            acc_dtype=cutlass.Float32,
+            a_major="k",
+            b_major="k",
+            c_major="n",
+            tile_shape_mn=(128, 256),
+            cluster_shape_mn=(1, 1),
+            tolerance=2.0e-2,
+            warmup_iterations=10,
+            iterations=30,
+            skip_ref_check=False,
+            use_cold_l2=False,
+        )
+    finally:
+        kernel_type.is_valid_dtypes = original_validator
+        tensor_helpers.create_and_permute_torch_tensor = original_tensor_factory
+        torch.einsum = original_einsum
+        torch.testing.assert_close = original_assert_close
+        example.testing.benchmark = original_benchmark
+
+    if not correctness or len(timings) != 30:
+        raise RuntimeError("CuTe DSL adapter did not complete the evaluation contract")
+    return {
+        "status": "ok",
+        "implementation": "cute_dsl_hopper_dense_gemm_v4.5.1_repository_contract",
+        "contract": {
+            "mnkl": [4096, 4096, 4096, 1],
+            "input_dtype": "bfloat16",
+            "accumulator_dtype": "float32",
+            "output_dtype": "bfloat16",
+            "a_major": "k",
+            "b_major": "k",
+            "c_major": "n",
+            "tile_shape_mn": [128, 256],
+            "cluster_shape_mn": [1, 1],
+            "rtol": 2.0e-2,
+            "atol": 2.0e-2,
+            "seed": 0,
+            "warmup_count": 10,
+            "measurement_count": 30,
+        },
+        "correctness": correctness,
+        "benchmark": {
+            "timings_us": timings,
+            "median_us": statistics.median(timings),
+            "mean_us": statistics.fmean(timings),
+            "stddev_us": statistics.pstdev(timings),
+            "min_us": min(timings),
+            "max_us": max(timings),
+        },
+        "comparable_to_repository_baselines": True,
+        "comparability_blockers": [],
+    }
+
+
+def _collect_timing_samples(
+    benchmark: Callable[..., float], callable: Callable[..., Any], keywords: Mapping[str, Any]
+) -> list[float]:
+    requested = int(keywords["iterations"])
+    warmups = int(keywords["warmup_iterations"])
+    common = dict(keywords)
+    common.pop("iterations")
+    common.pop("warmup_iterations")
+    return [
+        float(
+            benchmark(
+                callable,
+                iterations=1,
+                warmup_iterations=warmups if index == 0 else 0,
+                **common,
+            )
+        )
+        for index in range(requested)
+    ]
+
+
+class _CublasReference:
+    def __init__(self, path: Path) -> None:
+        if not path.is_file():
+            raise RuntimeError(f"cuBLAS reference library is unavailable: {path}")
+        library = ctypes.CDLL(str(path))
+        function = library.kernel_mcts_bf16_reference
+        function.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        function.restype = ctypes.c_int
+        self._library = library
+        self._function = function
+
+    def __call__(self, a: int, b: int, c: int, m: int, n: int, k: int) -> None:
+        status = self._function(a, b, c, m, n, k)
+        if status != 0:
+            raise RuntimeError(f"cuBLAS reference failed with status {status}")
+
+
+def _tensor_helpers(import_module=importlib.import_module):
+    """Import the helper explicitly before the pinned example's local import runs."""
+    return import_module("cutlass.torch")
+
+
+def _load_example(path: Path) -> ModuleType:
+    if not path.is_file():
+        raise RuntimeError(f"pinned CuTe DSL example is unavailable: {path}")
+    spec = importlib.util.spec_from_file_location("kernel_mcts_pinned_cute_gemm", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load pinned CuTe DSL example")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
