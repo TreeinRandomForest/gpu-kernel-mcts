@@ -76,6 +76,12 @@ class GenerationRecord:
     environment_manifest_id: str | None = None
     created_node_id: str | None = None
     reused_node: bool = False
+    proposal_mechanism: str | None = None
+    representation: Mapping[str, Any] | None = None
+    representation_schema_version: int | None = None
+    configuration_hash: str | None = None
+    static_validation: Mapping[str, Any] | None = None
+    transformation: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +102,9 @@ class NodeRecord:
     launch_config: Mapping[str, Any] = field(default_factory=dict)
     worker_id: str | None = None
     environment_manifest_id: str | None = None
+    representation: Mapping[str, Any] | None = None
+    representation_schema_version: int | None = None
+    configuration_hash: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

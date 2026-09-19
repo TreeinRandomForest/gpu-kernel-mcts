@@ -158,7 +158,16 @@ standalone deterministic tuner evaluates a typed CTA-tile/cluster-shape grid und
 separate `B_tune`; trials never create MCTS nodes or alter `B_gen`. On H100 SXM the
 best tile `(128, 256)` with cluster `(2, 1)` measured `184.880 us`, versus
 `193.024 us` for the default cluster and `177.056 us` for same-worker cuBLAS. The
-searchable typed backend is specified as Milestone B but is not implemented yet.
+full searchable typed backend is specified as Milestone B but is not implemented yet.
+
+Milestone B phase 1 adds a versioned `CuteGemmProgram` whose canonical JSON and hash
+describe kernel structure without duplicating the fixed workload contract. The first
+renderer deterministically targets the pinned NVIDIA template and rejects structural
+controls that it cannot yet express. SQLite schema version 8 adds nullable typed
+representation, configuration-hash, validation, transformation, and proposal-mechanism
+fields to the existing node and generation tables. Existing CUDA traces and browser
+queries remain valid; CuTe nodes use the same graph, profile, decision, and comparison
+APIs, while analysis bundles export rendered CuTe programs with a `.py` suffix.
 
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:

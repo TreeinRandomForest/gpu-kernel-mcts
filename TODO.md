@@ -56,6 +56,9 @@ completed hardware validation is identified explicitly.
 - [x] CuTe schedule-tuning validation on H100 SXM: the best `(128, 256)` CTA tile with
   `(2, 1)` cluster measured `184.880 us`, 4.4% slower than same-worker cuBLAS and
   4.4% faster than the default CuTe schedule.
+- [x] Milestone B phase-1 typed `CuteGemmProgram` schema, canonical identity,
+  structured static legality results, deterministic pinned-template renderer, and
+  backward-compatible SQLite/browser representation metadata.
 
 ## Next
 
@@ -87,7 +90,7 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `246 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `253 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.

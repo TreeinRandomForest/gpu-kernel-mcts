@@ -1,3 +1,4 @@
+import json
 import math
 import sqlite3
 
@@ -101,7 +102,7 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
                 "tuning_runs",
                 "tuning_trials",
             } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 7
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 8
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -141,7 +142,7 @@ def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
         ).fetchone() == ("toy",)
 
 
-def test_trace_store_additively_migrates_generation_instructions(tmp_path) -> None:
+def test_trace_store_additively_migrates_backend_representation_columns(tmp_path) -> None:
     path = tmp_path / "trace.sqlite"
     with sqlite3.connect(path) as connection:
         connection.execute("PRAGMA user_version = 3")
@@ -152,16 +153,116 @@ def test_trace_store_additively_migrates_generation_instructions(tmp_path) -> No
                 b_gen INTEGER NOT NULL
             )"""
         )
+        connection.execute(
+            """CREATE TABLE nodes (
+                run_id TEXT NOT NULL,
+                node_id TEXT NOT NULL,
+                PRIMARY KEY (run_id, node_id)
+            )"""
+        )
 
     with SQLiteTraceStore(path):
         pass
 
     with sqlite3.connect(path) as connection:
-        columns = {
+        generation_columns = {
             row[1]
             for row in connection.execute("PRAGMA table_info(generations)").fetchall()
         }
-        assert "api_instructions" in columns
+        node_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(nodes)").fetchall()
+        }
+        assert {
+            "api_instructions",
+            "proposal_mechanism",
+            "representation_json",
+            "representation_schema_version",
+            "configuration_hash",
+            "static_validation_json",
+            "transformation_json",
+        } <= generation_columns
+        assert {
+            "representation_json",
+            "representation_schema_version",
+            "configuration_hash",
+        } <= node_columns
+
+
+def test_trace_store_materializes_cute_representation_and_proposal_provenance(
+    tmp_path,
+) -> None:
+    path = tmp_path / "trace.sqlite"
+    representation = {"schema_version": 1, "tile_m": 128, "tile_n": 256}
+    validation = {"valid": True, "violations": []}
+    transformation = {"field": "cluster_m", "before": 1, "after": 2}
+    evaluation = {
+        "status": "VALID",
+        "program": {"source": "cute source", "backend": "cute_dsl"},
+        "state_key": "cute-state",
+        "reward": 0.5,
+        "metadata": {},
+        "compile_status": "SUCCESS",
+        "correctness_status": "PASS",
+        "launch_config": {},
+    }
+    generation = {"metadata": {}}
+    with SQLiteTraceStore(path) as store:
+        store.start_run("run", "bf16", "mcts", {})
+        store.emit("run_started", {"workload": {}, "hardware": {}})
+        store.emit(
+            "node_created",
+            {
+                "node_id": "cute-node",
+                "state_key": "cute-state",
+                "reward": 0.5,
+                "evaluation": evaluation,
+                "representation": representation,
+                "representation_schema_version": 1,
+                "configuration_hash": "config-hash",
+            },
+        )
+        store.emit(
+            "generation",
+            {
+                "generation_id": "generation-1",
+                "iteration": 1,
+                "b_gen": 1,
+                "parent_node_id": "root",
+                "strategy_id": "cluster_shape",
+                "repair_attempt": 0,
+                "proposal_status": "VALID",
+                "compile_status": "SUCCESS",
+                "correctness_status": "PASS",
+                "generation": generation,
+                "evaluation": evaluation,
+                "proposal_mechanism": "typed_mutation",
+                "representation": representation,
+                "representation_schema_version": 1,
+                "configuration_hash": "config-hash",
+                "static_validation": validation,
+                "transformation": transformation,
+            },
+        )
+
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            """SELECT representation_json, representation_schema_version,
+                      configuration_hash FROM nodes"""
+        ).fetchone() == (json.dumps(representation, sort_keys=True), 1, "config-hash")
+        row = connection.execute(
+            """SELECT proposal_mechanism, representation_json,
+                      representation_schema_version, configuration_hash,
+                      static_validation_json, transformation_json
+               FROM generations"""
+        ).fetchone()
+        assert row == (
+            "typed_mutation",
+            json.dumps(representation, sort_keys=True),
+            1,
+            "config-hash",
+            json.dumps(validation, sort_keys=True),
+            json.dumps(transformation, sort_keys=True),
+        )
 
 
 def test_trace_store_rejects_newer_schema(tmp_path) -> None:

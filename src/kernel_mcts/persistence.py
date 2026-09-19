@@ -83,7 +83,13 @@ CREATE TABLE IF NOT EXISTS generations (
     worker_id TEXT,
     environment_manifest_id TEXT,
     created_node_id TEXT,
-    reused_node INTEGER NOT NULL DEFAULT 0
+    reused_node INTEGER NOT NULL DEFAULT 0,
+    proposal_mechanism TEXT,
+    representation_json TEXT,
+    representation_schema_version INTEGER,
+    configuration_hash TEXT,
+    static_validation_json TEXT,
+    transformation_json TEXT
 );
 CREATE INDEX IF NOT EXISTS generations_run_b_gen ON generations(run_id, b_gen);
 CREATE TABLE IF NOT EXISTS nodes (
@@ -103,6 +109,9 @@ CREATE TABLE IF NOT EXISTS nodes (
     launch_config_json TEXT NOT NULL,
     worker_id TEXT,
     environment_manifest_id TEXT,
+    representation_json TEXT,
+    representation_schema_version INTEGER,
+    configuration_hash TEXT,
     PRIMARY KEY (run_id, node_id),
     UNIQUE (run_id, state_key)
 );
@@ -236,7 +245,7 @@ CREATE TABLE IF NOT EXISTS tuning_trials (
 );
 """
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -259,6 +268,18 @@ SEARCH_RUN_ADDITIONAL_COLUMNS = {
 
 GENERATION_ADDITIONAL_COLUMNS = {
     "api_instructions": "TEXT",
+    "proposal_mechanism": "TEXT",
+    "representation_json": "TEXT",
+    "representation_schema_version": "INTEGER",
+    "configuration_hash": "TEXT",
+    "static_validation_json": "TEXT",
+    "transformation_json": "TEXT",
+}
+
+NODE_ADDITIONAL_COLUMNS = {
+    "representation_json": "TEXT",
+    "representation_schema_version": "INTEGER",
+    "configuration_hash": "TEXT",
 }
 
 
@@ -276,6 +297,7 @@ class SQLiteTraceStore:
         if current_version < SCHEMA_VERSION:
             self._migrate_search_runs()
             self._migrate_generations()
+            self._migrate_nodes()
             self.connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.connection.commit()
         self.run_id: str | None = None
@@ -338,6 +360,15 @@ class SQLiteTraceStore:
                 self.connection.execute(
                     f"ALTER TABLE generations ADD COLUMN {name} {sql_type}"
                 )
+
+    def _migrate_nodes(self) -> None:
+        existing = {
+            row[1]
+            for row in self.connection.execute("PRAGMA table_info(nodes)").fetchall()
+        }
+        for name, sql_type in NODE_ADDITIONAL_COLUMNS.items():
+            if name not in existing:
+                self.connection.execute(f"ALTER TABLE nodes ADD COLUMN {name} {sql_type}")
 
     def _materialize_event(
         self,
@@ -537,8 +568,9 @@ class SQLiteTraceStore:
                 run_id, node_id, state_key, program_text, backend_type, reward,
                 workload_json, hardware_json, benchmark_json, profile_json,
                 metadata_json, source_hash, binary_hash, launch_config_json,
-                worker_id, environment_manifest_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                worker_id, environment_manifest_id, representation_json,
+                representation_schema_version, configuration_hash
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id, node_id) DO UPDATE SET
                 state_key = excluded.state_key,
                 program_text = excluded.program_text,
@@ -553,7 +585,10 @@ class SQLiteTraceStore:
                 binary_hash = excluded.binary_hash,
                 launch_config_json = excluded.launch_config_json,
                 worker_id = excluded.worker_id,
-                environment_manifest_id = excluded.environment_manifest_id
+                environment_manifest_id = excluded.environment_manifest_id,
+                representation_json = excluded.representation_json,
+                representation_schema_version = excluded.representation_schema_version,
+                configuration_hash = excluded.configuration_hash
             """,
             (
                 self.run_id,
@@ -572,6 +607,9 @@ class SQLiteTraceStore:
                 _json(evaluation.get("launch_config", {})),
                 evaluation.get("worker_id"),
                 evaluation.get("environment_manifest_id"),
+                _optional_json(payload.get("representation")),
+                payload.get("representation_schema_version"),
+                payload.get("configuration_hash"),
             ),
         )
 
@@ -607,8 +645,11 @@ class SQLiteTraceStore:
                 llm_latency_seconds, candidate_program, state_key, reward,
                 benchmark_json, metadata_json, worker_id,
                 environment_manifest_id, created_node_id, reused_node
+                ,proposal_mechanism, representation_json,
+                representation_schema_version, configuration_hash,
+                static_validation_json, transformation_json
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 payload["generation_id"],
                 self.run_id,
@@ -646,6 +687,12 @@ class SQLiteTraceStore:
                 payload.get("environment_manifest_id"),
                 payload.get("created_node_id"),
                 int(bool(payload.get("reused_node", False))),
+                payload.get("proposal_mechanism"),
+                _optional_json(payload.get("representation")),
+                payload.get("representation_schema_version"),
+                payload.get("configuration_hash"),
+                _optional_json(payload.get("static_validation")),
+                _optional_json(payload.get("transformation")),
             ),
         )
 

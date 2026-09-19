@@ -354,3 +354,28 @@ def test_export_bundle_contains_sources_diff_profiles_path_and_decisions(tmp_pat
         decisions = json.loads(archive.read("decisions.json"))
         assert decisions[0]["selected_strategy_id"] == "stage"
         assert b"stage" in archive.read("report.md")
+
+
+def test_browser_exposes_cute_representation_and_uses_python_export(tmp_path) -> None:
+    path = _browser_trace(tmp_path)
+    representation = {"schema_version": 1, "tile_m": 128, "tile_n": 256}
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """UPDATE nodes SET backend_type = 'cute_dsl', representation_json = ?,
+                      representation_schema_version = 1,
+                      configuration_hash = 'config-hash'
+               WHERE run_id = 'run-1' AND node_id = 'left'""",
+            (json.dumps(representation),),
+        )
+
+    catalog = TraceCatalog(tmp_path)
+    trace_id = catalog.list_traces()[0]["trace_id"]
+    node = catalog.node(trace_id, "run-1", "left")
+    assert node["representation"] == representation
+    assert node["representation_schema_version"] == 1
+    assert node["configuration_hash"] == "config-hash"
+
+    _, payload = catalog.export_bundle(trace_id, "run-1", "root", "left")
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        assert "node-a.cu" in archive.namelist()
+        assert "node-b.py" in archive.namelist()

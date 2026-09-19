@@ -235,6 +235,22 @@ class TraceCatalog:
                 "binary_hash": row["binary_hash"],
                 "worker_id": row["worker_id"],
                 "environment_manifest_id": row["environment_manifest_id"],
+                "representation": _json_value(
+                    row["representation_json"]
+                    if "representation_json" in row.keys()
+                    else None,
+                    None,
+                ),
+                "representation_schema_version": (
+                    row["representation_schema_version"]
+                    if "representation_schema_version" in row.keys()
+                    else None
+                ),
+                "configuration_hash": (
+                    row["configuration_hash"]
+                    if "configuration_hash" in row.keys()
+                    else None
+                ),
                 "generations": [dict(item) for item in generations],
             }
 
@@ -419,8 +435,10 @@ class TraceCatalog:
         with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             self._zip_json(archive, "manifest.json", manifest)
             archive.writestr("report.md", report)
-            archive.writestr("node-a.cu", str(first["program_text"]))
-            archive.writestr("node-b.cu", str(second["program_text"]))
+            extension_a = self._program_extension(first)
+            extension_b = self._program_extension(second)
+            archive.writestr(f"node-a{extension_a}", str(first["program_text"]))
+            archive.writestr(f"node-b{extension_b}", str(second["program_text"]))
             archive.writestr("source.diff", str(comparison["source_diff"]))
             self._zip_json(archive, "node-a.json", first)
             self._zip_json(archive, "node-b.json", second)
@@ -480,6 +498,10 @@ class TraceCatalog:
             for key, value in node.items()
             if key != "program_text"
         }
+
+    @staticmethod
+    def _program_extension(node: Mapping[str, object]) -> str:
+        return ".py" if node.get("backend_type") == "cute_dsl" else ".cu"
 
     @staticmethod
     def _zip_json(archive: zipfile.ZipFile, name: str, value: object) -> None:
