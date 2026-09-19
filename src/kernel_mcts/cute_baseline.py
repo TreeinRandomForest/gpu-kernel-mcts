@@ -12,6 +12,7 @@ from types import ModuleType
 from typing import Any, Callable, Mapping
 
 from .domain import BenchmarkResult
+from .cute_schedule import DEFAULT_CUTE_SCHEDULE, CuteSchedule, validate_cute_schedule
 from .serialization import serialize_benchmark
 
 
@@ -74,6 +75,7 @@ def run_same_worker_comparison(
 def run_hopper_bf16_feasibility(
     example_path: Path = DEFAULT_EXAMPLE,
     *,
+    schedule: CuteSchedule = DEFAULT_CUTE_SCHEDULE,
     example_module: ModuleType | None = None,
     cutlass_module: ModuleType | None = None,
 ) -> Mapping[str, Any]:
@@ -83,6 +85,7 @@ def run_hopper_bf16_feasibility(
     input generation, reference checking, and aggregated timing, so its result
     is not yet comparable with the repository's CUDA-event sample protocol.
     """
+    _require_legal_schedule(schedule)
     example = example_module or _load_example(example_path)
     if cutlass_module is None:
         import cutlass as imported_cutlass
@@ -116,8 +119,8 @@ def run_hopper_bf16_feasibility(
             a_major="k",
             b_major="k",
             c_major="n",
-            tile_shape_mn=(128, 256),
-            cluster_shape_mn=(1, 1),
+            tile_shape_mn=(schedule.tile_m, schedule.tile_n),
+            cluster_shape_mn=(schedule.cluster_m, schedule.cluster_n),
             tolerance=2.0e-2,
             warmup_iterations=10,
             iterations=30,
@@ -138,8 +141,9 @@ def run_hopper_bf16_feasibility(
             "a_major": "k",
             "b_major": "k",
             "c_major": "n",
-            "tile_shape_mn": [128, 256],
-            "cluster_shape_mn": [1, 1],
+            "tile_shape_mn": [schedule.tile_m, schedule.tile_n],
+            "cluster_shape_mn": [schedule.cluster_m, schedule.cluster_n],
+            "schedule_id": schedule.configuration_id,
             "warmup_count": 10,
             "measurement_count": 30,
         },
@@ -159,11 +163,14 @@ def run_hopper_bf16_comparable(
     example_path: Path = DEFAULT_EXAMPLE,
     input_generator: Path = DEFAULT_INPUT_GENERATOR,
     reference_library: Path = DEFAULT_REFERENCE_LIBRARY,
+    *,
+    schedule: CuteSchedule = DEFAULT_CUTE_SCHEDULE,
 ) -> Mapping[str, Any]:
     """Evaluate the pinned Hopper kernel under the repository benchmark contract."""
     import cutlass
     import torch
 
+    _require_legal_schedule(schedule)
     example = _load_example(example_path)
     if not input_generator.is_file():
         raise RuntimeError(f"BF16 input generator is unavailable: {input_generator}")
@@ -199,6 +206,7 @@ def run_hopper_bf16_comparable(
             torch,
             (a_cpu, b_cpu, c_cpu),
             reference,
+            schedule,
         )
 
     result["example_sha256"] = _sha256(example_path)
@@ -206,7 +214,7 @@ def run_hopper_bf16_comparable(
 
 
 def _run_with_repository_hooks(
-    example, cutlass, torch, inputs, reference
+    example, cutlass, torch, inputs, reference, schedule: CuteSchedule
 ) -> dict[str, Any]:
     kernel_type = example.HopperWgmmaGemmKernel
     tensor_helpers = _tensor_helpers()
@@ -289,8 +297,8 @@ def _run_with_repository_hooks(
             a_major="k",
             b_major="k",
             c_major="n",
-            tile_shape_mn=(128, 256),
-            cluster_shape_mn=(1, 1),
+            tile_shape_mn=(schedule.tile_m, schedule.tile_n),
+            cluster_shape_mn=(schedule.cluster_m, schedule.cluster_n),
             tolerance=2.0e-2,
             warmup_iterations=10,
             iterations=30,
@@ -317,8 +325,9 @@ def _run_with_repository_hooks(
             "a_major": "k",
             "b_major": "k",
             "c_major": "n",
-            "tile_shape_mn": [128, 256],
-            "cluster_shape_mn": [1, 1],
+            "tile_shape_mn": [schedule.tile_m, schedule.tile_n],
+            "cluster_shape_mn": [schedule.cluster_m, schedule.cluster_n],
+            "schedule_id": schedule.configuration_id,
             "rtol": 2.0e-2,
             "atol": 2.0e-2,
             "seed": 0,
@@ -371,6 +380,12 @@ def _collect_timing_samples(
         stop.synchronize()
         timings.append(float(start.elapsed_time(stop)) * 1_000.0)
     return timings
+
+
+def _require_legal_schedule(schedule: CuteSchedule) -> None:
+    reasons = validate_cute_schedule(schedule)
+    if reasons:
+        raise ValueError("invalid CuTe schedule: " + "; ".join(reasons))
 
 
 class _CublasReference:

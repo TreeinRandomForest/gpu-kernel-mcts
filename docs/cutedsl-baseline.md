@@ -56,6 +56,26 @@ and the SHA-256 of the pinned NVIDIA example.
 The comparison aborts rather than reporting ratios if any implementation fails
 correctness or the CuTe result does not complete the comparable contract.
 
+## Initial typed schedule space
+
+The standalone CuTe tuning experiment represents backend configuration with a
+typed `CuteSchedule`; it does not rewrite source code or create MCTS nodes. The
+initial finite space contains four CTA tiles and three cluster shapes:
+
+```text
+CTA tiles:      (64, 128), (128, 128), (128, 256), (256, 128)
+cluster shapes: (1, 1), (1, 2), (2, 1)
+```
+
+The existing `(128, 256)` CTA tile with a `(1, 1)` cluster is the default. A
+schedule is rejected before JIT compilation if it is outside the declared space
+or does not cover the fixed 4096-by-4096 output tile grid cleanly. Each legal
+schedule has deterministic JSON serialization and a stable configuration ID.
+
+This first space deliberately does not expose WGMMA atoms, pipeline stages, TMA
+layouts, shared-memory swizzles, or epilogue policy. Those parameters should be
+added only after confirming how the pinned NVIDIA example constrains them.
+
 The original feasibility mode remains available for diagnosing adapter failures:
 
 ```bash

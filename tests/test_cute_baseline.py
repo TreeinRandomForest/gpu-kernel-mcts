@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from kernel_mcts.cute_baseline import (
     _collect_timing_samples,
     _tensor_helpers,
     run_same_worker_comparison,
     run_hopper_bf16_feasibility,
 )
+from kernel_mcts.cute_schedule import CuteSchedule
 from kernel_mcts.domain import BenchmarkResult
 
 
@@ -66,6 +69,48 @@ def test_feasibility_runner_uses_fixed_bf16_contract_and_marks_limitations(tmp_p
     assert result["comparable_to_repository_baselines"] is False
     assert len(result["comparability_blockers"]) == 3
     assert FakeKernel.is_valid_dtypes is original_validator
+
+
+def test_feasibility_runner_passes_typed_schedule_to_pinned_example(tmp_path) -> None:
+    calls = []
+
+    def run(**arguments):
+        calls.append(arguments)
+        return 100.0
+
+    example = SimpleNamespace(HopperWgmmaGemmKernel=FakeKernel, run=run)
+    cutlass = SimpleNamespace(BFloat16="bf16", Float32="fp32")
+    schedule = CuteSchedule(64, 128, 2, 1)
+
+    result = run_hopper_bf16_feasibility(
+        tmp_path / "unused.py",
+        schedule=schedule,
+        example_module=example,
+        cutlass_module=cutlass,
+    )
+
+    assert calls[0]["tile_shape_mn"] == (64, 128)
+    assert calls[0]["cluster_shape_mn"] == (2, 1)
+    assert result["contract"]["schedule_id"] == schedule.configuration_id
+
+
+def test_invalid_schedule_is_rejected_before_example_execution(tmp_path) -> None:
+    calls = []
+    example = SimpleNamespace(
+        HopperWgmmaGemmKernel=FakeKernel,
+        run=lambda **arguments: calls.append(arguments),
+    )
+    cutlass = SimpleNamespace(BFloat16="bf16", Float32="fp32")
+
+    with pytest.raises(ValueError, match="invalid CuTe schedule"):
+        run_hopper_bf16_feasibility(
+            tmp_path / "unused.py",
+            schedule=CuteSchedule(96, 128, 1, 1),
+            example_module=example,
+            cutlass_module=cutlass,
+        )
+
+    assert calls == []
 
 
 def test_collects_individual_samples_after_one_warmup_sequence() -> None:
