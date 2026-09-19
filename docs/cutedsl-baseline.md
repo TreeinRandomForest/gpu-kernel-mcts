@@ -19,6 +19,8 @@ The normal search-worker image remains unchanged. Build the separate image with:
 ```bash
 podman build \
   -f Dockerfile.cutedsl \
+  --build-arg KERNEL_MCTS_GIT_COMMIT="$(git rev-parse HEAD)" \
+  --build-arg KERNEL_MCTS_DIRTY_TREE="$(test -n "$(git status --porcelain)" && echo 1 || echo 0)" \
   -t docker.io/saarora/gpu-kernel-mcts:cutedsl-baseline-v4 \
   .
 
@@ -105,6 +107,8 @@ normal `BackendKernelEvaluator` contract. Rebuild the CuTe image, then run on H1
 ```bash
 sudo docker run --rm --gpus all \
   --entrypoint python \
+  -e KERNEL_MCTS_CONTAINER_IMAGE=docker.io/USER/gpu-kernel-mcts:REVISION \
+  -e KERNEL_MCTS_CONTAINER_DIGEST=sha256:IMAGE_MANIFEST_DIGEST \
   -v "$PWD/cutedsl-output:/output" \
   docker.io/USER/gpu-kernel-mcts:REVISION \
   -m kernel_mcts.cute_baseline_cli \
@@ -119,6 +123,11 @@ artifact result; evaluating the same rendered state again does not launch the GP
 The report is a normal serialized `EvaluationResult` with source hash, state key,
 artifact fingerprint, complete timings, telemetry, environment identity, and typed
 representation metadata.
+
+Pass the registry manifest digest (the `sha256:...` portion of the pulled image's
+RepoDigest) through `KERNEL_MCTS_CONTAINER_DIGEST`. The Git commit and dirty-tree
+state are embedded by the documented build arguments. If these values are not
+provided, the manifest records them as unavailable rather than inventing provenance.
 
 The phase-2 artifact fingerprint covers the rendered source, canonical representation,
 pinned example hash, and launch configuration. It is explicitly identified as a

@@ -125,10 +125,19 @@ def _run_tuning(example: Path):
 
 
 def _run_backend_evaluation():
+    import cutlass
+    import torch
+
     environment = dict(os.environ)
     environment.setdefault("KERNEL_MCTS_WORKER_ID", socket.gethostname())
     environment.setdefault("KERNEL_MCTS_PROVIDER", "standalone")
     manifest = capture_environment_manifest(environment)
+    manifest = _enrich_cute_manifest(
+        manifest,
+        cutlass_version=str(cutlass.__version__),
+        pytorch_version=str(torch.__version__),
+        driver_version=_driver_version(),
+    )
     program = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
     backend = CuTeDSLBackend(
         CuteBackendConfig(artifact_root=Path("/tmp/kernel-mcts-cute-backend"))
@@ -165,13 +174,56 @@ def _run_backend_evaluation():
         ),
     )
     evaluation = evaluator.evaluate(program, BF16_GEMM_WORKLOAD)
+    assert evaluation.compilation is not None
+    return _backend_evaluation_report(manifest, root_compilation, evaluation)
+
+
+def _backend_evaluation_report(manifest, root_compilation, evaluation):
+    assert root_compilation.artifact is not None
+    assert evaluation.compilation is not None
     return {
         "status": "ok",
         "representation": REFERENCE_CUTE_GEMM.as_dict(),
         "configuration_hash": REFERENCE_CUTE_GEMM.configuration_hash,
         "environment_manifest": serialize_environment_manifest(manifest),
+        "initial_jit_evaluation": {
+            "artifact_id": root_compilation.artifact.artifact_id,
+            "duration_seconds": root_compilation.duration_seconds,
+            "stdout": root_compilation.stdout,
+            "stderr": root_compilation.stderr,
+            "artifact_paths": list(root_compilation.artifact_paths),
+        },
+        "cache_validation": {
+            "artifact_reused": (
+                evaluation.compilation.artifact_id
+                == root_compilation.artifact.artifact_id
+            ),
+            "evaluator_compile_duration_seconds": evaluation.compilation.duration_seconds,
+            "evaluator_compile_stdout": evaluation.compilation.stdout,
+        },
         "evaluation": serialize_evaluation(evaluation),
     }
+
+
+def _enrich_cute_manifest(
+    manifest,
+    *,
+    cutlass_version: str,
+    pytorch_version: str,
+    driver_version: dict[str, str],
+):
+    return replace(
+        manifest,
+        toolchain_versions={
+            **manifest.toolchain_versions,
+            **driver_version,
+        },
+        library_versions={
+            **manifest.library_versions,
+            "cutlass_dsl": cutlass_version,
+            "pytorch": pytorch_version,
+        },
+    )
 
 
 def _driver_version() -> dict[str, str]:

@@ -220,9 +220,9 @@ def capture_environment_manifest(environ=None) -> EnvironmentManifest:
             "pod_hostname": environment.get("RUNPOD_POD_HOSTNAME"),
             "data_center_id": environment.get("RUNPOD_DC_ID"),
         },
-        container_image=environment.get("KERNEL_MCTS_CONTAINER_IMAGE"),
-        container_digest=environment.get("KERNEL_MCTS_CONTAINER_DIGEST"),
-        project_git_commit=environment.get("KERNEL_MCTS_GIT_COMMIT"),
+        container_image=environment.get("KERNEL_MCTS_CONTAINER_IMAGE") or None,
+        container_digest=environment.get("KERNEL_MCTS_CONTAINER_DIGEST") or None,
+        project_git_commit=environment.get("KERNEL_MCTS_GIT_COMMIT") or None,
         dirty_tree=(
             environment.get("KERNEL_MCTS_DIRTY_TREE") == "1"
             if environment.get("KERNEL_MCTS_DIRTY_TREE") in {"0", "1"}
