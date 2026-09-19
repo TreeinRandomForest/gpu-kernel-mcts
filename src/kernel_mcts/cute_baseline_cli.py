@@ -19,6 +19,13 @@ from .benchmarks import BF16_GEMM_WORKLOAD
 from .cute_tuning import run_cute_schedule_tuning
 from .cute_backend import CuteBackendConfig, CuTeDSLBackend
 from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
+from .cute_diagnostics import (
+    artifact_changes,
+    discover_cache_roots,
+    loaded_module_paths,
+    select_fingerprint_candidate,
+    snapshot_files,
+)
 from .evaluation import BackendKernelEvaluator, EvaluationContext
 from .serialization import serialize_environment_manifest, serialize_evaluation
 from .vendor_baselines import VendorBaselineConfig, VendorBaselineSuite
@@ -32,7 +39,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--example", type=Path, default=DEFAULT_EXAMPLE)
     parser.add_argument(
         "--mode",
-        choices=("comparison", "comparable", "feasibility", "tune", "backend"),
+        choices=(
+            "comparison",
+            "comparable",
+            "feasibility",
+            "tune",
+            "backend",
+            "diagnostic",
+        ),
         default="comparison",
     )
     parser.add_argument("--output", type=Path)
@@ -47,6 +61,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_tuning(arguments.example)
     elif arguments.mode == "backend":
         result = _run_backend_evaluation()
+    elif arguments.mode == "diagnostic":
+        result = _run_artifact_diagnostic(arguments.example)
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -176,6 +192,34 @@ def _run_backend_evaluation():
     evaluation = evaluator.evaluate(program, BF16_GEMM_WORKLOAD)
     assert evaluation.compilation is not None
     return _backend_evaluation_report(manifest, root_compilation, evaluation)
+
+
+def _run_artifact_diagnostic(example: Path):
+    environment = dict(os.environ)
+    roots = discover_cache_roots(environment)
+    before_files = snapshot_files(roots)
+    before_modules = set(loaded_module_paths())
+    result = dict(
+        run_hopper_bf16_comparable(
+            example,
+            capture_jit_diagnostics=True,
+        )
+    )
+    after_files = snapshot_files(roots)
+    after_modules = set(loaded_module_paths())
+    changes = artifact_changes(before_files, after_files)
+    return {
+        "status": "ok",
+        "benchmark_id": "bf16_gemm_4096_h100",
+        "cache_roots": [str(root) for root in roots],
+        "files_before": len(before_files),
+        "files_after": len(after_files),
+        "artifact_changes": [item.as_dict() for item in changes],
+        "fingerprint_candidate": select_fingerprint_candidate(changes),
+        "new_loaded_modules": sorted(after_modules - before_modules),
+        "kernel_callable": result.pop("jit_diagnostics", {}),
+        "evaluation": result,
+    }
 
 
 def _backend_evaluation_report(manifest, root_compilation, evaluation):

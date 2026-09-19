@@ -13,6 +13,7 @@ from typing import Any, Callable, Mapping
 
 from .domain import BenchmarkResult
 from .cute_schedule import DEFAULT_CUTE_SCHEDULE, CuteSchedule, validate_cute_schedule
+from .cute_diagnostics import describe_kernel_callable
 from .serialization import serialize_benchmark
 
 
@@ -166,6 +167,7 @@ def run_hopper_bf16_comparable(
     *,
     schedule: CuteSchedule = DEFAULT_CUTE_SCHEDULE,
     raise_on_correctness_failure: bool = True,
+    capture_jit_diagnostics: bool = False,
 ) -> Mapping[str, Any]:
     """Evaluate the pinned Hopper kernel under the repository benchmark contract."""
     import cutlass
@@ -209,6 +211,7 @@ def run_hopper_bf16_comparable(
             reference,
             schedule,
             raise_on_correctness_failure,
+            capture_jit_diagnostics=capture_jit_diagnostics,
         )
 
     result["example_sha256"] = _sha256(example_path)
@@ -223,6 +226,7 @@ def _run_with_repository_hooks(
     reference,
     schedule: CuteSchedule,
     raise_on_correctness_failure: bool = True,
+    capture_jit_diagnostics: bool = False,
 ) -> dict[str, Any]:
     kernel_type = example.HopperWgmmaGemmKernel
     tensor_helpers = _tensor_helpers()
@@ -234,6 +238,7 @@ def _run_with_repository_hooks(
     tensor_index = 0
     timings: list[float] = []
     correctness: dict[str, Any] = {}
+    jit_diagnostics: dict[str, Any] = {}
 
     def bf16_validator(a_dtype, b_dtype, acc_dtype, c_dtype, a_major, b_major):
         return (
@@ -287,6 +292,8 @@ def _run_with_repository_hooks(
             raise AssertionError("CuTe DSL result failed repository correctness tolerances")
 
     def sample_benchmark(callable, **keywords):
+        if capture_jit_diagnostics and not jit_diagnostics:
+            jit_diagnostics.update(describe_kernel_callable(callable, keywords))
         timings.extend(_collect_timing_samples(callable, keywords, torch))
         return statistics.fmean(timings)
 
@@ -322,7 +329,7 @@ def _run_with_repository_hooks(
 
     if not correctness or len(timings) != 30:
         raise RuntimeError("CuTe DSL adapter did not complete the evaluation contract")
-    return {
+    result = {
         "status": "ok",
         "implementation": "cute_dsl_hopper_dense_gemm_v4.5.1_repository_contract",
         "contract": {
@@ -354,6 +361,9 @@ def _run_with_repository_hooks(
         "comparable_to_repository_baselines": True,
         "comparability_blockers": [],
     }
+    if capture_jit_diagnostics:
+        result["jit_diagnostics"] = jit_diagnostics
+    return result
 
 
 def _collect_timing_samples(

@@ -134,6 +134,28 @@ pinned example hash, and launch configuration. It is explicitly identified as a
 template/source fingerprint rather than a cubin or SASS hash. Extracting a stable
 generated-binary fingerprint remains backend work before searchable CuTe MCTS.
 
+## Phase-3 artifact diagnostic
+
+Before selecting a cubin/SASS extraction method or an NCU kernel filter, run one
+instrumented JIT to observe what the pinned CuTe runtime actually materializes:
+
+```bash
+sudo docker run --rm --gpus all \
+  --entrypoint python \
+  -v "$PWD/cutedsl-output:/output" \
+  docker.io/USER/gpu-kernel-mcts:REVISION \
+  -m kernel_mcts.cute_baseline_cli \
+  --mode diagnostic \
+  --output /output/cutedsl-artifact-diagnostic.json
+```
+
+The diagnostic snapshots standard CUDA/CuTe cache locations and temporary roots
+before and after JIT, hashes created or modified files, ranks cubin/fatbin/SASS/PTX
+fingerprint candidates, records newly loaded CUDA-related host modules, and captures
+bounded metadata about the actual benchmark callable and workspace. It does not yet
+change the backend fingerprint or claim NCU support. Those choices must follow the
+observed H100 output rather than assumed CuTe internals.
+
 The original feasibility mode remains available for diagnosing adapter failures:
 
 ```bash

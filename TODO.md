@@ -64,6 +64,10 @@ completed hardware validation is identified explicitly.
   telemetry, typed evaluation metadata, and in-memory artifact caching. The guarded
   H100 backend-mode validation passed on 2026-09-19; a repeat run remains to validate
   the added initial-JIT and enriched-provenance reporting fields.
+- [x] Milestone B phase-3 artifact/kernel-identity diagnostic mode with before/after
+  cache inventory, content hashes, fingerprint-candidate ranking, loaded-module diff,
+  and bounded callable/workspace metadata. H100 output is required before choosing
+  the production cubin/SASS fingerprint and exact NCU kernel filter.
 
 ## Next
 
@@ -95,7 +99,7 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `261 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `266 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.
