@@ -671,6 +671,8 @@ class MCTS:
     ) -> Mapping[str, object]:
         result = attempt.evaluation
         serialized_evaluation = serialize_evaluation(result)
+        evaluation_metadata = result.metadata
+        generation_metadata = attempt.generation.metadata or {}
         return {
             "iteration": iteration,
             "generation_id": attempt.generation.generation_id,
@@ -707,9 +709,18 @@ class MCTS:
             "evaluation": serialized_evaluation,
             "created_node_id": child.id if child is not None else None,
             "reused_node": reused_node,
+            "proposal_mechanism": generation_metadata.get("proposal_mechanism"),
+            "representation": evaluation_metadata.get("representation"),
+            "representation_schema_version": evaluation_metadata.get(
+                "representation_schema_version"
+            ),
+            "configuration_hash": evaluation_metadata.get("configuration_hash"),
+            "static_validation": generation_metadata.get("static_validation"),
+            "transformation": generation_metadata.get("transformation"),
         }
 
     def _node_payload(self, node: SearchNode, *, is_root: bool = False) -> Mapping[str, object]:
+        metadata = node.evaluation.metadata
         return {
             "node_id": node.id,
             "state_key": node.state_key,
@@ -719,6 +730,11 @@ class MCTS:
             "evaluation": serialize_evaluation(node.evaluation),
             "profile": serialize_profile(node.profile),
             "is_root": is_root,
+            "representation": metadata.get("representation"),
+            "representation_schema_version": metadata.get(
+                "representation_schema_version"
+            ),
+            "configuration_hash": metadata.get("configuration_hash"),
         }
 
     def _iteration_payload(

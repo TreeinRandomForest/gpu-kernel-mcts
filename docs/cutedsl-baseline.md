@@ -97,6 +97,34 @@ environment manifest, the best schedule, the default schedule result, and latenc
 ratios against the same-worker cuBLAS result. These trials remain outside MCTS and
 do not consume `B_gen`.
 
+## Backend evaluation smoke test
+
+Milestone B phase 2 evaluates the deterministically rendered reference through the
+normal `BackendKernelEvaluator` contract. Rebuild the CuTe image, then run on H100:
+
+```bash
+sudo docker run --rm --gpus all \
+  --entrypoint python \
+  -v "$PWD/cutedsl-output:/output" \
+  docker.io/USER/gpu-kernel-mcts:REVISION \
+  -m kernel_mcts.cute_baseline_cli \
+  --mode backend \
+  --output /output/cutedsl-backend-evaluation.json
+```
+
+The backend verifies that source exactly matches the deterministic rendering of its
+embedded typed representation, then runs the pinned JIT/correctness/benchmark harness
+once in a bounded subprocess. Correctness and benchmark stages reuse that cached
+artifact result; evaluating the same rendered state again does not launch the GPU.
+The report is a normal serialized `EvaluationResult` with source hash, state key,
+artifact fingerprint, complete timings, telemetry, environment identity, and typed
+representation metadata.
+
+The phase-2 artifact fingerprint covers the rendered source, canonical representation,
+pinned example hash, and launch configuration. It is explicitly identified as a
+template/source fingerprint rather than a cubin or SASS hash. Extracting a stable
+generated-binary fingerprint remains backend work before searchable CuTe MCTS.
+
 The original feasibility mode remains available for diagnosing adapter failures:
 
 ```bash

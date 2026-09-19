@@ -165,6 +165,7 @@ def run_hopper_bf16_comparable(
     reference_library: Path = DEFAULT_REFERENCE_LIBRARY,
     *,
     schedule: CuteSchedule = DEFAULT_CUTE_SCHEDULE,
+    raise_on_correctness_failure: bool = True,
 ) -> Mapping[str, Any]:
     """Evaluate the pinned Hopper kernel under the repository benchmark contract."""
     import cutlass
@@ -207,6 +208,7 @@ def run_hopper_bf16_comparable(
             (a_cpu, b_cpu, c_cpu),
             reference,
             schedule,
+            raise_on_correctness_failure,
         )
 
     result["example_sha256"] = _sha256(example_path)
@@ -214,7 +216,13 @@ def run_hopper_bf16_comparable(
 
 
 def _run_with_repository_hooks(
-    example, cutlass, torch, inputs, reference, schedule: CuteSchedule
+    example,
+    cutlass,
+    torch,
+    inputs,
+    reference,
+    schedule: CuteSchedule,
+    raise_on_correctness_failure: bool = True,
 ) -> dict[str, Any]:
     kernel_type = example.HopperWgmmaGemmKernel
     tensor_helpers = _tensor_helpers()
@@ -275,7 +283,7 @@ def _run_with_repository_hooks(
                 },
             }
         )
-        if not success:
+        if not success and raise_on_correctness_failure:
             raise AssertionError("CuTe DSL result failed repository correctness tolerances")
 
     def sample_benchmark(callable, **keywords):

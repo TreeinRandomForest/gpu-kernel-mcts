@@ -59,6 +59,10 @@ completed hardware validation is identified explicitly.
 - [x] Milestone B phase-1 typed `CuteGemmProgram` schema, canonical identity,
   structured static legality results, deterministic pinned-template renderer, and
   backward-compatible SQLite/browser representation metadata.
+- [x] Milestone B phase-2 `CuTeDSLBackend` evaluation path with deterministic-source
+  verification, bounded pinned-template JIT/evaluation, correctness and timing reuse,
+  telemetry, typed evaluation metadata, and in-memory artifact caching. CPU tests are
+  complete; the guarded H100 backend-mode validation remains to be run.
 
 ## Next
 
@@ -90,7 +94,7 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `253 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `259 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.

@@ -17,7 +17,10 @@ from .cute_baseline import (
 )
 from .benchmarks import BF16_GEMM_WORKLOAD
 from .cute_tuning import run_cute_schedule_tuning
-from .serialization import serialize_environment_manifest
+from .cute_backend import CuteBackendConfig, CuTeDSLBackend
+from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
+from .evaluation import BackendKernelEvaluator, EvaluationContext
+from .serialization import serialize_environment_manifest, serialize_evaluation
 from .vendor_baselines import VendorBaselineConfig, VendorBaselineSuite
 from .worker_service import capture_environment_manifest
 
@@ -29,7 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--example", type=Path, default=DEFAULT_EXAMPLE)
     parser.add_argument(
         "--mode",
-        choices=("comparison", "comparable", "feasibility", "tune"),
+        choices=("comparison", "comparable", "feasibility", "tune", "backend"),
         default="comparison",
     )
     parser.add_argument("--output", type=Path)
@@ -42,6 +45,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_comparison(arguments.example)
     elif arguments.mode == "tune":
         result = _run_tuning(arguments.example)
+    elif arguments.mode == "backend":
+        result = _run_backend_evaluation()
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -117,6 +122,56 @@ def _run_tuning(example: Path):
         vendor["cublas"],
         serialize_environment_manifest(manifest),
     )
+
+
+def _run_backend_evaluation():
+    environment = dict(os.environ)
+    environment.setdefault("KERNEL_MCTS_WORKER_ID", socket.gethostname())
+    environment.setdefault("KERNEL_MCTS_PROVIDER", "standalone")
+    manifest = capture_environment_manifest(environment)
+    program = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+    backend = CuTeDSLBackend(
+        CuteBackendConfig(artifact_root=Path("/tmp/kernel-mcts-cute-backend"))
+    )
+    root_compilation = backend.compile(program, BF16_GEMM_WORKLOAD)
+    if not root_compilation.success or root_compilation.artifact is None:
+        raise RuntimeError(f"CuTe reference failed JIT: {root_compilation.stderr}")
+    root_correctness = backend.check_correctness(
+        root_compilation.artifact, BF16_GEMM_WORKLOAD
+    )
+    if not root_correctness.success:
+        raise RuntimeError("CuTe reference failed correctness")
+    root_benchmark = backend.benchmark(root_compilation.artifact, BF16_GEMM_WORKLOAD)
+    evaluator = BackendKernelEvaluator(
+        backend=backend,
+        root_benchmark=root_benchmark,
+        context=EvaluationContext(
+            worker_id=manifest.worker_id,
+            environment_manifest_id=manifest.manifest_id,
+            launch_config={
+                "tile_shape_mn": [REFERENCE_CUTE_GEMM.tile_m, REFERENCE_CUTE_GEMM.tile_n],
+                "cluster_shape_mn": [
+                    REFERENCE_CUTE_GEMM.cluster_m,
+                    REFERENCE_CUTE_GEMM.cluster_n,
+                ],
+            },
+            hardware_toolchain={
+                "gpu_model": manifest.gpu_model,
+                "compute_capability": manifest.compute_capability,
+                "form_factor": manifest.form_factor,
+                "toolchain_versions": manifest.toolchain_versions,
+                "library_versions": manifest.library_versions,
+            },
+        ),
+    )
+    evaluation = evaluator.evaluate(program, BF16_GEMM_WORKLOAD)
+    return {
+        "status": "ok",
+        "representation": REFERENCE_CUTE_GEMM.as_dict(),
+        "configuration_hash": REFERENCE_CUTE_GEMM.configuration_hash,
+        "environment_manifest": serialize_environment_manifest(manifest),
+        "evaluation": serialize_evaluation(evaluation),
+    }
 
 
 def _driver_version() -> dict[str, str]:

@@ -142,6 +142,7 @@ import cutlass
 
 EXAMPLE_PATH = {self.example_path!r}
 CONFIGURATION_HASH = {program.configuration_hash!r}
+KERNEL_MCTS_REPRESENTATION = {program.as_dict()!r}
 
 
 def _load_example():

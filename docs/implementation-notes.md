@@ -169,6 +169,18 @@ fields to the existing node and generation tables. Existing CUDA traces and brow
 queries remain valid; CuTe nodes use the same graph, profile, decision, and comparison
 APIs, while analysis bundles export rendered CuTe programs with a `.py` suffix.
 
+Milestone B phase 2 implements `CuTeDSLBackend` without enabling CuTe MCTS. It accepts
+only source that exactly matches the deterministic renderer for its embedded typed
+representation. The first compile invokes the pinned repository-contract adapter in a
+bounded subprocess, which triggers CuTe JIT, correctness, and CUDA-event measurement;
+the resulting artifact caches all evidence so the evaluator's correctness and benchmark
+stages, repeated evaluations, and ordinary visits do not repeat GPU work. Valid results
+flow through `BackendKernelEvaluator` and therefore receive the standard reward,
+state-key, compilation/correctness evidence, telemetry, worker/environment identity,
+and trace serialization. The current fingerprint is provenance over rendered source,
+typed configuration, pinned template, and launch context—not yet a cubin/SASS hash.
+Profiling and remote-worker backend selection remain subsequent phases.
+
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:
 the one-shot generator performs no LLM call, while `B_gen=1` still exercises the same

@@ -10,3 +10,9 @@ def test_cli_accepts_standalone_tuning_mode(tmp_path) -> None:
 
     assert arguments.mode == "tune"
     assert arguments.output == output
+
+
+def test_cli_accepts_backend_evaluation_mode() -> None:
+    arguments = build_parser().parse_args(["--mode", "backend"])
+
+    assert arguments.mode == "backend"

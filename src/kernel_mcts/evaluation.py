@@ -71,6 +71,7 @@ class BackendKernelEvaluator:
         compilation: CompilationEvidence | None = None
         correctness: CorrectnessEvidence | None = None
         artifact = None
+        backend_metadata: dict[str, object] = {}
 
         try:
             compiled = self.backend.compile(program, workload)
@@ -97,6 +98,7 @@ class BackendKernelEvaluator:
                 )
 
             artifact = compiled.artifact
+            backend_metadata = _backend_evaluation_metadata(self.backend, artifact)
             compile_status = CompileStatus.SUCCESS
             checked = self.backend.check_correctness(artifact, workload)
             correctness = CorrectnessEvidence(
@@ -116,6 +118,7 @@ class BackendKernelEvaluator:
                     artifact=artifact,
                     compilation=compilation,
                     correctness=correctness,
+                    metadata=backend_metadata,
                 )
 
             correctness_status = CorrectnessStatus.PASS
@@ -144,6 +147,7 @@ class BackendKernelEvaluator:
                 artifact=artifact,
                 compilation=compilation,
                 correctness=correctness,
+                metadata=backend_metadata,
             )
         except (CandidateBenchmarkError, CandidateLaunchError, CandidateTimeoutError) as error:
             if isinstance(error, CandidateLaunchError):
@@ -162,7 +166,7 @@ class BackendKernelEvaluator:
                 artifact=artifact,
                 compilation=compilation,
                 correctness=correctness,
-                metadata={"error_type": type(error).__name__},
+                metadata={**backend_metadata, "error_type": type(error).__name__},
             )
 
         except EvaluationInfrastructureError as error:
@@ -175,7 +179,7 @@ class BackendKernelEvaluator:
                 artifact=artifact,
                 compilation=compilation,
                 correctness=correctness,
-                metadata={"error_type": type(error).__name__},
+                metadata={**backend_metadata, "error_type": type(error).__name__},
             )
 
     def lightweight_profile(
@@ -269,3 +273,15 @@ def _state_key(
 
 def _sha256(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _backend_evaluation_metadata(
+    backend: KernelBackend, artifact: object
+) -> dict[str, object]:
+    provider = getattr(backend, "evaluation_metadata", None)
+    if not callable(provider):
+        return {}
+    value = provider(artifact)
+    if not isinstance(value, Mapping):
+        raise EvaluationInfrastructureError("backend evaluation metadata must be a mapping")
+    return dict(value)
