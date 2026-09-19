@@ -49,8 +49,8 @@ generated candidate before running the documented OpenAI-backed MCTS command.
 ## Project status
 
 See [TODO.md](TODO.md) for implemented and remaining work. `spec.md` remains the
-source of truth for Milestone A behavior and architecture.
-Speculative post–Milestone A ideas are tracked separately in
+source of truth for Milestone A behavior and architecture and for the searchable
+CuTe DSL backend introduced in Milestone B. Longer-term research ideas are tracked in
 [docs/research-roadmap.md](docs/research-roadmap.md).
 
 The local browser-based SQLite trace explorer is described in
@@ -70,12 +70,15 @@ The controlled follow-up with the multi-accumulator strategy is documented in
 [its B_gen=50 report](docs/experiments/nebius-bgen50-cpuct12-multiacc.md).
 The subsequent model comparison is recorded in the
 [Sol versus Terra B_gen=50 report](docs/experiments/nebius-sol-vs-terra-bgen50.md).
+The fixed CuTe DSL comparison and initial typed schedule-tuning result are recorded in
+[the same-worker baseline report](docs/experiments/cutedsl-bf16-same-worker-baselines.md)
+and [the schedule-tuning report](docs/experiments/cutedsl-schedule-tuning-v1.md).
 
 ## Starting a new agent session
 
 Use this opening prompt when continuing work in a new session:
 
 > Read `AGENTS.md`, `spec.md`, `TODO.md`, and all files under `docs/` before
-> making changes. Treat `spec.md` as the Milestone A source of truth, then
+> making changes. Treat `spec.md` as the Milestone A and Milestone B source of truth, then
 > inspect `git status` and the relevant implementation and tests for the next
 > unchecked item. Do not commit or push unless explicitly asked.

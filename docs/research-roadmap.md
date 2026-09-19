@@ -218,10 +218,13 @@ the kernel needs a different computational structure.
 Suggested experiment order:
 
 1. Inspect and profile the best valid generated kernel against the root, fixed CUTLASS,
-   and cuBLAS implementations.
+   and cuBLAS implementations. Completed for the initial BF16 experiments.
 2. Add one Hopper tensor-core macro-strategy and verify that it can produce a valid,
    correct candidate.
-3. Add structured CuTe DSL or constrained CUTLASS configuration experiments.
+3. Add structured CuTe DSL or constrained CUTLASS configuration experiments. The
+   first fixed CuTe baseline and nine-point typed schedule space are complete: the
+   best schedule measured `184.880 us`, 4.4% behind same-worker cuBLAS. Milestone B
+   now targets structural typed CuTe transformations under MCTS.
 4. Decompose successful tensor-core kernels into finer layout, pipeline, resource, and
    launch strategies.
 5. Add profile-informed prompts and optional priors.

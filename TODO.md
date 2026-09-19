@@ -1,6 +1,6 @@
 # Implementation status
 
-`spec.md` is the source of truth for Milestone A. This file records implementation
+`spec.md` is the source of truth for Milestones A and B. This file records implementation
 and validation status. Checked implementation items have automated coverage; any
 completed hardware validation is identified explicitly.
 
@@ -49,9 +49,20 @@ completed hardware validation is identified explicitly.
   CUDA templates, with separate `B_tune` accounting and SQLite trial records.
 - [x] Standalone Nebius autotuning CLI for an existing annotated CUDA kernel, with
   pre-provision validation and exception-safe worker release.
+- [x] Comparable fixed Hopper CuTe DSL BF16 GEMM baseline using the repository input,
+  correctness, and CUDA-event timing contract.
+- [x] Typed CuTe schedule schema with deterministic identity, static validation, and
+  exhaustive standalone `B_tune` evaluation on one worker.
+- [x] CuTe schedule-tuning validation on H100 SXM: the best `(128, 256)` CTA tile with
+  `(2, 1)` cluster measured `184.880 us`, 4.4% slower than same-worker cuBLAS and
+  4.4% faster than the default CuTe schedule.
 
 ## Next
 
+- [ ] Implement Milestone B's searchable `CuTeDSLBackend`: begin with a simpler typed
+  Hopper GEMM representation, deterministic rendering, and static legality checks;
+  then expose structural WGMMA, TMA, pipeline, layout, warp-specialization, and
+  epilogue strategies beneath the existing MCTS strategy layer.
 - [ ] Add bounded local autotuning for parameterized kernel families, initially for
   CUTLASS SM90 WGMMA/TMA configurations. Keep the algorithm fixed while tuning
   discrete choices such as tile sizes, pipeline stages, warp layout, vector width,
@@ -76,7 +87,7 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `184 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `246 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.

@@ -151,6 +151,15 @@ benchmark, and telemetry pipeline but never become MCTS nodes or alter backups.
 Dedicated `tuning_runs` and `tuning_trials` tables preserve every attempt. Unannotated
 kernels are recorded as skipped rather than modified heuristically.
 
+The post-Milestone A CuTe path pins CUTLASS/CuTe DSL 4.5.1 and adapts NVIDIA's Hopper
+dense-GEMM example to the same fixed BF16 workload, cuBLAS reference, tolerances,
+warmups, and individual CUDA-event measurements used by repository baselines. A
+standalone deterministic tuner evaluates a typed CTA-tile/cluster-shape grid under a
+separate `B_tune`; trials never create MCTS nodes or alter `B_gen`. On H100 SXM the
+best tile `(128, 256)` with cluster `(2, 1)` measured `184.880 us`, versus
+`193.024 us` for the default cluster and `177.056 us` for same-worker cuBLAS. The
+searchable typed backend is specified as Milestone B but is not implemented yet.
+
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:
 the one-shot generator performs no LLM call, while `B_gen=1` still exercises the same

@@ -1,4 +1,4 @@
-# Kernel MCTS Optimizer — Milestone A Specification
+# Kernel MCTS Optimizer — Milestone A and Milestone B Specification
 
 ## 1. Goal
 
@@ -33,6 +33,12 @@ The primary output of Milestone A is:
 3. a benchmark suite,
 4. comparisons against simpler search baselines,
 5. plots of best-found kernel performance versus LLM-generation budget.
+
+Milestone B adds a searchable CuTe DSL backend after Milestone A. It preserves
+the search invariants and workload/evaluation contracts defined here while
+replacing unrestricted CUDA source as the only searchable representation with a
+typed, deterministically rendered CuTe kernel design space. Milestone B is
+specified in Section 47; it does not retroactively expand Milestone A.
 
 ---
 
@@ -1881,6 +1887,9 @@ shape, WGMMA atom and warp-group arrangement, pipeline stages, TMA copy layout,
 shared-memory swizzle, cluster shape, and epilogue policy. Standalone tuning of
 these parameters remains separately budgeted by `B_tune`; tuning trials do not
 become MCTS nodes unless a later specification explicitly changes that rule.
+The fixed baseline and initial typed tuning experiment have now satisfied this
+prerequisite; Section 47 defines the resulting searchable-backend milestone while
+retaining standalone tuning outside MCTS.
 
 Milestone A may include fixed vendor/library performance references, such as
 cuBLAS and a pinned CUTLASS kernel, for calibration and reporting. These are
@@ -2123,7 +2132,8 @@ Prefer simple modules over premature abstraction.
 
 # 37. Logging Requirements
 
-Logging is important because Milestone B will train from Milestone A search traces.
+Logging is important because a future learned-search milestone may train from
+Milestone A and Milestone B search traces.
 
 Every LLM-generated candidate should produce a durable record.
 
@@ -2278,7 +2288,7 @@ strategy average immediate reward
 strategy involvement in best paths
 ```
 
-These will be useful for Milestone B.
+These will be useful for future learned policy and value experiments.
 
 ---
 
@@ -2463,7 +2473,7 @@ Do not implement any of this during Milestone A.
 
 ---
 
-# 44. Milestone B Compatibility
+# 44. Future Learned Policy and Value Compatibility
 
 Milestone A logging should make it possible to later train AlphaZero-like models.
 
@@ -2809,4 +2819,199 @@ The immediate scientific/engineering question is:
 
 > Does structured tree search use a fixed LLM-generation budget more effectively than simpler iterative CUDA optimization strategies?
 
-If the answer is yes, the next milestone is to learn the search policy and value function from the accumulated search traces.
+Milestone B next evaluates a searchable typed CuTe DSL backend. Learned search
+policy and value functions remain a later milestone that can use accumulated CUDA
+and CuTe traces.
+
+---
+
+# 47. Milestone B — Searchable CuTe DSL Backend
+
+## 47.1 Goal and scope
+
+Milestone B asks:
+
+> Can MCTS search a typed CuTe DSL kernel design space with fewer invalid
+> proposals and better H100 performance per generation than unrestricted CUDA
+> C++ generation?
+
+The first target remains the fixed `bf16_gemm_4096_h100` workload on one NVIDIA
+H100 SXM. Milestone B must reuse its input generation, layouts, numerical
+tolerances, reference computation, warmups, measurement count, CUDA-event timing,
+telemetry, environment validation, and fixed-root reward normalization. Workload
+changes are separate experiments rather than search actions.
+
+Milestone B includes:
+
+- a `CuTeDSLBackend` with pinned toolchain and library versions;
+- a typed kernel/schedule representation with canonical serialization;
+- deterministic rendering to complete CuTe DSL programs;
+- static legality checks before JIT compilation;
+- semantic MCTS actions that can change kernel structure;
+- deterministic typed mutations and stochastic LLM realizations beneath the
+  existing strategy layer;
+- complete compile, correctness, benchmark, profile, artifact, and trace records;
+- standalone local schedule tuning under `B_tune`; and
+- comparisons with cuBLAS, Hopper CUTLASS, the fixed CuTe baseline, tuned CuTe,
+  and the best CUDA-MCTS result under identical evaluation contracts.
+
+Milestone B does not yet include learned policy/value functions, self-play-style
+training, general-purpose compiler IR, multi-GPU kernels, forward-pass fusion, or
+runtime dispatch.
+
+## 47.2 Starting point and staged implementation
+
+The fixed pinned Hopper WGMMA/TMA implementation and standalone schedule tuner in
+Section 29.1 are calibration results, not searchable MCTS states. Milestone B
+should proceed in this order:
+
+1. reproduce the fixed and tuned baselines with complete provenance;
+2. construct a simpler correct typed CuTe GEMM representation;
+3. deterministically render, JIT, validate, benchmark, profile, and fingerprint it;
+4. expose a small statically checked structural design space;
+5. validate transformations through standalone enumeration or tuning;
+6. add backend-specific semantic strategies and proposal mechanisms; and
+7. enable CuTe states in the existing global MCTS without changing its selection,
+   widening, realization-selection, or valid-only backup semantics.
+
+The goal is not to make CuTe artificially slow or to begin from an implementation
+that ignores the DSL's structured hardware abstractions. The starting kernel should
+be simpler than the pinned expert example while still using an appropriate subset
+of Hopper Tensor Core and memory-movement mechanisms.
+
+## 47.3 State and canonical identity
+
+A searchable CuTe state is a complete effective kernel under a fixed environment:
+
+```text
+CuTeState = (
+    typed kernel representation,
+    rendered CuTe DSL program,
+    backend type = cute_dsl,
+    workload contract,
+    target hardware,
+    compiler/JIT and library configuration
+)
+```
+
+The optimization path is not part of state. Canonical serialization must have a
+versioned schema and stable ordering. State identity must include the canonical
+representation or normalized rendered program plus the same workload, launch,
+hardware, and toolchain context required for CUDA states. Semantically identical
+states reached by different paths must transpose to one cached node and evaluation.
+
+Only JIT-successful, launch-successful, correctness-passing implementations become
+nodes. Static rejections, rendering errors, JIT failures, launch failures, and
+correctness failures remain proposal records and never enter the search DAG.
+
+## 47.4 Initial typed design space
+
+The representation should expose parameters only when their legal values and
+interactions are understood. Candidate dimensions include:
+
+- CTA tile shape;
+- cluster shape;
+- WGMMA atom and warp-group arrangement;
+- mainloop pipeline stages;
+- TMA copy partition and layout;
+- shared-memory layout and swizzle;
+- producer/consumer warp specialization;
+- accumulator ownership; and
+- epilogue ownership, staging, and vectorization.
+
+The initial fixed schedule experiment has validated CTA tiles `(64, 128)`,
+`(128, 128)`, and `(128, 256)` with cluster shapes `(1, 1)`, `(1, 2)`, and
+`(2, 1)` for the pinned example. These values are evidence for that implementation,
+not universal legality rules for every future CuTe kernel.
+
+Static validation should reject only proven violations, including incompatible
+shapes/layouts, unsupported MMA partitions, invalid cluster geometry, insufficient
+alignment, overlapping pipeline storage, impossible shared-memory usage, and
+incomplete workload coverage. Estimated register pressure, occupancy, or performance
+must not become a hard rejection unless it proves execution impossible.
+
+## 47.5 Actions and proposal mechanisms
+
+PUCT continues to select backend-independent semantic strategies. CuTe-specific
+strategy prompts or typed implementations may include:
+
+- change CTA or cluster decomposition;
+- change WGMMA/warp-group arrangement;
+- restructure TMA global-to-shared movement;
+- add, remove, or rebalance pipeline stages;
+- change shared-memory layout or swizzle;
+- change producer/consumer specialization;
+- reduce register or shared-memory pressure; and
+- restructure the epilogue.
+
+A selected strategy may produce a realization through either:
+
+1. a deterministic typed mutation with explicit parameters; or
+2. a fresh LLM call that returns a typed representation or constrained patch.
+
+Both mechanisms sit beneath the existing `StrategyEdge`. PUCT still selects the
+semantic strategy, progressive widening still limits distinct realizations, and UCB
+still chooses among existing valid realizations. Deterministic mutations must be
+logged with the same proposal identity and transformation evidence needed to audit
+LLM-generated realizations.
+
+## 47.6 Budgets
+
+Budget accounting remains explicit:
+
+```text
+B_gen   = all LLM candidate-generation and repair calls
+B_prior = all strategy-prior calls
+B_tune  = standalone or leaf-local mechanical schedule trials
+```
+
+An LLM call consumes `B_gen` even if static validation rejects its output. A
+deterministic typed mutation does not consume `B_gen`; experiments using such
+mutations must report a separate mutation/proposal count so they cannot claim an
+unqualified equal-generation comparison with LLM-only methods.
+
+Standalone schedule tuning remains outside MCTS and consumes `B_tune`. Its trials do
+not become MCTS nodes or affect backup. Any future leaf-local tuner must be enabled by
+an explicit ablation flag, use a fixed per-call `B_tune`, and retain the pre-tuning
+and post-tuning implementations. Promoting tuned results into MCTS requires a later
+explicit specification amendment; it is not part of the initial Milestone B search.
+
+## 47.7 Preserved search invariants
+
+Milestone B must preserve:
+
+- one global program search with no commit/re-root cycle;
+- exact PUCT, progressive-widening, and UCB roles and formulas;
+- `Q_mean` selection with `Q_max` logging;
+- valid measured-leaf-only backup;
+- no GPU reevaluation from ordinary visits;
+- complete cached evaluations across transpositions;
+- path-dependent depth rather than state-global depth; and
+- retention of valid locally slower kernels.
+
+CUDA and CuTe searches should initially run separately with one backend per run.
+Cross-backend edges or mixed-backend transpositions are outside initial Milestone B.
+
+## 47.8 Evaluation and success criteria
+
+Report at least:
+
+- best latency and log-speedup versus `B_gen`;
+- deterministic proposal count and `B_tune` where applicable;
+- static-valid, JIT-valid, and correctness-valid rates;
+- repair frequency and API cost;
+- number of unique canonical schedules and transpositions;
+- profile and resource changes along successful paths; and
+- final latency ratios against same-worker cuBLAS and strong Hopper CUTLASS.
+
+The primary comparison is searchable typed CuTe versus CUDA C++ MCTS under equal
+`B_gen`, with deterministic mutations and tuning budgets separately disclosed.
+Milestone B succeeds if the searchable backend is reproducible and auditable and
+demonstrates at least one of:
+
+1. higher valid-proposal efficiency;
+2. better performance at equal `B_gen`; or
+3. a smaller cost per valid measured improvement.
+
+The tuned fixed baseline is a calibration target, not a required search outcome and
+must not be used to prune valid nodes.
