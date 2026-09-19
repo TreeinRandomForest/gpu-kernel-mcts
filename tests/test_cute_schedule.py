@@ -16,7 +16,7 @@ def test_enumerates_small_deterministic_unique_space_including_baseline() -> Non
     second = enumerate_cute_schedules()
 
     assert first == second
-    assert len(first) == 12
+    assert len(first) == 9
     assert len(set(first)) == len(first)
     assert DEFAULT_CUTE_SCHEDULE in first
     assert first[0] == CuteSchedule(64, 128, 1, 1)

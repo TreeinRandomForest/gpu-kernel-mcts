@@ -60,10 +60,10 @@ correctness or the CuTe result does not complete the comparable contract.
 
 The standalone CuTe tuning experiment represents backend configuration with a
 typed `CuteSchedule`; it does not rewrite source code or create MCTS nodes. The
-initial finite space contains four CTA tiles and three cluster shapes:
+initial finite space contains three CTA tiles and three cluster shapes:
 
 ```text
-CTA tiles:      (64, 128), (128, 128), (128, 256), (256, 128)
+CTA tiles:      (64, 128), (128, 128), (128, 256)
 cluster shapes: (1, 1), (1, 2), (2, 1)
 ```
 
@@ -75,6 +75,27 @@ schedule has deterministic JSON serialization and a stable configuration ID.
 This first space deliberately does not expose WGMMA atoms, pipeline stages, TMA
 layouts, shared-memory swizzles, or epilogue policy. Those parameters should be
 added only after confirming how the pinned NVIDIA example constrains them.
+The pinned implementation rejects CTA tile-M values other than 64 and 128, so
+the previously considered `(256, 128)` tile is excluded statically and does not
+consume `B_tune`.
+
+Run the complete deterministic grid on one worker with:
+
+```bash
+sudo docker run --rm --gpus all \
+  -e KERNEL_MCTS_CONTAINER_IMAGE=docker.io/USER/gpu-kernel-mcts:REVISION \
+  -v "$PWD/cutedsl-output:/output" \
+  docker.io/USER/gpu-kernel-mcts:REVISION \
+  --mode tune \
+  --output /output/cutedsl-tuning.json
+```
+
+Every legal schedule that reaches JIT/evaluation consumes one unit of `B_tune`,
+including failed attempts. Static rejections are retained but do not consume the
+budget. The JSON report contains every complete valid result or failure, the
+environment manifest, the best schedule, the default schedule result, and latency
+ratios against the same-worker cuBLAS result. These trials remain outside MCTS and
+do not consume `B_gen`.
 
 The original feasibility mode remains available for diagnosing adapter failures:
 
