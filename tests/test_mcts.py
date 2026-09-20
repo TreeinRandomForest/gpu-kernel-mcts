@@ -183,6 +183,7 @@ def test_mcts_routes_mutation_before_generation_with_separate_budgets() -> None:
         "generation",
     ]
     assert generations[1]["proposal_mechanism_candidates"] == ["generation"]
+    assert generations[1]["proposal_mechanism"] == "generation"
 
 
 def test_exhausted_leaf_does_not_hide_available_root_strategy() -> None:

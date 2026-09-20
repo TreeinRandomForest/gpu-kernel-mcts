@@ -78,14 +78,17 @@ completed hardware validation is identified explicitly.
   finite proposal-space termination, and a GPU-independent end-to-end CuTe MCTS test.
   Remote CuTe orchestration is wired. The guarded Nebius H100 SXM mutation-search
   smoke run passed on 2026-09-20 with one valid mutation, two profiled nodes, and
-  `B_gen=0`, `B_mut=1`.
+  `B_gen=0`, `B_mut=1`. A subsequent `B_mut=4` run exercised both strategies and a
+  cached-root transposition and recovered the standalone tuner's best `(128, 256)`,
+  `(2, 1)` schedule.
 - [x] Add core mixed-mechanism proposal routing beneath each semantic strategy using
   the specified mutation-first policy, falling back to LLM generation only when the
   typed neighborhood is unavailable or `B_mut` is exhausted. The router preserves
   separate `B_mut`/`B_gen` accounting and logs eligible mechanisms plus the selected
-  budget kind. CLI/provider/worker wiring is complete; guarded H100 validation remains
-  pending for the mixed LLM-fallback path, and learned or bandit routing is a later
-  explicit ablation.
+  budget kind. The first guarded mixed H100 run routed correctly but exposed that raw
+  LLM-authored Python could not satisfy deterministic-render identity. The controller
+  now requests, validates, and canonically renders typed JSON; a repeat hardware run
+  remains pending. Learned or bandit routing is a later explicit ablation.
 
 ## Next
 

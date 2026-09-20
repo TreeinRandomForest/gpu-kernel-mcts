@@ -94,6 +94,7 @@ def test_llm_generator_builds_complete_fresh_prompt_and_records_metadata() -> No
         "provider": "fake",
         "generator": "llm",
         "llm_call": True,
+        "proposal_mechanism": "llm_generation",
         "model": "test-model",
         "response_id": "response-1",
     }
@@ -110,6 +111,27 @@ def test_generation_prompt_includes_opt_in_incoming_profile_delta() -> None:
     prompt = build_generation_prompt(request(incoming_profile_delta=delta))
 
     assert json.loads(prompt)["incoming_profile_delta"] == delta
+
+
+def test_cute_prompt_requests_only_typed_representation_json() -> None:
+    from kernel_mcts.cute_mutations import CUTE_MUTATION_STRATEGIES
+    from kernel_mcts.cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
+
+    prompt = build_generation_prompt(
+        request(
+            parent=PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM),
+            strategy=CUTE_MUTATION_STRATEGIES[1],
+        )
+    )
+    payload = json.loads(prompt)
+
+    assert payload["backend"] == "cute_dsl"
+    assert payload["parent_representation"] == REFERENCE_CUTE_GEMM.as_dict()
+    assert "parent_kernel" not in payload
+    assert "(1,1), (1,2), or (2,1)" in payload["strategy"]["backend_prompt"]
+    assert payload["constraints"][0] == (
+        "Return only one JSON object matching output_schema."
+    )
 
 
 def test_repair_prompt_contains_failed_candidate_and_bounded_diagnostics() -> None:

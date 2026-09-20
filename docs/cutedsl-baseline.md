@@ -239,6 +239,17 @@ See [CuTe mutation smoke validation](experiments/cutedsl-mutation-smoke-v1.md) f
 exact transition, timings, budgets, and provenance limitations. Mixed LLM-fallback
 validation remains pending.
 
+A subsequent four-proposal mutation-only search selected both cluster alternatives,
+one slower CTA tile, and one inverse mutation that transposed back to the cached root.
+It recovered the standalone tuner's `(128, 256)` tile with `(2, 1)` cluster as the
+best schedule. See [CuTe mutation search B_mut=4](experiments/cutedsl-mutation-bmut4-v1.md).
+
+The first `B_mut=4`, `B_gen=1` mixed run correctly fell back to the LLM after four
+mutations. The model selected the existing best schedule but returned noncanonical
+Python, exposing a representation/rendering boundary. The controller now requests a
+typed JSON representation and renders trusted canonical source locally. See
+[CuTe mixed search B_mut=4, B_gen=1](experiments/cutedsl-mixed-bmut4-bgen1-v1.md).
+
 The original feasibility mode remains available for diagnosing adapter failures:
 
 ```bash

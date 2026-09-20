@@ -15,6 +15,7 @@ from kernel_mcts.generation import (
 )
 from kernel_mcts.llm_generation import LLMKernelGenerator
 from kernel_mcts.cute_mutations import CuteMutationGenerator
+from kernel_mcts.cute_generation import CuteTypedLLMGenerator
 from kernel_mcts.provenance import RepositoryState
 from kernel_mcts.search_cli import (
     ProgressKernelGenerator,
@@ -538,7 +539,8 @@ def test_cute_mixed_search_constructs_mutation_first_router(
     assert isinstance(outer._generator.mutation_generator, CuteMutationGenerator)
     llm_progress = outer._generator.generation_generator
     assert isinstance(llm_progress, ProgressKernelGenerator)
-    assert isinstance(llm_progress._generator, LLMKernelGenerator)
+    assert isinstance(llm_progress._generator, CuteTypedLLMGenerator)
+    assert isinstance(llm_progress._generator._delegate, LLMKernelGenerator)
     assert captured["search"]["generation_budget"] == 2
     assert captured["search"]["mutation_budget"] == 3
     assert captured["provider_config"].backend == "cute_dsl"

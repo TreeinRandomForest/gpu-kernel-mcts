@@ -29,12 +29,22 @@ CUTE_MUTATION_STRATEGIES = (
     Strategy(
         CHANGE_CTA_TILE,
         "Change the CTA output-tile decomposition.",
-        {"cute_dsl": "Select another statically supported CTA tile."},
+        {
+            "cute_dsl": (
+                "Change only tile_m and tile_n. Choose one supported pair: "
+                "(64,128), (128,128), or (128,256)."
+            )
+        },
     ),
     Strategy(
         CHANGE_CLUSTER_SHAPE,
         "Change the Hopper thread-block cluster geometry.",
-        {"cute_dsl": "Select another statically supported cluster shape."},
+        {
+            "cute_dsl": (
+                "Change only cluster_m and cluster_n. Choose one supported pair: "
+                "(1,1), (1,2), or (2,1)."
+            )
+        },
     ),
 )
 

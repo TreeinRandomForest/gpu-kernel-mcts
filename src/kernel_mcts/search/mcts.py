@@ -799,7 +799,9 @@ class MCTS:
             "evaluation": serialized_evaluation,
             "created_node_id": child.id if child is not None else None,
             "reused_node": reused_node,
-            "proposal_mechanism": generation_metadata.get("proposal_mechanism"),
+            "proposal_mechanism": generation_metadata.get(
+                "proposal_mechanism", attempt.budget_kind.value
+            ),
             "proposal_mechanism_candidates": [
                 kind.value for kind in attempt.mechanism_candidates
             ],

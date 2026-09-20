@@ -10,6 +10,7 @@ from .autotuning import TuningConfig
 from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from .config import load_data, parse_strategies
 from .cute_mutations import CUTE_MUTATION_STRATEGIES, CuteMutationGenerator
+from .cute_generation import CuteTypedLLMGenerator
 from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
 from .domain import Strategy
 from .generation import (
@@ -540,7 +541,8 @@ def _search_components(
     )
     routed_generator = (
         MutationFirstGenerator(
-            CuteMutationGenerator(), ProgressKernelGenerator(generator)
+            CuteMutationGenerator(),
+            ProgressKernelGenerator(CuteTypedLLMGenerator(generator)),
         )
         if arguments.generator == "cute-mixed"
         else generator

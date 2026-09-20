@@ -398,7 +398,7 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
         ).fetchone() == (1.5, 2.0)
         assert connection.execute(
             "SELECT compile_status, correctness_status, input_tokens, output_tokens, "
-            "prompt_text, api_instructions "
+            "prompt_text, api_instructions, proposal_mechanism "
             "FROM generations ORDER BY b_gen LIMIT 1"
         ).fetchone() == (
             "SUCCESS",
@@ -407,6 +407,7 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
             5,
             "full generation prompt",
             "fixed API instructions",
+            "generation",
         )
         assert connection.execute(
             "SELECT profile_json FROM nodes WHERE node_id = ?",
