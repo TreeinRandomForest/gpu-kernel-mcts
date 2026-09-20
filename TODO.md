@@ -87,8 +87,10 @@ completed hardware validation is identified explicitly.
   separate `B_mut`/`B_gen` accounting and logs eligible mechanisms plus the selected
   budget kind. The first guarded mixed H100 run routed correctly but exposed that raw
   LLM-authored Python could not satisfy deterministic-render identity. The controller
-  now requests, validates, and canonically renders typed JSON; a repeat hardware run
-  remains pending. Learned or bandit routing is a later explicit ablation.
+  now requests, validates, and canonically renders typed JSON. The corrected H100 run
+  passed: the LLM selected the existing best schedule, which canonicalized to a valid
+  cached transposition with no GPU reevaluation. Learned or bandit routing is a later
+  explicit ablation.
 
 ## Next
 

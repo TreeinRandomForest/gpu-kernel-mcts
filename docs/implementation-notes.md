@@ -202,8 +202,10 @@ entrypoint, and worker backend selection now support guarded mutation-only and
 mutation-first mixed CuTe searches. H100 search validation and broader structural
 controls remain pending. The first mutation-only Nebius H100 SXM run passed on
 2026-09-20: one cluster-shape mutation was valid, both nodes were profiled, `B_gen`
-remained zero, and `B_mut` was exactly one. The mixed LLM-fallback path has not yet
-been validated on hardware.
+remained zero, and `B_mut` was exactly one. A subsequent corrected mixed run consumed
+four typed mutations followed by one LLM JSON proposal; deterministic rendering
+canonicalized the proposal to the existing best node, and the worker reused its
+cached evaluation.
 
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:

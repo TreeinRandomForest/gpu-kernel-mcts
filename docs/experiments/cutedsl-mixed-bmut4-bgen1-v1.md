@@ -57,11 +57,44 @@ The mixed CuTe generator now:
 With this adapter, the observed proposal canonicalizes to the existing `(128,256)`,
 `(2,1)` node and should be recorded as a transposition without GPU reevaluation.
 Generation traces also fall back to the selected budget mechanism when generator
-metadata omits a mechanism label. A repeat H100 run is required to validate these
-changes remotely.
+metadata omits a mechanism label. The following repeat run validates these changes
+remotely.
+
+## Successful v2 validation
+
+The corrected controller was rerun on Nebius H100 SXM on 2026-09-20:
+
+- Run ID: `aade2041-6114-4653-8e2d-6b8738954dbd`
+- Controller commit: `ecb2ba64c92cfbaf72df5b3ae150d8e8bdddc3a8`
+- `B_mut`: 4/4
+- `B_gen`: 1/1
+- LLM tokens: 1,764 input and 343 output
+- LLM latency: 7.061 seconds
+- Final nodes: 4
+- Profiles: 3
+
+The first four mutations again produced three new nodes and one cached-root
+transposition. The fifth iteration selected `change_cluster_shape` after `B_mut` was
+exhausted. The model returned a JSON representation changing its `(1,2)` parent to
+the existing `(2,1)` best schedule. Static validation passed, the deterministic
+renderer produced the canonical source, compilation and correctness passed, and the
+transposition table reported `reused_node=1` with the exact existing configuration
+hash `2a461f56da0f3f1d59193e00a3d3702e5b1293470e1b7435667132641bebc785`.
+
+The worker reused the evaluation already cached for that canonical program, so the
+LLM realization did not cause another GPU evaluation. Its generation record retained
+`proposal_mechanism=llm_typed_representation`, `typed_output_format=json`, complete
+transformation evidence, and separate `B_gen=1`, `B_mut=4` accounting.
+
+The measured root median was 191.840 us and the best `(128,256)`, `(2,1)` median was
+186.016 us. Reward was 0.030829, approximately `1.0313x` root speedup. These timings
+are run-local validation evidence; the important v2 outcome is that typed generation,
+canonical rendering, transposition detection, and cache reuse all worked remotely.
 
 ## Provenance limitations
 
-The trace recorded Git commit `caa36bdc0cda3a8a97edce04ee6508f27ab50ac9` and a
-dirty controller tree. The worker manifest did not capture an immutable image digest.
-This remains behavioral validation rather than a reproducible performance benchmark.
+Both traces recorded dirty controller trees, and neither worker manifest captured an
+immutable image digest. The v1 trace used commit
+`caa36bdc0cda3a8a97edce04ee6508f27ab50ac9`; v2 used
+`ecb2ba64c92cfbaf72df5b3ae150d8e8bdddc3a8`. These runs remain behavioral validation
+rather than reproducible performance benchmarks.

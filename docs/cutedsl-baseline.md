@@ -249,6 +249,8 @@ mutations. The model selected the existing best schedule but returned noncanonic
 Python, exposing a representation/rendering boundary. The controller now requests a
 typed JSON representation and renders trusted canonical source locally. See
 [CuTe mixed search B_mut=4, B_gen=1](experiments/cutedsl-mixed-bmut4-bgen1-v1.md).
+The corrected rerun passed on H100: the LLM-generated JSON canonicalized to the
+existing best node and reused its cached evaluation.
 
 The original feasibility mode remains available for diagnosing adapter failures:
 
