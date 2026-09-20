@@ -1,5 +1,8 @@
 # CuTe DSL BF16 GEMM Baseline
 
+See [CuTe DSL Search Model](cutedsl-search-model.md) for how typed mutations, LLM
+realizations, MCTS selection, budgets, and the cuBLAS baseline fit together.
+
 This is an isolated post-Milestone A baseline. It adapts NVIDIA's pinned
 CUTLASS 4.5.1 Hopper dense-GEMM example to the fixed
 `bf16_gemm_4096_h100` shape and data types:
