@@ -18,7 +18,7 @@ from kernel_mcts.domain import (
     Strategy,
     WorkloadContract,
 )
-from kernel_mcts.generation import GenerationResult
+from kernel_mcts.generation import GenerationResult, ProposalBudgetKind
 from kernel_mcts.orchestration import run_candidate_evaluation, run_mcts_search
 from kernel_mcts.persistence import SQLiteTraceStore
 from kernel_mcts.priors import UniformStrategyPrior
@@ -256,6 +256,53 @@ def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:
             "SELECT reward FROM nodes WHERE run_id = ? AND node_id = ?",
             (execution.run_id, execution.result.root.id),
         ).fetchone() == (0.0,)
+
+
+def test_mock_run_passes_mutation_budget_into_search_and_trace(tmp_path) -> None:
+    class MutationGenerator:
+        def __init__(self):
+            self.issued = False
+
+        @staticmethod
+        def proposal_budget_kind(_request):
+            return ProposalBudgetKind.MUTATION
+
+        def can_generate(self, _request):
+            return not self.issued
+
+        def generate(self, _request):
+            self.issued = True
+            return GenerationResult(
+                "mutation:1",
+                "candidate-mutation",
+                KernelProgram("candidate-mutation"),
+                "mutation",
+                metadata={"proposal_mechanism": "typed_mutation"},
+            )
+
+    database = tmp_path / "mutation.sqlite"
+    with SQLiteTraceStore(database) as trace:
+        execution = run_mcts_search(
+            provider=MockProvider(),
+            hardware=HARDWARE,
+            workload=WORKLOAD,
+            root_program=KernelProgram("root"),
+            strategies=(STRATEGY,),
+            generator=MutationGenerator(),
+            prior_provider=UniformStrategyPrior(),
+            generation_budget=0,
+            mutation_budget=1,
+            trace=trace,
+            run_id="mutation-run",
+        )
+
+    assert execution.result.generations == 0
+    assert execution.result.mutations == 1
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT generation_budget, mutation_budget, final_b_gen, final_b_mut "
+            "FROM search_runs WHERE run_id = 'mutation-run'"
+        ).fetchone() == (0, 1, 0, 1)
 
 
 def test_mock_run_releases_worker_when_search_raises(tmp_path) -> None:

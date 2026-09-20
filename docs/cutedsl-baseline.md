@@ -17,7 +17,7 @@ warmups = 10
 iterations = 30
 ```
 
-The normal search-worker image remains unchanged. Build the separate image with:
+Build the separate CuTe image with:
 
 ```bash
 podman build \
@@ -201,7 +201,41 @@ Different mutation orders that reach the same representation produce the same
 configuration hash, preserving transpositions. Pipeline, TMA-layout, WGMMA-layout,
 shared-memory, and epilogue mutations remain rejected until the renderer can express
 and validate them. The neighborhood is connected to core MCTS with separate `B_mut`
-accounting, but remote orchestration and H100 search validation remain pending.
+accounting. Remote orchestration is wired, while H100 search validation remains
+pending.
+
+## Guarded remote mutation search
+
+The CuTe image now dispatches to the authenticated worker service when a provider
+supplies `KERNEL_MCTS_WORKER_TOKEN`; without that token it retains the standalone CLI
+used by the commands above. The search CLI selects the CuTe backend explicitly and
+passes that choice to either RunPod or Nebius.
+
+Run the smallest mutation-only Nebius validation with:
+
+```bash
+.venv/bin/python -m kernel_mcts.search_cli \
+  --provider nebius \
+  --image docker.io/USER/gpu-kernel-mcts:CUTE_REVISION \
+  --trace cutedsl-mutation-smoke.sqlite \
+  --backend cute_dsl \
+  --generator cute-mutation \
+  --generation-budget 0 \
+  --mutation-budget 1 \
+  --nebius-project-id PROJECT_ID \
+  --nebius-subnet-id SUBNET_ID \
+  --nebius-ssh-public-key ~/.ssh/nebius.pub \
+  --nebius-ssh-private-key ~/.ssh/nebius \
+  --best-output cutedsl-mutation-best.py \
+  --confirm-create-and-terminate
+```
+
+After that guarded run succeeds, enable mutation-first LLM fallback with
+`--generator cute-mixed`, a positive `--generation-budget`, a positive
+`--mutation-budget`, and the usual `--model`. The initial mixed run uses the two
+built-in typed CuTe strategies, so it does not accept a separate strategy file.
+Remote H100 validation has not yet been completed; the CLI and provider tests are
+GPU-independent wiring coverage rather than performance evidence.
 
 The original feasibility mode remains available for diagnosing adapter failures:
 

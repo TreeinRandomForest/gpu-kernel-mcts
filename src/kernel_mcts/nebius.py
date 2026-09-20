@@ -63,6 +63,7 @@ class NebiusConfig:
     project_git_commit: str | None = None
     project_dirty_tree: bool | None = None
     container_digest: str | None = None
+    backend: str = "cuda_cpp"
 
     def __post_init__(self) -> None:
         if (
@@ -84,6 +85,8 @@ class NebiusConfig:
             raise ValueError("Nebius disk size and worker port must be positive")
         if self.startup_timeout_seconds <= 0 or self.poll_interval_seconds <= 0:
             raise ValueError("Nebius timeouts must be positive")
+        if self.backend not in {"cuda_cpp", "cute_dsl"}:
+            raise ValueError("unsupported worker backend")
 
 
 @dataclass(frozen=True, slots=True)
@@ -349,6 +352,11 @@ class NebiusCLIClient:
                 "KERNEL_MCTS_PROVIDER=nebius",
                 f"KERNEL_MCTS_WORKER_PORT={self.config.worker_port}",
                 f"KERNEL_MCTS_CONTAINER_IMAGE={self.config.image}",
+                *(
+                    (f"KERNEL_MCTS_BACKEND={self.config.backend}",)
+                    if self.config.backend != "cuda_cpp"
+                    else ()
+                ),
                 *(
                     (f"KERNEL_MCTS_GIT_COMMIT={self.config.project_git_commit}",)
                     if self.config.project_git_commit is not None

@@ -285,6 +285,17 @@ def test_runpod_forwards_optional_readiness_progress() -> None:
     assert progress_events == [("RUNNING/root_compile", 3.0)]
 
 
+def test_runpod_forwards_nondefault_worker_backend() -> None:
+    client = FakeClient()
+    transport = FakeTransport()
+    runpod = provider(client, transport, backend="cute_dsl")
+
+    worker = runpod.acquire_worker(HardwareSpec("H100"))
+    runpod.release_worker(worker)
+
+    assert client.requests[0].environment["KERNEL_MCTS_BACKEND"] == "cute_dsl"
+
+
 def test_runpod_provider_passes_network_volume_affinity() -> None:
     client = FakeClient()
     transport = FakeTransport()

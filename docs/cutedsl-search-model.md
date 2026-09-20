@@ -78,8 +78,9 @@ formulas. A later explicit ablation may compare this rule with a bandit or learn
 mechanism policy using observed validity, reward, and cost.
 
 Each proposal trace records the eligible mechanism sequence and the selected
-mechanism's budget kind. CLI construction and guarded remote CuTe validation of the
-mixed router remain pending.
+mechanism's budget kind. The CLI can construct mutation-only and mixed CuTe searches
+and providers initialize a CuTe worker backend. Guarded remote H100 validation of
+these paths remains pending.
 
 ## Deterministic mutations
 

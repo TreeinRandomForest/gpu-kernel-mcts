@@ -35,4 +35,4 @@ RUN nvcc -std=c++17 -O2 \
         -lcublas -o /usr/local/lib/kernel-mcts-bf16-reference.so \
     && python -m pip install --no-cache-dir .
 
-ENTRYPOINT ["python", "-m", "kernel_mcts.cute_baseline_cli"]
+ENTRYPOINT ["python", "-m", "kernel_mcts.cute_entrypoint"]

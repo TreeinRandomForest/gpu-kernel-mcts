@@ -157,8 +157,7 @@ warmups, and individual CUDA-event measurements used by repository baselines. A
 standalone deterministic tuner evaluates a typed CTA-tile/cluster-shape grid under a
 separate `B_tune`; trials never create MCTS nodes or alter `B_gen`. On H100 SXM the
 best tile `(128, 256)` with cluster `(2, 1)` measured `184.880 us`, versus
-`193.024 us` for the default cluster and `177.056 us` for same-worker cuBLAS. The
-full searchable typed backend is specified as Milestone B but is not implemented yet.
+`193.024 us` for the default cluster and `177.056 us` for same-worker cuBLAS.
 
 Milestone B phase 1 adds a versioned `CuteGemmProgram` whose canonical JSON and hash
 describe kernel structure without duplicating the fixed workload contract. The first
@@ -198,8 +197,10 @@ The same target reached through tile-then-cluster or cluster-then-tile transitio
 identical canonical identity. Core MCTS now reserves these transitions against a
 separate `B_mut`, disables mutation repairs, retains the normal selection/widening/UCB
 roles, and persists both budget counters. Existing generation-only searches remain
-backward compatible. Remote CuTe orchestration, H100 search validation, and broader
-structural controls remain pending.
+backward compatible. The search CLI, RunPod/Nebius provider configuration, CuTe image
+entrypoint, and worker backend selection now support guarded mutation-only and
+mutation-first mixed CuTe searches. H100 search validation and broader structural
+controls remain pending.
 
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:

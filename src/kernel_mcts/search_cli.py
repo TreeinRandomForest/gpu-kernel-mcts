@@ -9,8 +9,17 @@ from typing import Mapping, TextIO
 from .autotuning import TuningConfig
 from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from .config import load_data, parse_strategies
+from .cute_mutations import CUTE_MUTATION_STRATEGIES, CuteMutationGenerator
+from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
 from .domain import Strategy
-from .generation import GenerationRequest, GenerationResult, KernelGenerator
+from .generation import (
+    GenerationRequest,
+    GenerationResult,
+    KernelGenerator,
+    MutationFirstGenerator,
+    ProposalMechanism,
+    proposal_budget_kind,
+)
 from .llm_generation import LLMKernelGenerator
 from .nebius import NebiusConfig, create_nebius_provider
 from .openai_client import OpenAIResponsesClient, OpenAIResponsesConfig
@@ -148,6 +157,18 @@ class ProgressKernelGenerator:
         self._write(f"Generation call {self._calls} returned; evaluating proposal")
         return result
 
+    def can_generate(self, request: GenerationRequest) -> bool:
+        predicate = getattr(self._generator, "can_generate", None)
+        return True if predicate is None else bool(predicate(request))
+
+    def proposal_mechanisms(
+        self, request: GenerationRequest
+    ) -> tuple[ProposalMechanism, ...]:
+        resolver = getattr(self._generator, "proposal_mechanisms", None)
+        if resolver is not None:
+            return tuple(resolver(request))
+        return (ProposalMechanism(proposal_budget_kind(self._generator, request), self),)
+
     def _write(self, message: str) -> None:
         self._stream.write(f"{message}\n")
         self._stream.flush()
@@ -159,6 +180,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--image", required=True)
     parser.add_argument("--trace", type=Path, required=True)
+    parser.add_argument(
+        "--backend", choices=("cuda_cpp", "cute_dsl"), default="cuda_cpp"
+    )
     parser.add_argument("--provider", choices=("runpod", "nebius"), default="runpod")
     parser.add_argument("--api-key-env", default="RUNPOD_API_KEY")
     parser.add_argument("--gpu-type", default="NVIDIA H100 80GB HBM3")
@@ -173,11 +197,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--preferred-data-center-id")
     parser.add_argument("--volume-name", default="gpu-kernel-mcts")
     parser.add_argument("--generation-budget", type=int, default=1)
+    parser.add_argument("--mutation-budget", type=int, default=0)
     parser.add_argument("--autotune", action="store_true")
     parser.add_argument("--tuning-budget", type=int, default=20)
     parser.add_argument("--tuning-method", choices=("random", "grid"), default="random")
     parser.add_argument("--tuned-best-output", type=Path)
-    parser.add_argument("--generator", choices=("smoke", "openai"), default="smoke")
+    parser.add_argument(
+        "--generator",
+        choices=("smoke", "openai", "cute-mutation", "cute-mixed"),
+        default="smoke",
+    )
     parser.add_argument("--model")
     parser.add_argument("--strategies", type=Path)
     parser.add_argument("--openai-api-key-env", default="OPENAI_API_KEY")
@@ -237,8 +266,10 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     if not arguments.confirm_create_and_terminate:
         parser.error("--confirm-create-and-terminate is required")
-    if arguments.generation_budget < 1:
-        parser.error("--generation-budget must be positive")
+    if arguments.generation_budget < 0 or arguments.mutation_budget < 0:
+        parser.error("proposal budgets cannot be negative")
+    if arguments.generation_budget + arguments.mutation_budget < 1:
+        parser.error("at least one proposal budget must be positive")
     if arguments.c_puct <= 0:
         parser.error("--c-puct must be positive")
     if arguments.best_output is not None and arguments.best_output.exists():
@@ -249,6 +280,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--tuned-best-output requires --autotune")
     if arguments.autotune and arguments.tuning_budget < 1:
         parser.error("--tuning-budget must be positive")
+    if arguments.backend == "cute_dsl" and arguments.autotune:
+        parser.error("post-search autotuning is not implemented for --backend=cute_dsl")
     if arguments.tuned_best_output is not None and arguments.tuned_best_output.exists():
         parser.error(
             f"refusing to overwrite existing tuned output: {arguments.tuned_best_output}"
@@ -262,9 +295,10 @@ def main(argv: list[str] | None = None) -> int:
         "worker_image": arguments.image,
         "reasoning_effort": (
             arguments.reasoning_effort
-            if arguments.generator == "openai"
+            if arguments.generator in {"openai", "cute-mixed"}
             else "not_applicable"
         ),
+        "backend": arguments.backend,
     }
     if repository.commit is not None:
         provenance["git_commit"] = repository.commit
@@ -291,6 +325,7 @@ def main(argv: list[str] | None = None) -> int:
                 project_git_commit=repository.commit,
                 project_dirty_tree=repository.dirty,
                 container_digest=image_digest,
+                backend=arguments.backend,
             ),
             readiness_progress=progress,
         )
@@ -324,6 +359,7 @@ def main(argv: list[str] | None = None) -> int:
                 project_git_commit=repository.commit,
                 project_dirty_tree=repository.dirty,
                 container_digest=image_digest,
+                backend=arguments.backend,
             ),
             readiness_progress=progress,
         )
@@ -339,11 +375,16 @@ def main(argv: list[str] | None = None) -> int:
                     required_profilers=("ncu",),
                 ),
                 workload=BF16_GEMM_WORKLOAD,
-                root_program=load_bf16_gemm_root(),
+                root_program=(
+                    load_bf16_gemm_root()
+                    if arguments.backend == "cuda_cpp"
+                    else PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+                ),
                 strategies=strategies,
                 generator=ProgressKernelGenerator(generator),
                 prior_provider=UniformStrategyPrior(),
                 generation_budget=arguments.generation_budget,
+                mutation_budget=arguments.mutation_budget,
                 trace=reporting_trace,
                 mcts_config=mcts_config,
                 seed=arguments.seed,
@@ -375,7 +416,12 @@ def main(argv: list[str] | None = None) -> int:
         arguments.tuned_best_output.write_text(
             execution.tuning.best.program.source, encoding="utf-8"
         )
-    generator_label = "OpenAI" if arguments.generator == "openai" else "Smoke"
+    generator_label = {
+        "openai": "OpenAI",
+        "smoke": "Smoke",
+        "cute-mutation": "CuTe mutation",
+        "cute-mixed": "CuTe mixed",
+    }[arguments.generator]
     print(
         f"{generator_label} search completed: run_id={execution.run_id}, "
         f"iterations={result.iterations}, B_gen={result.generations}, "
@@ -411,8 +457,12 @@ def _search_components(
     arguments: argparse.Namespace,
 ) -> tuple[tuple[Strategy, ...], KernelGenerator, str | None, MCTSConfig]:
     if arguments.generator == "smoke":
+        if arguments.backend != "cuda_cpp":
+            parser.error("--generator=smoke requires --backend=cuda_cpp")
         if arguments.generation_budget != 1:
             parser.error("the deterministic smoke run requires --generation-budget=1")
+        if arguments.mutation_budget != 0:
+            parser.error("the deterministic smoke run requires --mutation-budget=0")
         return (
             (
                 Strategy(
@@ -438,15 +488,42 @@ def _search_components(
             ),
         )
 
+    if arguments.generator == "cute-mutation":
+        if arguments.backend != "cute_dsl":
+            parser.error("--generator=cute-mutation requires --backend=cute_dsl")
+        if arguments.generation_budget != 0 or arguments.mutation_budget < 1:
+            parser.error(
+                "the CuTe mutation run requires --generation-budget=0 and "
+                "a positive --mutation-budget"
+            )
+        return (
+            CUTE_MUTATION_STRATEGIES,
+            CuteMutationGenerator(),
+            None,
+            _mcts_config(arguments, max_repairs=0),
+        )
+
+    if arguments.generator == "openai" and arguments.backend != "cuda_cpp":
+        parser.error("--generator=openai requires --backend=cuda_cpp")
+    if arguments.generator == "cute-mixed" and arguments.backend != "cute_dsl":
+        parser.error("--generator=cute-mixed requires --backend=cute_dsl")
+    if arguments.generation_budget < 1:
+        parser.error("LLM-backed search requires a positive --generation-budget")
+    if arguments.generator == "cute-mixed" and arguments.mutation_budget < 1:
+        parser.error("the mixed CuTe run requires a positive --mutation-budget")
     if not arguments.model:
-        parser.error("--model is required with --generator=openai")
-    if arguments.strategies is None:
+        parser.error(f"--model is required with --generator={arguments.generator}")
+    if arguments.generator == "openai" and arguments.strategies is None:
         parser.error("--strategies is required with --generator=openai")
     if not os.environ.get(arguments.openai_api_key_env):
         parser.error(
             f"environment variable {arguments.openai_api_key_env!r} is not set"
         )
-    strategies = parse_strategies(load_data(arguments.strategies))
+    strategies = (
+        CUTE_MUTATION_STRATEGIES
+        if arguments.generator == "cute-mixed"
+        else parse_strategies(load_data(arguments.strategies))
+    )
     if not strategies:
         parser.error("strategy configuration must contain at least one strategy")
     generator = LLMKernelGenerator(
@@ -461,21 +538,34 @@ def _search_components(
             )
         )
     )
+    routed_generator = (
+        MutationFirstGenerator(
+            CuteMutationGenerator(), ProgressKernelGenerator(generator)
+        )
+        if arguments.generator == "cute-mixed"
+        else generator
+    )
     return (
         strategies,
-        generator,
+        routed_generator,
         arguments.model,
-        MCTSConfig(
-            c_puct=arguments.c_puct,
-            k_max=arguments.k_max,
-            max_depth=arguments.max_depth,
-            max_repairs=arguments.max_repairs,
-            max_infrastructure_retries=arguments.max_infrastructure_retries,
-            include_incoming_profile_delta=arguments.include_incoming_profile_delta,
-            profile_metric_set=arguments.profile_metric_set,
-            measurement_drift_interval=arguments.measurement_drift_interval,
-            measurement_drift_threshold=arguments.measurement_drift_threshold,
-        ),
+        _mcts_config(arguments, max_repairs=arguments.max_repairs),
+    )
+
+
+def _mcts_config(
+    arguments: argparse.Namespace, *, max_repairs: int
+) -> MCTSConfig:
+    return MCTSConfig(
+        c_puct=arguments.c_puct,
+        k_max=arguments.k_max,
+        max_depth=arguments.max_depth,
+        max_repairs=max_repairs,
+        max_infrastructure_retries=arguments.max_infrastructure_retries,
+        include_incoming_profile_delta=arguments.include_incoming_profile_delta,
+        profile_metric_set=arguments.profile_metric_set,
+        measurement_drift_interval=arguments.measurement_drift_interval,
+        measurement_drift_threshold=arguments.measurement_drift_threshold,
     )
 
 

@@ -14,6 +14,8 @@ from typing import Callable
 
 from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from .cuda_backend import CudaBackendConfig, CudaCppBackend
+from .cute_backend import CuteBackendConfig, CuTeDSLBackend
+from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
 from .evaluation import BackendKernelEvaluator, EvaluationContext
 from .providers import EnvironmentManifest
 from .serialization import serialize_benchmark
@@ -34,19 +36,12 @@ def build_application(
         raise RuntimeError("worker token and worker ID are required")
     _report_stage(progress, "environment_manifest")
     manifest = capture_environment_manifest(environment)
-    backend = CudaCppBackend(
-        CudaBackendConfig(
-            artifact_root=Path(
-                environment.get(
-                    "KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts"
-                )
-            ),
-            architecture=f"sm_{manifest.compute_capability.replace('.', '')}",
-            ncu_version=manifest.profiler_versions.get("ncu"),
-        )
+    backend_name, backend, root_program = _build_backend(environment, manifest)
+    artifact_root = Path(
+        environment.get("KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts")
     )
     _report_stage(progress, "root_compile")
-    root_compilation = backend.compile(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+    root_compilation = backend.compile(root_program, BF16_GEMM_WORKLOAD)
     if not root_compilation.success or root_compilation.artifact is None:
         raise RuntimeError("fixed root kernel failed to compile on the worker")
     _report_stage(progress, "root_correctness")
@@ -61,11 +56,7 @@ def build_application(
     _report_stage(progress, "vendor_baselines")
     vendor_results = VendorBaselineSuite(
         VendorBaselineConfig(
-            artifact_root=Path(
-                environment.get(
-                    "KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts"
-                )
-            ),
+            artifact_root=artifact_root,
             cutlass_path=Path(environment.get("CUTLASS_PATH", "/opt/cutlass")),
         )
     ).run(BF16_GEMM_WORKLOAD)
@@ -86,6 +77,7 @@ def build_application(
     )
     calibration = {
         "benchmark_id": BF16_GEMM_WORKLOAD.benchmark_id,
+        "backend": backend_name,
         "compile": {
             "success": root_compilation.success,
             "duration_seconds": root_compilation.duration_seconds,
@@ -114,6 +106,35 @@ def build_application(
         profiler=evaluator,
         calibration=calibration,
     )
+
+
+def _build_backend(environment, manifest):
+    artifact_root = Path(
+        environment.get("KERNEL_MCTS_ARTIFACT_ROOT", "/tmp/kernel-mcts-artifacts")
+    )
+    architecture = f"sm_{manifest.compute_capability.replace('.', '')}"
+    backend_name = environment.get("KERNEL_MCTS_BACKEND", "cuda_cpp")
+    if backend_name == "cuda_cpp":
+        backend = CudaCppBackend(
+            CudaBackendConfig(
+                artifact_root=artifact_root,
+                architecture=architecture,
+                ncu_version=manifest.profiler_versions.get("ncu"),
+            )
+        )
+        root_program = load_bf16_gemm_root()
+    elif backend_name == "cute_dsl":
+        backend = CuTeDSLBackend(
+            CuteBackendConfig(
+                artifact_root=artifact_root,
+                architecture=architecture,
+                ncu_version=manifest.profiler_versions.get("ncu"),
+            )
+        )
+        root_program = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+    else:
+        raise RuntimeError(f"unsupported worker backend {backend_name!r}")
+    return backend_name, backend, root_program
 
 
 class WorkerBootstrap:

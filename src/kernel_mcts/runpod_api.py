@@ -14,6 +14,7 @@ from .providers import RunPodClient, RunPodPod, RunPodPodRequest, WorkerEndpoint
 
 _ALLOWED_WORKER_ENV = {
     "KERNEL_MCTS_ARTIFACT_ROOT",
+    "KERNEL_MCTS_BACKEND",
     "KERNEL_MCTS_CONTAINER_DIGEST",
     "KERNEL_MCTS_DIRTY_TREE",
     "KERNEL_MCTS_GIT_COMMIT",

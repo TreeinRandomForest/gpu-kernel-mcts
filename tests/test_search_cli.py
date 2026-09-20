@@ -8,8 +8,13 @@ import pytest
 
 from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from kernel_mcts.domain import KernelProgram, Strategy
-from kernel_mcts.generation import GenerationRequest, GenerationResult
+from kernel_mcts.generation import (
+    GenerationRequest,
+    GenerationResult,
+    MutationFirstGenerator,
+)
 from kernel_mcts.llm_generation import LLMKernelGenerator
+from kernel_mcts.cute_mutations import CuteMutationGenerator
 from kernel_mcts.provenance import RepositoryState
 from kernel_mcts.search_cli import (
     ProgressKernelGenerator,
@@ -78,6 +83,8 @@ def test_search_cli_parser_accepts_manual_volume_pair() -> None:
     assert arguments.profile_metric_set == "lightweight_v1"
     assert arguments.measurement_drift_interval == 0
     assert arguments.measurement_drift_threshold == 0.05
+    assert arguments.backend == "cuda_cpp"
+    assert arguments.mutation_budget == 0
 
 
 def test_search_cli_parser_accepts_incoming_profile_delta_ablation() -> None:
@@ -379,6 +386,7 @@ def test_openai_search_wires_configured_generator_and_exports_best(
     assert search["run_metadata"] == {
         "worker_image": "worker:v1",
         "reasoning_effort": "medium",
+        "backend": "cuda_cpp",
         "git_commit": "a" * 40,
         "dirty_tree": False,
     }
@@ -387,6 +395,153 @@ def test_openai_search_wires_configured_generator_and_exports_best(
     assert search["mcts_config"].max_infrastructure_retries == 1
     assert search["hardware"].required_profilers == ("ncu",)
     assert "OpenAI search completed" in capsys.readouterr().out
+
+
+def test_cute_mutation_search_wires_backend_root_and_budget(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    captured = {}
+
+    def fake_provider(config, **_kwargs):
+        captured["provider_config"] = config
+        return object()
+
+    def fake_search(**values):
+        captured["search"] = values
+        node = SimpleNamespace(program=values["root_program"], reward=0.0)
+        return SimpleNamespace(
+            run_id="cute-run",
+            tuning=None,
+            result=SimpleNamespace(
+                best=node,
+                nodes=(node,),
+                iterations=2,
+                generations=0,
+                mutations=2,
+                profile_calls=1,
+                drift_probe_calls=0,
+            ),
+        )
+
+    monkeypatch.setenv("RUNPOD_API_KEY", "test-runpod-key")
+    monkeypatch.setattr("kernel_mcts.search_cli.create_runpod_provider", fake_provider)
+    monkeypatch.setattr("kernel_mcts.search_cli.run_mcts_search", fake_search)
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.resolve_reusable_volume",
+        lambda *args: (None, None),
+    )
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.capture_repository_state",
+        lambda path: RepositoryState("a" * 40, False),
+    )
+
+    result = main(
+        [
+            "--image",
+            "cute-worker:v1",
+            "--trace",
+            str(tmp_path / "cute.sqlite"),
+            "--backend",
+            "cute_dsl",
+            "--generator",
+            "cute-mutation",
+            "--generation-budget",
+            "0",
+            "--mutation-budget",
+            "2",
+            "--ephemeral-storage",
+            "--confirm-create-and-terminate",
+        ]
+    )
+
+    assert result == 0
+    assert captured["provider_config"].backend == "cute_dsl"
+    search = captured["search"]
+    assert search["root_program"].backend == "cute_dsl"
+    assert search["generation_budget"] == 0
+    assert search["mutation_budget"] == 2
+    assert isinstance(search["generator"], ProgressKernelGenerator)
+    assert isinstance(search["generator"]._generator, CuteMutationGenerator)
+    assert search["mcts_config"].max_repairs == 0
+    assert "CuTe mutation search completed" in capsys.readouterr().out
+
+
+def test_cute_mixed_search_constructs_mutation_first_router(
+    tmp_path, monkeypatch
+) -> None:
+    captured = {}
+
+    class FakeOpenAIClient:
+        def __init__(self, config):
+            captured["openai_config"] = config
+
+    def fake_search(**values):
+        captured["search"] = values
+        node = SimpleNamespace(program=values["root_program"], reward=0.0)
+        return SimpleNamespace(
+            run_id="cute-mixed-run",
+            tuning=None,
+            result=SimpleNamespace(
+                best=node,
+                nodes=(node,),
+                iterations=0,
+                generations=0,
+                mutations=0,
+                profile_calls=0,
+                drift_probe_calls=0,
+            ),
+        )
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+    monkeypatch.setenv("RUNPOD_API_KEY", "test-runpod-key")
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.OpenAIResponsesClient", FakeOpenAIClient
+    )
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.create_runpod_provider",
+        lambda config, **kwargs: captured.setdefault("provider_config", config),
+    )
+    monkeypatch.setattr("kernel_mcts.search_cli.run_mcts_search", fake_search)
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.resolve_reusable_volume",
+        lambda *args: (None, None),
+    )
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.capture_repository_state",
+        lambda path: RepositoryState("a" * 40, False),
+    )
+
+    assert main(
+        [
+            "--image",
+            "cute-worker:v1",
+            "--trace",
+            str(tmp_path / "cute-mixed.sqlite"),
+            "--backend",
+            "cute_dsl",
+            "--generator",
+            "cute-mixed",
+            "--model",
+            "test-model",
+            "--generation-budget",
+            "2",
+            "--mutation-budget",
+            "3",
+            "--ephemeral-storage",
+            "--confirm-create-and-terminate",
+        ]
+    ) == 0
+
+    outer = captured["search"]["generator"]
+    assert isinstance(outer, ProgressKernelGenerator)
+    assert isinstance(outer._generator, MutationFirstGenerator)
+    assert isinstance(outer._generator.mutation_generator, CuteMutationGenerator)
+    llm_progress = outer._generator.generation_generator
+    assert isinstance(llm_progress, ProgressKernelGenerator)
+    assert isinstance(llm_progress._generator, LLMKernelGenerator)
+    assert captured["search"]["generation_budget"] == 2
+    assert captured["search"]["mutation_budget"] == 3
+    assert captured["provider_config"].backend == "cute_dsl"
 
 
 def test_search_progress_finishes_readiness_and_reports_events() -> None:

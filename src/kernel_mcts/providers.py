@@ -141,6 +141,7 @@ class RunPodConfig:
     project_git_commit: str | None = None
     project_dirty_tree: bool | None = None
     container_digest: str | None = None
+    backend: str = "cuda_cpp"
 
     def __post_init__(self) -> None:
         if not self.image:
@@ -155,6 +156,8 @@ class RunPodConfig:
             raise ValueError("RunPod worker protocol must be 'http' or 'tcp'")
         if self.cloud_type not in {"SECURE", "COMMUNITY", "ALL"}:
             raise ValueError("unsupported RunPod cloud type")
+        if self.backend not in {"cuda_cpp", "cute_dsl"}:
+            raise ValueError("unsupported worker backend")
         if bool(self.network_volume_id) != bool(self.data_center_ids):
             raise ValueError(
                 "RunPod network volume ID and data-center IDs must be configured together"
@@ -361,6 +364,11 @@ class RunPodProvider:
                     name=self.config.pod_name,
                     environment={
                         "KERNEL_MCTS_WORKER_PORT": str(self.config.worker_port),
+                        **(
+                            {"KERNEL_MCTS_BACKEND": self.config.backend}
+                            if self.config.backend != "cuda_cpp"
+                            else {}
+                        ),
                         **(
                             {"KERNEL_MCTS_GIT_COMMIT": self.config.project_git_commit}
                             if self.config.project_git_commit is not None

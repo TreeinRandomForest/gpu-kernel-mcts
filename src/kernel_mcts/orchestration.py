@@ -7,7 +7,7 @@ from typing import Callable, Mapping, Protocol, Sequence
 from uuid import uuid4
 
 from .autotuning import PostSearchAutotuner, TuningConfig, TuningResult
-from .budget import GenerationBudget
+from .budget import GenerationBudget, MutationBudget
 from .domain import (
     BenchmarkResult,
     EvaluationResult,
@@ -234,6 +234,7 @@ def run_mcts_search(
     generator: KernelGenerator,
     prior_provider: StrategyPriorProvider,
     generation_budget: int,
+    mutation_budget: int = 0,
     trace: SearchTraceStore,
     mcts_config: MCTSConfig = MCTSConfig(),
     seed: int = 0,
@@ -244,10 +245,12 @@ def run_mcts_search(
 ) -> SearchExecution:
     """Run one global MCTS search on one acquired worker with durable traces."""
     budget = GenerationBudget(generation_budget)
+    mutations = MutationBudget(mutation_budget)
     resolved_run_id = run_id or str(uuid4())
     hardware_payload = asdict(hardware)
     run_config: dict[str, object] = {
         "generation_budget": generation_budget,
+        "mutation_budget": mutation_budget,
         "mcts": asdict(mcts_config),
         "seed": seed,
     }
@@ -315,6 +318,7 @@ def run_mcts_search(
             evaluator=evaluator,
             prior_provider=prior_provider,
             budget=budget,
+            mutation_budget=mutations,
             hardware=hardware_payload,
             config=mcts_config,
             seed=seed,
@@ -341,6 +345,7 @@ def run_mcts_search(
             payload: dict[str, object] = {
                 "iterations": 0,
                 "b_gen": 0,
+                "b_mut": 0,
                 "b_prior": 0,
                 "error_type": type(error).__name__,
                 "root_evaluation_attempts": root_attempts,
