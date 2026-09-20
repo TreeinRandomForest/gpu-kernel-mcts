@@ -102,7 +102,7 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
                 "tuning_runs",
                 "tuning_trials",
             } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 8
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 9
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -131,7 +131,9 @@ def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
         assert {
             "seed",
             "generation_budget",
+            "mutation_budget",
             "final_b_gen",
+            "final_b_mut",
             "final_b_prior",
             "workload_json",
             "hardware_json",
@@ -174,6 +176,7 @@ def test_trace_store_additively_migrates_backend_representation_columns(tmp_path
         }
         assert {
             "api_instructions",
+            "b_mut",
             "proposal_mechanism",
             "representation_json",
             "representation_schema_version",
@@ -227,6 +230,7 @@ def test_trace_store_materializes_cute_representation_and_proposal_provenance(
                 "generation_id": "generation-1",
                 "iteration": 1,
                 "b_gen": 1,
+                "b_mut": 1,
                 "parent_node_id": "root",
                 "strategy_id": "cluster_shape",
                 "repair_attempt": 0,
@@ -250,13 +254,14 @@ def test_trace_store_materializes_cute_representation_and_proposal_provenance(
                       configuration_hash FROM nodes"""
         ).fetchone() == (json.dumps(representation, sort_keys=True), 1, "config-hash")
         row = connection.execute(
-            """SELECT proposal_mechanism, representation_json,
+            """SELECT proposal_mechanism, b_mut, representation_json,
                       representation_schema_version, configuration_hash,
                       static_validation_json, transformation_json
                FROM generations"""
         ).fetchone()
         assert row == (
             "typed_mutation",
+            1,
             json.dumps(representation, sort_keys=True),
             1,
             "config-hash",

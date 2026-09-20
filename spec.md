@@ -2955,20 +2955,45 @@ still chooses among existing valid realizations. Deterministic mutations must be
 logged with the same proposal identity and transformation evidence needed to audit
 LLM-generated realizations.
 
+For the initial mixed-mechanism implementation, mechanism routing is deterministic.
+After PUCT selects a semantic strategy and progressive widening permits a new
+realization, the controller should choose an untried supported typed mutation first.
+It should use an LLM realization only when no typed mutation is available for that
+parent-strategy pair, or when `B_mut` is exhausted. The router must also exclude any
+mechanism whose budget is exhausted or which cannot produce another realization.
+This routing policy is separate from PUCT: it must not add mutation-versus-generation
+terms to the PUCT score or combine `B_mut` and `B_gen` into one budget.
+
+A later experiment may replace mutation-first routing with a bandit or learned
+mechanism policy, but it must be enabled as an explicit ablation and log the
+mechanism candidates, selection rule, and selected mechanism. It must leave semantic
+strategy selection, progressive widening, realization UCB, and budget accounting
+unchanged.
+
 ## 47.6 Budgets
 
 Budget accounting remains explicit:
 
 ```text
 B_gen   = all LLM candidate-generation and repair calls
+B_mut   = all deterministic typed-mutation proposals admitted to evaluation
 B_prior = all strategy-prior calls
 B_tune  = standalone or leaf-local mechanical schedule trials
 ```
 
 An LLM call consumes `B_gen` even if static validation rejects its output. A
-deterministic typed mutation does not consume `B_gen`; experiments using such
-mutations must report a separate mutation/proposal count so they cannot claim an
-unqualified equal-generation comparison with LLM-only methods.
+deterministic typed mutation consumes `B_mut`, not `B_gen`, even if static validation
+or later evaluation rejects it. A deterministic mutation does not receive repair
+calls: a subsequent explicit mutation is a new `B_mut` proposal. Mixed-mechanism runs
+must configure and report both limits and both consumed counts, so they cannot claim
+an unqualified equal-generation comparison with LLM-only methods.
+
+The search may continue while at least one configured proposal mechanism has budget
+and can produce a new realization. It terminates when all configured proposal budgets
+are exhausted or the finite typed proposal space is exhausted. Strategies whose
+mechanism cannot produce another realization are ineligible for new widening, but
+their existing realization edges remain available to UCB traversal. Budget exhaustion
+must not change the PUCT, progressive-widening, or UCB formulas among eligible edges.
 
 Standalone schedule tuning remains outside MCTS and consumes `B_tune`. Its trials do
 not become MCTS nodes or affect backup. Any future leaf-local tuner must be enabled by
@@ -3001,6 +3026,7 @@ Report at least:
 - static-valid, JIT-valid, and correctness-valid rates;
 - repair frequency and API cost;
 - number of unique canonical schedules and transpositions;
+- `B_mut` limit and usage for deterministic typed proposals;
 - profile and resource changes along successful paths; and
 - final latency ratios against same-worker cuBLAS and strong Hopper CUTLASS.
 

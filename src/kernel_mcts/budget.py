@@ -43,3 +43,17 @@ class GenerationBudget:
         with self._lock:
             return BudgetSnapshot(self._limit, self._used)
 
+
+class MutationBudget(GenerationBudget):
+    """Thread-safe accounting for deterministic typed mutation proposals."""
+
+    def __init__(self, limit: int) -> None:
+        if limit < 0:
+            raise ValueError("mutation budget cannot be negative")
+        super().__init__(limit)
+
+    def reserve(self) -> int:
+        try:
+            return super().reserve()
+        except BudgetExhausted as error:
+            raise BudgetExhausted("typed-mutation budget exhausted") from error

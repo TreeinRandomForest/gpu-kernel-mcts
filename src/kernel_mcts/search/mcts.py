@@ -6,9 +6,15 @@ from random import Random
 from typing import Mapping, Sequence
 from uuid import uuid4
 
-from ..budget import GenerationBudget
+from ..budget import GenerationBudget, MutationBudget
 from ..domain import EvaluationResult, ProposalStatus, Strategy, WorkloadContract
-from ..generation import GenerationRequest, KernelGenerator
+from ..generation import (
+    GenerationRequest,
+    KernelGenerator,
+    ProposalBudgetKind,
+    can_generate,
+    proposal_budget_kind,
+)
 from ..interfaces import EventSink, KernelEvaluator, MeasurementDriftMonitor, NodeProfiler, NullEventSink, StrategyPriorProvider
 from ..priors import validate_priors
 from ..profiling import PROFILE_METRIC_SET_IDS
@@ -58,6 +64,7 @@ class SearchResult:
     nodes: tuple[SearchNode, ...] #all unique nodes
     iterations: int #select -> expand/evaluate -> optional backup cycles
     generations: int #LLM calls for gen incl. repair
+    mutations: int #deterministic typed mutation proposals
     prior_calls: int #B_prior: LLM calls used to obtain strategy priors
     profile_calls: int #profiler executions, separate from B_gen and B_prior
     drift_probe_calls: int = 0
@@ -99,6 +106,10 @@ class SelectedEdge:
     realization: RealizationEdge
 
 
+class _ProposalSpaceExhausted(RuntimeError):
+    pass
+
+
 class MCTS:
     def __init__(
         self,
@@ -109,6 +120,7 @@ class MCTS:
         evaluator: KernelEvaluator,
         prior_provider: StrategyPriorProvider,
         budget: GenerationBudget,
+        mutation_budget: MutationBudget | None = None,
         hardware: Mapping[str, object] | None = None,
         config: MCTSConfig = MCTSConfig(),
         seed: int = 0,
@@ -124,6 +136,7 @@ class MCTS:
         self.evaluator = evaluator
         self.prior_provider = prior_provider
         self.budget = budget
+        self.mutation_budget = mutation_budget or MutationBudget(0)
         self.hardware = hardware or {}
         self.config = config
         self.seed = seed
@@ -136,6 +149,7 @@ class MCTS:
         self.profile_calls = 0
         self.drift_probe_calls = 0
         self._last_drift_node_count = 1
+        self._exhausted_nodes: set[str] = set()
 
     def run(self, root_evaluation: EvaluationResult) -> SearchResult:
         root = SearchNode(str(uuid4()), root_evaluation)
@@ -151,12 +165,13 @@ class MCTS:
                 "workload": serialize_workload(self.workload),
                 "hardware": dict(self.hardware),
                 "generation_budget": self.budget.snapshot().limit,
+                "mutation_budget": self.mutation_budget.snapshot().limit,
                 "root_node_id": root.id,
             },
         )
         self.events.emit("node_created", self._node_payload(root, is_root=True))
         try:
-            while not self.budget.exhausted:
+            while not self._all_proposal_budgets_exhausted():
                 iterations += 1
                 outcome = self._iterate(root, iterations)
                 self.events.emit(
@@ -171,6 +186,8 @@ class MCTS:
                         {"iteration": iterations, "node_id": leaf.id, "reward": leaf.reward},
                     )
                 self._maybe_probe_measurement_drift(root, best, iterations)
+                if outcome.status == IterationStatus.PROPOSAL_SPACE_EXHAUSTED:
+                    break
             if self.profiler is not None and best.profile is None:
                 self._profile_node(best, iterations, "final_best")
         except Exception as error:
@@ -179,6 +196,7 @@ class MCTS:
                 {
                     "iterations": iterations,
                     "b_gen": self.budget.snapshot().used,
+                    "b_mut": self.mutation_budget.snapshot().used,
                     "b_prior": self.prior_calls,
                     "profile_calls": self.profile_calls,
                     "drift_probe_calls": self.drift_probe_calls,
@@ -193,6 +211,7 @@ class MCTS:
             tuple(self.nodes.values()),
             iterations,
             self.budget.snapshot().used,
+            self.mutation_budget.snapshot().used,
             self.prior_calls,
             self.profile_calls,
             self.drift_probe_calls,
@@ -203,6 +222,7 @@ class MCTS:
             {
                 "iterations": result.iterations,
                 "b_gen": result.generations,
+                "b_mut": result.mutations,
                 "b_prior": result.prior_calls,
                 "profile_calls": result.profile_calls,
                 "drift_probe_calls": result.drift_probe_calls,
@@ -212,6 +232,9 @@ class MCTS:
             },
         )
         return result
+
+    def _all_proposal_budgets_exhausted(self) -> bool:
+        return self.budget.exhausted and self.mutation_budget.exhausted
 
     def _maybe_probe_measurement_drift(
         self, root: SearchNode, best: SearchNode, iteration: int
@@ -308,14 +331,32 @@ class MCTS:
         seen = {node.id}
         while traversal_depth < self.config.max_depth:
             self._ensure_actions(node, iteration)
-            action, puct_candidates, total_action_visits = self._select_action_with_scores(
-                node
-            )  # PUCT -> StrategyEdge
+            try:
+                action, puct_candidates, total_action_visits = (
+                    self._select_action_with_scores(node, respect_availability=True)
+                )
+            except _ProposalSpaceExhausted:
+                self._exhausted_nodes.add(node.id)
+                if node is not root:
+                    self._backup(path, node.reward, iteration)
+                return IterationOutcome(
+                    status=(
+                        IterationStatus.PROPOSAL_SPACE_EXHAUSTED
+                        if node is root
+                        else IterationStatus.DEAD_END
+                    ),
+                    steps=tuple(steps),
+                    leaf=node if node is not root else None,
+                    backed_up_reward=node.reward if node is not root else None,
+                )
             # Use the prospective valid visit so the first selection allows one child.
             prospective_visits = action.visits + 1
             allowed_children = self._allowed_children(prospective_visits)
             existing_children = len(action.realizations)
-            if existing_children < allowed_children:  # progressive widening
+            if (
+                existing_children < allowed_children
+                and self._can_generate_new_realization(node, action)
+            ):  # progressive widening
                 outcome = self._expand(
                     node,
                     action,
@@ -354,7 +395,13 @@ class MCTS:
                     selected_strategy_id=action.strategy_id,
                     backed_up_reward=leaf.reward,
                 )
-            realization, ucb_candidates = self._select_realization_with_scores(action)
+            can_generate_new = self._can_generate_new_realization(node, action)
+            realization, ucb_candidates = self._select_realization_with_scores(
+                action,
+                excluded_children=(
+                    None if can_generate_new else self._exhausted_nodes
+                ),
+            )
             path.append(SelectedEdge(node.id, action, realization))
             traversal_depth += 1
             child = next(item for item in self.nodes.values() if item.id == realization.child_id)
@@ -430,12 +477,14 @@ class MCTS:
         return selected
 
     def _select_action_with_scores(
-        self, node: SearchNode
+        self, node: SearchNode, *, respect_availability: bool = False
     ) -> tuple[StrategyEdge, tuple[Mapping[str, object], ...], int]:
         total = sum(edge.visits for edge in node.actions.values())
         exploration_scale = math.sqrt(total)
         scored: list[tuple[float, StrategyEdge, float]] = []
         for edge in node.actions.values():
+            if respect_availability and not self._action_available(node, edge):
+                continue
             explore = (
                 self.config.c_puct
                 * edge.prior
@@ -443,6 +492,8 @@ class MCTS:
                 / (1 + edge.visits)
             )
             scored.append((edge.q_mean + explore, edge, explore))
+        if not scored:
+            raise _ProposalSpaceExhausted
         best_score = max(score for score, _, _ in scored)
         tied = [edge for score, edge, _ in scored if score == best_score]
         selected = self.rng.choice(tied)
@@ -462,6 +513,41 @@ class MCTS:
         )
         return selected, candidates, total
 
+    def _proposal_request(
+        self,
+        parent: SearchNode,
+        action: StrategyEdge,
+        incoming_edge: SelectedEdge | None = None,
+    ) -> GenerationRequest:
+        return GenerationRequest(
+            parent=parent.program,
+            strategy=self.strategies[action.strategy_id],
+            workload=self.workload,
+            hardware=self.hardware,
+            profile=parent.profile,
+            incoming_profile_delta=self._incoming_profile_delta(parent, incoming_edge),
+        )
+
+    def _can_generate_new_realization(
+        self, parent: SearchNode, action: StrategyEdge
+    ) -> bool:
+        request = self._proposal_request(parent, action)
+        kind = proposal_budget_kind(self.generator, request)
+        budget_available = (
+            not self.mutation_budget.exhausted
+            if kind == ProposalBudgetKind.MUTATION
+            else not self.budget.exhausted
+        )
+        return budget_available and can_generate(self.generator, request)
+
+    def _action_available(self, parent: SearchNode, action: StrategyEdge) -> bool:
+        if self._can_generate_new_realization(parent, action):
+            return True
+        return any(
+            child_id not in self._exhausted_nodes
+            for child_id in action.realizations
+        )
+
     def _allowed_children(self, visits: int) -> int:
         #progressive widening budget
         return min(self.config.k_max, math.ceil(self.config.c_pw * visits ** self.config.alpha_pw))
@@ -471,10 +557,15 @@ class MCTS:
         return selected
 
     def _select_realization_with_scores(
-        self, action: StrategyEdge
+        self,
+        action: StrategyEdge,
+        *,
+        excluded_children: set[str] | None = None,
     ) -> tuple[RealizationEdge, tuple[Mapping[str, object], ...]]:
         scored: list[tuple[float, RealizationEdge, float]] = []
         for edge in action.realizations.values():
+            if excluded_children is not None and edge.child_id in excluded_children:
+                continue
             explore = self.config.c_ucb * math.sqrt(
                 math.log1p(action.visits) / (1 + edge.descents)
             )
@@ -506,21 +597,19 @@ class MCTS:
             generator=self.generator,
             evaluator=self.evaluator,
             budget=self.budget,
-            request=GenerationRequest(
-                parent=parent.program,
-                strategy=self.strategies[action.strategy_id],
-                workload=self.workload,
-                hardware=self.hardware,
-                profile=parent.profile,
-                incoming_profile_delta=self._incoming_profile_delta(
-                    parent, incoming_edge
-                ),
-            ),
+            mutation_budget=self.mutation_budget,
+            request=self._proposal_request(parent, action, incoming_edge),
             max_repairs=self.config.max_repairs,
             max_infrastructure_retries=self.config.max_infrastructure_retries,
         )
-        action.generation_attempt_count += len(outcome.attempts)
-        action.repair_generation_count += max(0, len(outcome.attempts) - 1)
+        generation_attempts = sum(
+            attempt.budget_kind == ProposalBudgetKind.GENERATION
+            for attempt in outcome.attempts
+        )
+        mutation_attempts = len(outcome.attempts) - generation_attempts
+        action.generation_attempt_count += generation_attempts
+        action.mutation_attempt_count += mutation_attempts
+        action.repair_generation_count += max(0, generation_attempts - 1)
         result = outcome.result
         child: SearchNode | None = None
         reused_node = False
@@ -653,7 +742,8 @@ class MCTS:
                 "q_mean": action.q_mean,
                 "q_max": action.q_max if math.isfinite(action.q_max) else None,
                 "proposal_count": action.proposal_count,
-                "generation_attempt_count": action.generation_attempt_count,
+            "generation_attempt_count": action.generation_attempt_count,
+            "mutation_attempt_count": action.mutation_attempt_count,
                 "repair_generation_count": action.repair_generation_count,
                 "valid_proposal_count": action.valid_proposal_count,
                 "invalid_proposal_count": action.invalid_proposal_count,
@@ -676,7 +766,8 @@ class MCTS:
         return {
             "iteration": iteration,
             "generation_id": attempt.generation.generation_id,
-            "b_gen": attempt.budget_index,
+            "b_gen": attempt.b_gen,
+            "b_mut": attempt.b_mut,
             "repair_attempt": attempt.attempt_number,
             "parent_node_id": parent.id,
             "strategy_id": action.strategy_id,
@@ -710,11 +801,15 @@ class MCTS:
             "created_node_id": child.id if child is not None else None,
             "reused_node": reused_node,
             "proposal_mechanism": generation_metadata.get("proposal_mechanism"),
-            "representation": evaluation_metadata.get("representation"),
+            "representation": evaluation_metadata.get(
+                "representation", generation_metadata.get("representation")
+            ),
             "representation_schema_version": evaluation_metadata.get(
                 "representation_schema_version"
             ),
-            "configuration_hash": evaluation_metadata.get("configuration_hash"),
+            "configuration_hash": evaluation_metadata.get(
+                "configuration_hash", generation_metadata.get("configuration_hash")
+            ),
             "static_validation": generation_metadata.get("static_validation"),
             "transformation": generation_metadata.get("transformation"),
         }
@@ -750,6 +845,7 @@ class MCTS:
             "leaf_node_id": outcome.leaf.id if outcome.leaf is not None else None,
             "backed_up_reward": outcome.backed_up_reward,
             "b_gen": self.budget.snapshot().used,
+            "b_mut": self.mutation_budget.snapshot().used,
             "b_prior": self.prior_calls,
             "steps": [
                 {

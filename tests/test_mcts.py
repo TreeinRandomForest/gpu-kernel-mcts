@@ -3,7 +3,16 @@ from __future__ import annotations
 import json
 import math
 
-from kernel_mcts.budget import GenerationBudget
+from kernel_mcts.budget import GenerationBudget, MutationBudget
+from kernel_mcts.cute_mutations import (
+    CUTE_MUTATION_STRATEGIES,
+    CuteMutationGenerator,
+)
+from kernel_mcts.cute_program import (
+    PinnedCuteGemmRenderer,
+    REFERENCE_CUTE_GEMM,
+    cute_gemm_program_from_source,
+)
 import pytest
 
 from kernel_mcts.domain import (
@@ -73,6 +82,87 @@ def test_mcts_obeys_budget_and_finds_improvement() -> None:
     assert result.best.reward > 0
     assert len(result.nodes) > 1
     assert all(edge.visits >= 0 for node in result.nodes for edge in node.actions.values())
+
+
+def test_mcts_searches_typed_cute_mutations_under_separate_budget() -> None:
+    class CuteEvaluator:
+        def evaluate(self, program, workload):
+            representation = cute_gemm_program_from_source(program.source)
+            reward = (256 - representation.tile_n) / 128 + (
+                representation.cluster_m - 1
+            )
+            return EvaluationResult(
+                ProposalStatus.VALID,
+                program,
+                representation.configuration_hash,
+                float(reward),
+                BenchmarkResult((1.0,), 1.0, {"n=1": 1.0}),
+                metadata={
+                    "representation": representation.as_dict(),
+                    "representation_schema_version": representation.schema_version,
+                    "configuration_hash": representation.configuration_hash,
+                },
+            )
+
+    root_program = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+    root = CuteEvaluator().evaluate(root_program, WORKLOAD)
+    events = RecordingEvents()
+    result = MCTS(
+        strategies=CUTE_MUTATION_STRATEGIES,
+        workload=WORKLOAD,
+        generator=CuteMutationGenerator(),
+        evaluator=CuteEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(0),
+        mutation_budget=MutationBudget(4),
+        config=MCTSConfig(max_depth=3, k_max=2),
+        events=events,
+    ).run(root)
+
+    assert result.generations == 0
+    assert result.mutations == 4
+    assert len(result.nodes) >= 3
+    generations = [payload for event, payload in events.events if event == "generation"]
+    assert [payload["b_mut"] for payload in generations] == [1, 2, 3, 4]
+    assert all(payload["b_gen"] == 0 for payload in generations)
+    assert all(
+        payload["proposal_mechanism"] == "typed_mutation"
+        for payload in generations
+    )
+
+
+def test_exhausted_leaf_does_not_hide_available_root_strategy() -> None:
+    class FiniteGenerator:
+        def __init__(self):
+            self.issued = set()
+
+        def can_generate(self, request):
+            return request.parent.source == "0" and request.strategy.id not in self.issued
+
+        def generate(self, request):
+            self.issued.add(request.strategy.id)
+            source = "1" if request.strategy.id == "a" else "2"
+            return GenerationResult(
+                f"generation:{request.strategy.id}",
+                source,
+                KernelProgram(source),
+                "prompt",
+            )
+
+    result = MCTS(
+        strategies=STRATEGIES,
+        workload=WORKLOAD,
+        generator=FiniteGenerator(),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(2),
+        config=MCTSConfig(max_depth=3, k_max=2),
+        seed=1,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    assert result.generations == 2
+    assert {node.program.source for node in result.nodes} == {"0", "1", "2"}
+    assert result.iterations == 3
 
 
 class DuplicateGenerator:
@@ -1004,9 +1094,10 @@ def test_run_failure_is_logged_and_reraised() -> None:
     failed = [payload for event, payload in events.events if event == "run_failed"]
     assert failed == [
         {
-            "iterations": 1,
-                "b_gen": 1,
-                "b_prior": 0,
+                "iterations": 1,
+                    "b_gen": 1,
+                    "b_mut": 0,
+                    "b_prior": 0,
                 "profile_calls": 0,
                 "drift_probe_calls": 0,
                 "error_type": "RuntimeError",

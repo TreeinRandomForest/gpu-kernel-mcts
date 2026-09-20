@@ -3,12 +3,16 @@ from __future__ import annotations
 import pytest
 
 from kernel_mcts.cute_mutations import (
+    CUTE_MUTATION_STRATEGIES,
     CHANGE_CLUSTER_SHAPE,
     CHANGE_CTA_TILE,
+    CuteMutationGenerator,
     enumerate_cute_mutations,
     mutate_cute_program,
 )
 from kernel_mcts.cute_program import REFERENCE_CUTE_GEMM, PinnedCuteGemmRenderer
+from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD
+from kernel_mcts.generation import GenerationRequest, ProposalBudgetKind
 
 
 def test_enumerates_stable_valid_one_hop_neighborhood() -> None:
@@ -88,3 +92,23 @@ def test_rejects_noop_unknown_and_malformed_mutations() -> None:
             CHANGE_CLUSTER_SHAPE,
             {"cluster_m": 2},
         )
+
+
+def test_generator_emits_distinct_deterministic_candidates_without_llm_calls() -> None:
+    generator = CuteMutationGenerator()
+    request = GenerationRequest(
+        PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM),
+        CUTE_MUTATION_STRATEGIES[0],
+        BF16_GEMM_WORKLOAD,
+        {},
+        None,
+    )
+
+    first = generator.generate(request)
+    second = generator.generate(request)
+
+    assert generator.proposal_budget_kind(request) == ProposalBudgetKind.MUTATION
+    assert first.program != second.program
+    assert first.metadata["llm_call"] is False
+    assert first.metadata["proposal_mechanism"] == "typed_mutation"
+    assert generator.can_generate(request) is False

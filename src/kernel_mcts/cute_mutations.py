@@ -1,19 +1,42 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import hashlib
+import json
 from typing import Mapping
+from uuid import uuid4
 
 from .cute_program import (
     CuteGemmProgram,
     CuteLegalityResult,
+    PinnedCuteGemmRenderer,
+    cute_gemm_program_from_source,
     validate_cute_gemm_program,
 )
 from .cute_schedule import CLUSTER_SHAPE_CHOICES, CTA_TILE_CHOICES
+from .domain import Strategy
+from .generation import (
+    GenerationRequest,
+    GenerationResult,
+    ProposalBudgetKind,
+)
 
 
 CHANGE_CTA_TILE = "change_cta_tile"
 CHANGE_CLUSTER_SHAPE = "change_cluster_shape"
-CUTE_MUTATION_STRATEGIES = (CHANGE_CTA_TILE, CHANGE_CLUSTER_SHAPE)
+CUTE_MUTATION_STRATEGY_IDS = (CHANGE_CTA_TILE, CHANGE_CLUSTER_SHAPE)
+CUTE_MUTATION_STRATEGIES = (
+    Strategy(
+        CHANGE_CTA_TILE,
+        "Change the CTA output-tile decomposition.",
+        {"cute_dsl": "Select another statically supported CTA tile."},
+    ),
+    Strategy(
+        CHANGE_CLUSTER_SHAPE,
+        "Change the Hopper thread-block cluster geometry.",
+        {"cute_dsl": "Select another statically supported cluster shape."},
+    ),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +137,73 @@ def enumerate_cute_mutations(
                 )
             )
     return tuple(proposals)
+
+
+class CuteMutationGenerator:
+    """Deterministically realize untried typed neighbors for a selected strategy."""
+
+    def __init__(self, renderer: PinnedCuteGemmRenderer | None = None) -> None:
+        self._renderer = renderer or PinnedCuteGemmRenderer()
+        self._issued: set[tuple[str, str, str]] = set()
+
+    @staticmethod
+    def proposal_budget_kind(_request: GenerationRequest) -> ProposalBudgetKind:
+        return ProposalBudgetKind.MUTATION
+
+    def can_generate(self, request: GenerationRequest) -> bool:
+        return bool(self._available(request))
+
+    def generate(self, request: GenerationRequest) -> GenerationResult:
+        available = self._available(request)
+        if not available:
+            raise RuntimeError("selected CuTe strategy has no untried typed mutation")
+        proposal = available[0]
+        child_hash = proposal.candidate.configuration_hash
+        key = (proposal.parent.configuration_hash, proposal.strategy_id, child_hash)
+        self._issued.add(key)
+        serialized = proposal.as_dict()
+        identity = json.dumps(
+            {
+                "parent": proposal.parent.configuration_hash,
+                "strategy": proposal.strategy_id,
+                "child": child_hash,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return GenerationResult(
+            generation_id=f"mutation:{uuid4()}",
+            raw_output=proposal.candidate.canonical_json(),
+            program=(
+                self._renderer.render(proposal.candidate)
+                if proposal.validation.valid
+                else None
+            ),
+            prompt_hash=hashlib.sha256(identity.encode()).hexdigest(),
+            metadata={
+                "generator": "typed_mutation",
+                "llm_call": False,
+                **serialized,
+            },
+        )
+
+    def _available(
+        self, request: GenerationRequest
+    ) -> tuple[CuteMutationProposal, ...]:
+        if request.parent.backend != "cute_dsl":
+            return ()
+        parent = cute_gemm_program_from_source(request.parent.source)
+        return tuple(
+            proposal
+            for proposal in enumerate_cute_mutations(parent)
+            if proposal.strategy_id == request.strategy.id
+            and (
+                parent.configuration_hash,
+                proposal.strategy_id,
+                proposal.candidate.configuration_hash,
+            )
+            not in self._issued
+        )
 
 
 def _exact_integer_parameters(

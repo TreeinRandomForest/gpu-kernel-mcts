@@ -13,6 +13,8 @@ class IterationStatus(StrEnum):
     INFRASTRUCTURE_FAILURE = "INFRASTRUCTURE_FAILURE"
     DEPTH_LIMIT = "DEPTH_LIMIT"
     CYCLE = "CYCLE"
+    PROPOSAL_SPACE_EXHAUSTED = "PROPOSAL_SPACE_EXHAUSTED"
+    DEAD_END = "DEAD_END"
 
 
 class SelectionMode(StrEnum):
@@ -32,10 +34,12 @@ class SearchRunRecord:
     toolchain: Mapping[str, Any] = field(default_factory=dict)
     seed: int | None = None
     generation_budget: int | None = None
+    mutation_budget: int | None = None
     environment_manifest_id: str | None = None
     ended_at: str | None = None
     best_node_id: str | None = None
     final_b_gen: int | None = None
+    final_b_mut: int | None = None
     final_b_prior: int | None = None
     final_iterations: int | None = None
     git_commit: str | None = None
@@ -48,6 +52,7 @@ class GenerationRecord:
     generation_id: str
     run_id: str
     b_gen: int
+    b_mut: int
     parent_node_id: str
     strategy_id: str
     repair_attempt: int
@@ -119,6 +124,7 @@ class StrategyEdgeRecord:
     q_max: float | None
     proposal_count: int
     generation_attempt_count: int
+    mutation_attempt_count: int
     repair_generation_count: int
     valid_proposal_count: int
     invalid_proposal_count: int
@@ -145,6 +151,7 @@ class IterationRecord:
     leaf_node_id: str | None = None
     backed_up_reward: float | None = None
     b_gen: int = 0
+    b_mut: int = 0
     b_prior: int = 0
 
 

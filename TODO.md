@@ -73,6 +73,15 @@ completed hardware validation is identified explicitly.
   tile and cluster-shape dimensions. Mutations are deterministic, statically checked,
   path-independent, and emit complete transformation evidence without consuming
   `B_gen` or `B_tune`. This is standalone design-space validation, not MCTS enablement.
+- [x] Core MCTS integration for deterministic CuTe proposals with separately reserved
+  and persisted `B_mut`, no mutation repair loop, budget-aware widening eligibility,
+  finite proposal-space termination, and a GPU-independent end-to-end CuTe MCTS test.
+  Remote CuTe orchestration and an H100 mutation-search smoke run remain pending.
+- [ ] Add mixed-mechanism proposal routing beneath each semantic strategy. Start with
+  the specified mutation-first policy, falling back to LLM generation only when the
+  typed neighborhood is unavailable or `B_mut` is exhausted. Preserve separate
+  `B_mut`/`B_gen` accounting and log the routing decision; treat learned or bandit
+  routing as a later explicit ablation.
 
 ## Next
 
@@ -104,7 +113,7 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `279 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `282 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.

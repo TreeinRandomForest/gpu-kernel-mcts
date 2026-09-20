@@ -75,14 +75,16 @@ class SearchCLIProgress:
             self._write(
                 "Generation evaluated: "
                 f"B_gen={payload.get('b_gen')}, status={payload.get('proposal_status')}, "
-                f"strategy={payload.get('strategy_id')}"
+                f"strategy={payload.get('strategy_id')}, "
+                f"B_mut={payload.get('b_mut', 0)}"
             )
         elif event_type == "iteration_completed":
             self._write(
                 "MCTS iteration completed: "
                 f"iteration={payload.get('iteration')}, B_gen={payload.get('b_gen')}, "
                 f"status={payload.get('status')}, "
-                f"backed_up_reward={payload.get('backed_up_reward')}"
+                f"backed_up_reward={payload.get('backed_up_reward')}, "
+                f"B_mut={payload.get('b_mut', 0)}"
             )
         elif event_type == "new_global_best":
             self._write(
@@ -93,6 +95,7 @@ class SearchCLIProgress:
             self._write(
                 "MCTS completed: "
                 f"iterations={payload.get('iterations')}, B_gen={payload.get('b_gen')}, "
+                f"B_mut={payload.get('b_mut', 0)}, "
                 f"profiles={payload.get('profile_calls')}, "
                 f"best_reward={payload.get('best_reward')}"
             )
@@ -116,7 +119,7 @@ class SearchCLIProgress:
         elif event_type == "run_failed":
             self._write(
                 f"Search failed: error_type={payload.get('error_type')}, "
-                f"B_gen={payload.get('b_gen')}"
+                f"B_gen={payload.get('b_gen')}, B_mut={payload.get('b_mut', 0)}"
             )
 
     def _write(self, message: str) -> None:
@@ -376,6 +379,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"{generator_label} search completed: run_id={execution.run_id}, "
         f"iterations={result.iterations}, B_gen={result.generations}, "
+        f"B_mut={getattr(result, 'mutations', 0)}, "
         f"profiles={result.profile_calls}, drift_probes={result.drift_probe_calls}, "
         f"nodes={len(result.nodes)}, "
         f"best_reward={result.best.reward:.6g}"

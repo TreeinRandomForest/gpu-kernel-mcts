@@ -17,6 +17,7 @@ from typing import Any, Mapping, Protocol, Sequence
 from .cute_program import (
     CuteGemmProgram,
     PinnedCuteGemmRenderer,
+    cute_gemm_program_from_source,
     validate_cute_gemm_program,
 )
 from .cute_diagnostics import select_runtime_fingerprint
@@ -159,7 +160,7 @@ class CuTeDSLBackend:
         started = time.monotonic()
         try:
             self._validate_contract(program, workload)
-            representation = _extract_representation(program.source)
+            representation = cute_gemm_program_from_source(program.source)
             legality = validate_cute_gemm_program(representation)
             if not legality.valid:
                 diagnostic = "; ".join(item.message for item in legality.violations)
@@ -531,25 +532,6 @@ class CuTeDSLBackend:
         shape = workload.shapes[0].dimensions
         if any(shape.get(name) != 4096 for name in ("M", "N", "K")):
             raise ValueError("CuTeDSLBackend requires M=N=K=4096")
-
-
-def _extract_representation(source: str) -> CuteGemmProgram:
-    tree = ast.parse(source)
-    values = []
-    for node in tree.body:
-        if (
-            isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id == "KERNEL_MCTS_REPRESENTATION"
-        ):
-            values.append(ast.literal_eval(node.value))
-    if len(values) != 1 or not isinstance(values[0], dict):
-        raise ValueError("program must define one literal KERNEL_MCTS_REPRESENTATION")
-    try:
-        return CuteGemmProgram(**values[0])
-    except TypeError as error:
-        raise ValueError("program contains an invalid CuTe representation") from error
 
 
 def _validate_execution_payload(payload: Mapping[str, Any], count: int) -> None:

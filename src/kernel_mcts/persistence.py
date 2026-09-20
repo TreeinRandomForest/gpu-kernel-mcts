@@ -17,10 +17,12 @@ CREATE TABLE IF NOT EXISTS search_runs (
     started_at TEXT NOT NULL,
     seed INTEGER,
     generation_budget INTEGER,
+    mutation_budget INTEGER,
     environment_manifest_id TEXT,
     ended_at TEXT,
     best_node_id TEXT,
     final_b_gen INTEGER,
+    final_b_mut INTEGER,
     final_b_prior INTEGER,
     final_profile_calls INTEGER,
     final_drift_probe_calls INTEGER,
@@ -57,6 +59,7 @@ CREATE TABLE IF NOT EXISTS generations (
     run_id TEXT NOT NULL REFERENCES search_runs(run_id),
     iteration INTEGER,
     b_gen INTEGER NOT NULL,
+    b_mut INTEGER NOT NULL DEFAULT 0,
     parent_node_id TEXT NOT NULL,
     strategy_id TEXT NOT NULL,
     repair_attempt INTEGER NOT NULL,
@@ -126,6 +129,7 @@ CREATE TABLE IF NOT EXISTS strategy_edges (
     q_max REAL,
     proposal_count INTEGER NOT NULL,
     generation_attempt_count INTEGER NOT NULL,
+    mutation_attempt_count INTEGER NOT NULL DEFAULT 0,
     repair_generation_count INTEGER NOT NULL,
     valid_proposal_count INTEGER NOT NULL,
     invalid_proposal_count INTEGER NOT NULL,
@@ -154,6 +158,7 @@ CREATE TABLE IF NOT EXISTS iterations (
     leaf_node_id TEXT,
     backed_up_reward REAL,
     b_gen INTEGER NOT NULL,
+    b_mut INTEGER NOT NULL DEFAULT 0,
     b_prior INTEGER NOT NULL,
     PRIMARY KEY (run_id, iteration)
 );
@@ -245,15 +250,17 @@ CREATE TABLE IF NOT EXISTS tuning_trials (
 );
 """
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
     "generation_budget": "INTEGER",
+    "mutation_budget": "INTEGER",
     "environment_manifest_id": "TEXT",
     "ended_at": "TEXT",
     "best_node_id": "TEXT",
     "final_b_gen": "INTEGER",
+    "final_b_mut": "INTEGER",
     "final_b_prior": "INTEGER",
     "final_profile_calls": "INTEGER",
     "final_drift_probe_calls": "INTEGER",
@@ -267,6 +274,7 @@ SEARCH_RUN_ADDITIONAL_COLUMNS = {
 }
 
 GENERATION_ADDITIONAL_COLUMNS = {
+    "b_mut": "INTEGER NOT NULL DEFAULT 0",
     "api_instructions": "TEXT",
     "proposal_mechanism": "TEXT",
     "representation_json": "TEXT",
@@ -274,6 +282,14 @@ GENERATION_ADDITIONAL_COLUMNS = {
     "configuration_hash": "TEXT",
     "static_validation_json": "TEXT",
     "transformation_json": "TEXT",
+}
+
+STRATEGY_EDGE_ADDITIONAL_COLUMNS = {
+    "mutation_attempt_count": "INTEGER NOT NULL DEFAULT 0",
+}
+
+ITERATION_ADDITIONAL_COLUMNS = {
+    "b_mut": "INTEGER NOT NULL DEFAULT 0",
 }
 
 NODE_ADDITIONAL_COLUMNS = {
@@ -298,6 +314,8 @@ class SQLiteTraceStore:
             self._migrate_search_runs()
             self._migrate_generations()
             self._migrate_nodes()
+            self._migrate_table("strategy_edges", STRATEGY_EDGE_ADDITIONAL_COLUMNS)
+            self._migrate_table("iterations", ITERATION_ADDITIONAL_COLUMNS)
             self.connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.connection.commit()
         self.run_id: str | None = None
@@ -369,6 +387,19 @@ class SQLiteTraceStore:
         for name, sql_type in NODE_ADDITIONAL_COLUMNS.items():
             if name not in existing:
                 self.connection.execute(f"ALTER TABLE nodes ADD COLUMN {name} {sql_type}")
+
+    def _migrate_table(
+        self, table: str, columns: Mapping[str, str]
+    ) -> None:
+        existing = {
+            row[1]
+            for row in self.connection.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        for name, sql_type in columns.items():
+            if name not in existing:
+                self.connection.execute(
+                    f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}"
+                )
 
     def _materialize_event(
         self,
@@ -502,11 +533,13 @@ class SQLiteTraceStore:
     ) -> None:
         self.connection.execute(
             """UPDATE search_runs SET
-                seed = ?, generation_budget = ?, workload_json = ?, hardware_json = ?
+                seed = ?, generation_budget = ?, mutation_budget = ?,
+                workload_json = ?, hardware_json = ?
             WHERE run_id = ?""",
             (
                 payload.get("seed"),
                 payload.get("generation_budget"),
+                payload.get("mutation_budget"),
                 _json(payload.get("workload", {})),
                 _json(payload.get("hardware", {})),
                 self.run_id,
@@ -518,7 +551,7 @@ class SQLiteTraceStore:
     ) -> None:
         self.connection.execute(
             """UPDATE search_runs SET
-                ended_at = ?, best_node_id = ?, final_b_gen = ?,
+                ended_at = ?, best_node_id = ?, final_b_gen = ?, final_b_mut = ?,
                 final_b_prior = ?, final_profile_calls = ?,
                 final_drift_probe_calls = ?, final_iterations = ?
             WHERE run_id = ?""",
@@ -526,6 +559,7 @@ class SQLiteTraceStore:
                 created_at,
                 payload.get("best_node_id"),
                 payload.get("b_gen"),
+                payload.get("b_mut"),
                 payload.get("b_prior"),
                 payload.get("profile_calls"),
                 payload.get("drift_probe_calls"),
@@ -539,13 +573,14 @@ class SQLiteTraceStore:
     ) -> None:
         self.connection.execute(
             """UPDATE search_runs SET
-                ended_at = ?, final_b_gen = ?, final_b_prior = ?,
+                ended_at = ?, final_b_gen = ?, final_b_mut = ?, final_b_prior = ?,
                 final_profile_calls = ?, final_drift_probe_calls = ?,
                 final_iterations = ?
             WHERE run_id = ?""",
             (
                 created_at,
                 payload.get("b_gen"),
+                payload.get("b_mut"),
                 payload.get("b_prior"),
                 payload.get("profile_calls"),
                 payload.get("drift_probe_calls"),
@@ -622,9 +657,10 @@ class SQLiteTraceStore:
                 """INSERT INTO strategy_edges(
                     run_id, parent_node_id, strategy_id, prior, visits,
                     value_sum, q_mean, q_max, proposal_count,
-                    generation_attempt_count, repair_generation_count,
+                    generation_attempt_count, mutation_attempt_count,
+                    repair_generation_count,
                     valid_proposal_count, invalid_proposal_count
-                ) VALUES (?, ?, ?, ?, 0, 0, 0, NULL, 0, 0, 0, 0, 0)
+                ) VALUES (?, ?, ?, ?, 0, 0, 0, NULL, 0, 0, 0, 0, 0, 0)
                 ON CONFLICT(run_id, parent_node_id, strategy_id)
                 DO UPDATE SET prior = excluded.prior""",
                 (self.run_id, payload["node_id"], strategy_id, prior),
@@ -637,7 +673,7 @@ class SQLiteTraceStore:
         evaluation = _mapping(payload.get("evaluation"), "evaluation")
         self.connection.execute(
             """INSERT INTO generations(
-                generation_id, run_id, iteration, b_gen, parent_node_id,
+                generation_id, run_id, iteration, b_gen, b_mut, parent_node_id,
                 strategy_id, repair_attempt, proposal_status, strategy_prior,
                 parent_visit_count, parent_action_q_mean, parent_action_q_max,
                 invalid_reason, compile_status, correctness_status, prompt_hash,
@@ -648,13 +684,14 @@ class SQLiteTraceStore:
                 ,proposal_mechanism, representation_json,
                 representation_schema_version, configuration_hash,
                 static_validation_json, transformation_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 payload["generation_id"],
                 self.run_id,
                 payload.get("iteration"),
                 payload["b_gen"],
+                payload.get("b_mut", 0),
                 payload["parent_node_id"],
                 payload["strategy_id"],
                 payload["repair_attempt"],
@@ -725,9 +762,10 @@ class SQLiteTraceStore:
             """INSERT INTO strategy_edges(
                 run_id, parent_node_id, strategy_id, prior, visits,
                 value_sum, q_mean, q_max, proposal_count,
-                generation_attempt_count, repair_generation_count,
+                generation_attempt_count, mutation_attempt_count,
+                repair_generation_count,
                 valid_proposal_count, invalid_proposal_count
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id, parent_node_id, strategy_id) DO UPDATE SET
                 prior = excluded.prior,
                 visits = excluded.visits,
@@ -736,6 +774,7 @@ class SQLiteTraceStore:
                 q_max = excluded.q_max,
                 proposal_count = excluded.proposal_count,
                 generation_attempt_count = excluded.generation_attempt_count,
+                mutation_attempt_count = excluded.mutation_attempt_count,
                 repair_generation_count = excluded.repair_generation_count,
                 valid_proposal_count = excluded.valid_proposal_count,
                 invalid_proposal_count = excluded.invalid_proposal_count""",
@@ -750,6 +789,7 @@ class SQLiteTraceStore:
                 strategy.get("q_max"),
                 strategy["proposal_count"],
                 strategy["generation_attempt_count"],
+                strategy.get("mutation_attempt_count", 0),
                 strategy["repair_generation_count"],
                 strategy["valid_proposal_count"],
                 strategy["invalid_proposal_count"],
@@ -789,8 +829,8 @@ class SQLiteTraceStore:
             """INSERT INTO iterations(
                 run_id, iteration, status, expanded_parent_node_id,
                 selected_strategy_id, leaf_node_id, backed_up_reward,
-                b_gen, b_prior
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                b_gen, b_mut, b_prior
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 self.run_id,
                 payload["iteration"],
@@ -800,6 +840,7 @@ class SQLiteTraceStore:
                 payload.get("leaf_node_id"),
                 payload.get("backed_up_reward"),
                 payload["b_gen"],
+                payload.get("b_mut", 0),
                 payload["b_prior"],
             ),
         )

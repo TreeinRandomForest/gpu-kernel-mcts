@@ -109,12 +109,12 @@ class TraceCatalog:
                 (run_id,),
             ).fetchall()
             failures = connection.execute(
-                """SELECT generation_id, iteration, b_gen, repair_attempt, parent_node_id,
+                """SELECT generation_id, iteration, b_gen, b_mut, repair_attempt, parent_node_id,
                           strategy_id, proposal_status, invalid_reason, compile_status,
                           correctness_status
                    FROM generations
                    WHERE run_id = ? AND proposal_status != 'VALID'
-                   ORDER BY b_gen, generation_id""",
+                   ORDER BY iteration, b_gen, b_mut, generation_id""",
                 (run_id,),
             ).fetchall()
             root_id = self._root_id(connection, run_id, nodes, realizations)
@@ -210,12 +210,12 @@ class TraceCatalog:
             if row is None:
                 raise TraceBrowserError(f"node not found: {node_id}")
             generations = connection.execute(
-                """SELECT generation_id, iteration, b_gen, parent_node_id, strategy_id,
+                """SELECT generation_id, iteration, b_gen, b_mut, parent_node_id, strategy_id,
                           repair_attempt, reused_node, prompt_text, api_instructions,
                           raw_output, input_tokens, output_tokens, llm_latency_seconds
                    FROM generations
                    WHERE run_id = ? AND created_node_id = ?
-                   ORDER BY b_gen, generation_id""",
+                   ORDER BY iteration, b_gen, b_mut, generation_id""",
                 (run_id, node_id),
             ).fetchall()
             return {
@@ -641,7 +641,7 @@ class TraceCatalog:
         timeline: list[dict[str, object]] = []
         for row in connection.execute(
             """SELECT iteration, status, selected_strategy_id, leaf_node_id,
-                      backed_up_reward, b_gen, b_prior
+                      backed_up_reward, b_gen, b_mut, b_prior
                FROM iterations WHERE run_id = ? ORDER BY iteration""",
             (run_id,),
         ).fetchall():
@@ -754,7 +754,10 @@ class TraceCatalog:
             "SELECT count(*), max(reward) FROM nodes WHERE run_id = ?", (run_id,)
         ).fetchone()
         observed_b_gen = connection.execute(
-            "SELECT count(*) FROM generations WHERE run_id = ?", (run_id,)
+            "SELECT coalesce(max(b_gen), 0) FROM generations WHERE run_id = ?", (run_id,)
+        ).fetchone()[0]
+        observed_b_mut = connection.execute(
+            "SELECT coalesce(max(b_mut), 0) FROM generations WHERE run_id = ?", (run_id,)
         ).fetchone()[0]
         observed_iterations = connection.execute(
             "SELECT count(*) FROM iterations WHERE run_id = ?", (run_id,)
@@ -781,7 +784,9 @@ class TraceCatalog:
             "model_name": run["model_name"],
             "seed": run["seed"],
             "generation_budget": run["generation_budget"],
+            "mutation_budget": run["mutation_budget"],
             "b_gen": run["final_b_gen"] if run["final_b_gen"] is not None else observed_b_gen,
+            "b_mut": run["final_b_mut"] if run["final_b_mut"] is not None else observed_b_mut,
             "b_prior": run["final_b_prior"],
             "iterations": (
                 run["final_iterations"]

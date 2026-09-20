@@ -200,7 +200,8 @@ proposals perform no JIT or GPU work and consume neither `B_gen` nor `B_tune`.
 Different mutation orders that reach the same representation produce the same
 configuration hash, preserving transpositions. Pipeline, TMA-layout, WGMMA-layout,
 shared-memory, and epilogue mutations remain rejected until the renderer can express
-and validate them; this neighborhood is not yet connected to MCTS.
+and validate them. The neighborhood is connected to core MCTS with separate `B_mut`
+accounting, but remote orchestration and H100 search validation remain pending.
 
 The original feasibility mode remains available for diagnosing adapter failures:
 

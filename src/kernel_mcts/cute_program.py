@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 from dataclasses import asdict, dataclass
@@ -54,6 +55,25 @@ class CuteGemmProgram:
 
 
 REFERENCE_CUTE_GEMM = CuteGemmProgram(128, 256, 1, 1)
+
+
+def cute_gemm_program_from_source(source: str) -> CuteGemmProgram:
+    tree = ast.parse(source)
+    values = []
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "KERNEL_MCTS_REPRESENTATION"
+        ):
+            values.append(ast.literal_eval(node.value))
+    if len(values) != 1 or not isinstance(values[0], dict):
+        raise ValueError("program must define one literal KERNEL_MCTS_REPRESENTATION")
+    try:
+        return CuteGemmProgram(**values[0])
+    except TypeError as error:
+        raise ValueError("program contains an invalid CuTe representation") from error
 
 
 @dataclass(frozen=True, slots=True)

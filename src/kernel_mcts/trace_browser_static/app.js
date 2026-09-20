@@ -76,6 +76,7 @@ async function loadRun() {
     const run = state.graph.run;
     $("run-summary").textContent = `${run.status} · ${run.benchmark_id} · model ` +
       `${run.model_name || "—"} · B_gen ${run.b_gen}/${run.generation_budget ?? "?"} · ` +
+      `B_mut ${run.b_mut || 0}/${run.mutation_budget ?? 0} · ` +
       `${run.node_count} nodes · best ${number(run.best_speedup, 3)}×`;
     $("score-notice").textContent = state.graph.historical_scores_available
       ? "Decision-time PUCT/UCB scores available."
@@ -120,7 +121,7 @@ function showIteration() {
       ? "Root state before the first iteration."
       : "No completed iteration record.";
   } else {
-    $("iteration-summary").textContent = `status ${point.status} · B_gen ${point.b_gen} · ` +
+    $("iteration-summary").textContent = `status ${point.status} · B_gen ${point.b_gen} · B_mut ${point.b_mut || 0} · ` +
       `strategy ${point.selected_strategy_id || "—"} · backed-up reward ${number(point.backed_up_reward)} · ` +
       `best ${number(point.cumulative_best_speedup, 3)}× (${short(point.cumulative_best_node_id)})`;
     const decisions = state.graph.selection_decisions || [];

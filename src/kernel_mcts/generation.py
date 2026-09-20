@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Mapping, Protocol
 
 from .domain import EvaluationResult, KernelProgram, Strategy, WorkloadContract
@@ -35,3 +36,22 @@ class GenerationResult:
 
 class KernelGenerator(Protocol):
     def generate(self, request: GenerationRequest) -> GenerationResult: ...
+
+
+class ProposalBudgetKind(StrEnum):
+    GENERATION = "generation"
+    MUTATION = "mutation"
+
+
+def proposal_budget_kind(
+    generator: KernelGenerator, request: GenerationRequest
+) -> ProposalBudgetKind:
+    resolver = getattr(generator, "proposal_budget_kind", None)
+    if resolver is None:
+        return ProposalBudgetKind.GENERATION
+    return ProposalBudgetKind(resolver(request))
+
+
+def can_generate(generator: KernelGenerator, request: GenerationRequest) -> bool:
+    predicate = getattr(generator, "can_generate", None)
+    return True if predicate is None else bool(predicate(request))

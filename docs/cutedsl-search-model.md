@@ -57,6 +57,26 @@ of distinct concrete outcomes beneath a strategy. When an existing realization i
 revisited, UCB selects among those existing children. Only valid measured children
 become nodes and participate in backup.
 
+### Choosing the proposal mechanism
+
+The current code configures one proposal mechanism for a search: the CuTe mutation
+generator uses `B_mut`, while an LLM generator uses `B_gen`. It does not yet choose
+between both mechanisms dynamically within one run.
+
+The first mixed-mechanism router will use a simple mutation-first rule after PUCT has
+selected the semantic strategy and progressive widening has admitted a new child:
+
+1. use an untried supported typed mutation when one exists and `B_mut` remains;
+2. otherwise use LLM generation when it is supported and `B_gen` remains; and
+3. declare that parent-strategy proposal space exhausted when neither mechanism can
+   produce another realization.
+
+This is deliberately not another PUCT decision. PUCT chooses the semantic strategy;
+the router chooses how to realize it. The budgets remain separate, and exhausted
+mechanisms become ineligible without changing PUCT, progressive-widening, or UCB
+formulas. A later explicit ablation may compare this rule with a bandit or learned
+mechanism policy using observed validity, reward, and cost.
+
 ## Deterministic mutations
 
 A deterministic mutation applies a known typed transformation with explicit values:
@@ -66,8 +86,8 @@ change_cta_tile: (128, 256) -> (128, 128)
 ```
 
 Given the parent, strategy, and parameters, it always produces the same canonical
-candidate. It does not call an LLM. The proposed `B_mut` budget would count these
-mutation proposals separately from model calls. Different mutation paths that reach
+candidate. It does not call an LLM. The `B_mut` budget counts these mutation proposals
+separately from model calls. Different mutation paths that reach
 the same canonical configuration transpose to the same cached state.
 
 The current standalone mutation mechanisms are:
@@ -75,7 +95,9 @@ The current standalone mutation mechanisms are:
 - `change_cta_tile`; and
 - `change_cluster_shape`.
 
-They are not connected to MCTS yet.
+They are connected to core MCTS through a deterministic mutation generator and
+covered by a GPU-independent end-to-end search test. Remote-worker orchestration and
+the guarded H100 smoke-search command are not implemented yet.
 
 ## Stochastic LLM proposals
 
@@ -101,7 +123,7 @@ The intended accounting is:
 
 ```text
 B_gen  = LLM generation and repair calls
-B_mut  = deterministic typed mutation proposals (proposed; not integrated yet)
+B_mut  = deterministic typed mutation proposals
 B_tune = standalone mechanical tuning trials
 ```
 
@@ -109,4 +131,3 @@ Autotuning is not required at every MCTS node. Initially, MCTS should evaluate e
 new complete configuration once and reuse its cached result. Standalone or post-search
 autotuning remains separately budgeted. Any future leaf-local tuner should be an
 explicit ablation rather than hidden work performed at every expansion.
-

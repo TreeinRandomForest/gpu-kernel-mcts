@@ -46,6 +46,7 @@ class StrategyEdge:
     realizations: dict[str, RealizationEdge] = field(default_factory=dict)
     proposal_count: int = 0 #number of pw cands incl. INVALID ones
     generation_attempt_count: int = 0
+    mutation_attempt_count: int = 0
     repair_generation_count: int = 0
     valid_proposal_count: int = 0
     invalid_proposal_count: int = 0

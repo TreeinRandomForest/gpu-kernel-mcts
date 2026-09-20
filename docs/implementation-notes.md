@@ -195,8 +195,11 @@ The next standalone slice adds deterministic typed mutations for CTA tile and cl
 shape. Every proposal carries static validation and before/after configuration
 evidence; no mutation invokes an LLM, JIT, GPU evaluation, or search-budget counter.
 The same target reached through tile-then-cluster or cluster-then-tile transitions has
-identical canonical identity. MCTS integration and broader structural controls remain
-pending.
+identical canonical identity. Core MCTS now reserves these transitions against a
+separate `B_mut`, disables mutation repairs, retains the normal selection/widening/UCB
+roles, and persists both budget counters. Existing generation-only searches remain
+backward compatible. Remote CuTe orchestration, H100 search validation, and broader
+structural controls remain pending.
 
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:
