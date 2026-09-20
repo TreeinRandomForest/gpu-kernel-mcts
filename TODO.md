@@ -100,7 +100,7 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `272 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `274 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.

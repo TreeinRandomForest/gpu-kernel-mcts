@@ -181,7 +181,7 @@ and trace serialization.
 
 Milestone B phase 3 inspects the CuTe JIT callable rather than assuming a filesystem
 artifact. It records generated kernel names, bounded normalized MLIR and its hash, and
-any exposed in-memory cubin, fatbin, SASS, or PTX payload hashes. Effective identity
+any exposed or MLIR-embedded cubin, fatbin, SASS, or PTX payload hashes. Effective identity
 prefers those binary forms, then normalized MLIR, then the phase-2 source/template
 fallback; every choice is still combined with launch configuration. The compiler IR
 is retained in evaluation metadata for auditability and later structured-analysis

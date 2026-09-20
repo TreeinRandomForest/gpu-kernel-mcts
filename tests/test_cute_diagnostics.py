@@ -9,6 +9,7 @@ from kernel_mcts.cute_diagnostics import (
     describe_mlir,
     describe_runtime_artifacts,
     discover_cache_roots,
+    extract_mlir_embedded_artifacts,
     select_fingerprint_candidate,
     select_runtime_fingerprint,
     snapshot_files,
@@ -80,6 +81,22 @@ def test_normalizes_mlir_identity_and_persists_text() -> None:
     assert first["normalized_sha256"] == second["normalized_sha256"]
     assert "<address>" in first["normalized_text"]
     assert "<tmp-path>" in first["normalized_text"]
+
+
+def test_normalization_does_not_rewrite_semantic_copy_atom_name() -> None:
+    value = describe_mlir("module @object_at__CopyAtom")
+
+    assert "object_at__CopyAtom" in value["normalized_text"]
+
+
+def test_extracts_embedded_cuda_fatbinary_from_mlir() -> None:
+    artifacts = extract_mlir_embedded_artifacts(
+        'llvm.mlir.global internal constant @kernels_binary("P\\EDU\\BA\\01\\00")'
+    )
+
+    assert len(artifacts) == 1
+    assert artifacts[0]["kind"] == "fatbin"
+    assert artifacts[0]["size"] == 6
 
 
 def test_runtime_fingerprint_prefers_in_memory_cubin_then_mlir() -> None:

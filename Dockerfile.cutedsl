@@ -1,16 +1,11 @@
 FROM nvidia/cuda:12.9.1-devel-ubuntu24.04
 
-ARG KERNEL_MCTS_GIT_COMMIT=""
-ARG KERNEL_MCTS_DIRTY_TREE=""
-
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     CUTLASS_PATH=/opt/cutlass \
     CUTLASS_VERSION=v4.5.1 \
-    PATH=/opt/venv/bin:$PATH \
-    KERNEL_MCTS_GIT_COMMIT=$KERNEL_MCTS_GIT_COMMIT \
-    KERNEL_MCTS_DIRTY_TREE=$KERNEL_MCTS_DIRTY_TREE
+    PATH=/opt/venv/bin:$PATH
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates git python3 python3-venv \
@@ -23,6 +18,11 @@ RUN python3 -m venv /opt/venv \
     && /opt/cutlass/python/CuTeDSL/setup.sh --cu12 \
     && python -m pip install --no-cache-dir torch==2.8.0 \
         --index-url https://download.pytorch.org/whl/cu129
+
+ARG KERNEL_MCTS_GIT_COMMIT=""
+ARG KERNEL_MCTS_DIRTY_TREE=""
+ENV KERNEL_MCTS_GIT_COMMIT=$KERNEL_MCTS_GIT_COMMIT \
+    KERNEL_MCTS_DIRTY_TREE=$KERNEL_MCTS_DIRTY_TREE
 
 WORKDIR /opt/kernel-mcts
 COPY pyproject.toml README.md ./

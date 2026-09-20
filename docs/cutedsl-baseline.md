@@ -154,9 +154,10 @@ before and after JIT, hashes created or modified files, ranks cubin/fatbin/SASS/
 fingerprint candidates, records newly loaded CUDA-related host modules, and captures
 bounded metadata about the actual benchmark callable and workspace. The H100
 diagnostic found that the pinned runtime retains its JIT module in memory rather than
-materializing a new cache file. The production backend therefore records the exposed
-kernel names and normalized MLIR hash and text (text is omitted above a bounded size),
-and uses normalized MLIR as its current runtime fingerprint fallback.
+materializing a new cache file. Its MLIR contains an embedded CUDA fatbinary, so the
+production backend extracts and hashes that payload directly. It also records exposed
+kernel names and normalized MLIR hash and text (text is omitted above a bounded size);
+normalized MLIR remains the fallback when no embedded binary is available.
 
 Validate the dedicated one-launch NCU path on H100 with:
 

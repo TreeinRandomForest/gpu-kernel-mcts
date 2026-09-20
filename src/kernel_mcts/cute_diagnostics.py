@@ -172,9 +172,11 @@ def describe_kernel_callable(
         if isinstance(kernel_info, Mapping):
             value["kernel_names"] = [str(name) for name in kernel_info]
         ir_module = attributes.get("ir_module")
-        if ir_module is not None:
-            value["mlir"] = describe_mlir(ir_module)
         runtime_artifacts = []
+        if ir_module is not None:
+            mlir = describe_mlir(ir_module)
+            value["mlir"] = mlir
+            runtime_artifacts.extend(mlir["embedded_artifacts"])
         for attribute_name in ("jit_module", "gpu_module", "module"):
             runtime_object = attributes.get(attribute_name)
             if runtime_object is not None:
@@ -208,6 +210,7 @@ def describe_mlir(ir_module, *, maximum_text_bytes: int = 1_000_000) -> dict[str
         "normalized_text": normalized if len(encoded) <= maximum_text_bytes else None,
         "normalized_bytes": len(encoded),
         "text_omitted": len(encoded) > maximum_text_bytes,
+        "embedded_artifacts": extract_mlir_embedded_artifacts(raw),
     }
 
 
@@ -215,11 +218,45 @@ def normalize_mlir(value: str) -> str:
     normalized = re.sub(r"0x[0-9a-fA-F]+", "<address>", value)
     normalized = re.sub(r"/tmp/[^\s\"']+", "<tmp-path>", normalized)
     normalized = re.sub(
-        r"object_at_+(?:address_)?[0-9a-fA-F_]+",
+        r"object_at_+(?:address_)?(?:0x)?[0-9a-fA-F]{6,}",
         "object_at_<identity>",
         normalized,
     )
     return "\n".join(line.rstrip() for line in normalized.splitlines()).strip() + "\n"
+
+
+def extract_mlir_embedded_artifacts(value: str) -> list[dict[str, object]]:
+    artifacts = []
+    pattern = re.compile(
+        r'llvm\.mlir\.global[^\n]*@kernels_binary\("((?:\\.|[^"\\])*)"\)'
+    )
+    for index, match in enumerate(pattern.finditer(value)):
+        payload = _decode_mlir_bytes(match.group(1))
+        kind = "fatbin" if payload.startswith(b"\x50\xed\x55\xba") else "cubin"
+        artifacts.append(
+            {
+                "attribute": f"ir_module.kernels_binary[{index}]",
+                "kind": kind,
+                "size": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            }
+        )
+    return artifacts
+
+
+def _decode_mlir_bytes(value: str) -> bytes:
+    output = bytearray()
+    index = 0
+    while index < len(value):
+        if value[index] == "\\" and index + 2 < len(value):
+            pair = value[index + 1 : index + 3]
+            if all(character in "0123456789abcdefABCDEF" for character in pair):
+                output.append(int(pair, 16))
+                index += 3
+                continue
+        output.extend(value[index].encode("utf-8"))
+        index += 1
+    return bytes(output)
 
 
 def describe_runtime_artifacts(
