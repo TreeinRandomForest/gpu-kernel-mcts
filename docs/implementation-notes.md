@@ -200,7 +200,10 @@ roles, and persists both budget counters. Existing generation-only searches rema
 backward compatible. The search CLI, RunPod/Nebius provider configuration, CuTe image
 entrypoint, and worker backend selection now support guarded mutation-only and
 mutation-first mixed CuTe searches. H100 search validation and broader structural
-controls remain pending.
+controls remain pending. The first mutation-only Nebius H100 SXM run passed on
+2026-09-20: one cluster-shape mutation was valid, both nodes were profiled, `B_gen`
+remained zero, and `B_mut` was exactly one. The mixed LLM-fallback path has not yet
+been validated on hardware.
 
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:

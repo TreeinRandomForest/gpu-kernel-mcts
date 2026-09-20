@@ -234,8 +234,10 @@ After that guarded run succeeds, enable mutation-first LLM fallback with
 `--generator cute-mixed`, a positive `--generation-budget`, a positive
 `--mutation-budget`, and the usual `--model`. The initial mixed run uses the two
 built-in typed CuTe strategies, so it does not accept a separate strategy file.
-Remote H100 validation has not yet been completed; the CLI and provider tests are
-GPU-independent wiring coverage rather than performance evidence.
+The mutation-only command completed successfully on Nebius H100 SXM on 2026-09-20.
+See [CuTe mutation smoke validation](experiments/cutedsl-mutation-smoke-v1.md) for the
+exact transition, timings, budgets, and provenance limitations. Mixed LLM-fallback
+validation remains pending.
 
 The original feasibility mode remains available for diagnosing adapter failures:
 

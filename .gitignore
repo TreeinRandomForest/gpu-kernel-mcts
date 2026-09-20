@@ -224,6 +224,7 @@ __marimo__/
 /search*.png
 /best-kernel*.cu
 /candidate*.cu
+/cutedsl-*-best.py
 /nebius-best*.cu
 /nebius-*-best*.cu
 /log-nebius-*

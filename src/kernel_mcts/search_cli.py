@@ -151,10 +151,10 @@ class ProgressKernelGenerator:
     def generate(self, request: GenerationRequest) -> GenerationResult:
         self._calls += 1
         self._write(
-            f"Starting generation call {self._calls}: strategy={request.strategy.id}"
+            f"Starting proposal call {self._calls}: strategy={request.strategy.id}"
         )
         result = self._generator.generate(request)
-        self._write(f"Generation call {self._calls} returned; evaluating proposal")
+        self._write(f"Proposal call {self._calls} returned; evaluating proposal")
         return result
 
     def can_generate(self, request: GenerationRequest) -> bool:

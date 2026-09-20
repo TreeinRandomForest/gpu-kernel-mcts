@@ -630,6 +630,6 @@ def test_progress_generator_reports_start_and_evaluation_handoff() -> None:
 
     assert result.generation_id == "generation-1"
     assert stream.getvalue().splitlines() == [
-        "Starting generation call 1: strategy=coalescing",
-        "Generation call 1 returned; evaluating proposal",
+        "Starting proposal call 1: strategy=coalescing",
+        "Proposal call 1 returned; evaluating proposal",
     ]
