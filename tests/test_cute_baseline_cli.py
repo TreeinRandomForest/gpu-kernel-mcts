@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from kernel_mcts.cute_baseline_cli import (
     _backend_evaluation_report,
+    _describe_design_space,
     _enrich_cute_manifest,
     build_parser,
 )
@@ -47,6 +48,19 @@ def test_cli_accepts_backend_profile_mode_and_metric_set() -> None:
 
     assert arguments.mode == "backend-profile"
     assert arguments.profile_set == "diagnostic_v2"
+
+
+def test_design_space_report_contains_typed_mutations_without_budget() -> None:
+    arguments = build_parser().parse_args(["--mode", "design-space"])
+    report = _describe_design_space()
+
+    assert arguments.mode == "design-space"
+    assert report["proposal_count"] == 4
+    assert report["budget"] == {"b_gen": 0, "b_tune": 0}
+    assert all(
+        proposal["proposal_mechanism"] == "typed_mutation"
+        for proposal in report["proposals"]
+    )
 
 
 def test_backend_manifest_adds_cute_libraries_and_driver() -> None:

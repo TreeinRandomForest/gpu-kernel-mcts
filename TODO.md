@@ -67,8 +67,12 @@ completed hardware validation is identified explicitly.
 - [x] Milestone B phase-3 artifact/kernel-identity support: diagnostic cache/module
   inventory, in-memory JIT callable inspection, bounded normalized MLIR persistence,
   runtime-artifact-first fingerprint selection, and a cached single-launch NCU path
-  separate from correctness and reward timing. Unit coverage is complete; an H100
-  run must still validate the exact generated-kernel filter and numeric NCU output.
+  separate from correctness and reward timing. H100 validation captured the embedded
+  fatbinary and all nine lightweight NCU metrics with exact generated-kernel filtering.
+- [x] Initial Milestone B typed-mutation neighborhood over the already validated CTA
+  tile and cluster-shape dimensions. Mutations are deterministic, statically checked,
+  path-independent, and emit complete transformation evidence without consuming
+  `B_gen` or `B_tune`. This is standalone design-space validation, not MCTS enablement.
 
 ## Next
 
@@ -100,7 +104,7 @@ completed hardware validation is identified explicitly.
 
 ## Validation status
 
-- Unit suite: `274 passed, 1 skipped` at the time this checklist was last updated.
+- Unit suite: `279 passed, 1 skipped` at the time this checklist was last updated.
 - The opt-in pytest remains skipped in the local unit suite because it requires an
   attached GPU. Equivalent root compilation, correctness, timing, and vendor-baseline
   validation completed through the remote worker lifecycle on 2026-09-11.

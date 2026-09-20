@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import socket
 import subprocess
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from .cute_baseline import (
     DEFAULT_EXAMPLE,
@@ -19,6 +19,7 @@ from .benchmarks import BF16_GEMM_WORKLOAD
 from .cute_tuning import run_cute_schedule_tuning
 from .cute_backend import CuteBackendConfig, CuTeDSLBackend
 from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
+from .cute_mutations import enumerate_cute_mutations
 from .cute_diagnostics import (
     artifact_changes,
     discover_cache_roots,
@@ -46,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
             "tune",
             "backend",
             "backend-profile",
+            "design-space",
             "diagnostic",
         ),
         default="comparison",
@@ -69,6 +71,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_backend_evaluation()
     elif arguments.mode == "backend-profile":
         result = _run_backend_evaluation(arguments.profile_set)
+    elif arguments.mode == "design-space":
+        result = _describe_design_space()
     elif arguments.mode == "diagnostic":
         result = _run_artifact_diagnostic(arguments.example)
     elif arguments.mode == "comparable":
@@ -80,6 +84,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         arguments.output.write_text(encoded + "\n", encoding="utf-8")
     print(encoded)
     return 0
+
+
+def _describe_design_space() -> Mapping[str, object]:
+    proposals = enumerate_cute_mutations(REFERENCE_CUTE_GEMM)
+    return {
+        "status": "ok",
+        "backend": "cute_dsl",
+        "workload": BF16_GEMM_WORKLOAD.benchmark_id,
+        "parent_representation": REFERENCE_CUTE_GEMM.as_dict(),
+        "parent_configuration_hash": REFERENCE_CUTE_GEMM.configuration_hash,
+        "proposal_count": len(proposals),
+        "proposals": [proposal.as_dict() for proposal in proposals],
+        "budget": {"b_gen": 0, "b_tune": 0},
+    }
 
 
 def _run_comparison(example: Path):

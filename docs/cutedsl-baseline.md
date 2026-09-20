@@ -176,8 +176,28 @@ This mode first performs the ordinary unprofiled correctness and CUDA-event benc
 then launches a separate subprocess under NCU. That subprocess skips correctness and
 timing and invokes the selected generated kernel exactly once. The resulting profile
 is cached by artifact and metric-set identity and does not change the benchmark or
-reward. The exact kernel-name filter still requires confirmation with this guarded
-H100 run.
+reward. The guarded H100 run confirmed the exact kernel-name filter and captured all
+nine lightweight metrics while leaving the root reward at zero.
+
+## Initial typed-mutation neighborhood
+
+The first GPU-free structural neighborhood exposes only controls already validated by
+the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode design-space \
+  --output cutedsl-design-space.json
+```
+
+The report contains four one-hop proposals from the reference configuration. Each
+records its canonical candidate representation, static-legality result, parent and
+child configuration hashes, changed fields, and `typed_mutation` mechanism. These
+proposals perform no JIT or GPU work and consume neither `B_gen` nor `B_tune`.
+Different mutation orders that reach the same representation produce the same
+configuration hash, preserving transpositions. Pipeline, TMA-layout, WGMMA-layout,
+shared-memory, and epilogue mutations remain rejected until the renderer can express
+and validate them; this neighborhood is not yet connected to MCTS.
 
 The original feasibility mode remains available for diagnosing adapter failures:
 

@@ -187,7 +187,16 @@ fallback; every choice is still combined with launch configuration. The compiler
 is retained in evaluation metadata for auditability and later structured-analysis
 experiments. A separate cached NCU subprocess skips correctness and benchmark timing,
 filters the generated kernel, and performs one launch, so profiling cannot change the
-CUDA-event reward. Exact kernel filtering remains pending H100 validation.
+CUDA-event reward. The H100 validation confirmed exact generated-kernel filtering,
+all nine lightweight metrics, reward/profile separation, and an embedded fatbinary
+fingerprint.
+
+The next standalone slice adds deterministic typed mutations for CTA tile and cluster
+shape. Every proposal carries static validation and before/after configuration
+evidence; no mutation invokes an LLM, JIT, GPU evaluation, or search-budget counter.
+The same target reached through tile-then-cluster or cluster-then-tile transitions has
+identical canonical identity. MCTS integration and broader structural controls remain
+pending.
 
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:
