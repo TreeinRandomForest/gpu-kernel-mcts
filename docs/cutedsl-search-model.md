@@ -59,11 +59,11 @@ become nodes and participate in backup.
 
 ### Choosing the proposal mechanism
 
-The current code configures one proposal mechanism for a search: the CuTe mutation
-generator uses `B_mut`, while an LLM generator uses `B_gen`. It does not yet choose
-between both mechanisms dynamically within one run.
+The core search can configure one proposal mechanism directly or wrap a mutation and
+LLM generator in the mixed-mechanism router. Direct CuTe mutation generation uses
+`B_mut`, while direct LLM generation uses `B_gen`.
 
-The first mixed-mechanism router will use a simple mutation-first rule after PUCT has
+The initial mixed-mechanism router uses a simple mutation-first rule after PUCT has
 selected the semantic strategy and progressive widening has admitted a new child:
 
 1. use an untried supported typed mutation when one exists and `B_mut` remains;
@@ -76,6 +76,10 @@ the router chooses how to realize it. The budgets remain separate, and exhausted
 mechanisms become ineligible without changing PUCT, progressive-widening, or UCB
 formulas. A later explicit ablation may compare this rule with a bandit or learned
 mechanism policy using observed validity, reward, and cost.
+
+Each proposal trace records the eligible mechanism sequence and the selected
+mechanism's budget kind. CLI construction and guarded remote CuTe validation of the
+mixed router remain pending.
 
 ## Deterministic mutations
 

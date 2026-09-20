@@ -77,11 +77,12 @@ completed hardware validation is identified explicitly.
   and persisted `B_mut`, no mutation repair loop, budget-aware widening eligibility,
   finite proposal-space termination, and a GPU-independent end-to-end CuTe MCTS test.
   Remote CuTe orchestration and an H100 mutation-search smoke run remain pending.
-- [ ] Add mixed-mechanism proposal routing beneath each semantic strategy. Start with
+- [x] Add core mixed-mechanism proposal routing beneath each semantic strategy using
   the specified mutation-first policy, falling back to LLM generation only when the
-  typed neighborhood is unavailable or `B_mut` is exhausted. Preserve separate
-  `B_mut`/`B_gen` accounting and log the routing decision; treat learned or bandit
-  routing as a later explicit ablation.
+  typed neighborhood is unavailable or `B_mut` is exhausted. The router preserves
+  separate `B_mut`/`B_gen` accounting and logs eligible mechanisms plus the selected
+  budget kind. CLI/remote CuTe wiring remains pending; learned or bandit routing is a
+  later explicit ablation.
 
 ## Next
 

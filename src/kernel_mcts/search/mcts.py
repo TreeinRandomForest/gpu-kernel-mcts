@@ -12,8 +12,7 @@ from ..generation import (
     GenerationRequest,
     KernelGenerator,
     ProposalBudgetKind,
-    can_generate,
-    proposal_budget_kind,
+    select_proposal_mechanism,
 )
 from ..interfaces import EventSink, KernelEvaluator, MeasurementDriftMonitor, NodeProfiler, NullEventSink, StrategyPriorProvider
 from ..priors import validate_priors
@@ -532,13 +531,13 @@ class MCTS:
         self, parent: SearchNode, action: StrategyEdge
     ) -> bool:
         request = self._proposal_request(parent, action)
-        kind = proposal_budget_kind(self.generator, request)
-        budget_available = (
-            not self.mutation_budget.exhausted
-            if kind == ProposalBudgetKind.MUTATION
-            else not self.budget.exhausted
+        mechanism, _ = select_proposal_mechanism(
+            self.generator,
+            request,
+            generation_budget_available=not self.budget.exhausted,
+            mutation_budget_available=not self.mutation_budget.exhausted,
         )
-        return budget_available and can_generate(self.generator, request)
+        return mechanism is not None
 
     def _action_available(self, parent: SearchNode, action: StrategyEdge) -> bool:
         if self._can_generate_new_realization(parent, action):
@@ -801,6 +800,9 @@ class MCTS:
             "created_node_id": child.id if child is not None else None,
             "reused_node": reused_node,
             "proposal_mechanism": generation_metadata.get("proposal_mechanism"),
+            "proposal_mechanism_candidates": [
+                kind.value for kind in attempt.mechanism_candidates
+            ],
             "representation": evaluation_metadata.get(
                 "representation", generation_metadata.get("representation")
             ),

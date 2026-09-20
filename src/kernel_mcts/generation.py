@@ -43,6 +43,34 @@ class ProposalBudgetKind(StrEnum):
     MUTATION = "mutation"
 
 
+@dataclass(frozen=True, slots=True)
+class ProposalMechanism:
+    kind: ProposalBudgetKind
+    generator: KernelGenerator
+
+
+class MutationFirstGenerator:
+    """Route widening to typed mutation before falling back to generation."""
+
+    def __init__(
+        self,
+        mutation_generator: KernelGenerator,
+        generation_generator: KernelGenerator,
+    ) -> None:
+        self.mutation_generator = mutation_generator
+        self.generation_generator = generation_generator
+
+    def proposal_mechanisms(
+        self, request: GenerationRequest
+    ) -> tuple[ProposalMechanism, ...]:
+        return (
+            ProposalMechanism(ProposalBudgetKind.MUTATION, self.mutation_generator),
+            ProposalMechanism(
+                ProposalBudgetKind.GENERATION, self.generation_generator
+            ),
+        )
+
+
 def proposal_budget_kind(
     generator: KernelGenerator, request: GenerationRequest
 ) -> ProposalBudgetKind:
@@ -55,3 +83,42 @@ def proposal_budget_kind(
 def can_generate(generator: KernelGenerator, request: GenerationRequest) -> bool:
     predicate = getattr(generator, "can_generate", None)
     return True if predicate is None else bool(predicate(request))
+
+
+def proposal_mechanisms(
+    generator: KernelGenerator, request: GenerationRequest
+) -> tuple[ProposalMechanism, ...]:
+    resolver = getattr(generator, "proposal_mechanisms", None)
+    if resolver is None:
+        return (ProposalMechanism(proposal_budget_kind(generator, request), generator),)
+    mechanisms = tuple(resolver(request))
+    if not mechanisms:
+        return ()
+    return tuple(
+        ProposalMechanism(ProposalBudgetKind(item.kind), item.generator)
+        for item in mechanisms
+    )
+
+
+def select_proposal_mechanism(
+    generator: KernelGenerator,
+    request: GenerationRequest,
+    *,
+    generation_budget_available: bool,
+    mutation_budget_available: bool,
+) -> tuple[ProposalMechanism | None, tuple[ProposalBudgetKind, ...]]:
+    """Select the first capable, budget-eligible mechanism in router order."""
+    eligible: list[ProposalMechanism] = []
+    for mechanism in proposal_mechanisms(generator, request):
+        budget_available = (
+            mutation_budget_available
+            if mechanism.kind == ProposalBudgetKind.MUTATION
+            else generation_budget_available
+        )
+        if not budget_available or not can_generate(mechanism.generator, request):
+            continue
+        eligible.append(mechanism)
+    return (
+        eligible[0] if eligible else None,
+        tuple(mechanism.kind for mechanism in eligible),
+    )

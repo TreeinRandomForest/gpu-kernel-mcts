@@ -25,7 +25,7 @@ from kernel_mcts.domain import (
     Strategy,
     WorkloadContract,
 )
-from kernel_mcts.generation import GenerationResult
+from kernel_mcts.generation import GenerationResult, MutationFirstGenerator
 from kernel_mcts.priors import UniformStrategyPrior
 from kernel_mcts.search import MCTS, MCTSConfig
 from kernel_mcts.search.model import RealizationEdge, SearchNode, StrategyEdge
@@ -129,6 +129,60 @@ def test_mcts_searches_typed_cute_mutations_under_separate_budget() -> None:
         payload["proposal_mechanism"] == "typed_mutation"
         for payload in generations
     )
+
+
+def test_mcts_routes_mutation_before_generation_with_separate_budgets() -> None:
+    class OneMutation:
+        def __init__(self):
+            self.issued = False
+
+        def can_generate(self, _request):
+            return not self.issued
+
+        def generate(self, _request):
+            self.issued = True
+            return GenerationResult(
+                "mutation:1", "1", KernelProgram("1"), "mutation"
+            )
+
+    class OneGeneration:
+        def __init__(self):
+            self.issued = False
+
+        def can_generate(self, _request):
+            return not self.issued
+
+        def generate(self, _request):
+            self.issued = True
+            return GenerationResult(
+                "generation:1", "2", KernelProgram("2"), "generation"
+            )
+
+    events = RecordingEvents()
+    result = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=MutationFirstGenerator(OneMutation(), OneGeneration()),
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(1),
+        mutation_budget=MutationBudget(1),
+        config=MCTSConfig(max_depth=1, k_max=2),
+        events=events,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+
+    assert result.mutations == 1
+    assert result.generations == 1
+    generations = [payload for event, payload in events.events if event == "generation"]
+    assert [payload["generation_id"] for payload in generations] == [
+        "mutation:1",
+        "generation:1",
+    ]
+    assert generations[0]["proposal_mechanism_candidates"] == [
+        "mutation",
+        "generation",
+    ]
+    assert generations[1]["proposal_mechanism_candidates"] == ["generation"]
 
 
 def test_exhausted_leaf_does_not_hide_available_root_strategy() -> None:

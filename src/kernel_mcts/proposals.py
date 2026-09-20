@@ -9,7 +9,7 @@ from .generation import (
     GenerationResult,
     KernelGenerator,
     ProposalBudgetKind,
-    proposal_budget_kind,
+    select_proposal_mechanism,
 )
 from .interfaces import KernelEvaluator
 
@@ -22,6 +22,7 @@ class GenerationAttempt:
     attempt_number: int
     generation: GenerationResult
     evaluation: EvaluationResult
+    mechanism_candidates: tuple[ProposalBudgetKind, ...] = ()
 
     @property
     def budget_index(self) -> int:
@@ -49,9 +50,18 @@ def run_proposal(
         raise ValueError("retry limits cannot be negative")
     attempts: list[GenerationAttempt] = []
     current_request = request
-    kind = proposal_budget_kind(generator, request)
-    if kind == ProposalBudgetKind.MUTATION and mutation_budget is None:
-        raise ValueError("typed mutation proposal requires a mutation budget")
+    mechanism, mechanism_candidates = select_proposal_mechanism(
+        generator,
+        request,
+        generation_budget_available=not budget.exhausted,
+        mutation_budget_available=(
+            mutation_budget is not None and not mutation_budget.exhausted
+        ),
+    )
+    if mechanism is None:
+        raise RuntimeError("proposal started with no available proposal mechanism")
+    kind = mechanism.kind
+    selected_generator = mechanism.generator
     maximum_attempts = 1 if kind == ProposalBudgetKind.MUTATION else max_repairs + 1
 
     for attempt_number in range(maximum_attempts):
@@ -63,7 +73,7 @@ def run_proposal(
         selected_budget.reserve()
         b_gen = budget.snapshot().used
         b_mut = mutation_budget.snapshot().used if mutation_budget is not None else 0
-        generation = generator.generate(current_request)
+        generation = selected_generator.generate(current_request)
         if generation.program is None:
             evaluation = EvaluationResult(
                 ProposalStatus.INVALID,
@@ -86,6 +96,7 @@ def run_proposal(
                 attempt_number,
                 generation,
                 evaluation,
+                mechanism_candidates,
             )
         )
         if evaluation.status != ProposalStatus.INVALID:

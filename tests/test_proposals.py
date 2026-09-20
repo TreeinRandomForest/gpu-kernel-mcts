@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from kernel_mcts.baselines import independent_best_of_n
-from kernel_mcts.budget import GenerationBudget
+from kernel_mcts.budget import GenerationBudget, MutationBudget
 from kernel_mcts.domain import (
     EvaluationResult,
     InvalidReason,
@@ -11,7 +11,12 @@ from kernel_mcts.domain import (
     Strategy,
     WorkloadContract,
 )
-from kernel_mcts.generation import GenerationRequest, GenerationResult
+from kernel_mcts.generation import (
+    GenerationRequest,
+    GenerationResult,
+    MutationFirstGenerator,
+    ProposalBudgetKind,
+)
 from kernel_mcts.proposals import run_proposal
 
 
@@ -123,6 +128,105 @@ def test_infrastructure_retry_does_not_generate_again() -> None:
     assert len(generator.requests) == 1
     assert evaluator.calls == 2
     assert budget.snapshot().used == 1
+
+
+def test_mutation_first_router_falls_back_when_mutation_is_unavailable() -> None:
+    class MutationGenerator:
+        def __init__(self):
+            self.issued = False
+
+        @staticmethod
+        def proposal_budget_kind(_request):
+            return ProposalBudgetKind.MUTATION
+
+        def can_generate(self, _request):
+            return not self.issued
+
+        def generate(self, _request):
+            self.issued = True
+            return GenerationResult(
+                "mutation:1", "mutated", KernelProgram("mutated"), "mutation"
+            )
+
+    class GenerationGenerator:
+        def generate(self, _request):
+            return GenerationResult(
+                "generation:1", "generated", KernelProgram("generated"), "generation"
+            )
+
+    class ValidEvaluator:
+        def evaluate(self, program, _workload):
+            return EvaluationResult(
+                ProposalStatus.VALID, program, program.source, 1.0
+            )
+
+    router = MutationFirstGenerator(MutationGenerator(), GenerationGenerator())
+    generation_budget = GenerationBudget(1)
+    mutation_budget = MutationBudget(2)
+
+    mutation = run_proposal(
+        generator=router,
+        evaluator=ValidEvaluator(),
+        budget=generation_budget,
+        mutation_budget=mutation_budget,
+        request=request(),
+        max_repairs=0,
+        max_infrastructure_retries=0,
+    )
+    generated = run_proposal(
+        generator=router,
+        evaluator=ValidEvaluator(),
+        budget=generation_budget,
+        mutation_budget=mutation_budget,
+        request=request(),
+        max_repairs=0,
+        max_infrastructure_retries=0,
+    )
+
+    assert mutation.attempts[0].budget_kind == ProposalBudgetKind.MUTATION
+    assert mutation.attempts[0].mechanism_candidates == (
+        ProposalBudgetKind.MUTATION,
+        ProposalBudgetKind.GENERATION,
+    )
+    assert generated.attempts[0].budget_kind == ProposalBudgetKind.GENERATION
+    assert generated.attempts[0].mechanism_candidates == (
+        ProposalBudgetKind.GENERATION,
+    )
+    assert mutation_budget.snapshot().used == 1
+    assert generation_budget.snapshot().used == 1
+
+
+def test_mutation_first_router_falls_back_when_mutation_budget_is_exhausted() -> None:
+    class AvailableMutation:
+        @staticmethod
+        def can_generate(_request):
+            return True
+
+        def generate(self, _request):
+            raise AssertionError("exhausted mutation mechanism must not run")
+
+    generation = RepairGenerator()
+    outcome = run_proposal(
+        generator=MutationFirstGenerator(AvailableMutation(), generation),
+        evaluator=RepairEvaluator(),
+        budget=GenerationBudget(1),
+        mutation_budget=MutationBudget(0),
+        request=GenerationRequest(
+            KernelProgram("root"),
+            STRATEGY,
+            WORKLOAD,
+            {},
+            None,
+            attempt=1,
+        ),
+        max_repairs=0,
+        max_infrastructure_retries=0,
+    )
+
+    assert outcome.attempts[0].budget_kind == ProposalBudgetKind.GENERATION
+    assert outcome.attempts[0].mechanism_candidates == (
+        ProposalBudgetKind.GENERATION,
+    )
 
 
 def test_baseline_uses_same_repair_accounting() -> None:
