@@ -40,6 +40,15 @@ def test_cli_accepts_artifact_diagnostic_mode() -> None:
     assert arguments.mode == "diagnostic"
 
 
+def test_cli_accepts_backend_profile_mode_and_metric_set() -> None:
+    arguments = build_parser().parse_args(
+        ["--mode", "backend-profile", "--profile-set", "diagnostic_v2"]
+    )
+
+    assert arguments.mode == "backend-profile"
+    assert arguments.profile_set == "diagnostic_v2"
+
+
 def test_backend_manifest_adds_cute_libraries_and_driver() -> None:
     manifest = EnvironmentManifest(
         worker_id="worker",

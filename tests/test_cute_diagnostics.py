@@ -6,8 +6,11 @@ from kernel_mcts.cute_diagnostics import (
     ArtifactChange,
     artifact_changes,
     describe_kernel_callable,
+    describe_mlir,
+    describe_runtime_artifacts,
     discover_cache_roots,
     select_fingerprint_candidate,
+    select_runtime_fingerprint,
     snapshot_files,
 )
 
@@ -68,3 +71,31 @@ def test_describes_callable_without_serializing_tensor_contents() -> None:
     assert result["selected_attributes"]["kernel_name"] == "gemm_kernel"
     assert result["benchmark_keyword_names"] == ["kernel_arguments"]
     assert len(result["argument_types"]) == 1
+
+
+def test_normalizes_mlir_identity_and_persists_text() -> None:
+    first = describe_mlir('module @object_at__ABC123 loc("/tmp/a/file.py") 0x1234')
+    second = describe_mlir('module @object_at__DEF456 loc("/tmp/b/file.py") 0x9999')
+
+    assert first["normalized_sha256"] == second["normalized_sha256"]
+    assert "<address>" in first["normalized_text"]
+    assert "<tmp-path>" in first["normalized_text"]
+
+
+def test_runtime_fingerprint_prefers_in_memory_cubin_then_mlir() -> None:
+    runtime = SimpleNamespace(cubin_image=b"compiled-cubin")
+    artifacts = describe_runtime_artifacts(runtime, "jit_module")
+    diagnostics = {
+        "runtime_artifacts": artifacts,
+        "mlir": {"normalized_sha256": "m" * 64, "normalized_bytes": 10},
+    }
+
+    selected = select_runtime_fingerprint(diagnostics)
+
+    assert selected["kind"] == "cubin"
+    assert selected["attribute"] == "jit_module.cubin_image"
+
+    fallback = select_runtime_fingerprint(
+        {"runtime_artifacts": [], "mlir": diagnostics["mlir"]}
+    )
+    assert fallback["kind"] == "normalized_mlir"

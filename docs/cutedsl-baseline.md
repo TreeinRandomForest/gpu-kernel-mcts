@@ -129,10 +129,10 @@ RepoDigest) through `KERNEL_MCTS_CONTAINER_DIGEST`. The Git commit and dirty-tre
 state are embedded by the documented build arguments. If these values are not
 provided, the manifest records them as unavailable rather than inventing provenance.
 
-The phase-2 artifact fingerprint covers the rendered source, canonical representation,
-pinned example hash, and launch configuration. It is explicitly identified as a
-template/source fingerprint rather than a cubin or SASS hash. Extracting a stable
-generated-binary fingerprint remains backend work before searchable CuTe MCTS.
+If runtime JIT diagnostics are unavailable, the backend fingerprint falls back to the
+rendered source, canonical representation, pinned example hash, and launch
+configuration. Phase 3 prefers an exposed cubin, fatbin, SASS, or PTX hash, followed
+by normalized MLIR, and combines that artifact identity with launch configuration.
 
 ## Phase-3 artifact diagnostic
 
@@ -152,9 +152,31 @@ sudo docker run --rm --gpus all \
 The diagnostic snapshots standard CUDA/CuTe cache locations and temporary roots
 before and after JIT, hashes created or modified files, ranks cubin/fatbin/SASS/PTX
 fingerprint candidates, records newly loaded CUDA-related host modules, and captures
-bounded metadata about the actual benchmark callable and workspace. It does not yet
-change the backend fingerprint or claim NCU support. Those choices must follow the
-observed H100 output rather than assumed CuTe internals.
+bounded metadata about the actual benchmark callable and workspace. The H100
+diagnostic found that the pinned runtime retains its JIT module in memory rather than
+materializing a new cache file. The production backend therefore records the exposed
+kernel names and normalized MLIR hash and text (text is omitted above a bounded size),
+and uses normalized MLIR as its current runtime fingerprint fallback.
+
+Validate the dedicated one-launch NCU path on H100 with:
+
+```bash
+sudo docker run --rm --gpus all \
+  --entrypoint python \
+  -v "$PWD/cutedsl-output:/output" \
+  docker.io/USER/gpu-kernel-mcts:REVISION \
+  -m kernel_mcts.cute_baseline_cli \
+  --mode backend-profile \
+  --profile-set lightweight_v1 \
+  --output /output/cutedsl-backend-profile.json
+```
+
+This mode first performs the ordinary unprofiled correctness and CUDA-event benchmark,
+then launches a separate subprocess under NCU. That subprocess skips correctness and
+timing and invokes the selected generated kernel exactly once. The resulting profile
+is cached by artifact and metric-set identity and does not change the benchmark or
+reward. The exact kernel-name filter still requires confirmation with this guarded
+H100 run.
 
 The original feasibility mode remains available for diagnosing adapter failures:
 

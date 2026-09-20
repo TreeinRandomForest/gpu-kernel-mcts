@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import subprocess
 
 from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD
 from kernel_mcts.cute_backend import CuteBackendConfig, CuTeDSLBackend
@@ -22,6 +23,15 @@ def _payload(median: float = 100.0):
         "benchmark": {"timings_us": timings, "median_us": median},
         "comparable_to_repository_baselines": True,
         "example_sha256": "example-hash",
+        "jit_diagnostics": {
+            "kernel_names": ["kernel_mcts_hopper_gemm"],
+            "runtime_artifacts": [],
+            "mlir": {
+                "normalized_sha256": "a" * 64,
+                "normalized_bytes": 100,
+                "normalized_text": "module @gemm {}\n",
+            },
+        },
     }
 
 
@@ -113,12 +123,12 @@ def test_backend_kernel_evaluator_returns_normal_cached_evaluation(tmp_path) -> 
     assert first.metadata["configuration_hash"] == REFERENCE_CUTE_GEMM.configuration_hash
     assert (
         first.metadata["artifact_fingerprint_kind"]
-        == "rendered_source_and_pinned_template"
+        == "normalized_mlir"
     )
     assert executions == [REFERENCE_CUTE_GEMM]
 
 
-def test_fingerprint_changes_with_launch_context(tmp_path) -> None:
+def test_effective_fingerprint_includes_launch_context(tmp_path) -> None:
     backend = CuTeDSLBackend(
         CuteBackendConfig(tmp_path), executor=lambda program: _payload(), telemetry=lambda: {}
     )
@@ -158,3 +168,57 @@ def test_correctness_failure_remains_distinct_from_jit_success(tmp_path) -> None
     assert result.compile_status == CompileStatus.SUCCESS
     assert result.correctness_status == CorrectnessStatus.FAIL
     assert result.invalid_reason.value == "CORRECTNESS_FAILURE"
+
+
+def test_fingerprint_prefers_normalized_mlir_and_records_compiler_ir(tmp_path) -> None:
+    backend = CuTeDSLBackend(
+        CuteBackendConfig(tmp_path), executor=lambda program: _payload(), telemetry=lambda: {}
+    )
+    compilation = backend.compile(
+        PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM),
+        BF16_GEMM_WORKLOAD,
+    )
+    assert compilation.artifact is not None
+
+    fingerprint = backend.binary_fingerprint(compilation.artifact, {})
+    metadata = backend.evaluation_metadata(compilation.artifact)
+
+    assert fingerprint != "a" * 64
+    assert len(fingerprint) == 64
+    assert metadata["artifact_fingerprint_kind"] == "normalized_mlir"
+    assert metadata["runtime_fingerprint"]["sha256"] == "a" * 64
+    assert metadata["compiler_ir"]["normalized_text"] == "module @gemm {}\n"
+
+
+def test_lightweight_profile_targets_reported_kernel_and_is_cached(tmp_path) -> None:
+    calls = []
+
+    def profile_runner(command, *, timeout, env):
+        calls.append(command)
+        from kernel_mcts.profiling import LIGHTWEIGHT_V1_METRICS
+
+        rows = ['"Metric Name","Metric Unit","Metric Value"']
+        rows.extend(f'"{name}","%","1.5"' for name in LIGHTWEIGHT_V1_METRICS)
+        return subprocess.CompletedProcess(command, 0, "\n".join(rows), "")
+
+    backend = CuTeDSLBackend(
+        CuteBackendConfig(tmp_path),
+        executor=lambda program: _payload(),
+        telemetry=lambda: {},
+        profile_runner=profile_runner,
+    )
+    compilation = backend.compile(
+        PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM),
+        BF16_GEMM_WORKLOAD,
+    )
+    assert compilation.artifact is not None
+
+    first = backend.lightweight_profile(compilation.artifact, BF16_GEMM_WORKLOAD)
+    second = backend.lightweight_profile(compilation.artifact, BF16_GEMM_WORKLOAD)
+
+    assert first is second
+    assert len(calls) == 1
+    command = calls[0]
+    assert command[command.index("--kernel-name") + 1] == "kernel_mcts_hopper_gemm"
+    assert command[command.index("--mode") + 1] == "profile"
+    assert first["target"]["kernel_name"] == "kernel_mcts_hopper_gemm"

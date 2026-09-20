@@ -6,6 +6,7 @@ import pytest
 
 from kernel_mcts.cute_baseline import (
     _collect_timing_samples,
+    _launch_once,
     _tensor_helpers,
     run_same_worker_comparison,
     run_hopper_bf16_feasibility,
@@ -159,6 +160,27 @@ def test_collects_individual_samples_after_one_warmup_sequence() -> None:
     assert samples == [250.0, 250.0, 250.0]
     assert synchronizations == [True]
     assert launches == ["workspace"] * 5
+
+
+def test_profile_launch_executes_exactly_once_without_timing() -> None:
+    launches = []
+    synchronizations = []
+    torch = SimpleNamespace(
+        cuda=SimpleNamespace(synchronize=lambda: synchronizations.append(True))
+    )
+
+    _launch_once(
+        lambda value: launches.append(value),
+        {
+            "workspace_generator": lambda: SimpleNamespace(
+                args=("workspace",), kwargs={}
+            )
+        },
+        torch,
+    )
+
+    assert launches == ["workspace"]
+    assert synchronizations == [True]
 
 
 def test_pinned_example_tensor_helpers_are_reached_through_cutlass_module() -> None:

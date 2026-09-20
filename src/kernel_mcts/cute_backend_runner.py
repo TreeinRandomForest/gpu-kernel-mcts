@@ -11,6 +11,7 @@ from .cute_program import CuteGemmProgram, validate_cute_gemm_program
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--representation-json", required=True)
+    parser.add_argument("--mode", choices=("evaluate", "profile"), default="evaluate")
     return parser
 
 
@@ -26,6 +27,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     result = run_hopper_bf16_comparable(
         schedule=program.schedule,
         raise_on_correctness_failure=False,
+        capture_jit_diagnostics=True,
+        profile_single_launch=arguments.mode == "profile",
     )
     print(json.dumps(result, sort_keys=True))
     return 0

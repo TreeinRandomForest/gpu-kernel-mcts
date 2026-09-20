@@ -45,11 +45,17 @@ def build_parser() -> argparse.ArgumentParser:
             "feasibility",
             "tune",
             "backend",
+            "backend-profile",
             "diagnostic",
         ),
         default="comparison",
     )
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--profile-set",
+        choices=("lightweight_v1", "diagnostic_v2"),
+        default="lightweight_v1",
+    )
     return parser
 
 
@@ -61,6 +67,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_tuning(arguments.example)
     elif arguments.mode == "backend":
         result = _run_backend_evaluation()
+    elif arguments.mode == "backend-profile":
+        result = _run_backend_evaluation(arguments.profile_set)
     elif arguments.mode == "diagnostic":
         result = _run_artifact_diagnostic(arguments.example)
     elif arguments.mode == "comparable":
@@ -140,7 +148,7 @@ def _run_tuning(example: Path):
     )
 
 
-def _run_backend_evaluation():
+def _run_backend_evaluation(profile_metric_set: str | None = None):
     import cutlass
     import torch
 
@@ -156,7 +164,11 @@ def _run_backend_evaluation():
     )
     program = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
     backend = CuTeDSLBackend(
-        CuteBackendConfig(artifact_root=Path("/tmp/kernel-mcts-cute-backend"))
+        CuteBackendConfig(
+            artifact_root=Path("/tmp/kernel-mcts-cute-backend"),
+            architecture=f"sm_{manifest.compute_capability.replace('.', '')}",
+            ncu_version=manifest.profiler_versions.get("ncu"),
+        )
     )
     root_compilation = backend.compile(program, BF16_GEMM_WORKLOAD)
     if not root_compilation.success or root_compilation.artifact is None:
@@ -191,7 +203,17 @@ def _run_backend_evaluation():
     )
     evaluation = evaluator.evaluate(program, BF16_GEMM_WORKLOAD)
     assert evaluation.compilation is not None
-    return _backend_evaluation_report(manifest, root_compilation, evaluation)
+    report = dict(_backend_evaluation_report(manifest, root_compilation, evaluation))
+    if profile_metric_set is not None:
+        report["profile"] = dict(
+            evaluator.lightweight_profile(
+                evaluation,
+                BF16_GEMM_WORKLOAD,
+                profile_metric_set,
+            )
+        )
+        report["profile_did_not_change_reward"] = evaluation.reward == 0.0
+    return report
 
 
 def _run_artifact_diagnostic(example: Path):

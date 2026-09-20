@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -141,7 +142,9 @@ def select_fingerprint_candidate(
     return {"kind": kind, **selected.as_dict()}
 
 
-def describe_kernel_callable(kernel_callable, keywords: Mapping[str, object]) -> dict[str, object]:
+def describe_kernel_callable(
+    kernel_callable, keywords: Mapping[str, object]
+) -> dict[str, object]:
     value: dict[str, object] = {
         "type_module": type(kernel_callable).__module__,
         "type_name": type(kernel_callable).__qualname__,
@@ -165,6 +168,20 @@ def describe_kernel_callable(kernel_callable, keywords: Mapping[str, object]) ->
             else:
                 selected[str(name)] = _bounded_repr(item)
         value["selected_attributes"] = selected
+        kernel_info = attributes.get("kernel_info")
+        if isinstance(kernel_info, Mapping):
+            value["kernel_names"] = [str(name) for name in kernel_info]
+        ir_module = attributes.get("ir_module")
+        if ir_module is not None:
+            value["mlir"] = describe_mlir(ir_module)
+        runtime_artifacts = []
+        for attribute_name in ("jit_module", "gpu_module", "module"):
+            runtime_object = attributes.get(attribute_name)
+            if runtime_object is not None:
+                runtime_artifacts.extend(
+                    describe_runtime_artifacts(runtime_object, attribute_name)
+                )
+        value["runtime_artifacts"] = runtime_artifacts
     workspace = keywords.get("kernel_arguments")
     if workspace is not None:
         value["workspace_type"] = (
@@ -179,6 +196,101 @@ def describe_kernel_callable(kernel_callable, keywords: Mapping[str, object]) ->
             for name, item in getattr(workspace, "kwargs", {}).items()
         }
     return value
+
+
+def describe_mlir(ir_module, *, maximum_text_bytes: int = 1_000_000) -> dict[str, object]:
+    raw = str(ir_module)
+    normalized = normalize_mlir(raw)
+    encoded = normalized.encode("utf-8")
+    return {
+        "raw_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+        "normalized_sha256": hashlib.sha256(encoded).hexdigest(),
+        "normalized_text": normalized if len(encoded) <= maximum_text_bytes else None,
+        "normalized_bytes": len(encoded),
+        "text_omitted": len(encoded) > maximum_text_bytes,
+    }
+
+
+def normalize_mlir(value: str) -> str:
+    normalized = re.sub(r"0x[0-9a-fA-F]+", "<address>", value)
+    normalized = re.sub(r"/tmp/[^\s\"']+", "<tmp-path>", normalized)
+    normalized = re.sub(
+        r"object_at_+(?:address_)?[0-9a-fA-F_]+",
+        "object_at_<identity>",
+        normalized,
+    )
+    return "\n".join(line.rstrip() for line in normalized.splitlines()).strip() + "\n"
+
+
+def describe_runtime_artifacts(
+    runtime_object, prefix: str, *, depth: int = 0, maximum_depth: int = 2
+) -> list[dict[str, object]]:
+    if depth > maximum_depth:
+        return []
+    attributes = getattr(runtime_object, "__dict__", None)
+    if not isinstance(attributes, Mapping):
+        return []
+    artifacts: list[dict[str, object]] = []
+    for name, item in sorted(attributes.items(), key=lambda pair: str(pair[0])):
+        path = f"{prefix}.{name}"
+        folded = str(name).casefold()
+        kind = _runtime_artifact_kind(folded, item)
+        if kind is not None:
+            encoded = (
+                bytes(item)
+                if isinstance(item, (bytes, bytearray, memoryview))
+                else str(item).encode("utf-8")
+            )
+            artifacts.append(
+                {
+                    "attribute": path,
+                    "kind": kind,
+                    "size": len(encoded),
+                    "sha256": hashlib.sha256(encoded).hexdigest(),
+                }
+            )
+            continue
+        if depth < maximum_depth and any(
+            token in folded for token in ("module", "binary", "image", "code", "asm")
+        ):
+            artifacts.extend(
+                describe_runtime_artifacts(
+                    item, path, depth=depth + 1, maximum_depth=maximum_depth
+                )
+            )
+    return artifacts
+
+
+def select_runtime_fingerprint(
+    diagnostics: Mapping[str, object],
+) -> Mapping[str, object] | None:
+    priorities = {"cubin": 0, "fatbin": 1, "sass": 2, "ptx": 3}
+    candidates = diagnostics.get("runtime_artifacts", ())
+    if isinstance(candidates, Sequence) and not isinstance(candidates, (str, bytes)):
+        usable = [
+            item
+            for item in candidates
+            if isinstance(item, Mapping) and item.get("kind") in priorities
+        ]
+        if usable:
+            return dict(
+                min(
+                    usable,
+                    key=lambda item: (
+                        priorities[str(item["kind"])],
+                        str(item.get("attribute", "")),
+                    ),
+                )
+            )
+    mlir = diagnostics.get("mlir")
+    if isinstance(mlir, Mapping) and mlir.get("normalized_sha256"):
+        return {
+            "kind": "normalized_mlir",
+            "sha256": mlir["normalized_sha256"],
+            "size": mlir.get("normalized_bytes"),
+            "attribute": "ir_module",
+        }
+    return None
 
 
 def loaded_module_paths() -> tuple[str, ...]:
@@ -209,3 +321,16 @@ def _sha256_file(path: Path) -> str:
 def _bounded_repr(value: object, limit: int = 500) -> str:
     rendered = repr(value)
     return rendered if len(rendered) <= limit else rendered[:limit] + "..."
+
+
+def _runtime_artifact_kind(name: str, value: object) -> str | None:
+    if not isinstance(value, (str, bytes, bytearray, memoryview)):
+        return None
+    for kind in ("cubin", "fatbin", "sass", "ptx"):
+        if kind in name:
+            return kind
+    if isinstance(value, str):
+        stripped = value.lstrip()
+        if stripped.startswith(".version") and ".target" in value:
+            return "ptx"
+    return None

@@ -177,9 +177,17 @@ the resulting artifact caches all evidence so the evaluator's correctness and be
 stages, repeated evaluations, and ordinary visits do not repeat GPU work. Valid results
 flow through `BackendKernelEvaluator` and therefore receive the standard reward,
 state-key, compilation/correctness evidence, telemetry, worker/environment identity,
-and trace serialization. The current fingerprint is provenance over rendered source,
-typed configuration, pinned template, and launch context—not yet a cubin/SASS hash.
-Profiling and remote-worker backend selection remain subsequent phases.
+and trace serialization.
+
+Milestone B phase 3 inspects the CuTe JIT callable rather than assuming a filesystem
+artifact. It records generated kernel names, bounded normalized MLIR and its hash, and
+any exposed in-memory cubin, fatbin, SASS, or PTX payload hashes. Effective identity
+prefers those binary forms, then normalized MLIR, then the phase-2 source/template
+fallback; every choice is still combined with launch configuration. The compiler IR
+is retained in evaluation metadata for auditability and later structured-analysis
+experiments. A separate cached NCU subprocess skips correctness and benchmark timing,
+filters the generated kernel, and performs one launch, so profiling cannot change the
+CUDA-event reward. Exact kernel filtering remains pending H100 validation.
 
 The guarded smoke-search CLI adds one remote iteration using a packaged direct BF16
 GEMM candidate. It is intentionally a wiring test rather than an optimization claim:

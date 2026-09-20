@@ -19,8 +19,21 @@ from .cute_program import (
     PinnedCuteGemmRenderer,
     validate_cute_gemm_program,
 )
+from .cute_diagnostics import select_runtime_fingerprint
+from .cuda_backend import (
+    _ncu_csv_output,
+    _ncu_diagnostic,
+    _parse_ncu_csv,
+    _resolve_tool,
+)
 from .domain import BenchmarkResult, KernelProgram, WorkloadContract
 from .evaluation import EvaluationInfrastructureError
+from .profiling import (
+    NCU_QUERY_VALIDATION_EXEMPT_METRICS,
+    ProfileMetricSet,
+    normalize_ncu_version,
+    resolve_profile_metric_set,
+)
 
 
 class CuteExecutor(Protocol):
@@ -31,17 +44,46 @@ class TelemetryReader(Protocol):
     def __call__(self) -> Mapping[str, object]: ...
 
 
+class ProfileRunner(Protocol):
+    def __call__(
+        self,
+        command: Sequence[str],
+        *,
+        timeout: float,
+        env: Mapping[str, str],
+    ) -> subprocess.CompletedProcess[str]: ...
+
+
 @dataclass(frozen=True, slots=True)
 class CuteBackendConfig:
     artifact_root: Path
     python_executable: str = sys.executable
+    ncu: str = "ncu"
+    architecture: str = "sm_90"
+    ncu_version: str | None = None
     compile_timeout_seconds: float = 600.0
+    profile_timeout_seconds: float = 600.0
     warmup_count: int = 10
     measurement_count: int = 30
+    subprocess_environment: Mapping[str, str] = field(
+        default_factory=lambda: {
+            key: os.environ[key]
+            for key in (
+                "PATH",
+                "LANG",
+                "LC_ALL",
+                "HOME",
+                "LD_LIBRARY_PATH",
+                "CUDA_VISIBLE_DEVICES",
+                "PYTHONPATH",
+            )
+            if key in os.environ
+        }
+    )
 
     def __post_init__(self) -> None:
-        if self.compile_timeout_seconds <= 0:
-            raise ValueError("CuTe compile timeout must be positive")
+        if self.compile_timeout_seconds <= 0 or self.profile_timeout_seconds <= 0:
+            raise ValueError("CuTe timeouts must be positive")
         if self.warmup_count < 0 or self.measurement_count < 1:
             raise ValueError("CuTe benchmark counts are invalid")
 
@@ -90,12 +132,16 @@ class CuTeDSLBackend:
         executor: CuteExecutor | None = None,
         telemetry: TelemetryReader | None = None,
         renderer: PinnedCuteGemmRenderer | None = None,
+        profile_runner: ProfileRunner | None = None,
     ) -> None:
         self.config = config
         self._executor = executor or self._execute_pinned_program
         self._telemetry = telemetry or _gpu_operating_state
         self._renderer = renderer or PinnedCuteGemmRenderer()
+        self._profile_runner = profile_runner or _run_command
         self._artifacts: dict[str, CuteArtifact] = {}
+        self._profiles: dict[tuple[str, str], Mapping[str, object]] = {}
+        self._validated_profile_metric_sets: set[str] = set()
 
     def normalize_program(self, program: KernelProgram) -> str:
         self._require_backend(program)
@@ -231,24 +277,60 @@ class CuTeDSLBackend:
         artifact: CuteArtifact,
         launch_config: Mapping[str, object],
     ) -> str:
-        identity = {
-            "rendered_source_sha256": artifact.artifact_id,
-            "representation_hash": artifact.representation.configuration_hash,
-            "pinned_example_sha256": artifact.result.get("example_sha256"),
-            "launch_config": launch_config,
-        }
+        diagnostics = artifact.result.get("jit_diagnostics")
+        selected = (
+            select_runtime_fingerprint(diagnostics)
+            if isinstance(diagnostics, Mapping)
+            else None
+        )
+        identity = (
+            {
+                "runtime_artifact_kind": selected.get("kind"),
+                "runtime_artifact_sha256": selected.get("sha256"),
+                "launch_config": launch_config,
+            }
+            if selected is not None and selected.get("sha256")
+            else {
+                "rendered_source_sha256": artifact.artifact_id,
+                "representation_hash": artifact.representation.configuration_hash,
+                "pinned_example_sha256": artifact.result.get("example_sha256"),
+                "launch_config": launch_config,
+            }
+        )
         encoded = json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(encoded).hexdigest()
 
     @staticmethod
     def evaluation_metadata(artifact: CuteArtifact) -> Mapping[str, object]:
-        return {
+        diagnostics = artifact.result.get("jit_diagnostics")
+        selected = (
+            select_runtime_fingerprint(diagnostics)
+            if isinstance(diagnostics, Mapping)
+            else None
+        )
+        value = {
             "representation": artifact.representation.as_dict(),
             "representation_schema_version": artifact.representation.schema_version,
             "configuration_hash": artifact.representation.configuration_hash,
-            "artifact_fingerprint_kind": "rendered_source_and_pinned_template",
+            "artifact_fingerprint_kind": (
+                selected.get("kind")
+                if selected is not None
+                else "rendered_source_and_pinned_template"
+            ),
             "pinned_example_sha256": artifact.result.get("example_sha256"),
         }
+        if selected is not None:
+            value["runtime_fingerprint"] = dict(selected)
+        if isinstance(diagnostics, Mapping):
+            mlir = diagnostics.get("mlir")
+            if isinstance(mlir, Mapping):
+                value["compiler_ir"] = dict(mlir)
+            kernel_names = diagnostics.get("kernel_names")
+            if isinstance(kernel_names, Sequence) and not isinstance(
+                kernel_names, (str, bytes)
+            ):
+                value["kernel_names"] = [str(name) for name in kernel_names]
+        return value
 
     def lightweight_profile(
         self,
@@ -256,9 +338,91 @@ class CuTeDSLBackend:
         workload: WorkloadContract,
         metric_set: str = "lightweight_v1",
     ) -> Mapping[str, object]:
-        raise EvaluationInfrastructureError(
-            "CuTe DSL profiling is not implemented in the phase-2 backend"
+        cache_key = (artifact.artifact_id, metric_set)
+        cached = self._profiles.get(cache_key)
+        if cached is not None:
+            return cached
+        try:
+            definition = resolve_profile_metric_set(
+                metric_set,
+                self.config.architecture,
+                self.config.ncu_version,
+            )
+        except ValueError as error:
+            raise EvaluationInfrastructureError(str(error)) from error
+        self._validate_profile_metric_set(definition)
+        diagnostics = artifact.result.get("jit_diagnostics")
+        kernel_names = (
+            diagnostics.get("kernel_names", ())
+            if isinstance(diagnostics, Mapping)
+            else ()
         )
+        selected_kernel = _select_profile_kernel_name(kernel_names)
+        command = [
+            _resolve_tool(self.config.ncu),
+            "--csv",
+            "--page",
+            "raw",
+            "--log-file",
+            "stdout",
+            "--target-processes",
+            "all",
+            "--kernel-name-base",
+            "function",
+            "--kernel-name",
+            selected_kernel,
+            "--launch-count",
+            "1",
+            "--metrics",
+            ",".join(definition.metrics),
+            self.config.python_executable,
+            "-m",
+            "kernel_mcts.cute_backend_runner",
+            "--mode",
+            "profile",
+            "--representation-json",
+            artifact.representation.canonical_json(),
+        ]
+        try:
+            result = self._profile_runner(
+                command,
+                timeout=self.config.profile_timeout_seconds,
+                env=self.config.subprocess_environment,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise EvaluationInfrastructureError(
+                "Nsight Compute profiling could not be completed"
+            ) from error
+        if result.returncode != 0:
+            diagnostic = _ncu_diagnostic(result.stdout, result.stderr)
+            suffix = f": {diagnostic}" if diagnostic else ""
+            raise EvaluationInfrastructureError(
+                f"Nsight Compute profiling failed{suffix}"
+            )
+        metrics = _parse_ncu_csv(
+            _ncu_csv_output(result.stdout, result.stderr, definition.metrics),
+            definition.metrics,
+        )
+        profile = {
+            "schema_version": definition.schema_version,
+            "profiler": "ncu",
+            "metric_set": definition.id,
+            "target": {
+                "architecture": self.config.architecture,
+                "ncu_version": normalize_ncu_version(self.config.ncu_version),
+                "kernel_name": selected_kernel,
+                "available_kernel_names": [str(name) for name in kernel_names],
+            },
+            "resolved_metrics": list(definition.metrics),
+            "artifact_id": artifact.artifact_id,
+            "summary": {
+                alias: metrics[name]["value"]
+                for name, alias in definition.aliases.items()
+            },
+            "metrics": metrics,
+        }
+        self._profiles[cache_key] = profile
+        return profile
 
     def full_profile(
         self,
@@ -266,8 +430,52 @@ class CuTeDSLBackend:
         workload: WorkloadContract,
     ) -> Mapping[str, object]:
         raise EvaluationInfrastructureError(
-            "CuTe DSL profiling is not implemented in the phase-2 backend"
+            "CuTe DSL full profiling is not implemented"
         )
+
+    def _validate_profile_metric_set(self, definition: ProfileMetricSet) -> None:
+        if (
+            definition.id == "lightweight_v1"
+            or definition.id in self._validated_profile_metric_sets
+        ):
+            return
+        try:
+            result = self._profile_runner(
+                [
+                    _resolve_tool(self.config.ncu),
+                    "--query-metrics-mode",
+                    "all",
+                    "--devices",
+                    "0",
+                ],
+                timeout=self.config.profile_timeout_seconds,
+                env=self.config.subprocess_environment,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise EvaluationInfrastructureError(
+                "Nsight Compute metric validation could not be completed"
+            ) from error
+        if result.returncode != 0:
+            raise EvaluationInfrastructureError(
+                "Nsight Compute metric validation failed"
+            )
+        available = {
+            token.strip(" ,:\"'")
+            for token in f"{result.stdout}\n{result.stderr}".split()
+            if "__" in token
+        }
+        missing = [
+            metric
+            for metric in definition.metrics
+            if metric not in available
+            and metric not in NCU_QUERY_VALIDATION_EXEMPT_METRICS
+        ]
+        if missing:
+            raise EvaluationInfrastructureError(
+                f"Nsight Compute metric set {definition.id!r} is unavailable; "
+                f"missing: {', '.join(missing[:8])}"
+            )
+        self._validated_profile_metric_sets.add(definition.id)
 
     def _execute_pinned_program(self, program: CuteGemmProgram) -> Mapping[str, Any]:
         command = [
@@ -406,3 +614,31 @@ def _gpu_operating_state() -> Mapping[str, object]:
     if len(values) != len(fields):
         return {"status": "unavailable"}
     return {"status": "observed", **dict(zip(fields, values))}
+
+
+def _select_profile_kernel_name(value: object) -> str:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise EvaluationInfrastructureError("CuTe JIT did not report kernel names")
+    names = [str(name) for name in value if str(name)]
+    if not names:
+        raise EvaluationInfrastructureError("CuTe JIT did not report kernel names")
+    return min(
+        names,
+        key=lambda name: (
+            "gemm" not in name.casefold(),
+            "copy" in name.casefold(),
+            len(name),
+            name,
+        ),
+    )
+
+
+def _run_command(command, *, timeout, env):
+    return subprocess.run(
+        command,
+        timeout=timeout,
+        env=dict(env),
+        text=True,
+        capture_output=True,
+        check=False,
+    )

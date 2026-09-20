@@ -168,6 +168,7 @@ def run_hopper_bf16_comparable(
     schedule: CuteSchedule = DEFAULT_CUTE_SCHEDULE,
     raise_on_correctness_failure: bool = True,
     capture_jit_diagnostics: bool = False,
+    profile_single_launch: bool = False,
 ) -> Mapping[str, Any]:
     """Evaluate the pinned Hopper kernel under the repository benchmark contract."""
     import cutlass
@@ -212,6 +213,7 @@ def run_hopper_bf16_comparable(
             schedule,
             raise_on_correctness_failure,
             capture_jit_diagnostics=capture_jit_diagnostics,
+            profile_single_launch=profile_single_launch,
         )
 
     result["example_sha256"] = _sha256(example_path)
@@ -227,6 +229,7 @@ def _run_with_repository_hooks(
     schedule: CuteSchedule,
     raise_on_correctness_failure: bool = True,
     capture_jit_diagnostics: bool = False,
+    profile_single_launch: bool = False,
 ) -> dict[str, Any]:
     kernel_type = example.HopperWgmmaGemmKernel
     tensor_helpers = _tensor_helpers()
@@ -294,6 +297,9 @@ def _run_with_repository_hooks(
     def sample_benchmark(callable, **keywords):
         if capture_jit_diagnostics and not jit_diagnostics:
             jit_diagnostics.update(describe_kernel_callable(callable, keywords))
+        if profile_single_launch:
+            _launch_once(callable, keywords, torch)
+            return 0.0
         timings.extend(_collect_timing_samples(callable, keywords, torch))
         return statistics.fmean(timings)
 
@@ -315,9 +321,9 @@ def _run_with_repository_hooks(
             tile_shape_mn=(schedule.tile_m, schedule.tile_n),
             cluster_shape_mn=(schedule.cluster_m, schedule.cluster_n),
             tolerance=2.0e-2,
-            warmup_iterations=10,
-            iterations=30,
-            skip_ref_check=False,
+            warmup_iterations=0 if profile_single_launch else 10,
+            iterations=1 if profile_single_launch else 30,
+            skip_ref_check=profile_single_launch,
             use_cold_l2=False,
         )
     finally:
@@ -327,6 +333,12 @@ def _run_with_repository_hooks(
         torch.testing.assert_close = original_assert_close
         example.testing.benchmark = original_benchmark
 
+    if profile_single_launch:
+        return {
+            "status": "ok",
+            "profile_launch": True,
+            "jit_diagnostics": jit_diagnostics,
+        }
     if not correctness or len(timings) != 30:
         raise RuntimeError("CuTe DSL adapter did not complete the evaluation contract")
     result = {
@@ -398,6 +410,19 @@ def _collect_timing_samples(
         stop.synchronize()
         timings.append(float(start.elapsed_time(stop)) * 1_000.0)
     return timings
+
+
+def _launch_once(
+    kernel_callable: Callable[..., Any], keywords: Mapping[str, Any], torch
+) -> None:
+    workspace = keywords.get("kernel_arguments")
+    if workspace is None:
+        generator = keywords.get("workspace_generator")
+        if not callable(generator):
+            raise ValueError("CuTe profile launch requires kernel arguments")
+        workspace = generator()
+    kernel_callable(*workspace.args, **workspace.kwargs)
+    torch.cuda.synchronize()
 
 
 def _require_legal_schedule(schedule: CuteSchedule) -> None:
