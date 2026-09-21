@@ -266,6 +266,26 @@ selected within that search budget. Cluster `(2,1)` remained best at `185.344 us
 (`1.0357x` root speedup). See
 [CuTe pipeline mutation validation](experiments/cutedsl-pipeline-bmut6-v7.md).
 
+Run the bounded cluster-by-pipeline interaction sweep outside MCTS with:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode pipeline-tune \
+  --output /output/cutedsl-pipeline-interactions.json
+```
+
+This holds the CTA tile at `(128,256)` and evaluates clusters `(1,1)`, `(1,2)`, and
+`(2,1)` crossed with the pinned heuristic and explicit mainloop stages 2 and 3. All
+nine legal trials consume one `B_tune` each, including failed JIT, launch, correctness,
+or benchmark attempts. The experiment does not alter MCTS state or re-root search.
+
+The guarded v8 sweep completed all nine valid trials. The heuristic pipeline with
+cluster `(2,1)` won at `184.896 us`, reproducing the earlier independent `184.880 us`
+measurement. It was `1.0297x` faster than the default and 4.88% slower than same-run
+cuBLAS (`176.288 us`). Explicit stage 2 was consistently much slower (`297–308 us`),
+while stage 3 was closest with cluster `(2,1)` at `187.040 us` but did not beat the
+heuristic. See [CuTe pipeline interaction sweep](experiments/cutedsl-pipeline-interactions-v8.md).
+
 ## Guarded remote mutation search
 
 The CuTe image now dispatches to the authenticated worker service when a provider

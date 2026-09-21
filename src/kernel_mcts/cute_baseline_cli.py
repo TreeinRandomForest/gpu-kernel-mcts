@@ -16,7 +16,10 @@ from .cute_baseline import (
     run_hopper_bf16_feasibility,
 )
 from .benchmarks import BF16_GEMM_WORKLOAD
-from .cute_tuning import run_cute_schedule_tuning
+from .cute_tuning import (
+    run_cute_pipeline_interaction_tuning,
+    run_cute_schedule_tuning,
+)
 from .cute_backend import CuteBackendConfig, CuTeDSLBackend
 from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
 from .cute_mutations import enumerate_cute_mutations
@@ -46,6 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
             "comparable",
             "feasibility",
             "tune",
+            "pipeline-tune",
             "backend",
             "backend-profile",
             "design-space",
@@ -70,6 +74,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_comparison(arguments.example)
     elif arguments.mode == "tune":
         result = _run_tuning(arguments.example)
+    elif arguments.mode == "pipeline-tune":
+        result = _run_pipeline_tuning(arguments.example)
     elif arguments.mode == "backend":
         result = _run_backend_evaluation(
             pipeline_stages=arguments.pipeline_stages
@@ -171,6 +177,41 @@ def _run_tuning(example: Path):
     vendor = suite.run(BF16_GEMM_WORKLOAD)
     return run_cute_schedule_tuning(
         lambda schedule: run_hopper_bf16_comparable(example, schedule=schedule),
+        vendor["cublas"],
+        serialize_environment_manifest(manifest),
+    )
+
+
+def _run_pipeline_tuning(example: Path):
+    import cutlass
+    import torch
+
+    environment = dict(os.environ)
+    environment.setdefault("KERNEL_MCTS_WORKER_ID", socket.gethostname())
+    environment.setdefault("KERNEL_MCTS_PROVIDER", "standalone")
+    manifest = capture_environment_manifest(environment)
+    manifest = replace(
+        manifest,
+        toolchain_versions={**manifest.toolchain_versions, **_driver_version()},
+        library_versions={
+            **manifest.library_versions,
+            "cutlass_dsl": str(cutlass.__version__),
+            "pytorch": str(torch.__version__),
+        },
+    )
+    suite = VendorBaselineSuite(
+        VendorBaselineConfig(
+            artifact_root=Path("/tmp/kernel-mcts-cute-pipeline-tuning"),
+            cutlass_path=Path(environment.get("CUTLASS_PATH", "/opt/cutlass")),
+        )
+    )
+    vendor = suite.run(BF16_GEMM_WORKLOAD)
+    return run_cute_pipeline_interaction_tuning(
+        lambda program: run_hopper_bf16_comparable(
+            example,
+            schedule=program.schedule,
+            pipeline_stages=program.pipeline_stages,
+        ),
         vendor["cublas"],
         serialize_environment_manifest(manifest),
     )

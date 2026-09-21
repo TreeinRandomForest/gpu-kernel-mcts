@@ -29,6 +29,12 @@ def test_cli_accepts_standalone_tuning_mode(tmp_path) -> None:
     assert arguments.output == output
 
 
+def test_cli_accepts_pipeline_interaction_tuning_mode() -> None:
+    arguments = build_parser().parse_args(["--mode", "pipeline-tune"])
+
+    assert arguments.mode == "pipeline-tune"
+
+
 def test_cli_accepts_backend_evaluation_mode() -> None:
     arguments = build_parser().parse_args(["--mode", "backend"])
 

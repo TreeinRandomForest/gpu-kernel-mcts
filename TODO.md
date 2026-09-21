@@ -92,6 +92,12 @@ completed hardware validation is identified explicitly.
   created a distinct stage-2 node; stage 3 was not selected within six attempts.
   `None` preserves the heuristic, explicit stage 4 remains omitted from the reference
   mutation neighborhood, and epilogue staging remains pinned at 4.
+- [x] Run the nine-point standalone `B_tune` interaction grid for the `(128,256)`
+  tile across three validated cluster shapes and mainloop stages `{heuristic,2,3}`.
+  Cluster `(2,1)` with heuristic staging won at `184.896 us`, independently
+  reproducing the earlier `184.880 us` result; it was 4.88% slower than same-run
+  cuBLAS. Stage 2 was consistently under-pipelined, and stage 3 did not beat the
+  heuristic for any cluster.
 - [x] Add core mixed-mechanism proposal routing beneath each semantic strategy using
   the specified mutation-first policy, falling back to LLM generation only when the
   typed neighborhood is unavailable or `B_mut` is exhausted. The router preserves
