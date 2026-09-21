@@ -166,6 +166,7 @@ def run_hopper_bf16_comparable(
     reference_library: Path = DEFAULT_REFERENCE_LIBRARY,
     *,
     schedule: CuteSchedule = DEFAULT_CUTE_SCHEDULE,
+    pipeline_stages: int | None = None,
     raise_on_correctness_failure: bool = True,
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
@@ -212,6 +213,7 @@ def run_hopper_bf16_comparable(
             reference,
             schedule,
             raise_on_correctness_failure,
+            pipeline_stages=pipeline_stages,
             capture_jit_diagnostics=capture_jit_diagnostics,
             profile_single_launch=profile_single_launch,
         )
@@ -228,6 +230,7 @@ def _run_with_repository_hooks(
     reference,
     schedule: CuteSchedule,
     raise_on_correctness_failure: bool = True,
+    pipeline_stages: int | None = None,
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
 ) -> dict[str, Any]:
@@ -238,6 +241,9 @@ def _run_with_repository_hooks(
     original_einsum = torch.einsum
     original_assert_close = torch.testing.assert_close
     original_benchmark = example.testing.benchmark
+    original_compute_stages = _install_mainloop_pipeline_override(
+        kernel_type, pipeline_stages
+    )
     tensor_index = 0
     timings: list[float] = []
     correctness: dict[str, Any] = {}
@@ -332,6 +338,7 @@ def _run_with_repository_hooks(
         torch.einsum = original_einsum
         torch.testing.assert_close = original_assert_close
         example.testing.benchmark = original_benchmark
+        kernel_type._compute_stages = original_compute_stages
 
     if profile_single_launch:
         return {
@@ -355,6 +362,7 @@ def _run_with_repository_hooks(
             "tile_shape_mn": [schedule.tile_m, schedule.tile_n],
             "cluster_shape_mn": [schedule.cluster_m, schedule.cluster_n],
             "schedule_id": schedule.configuration_id,
+            "pipeline_stages": pipeline_stages,
             "rtol": 2.0e-2,
             "atol": 2.0e-2,
             "seed": 0,
@@ -376,6 +384,24 @@ def _run_with_repository_hooks(
     if capture_jit_diagnostics:
         result["jit_diagnostics"] = jit_diagnostics
     return result
+
+
+def _install_mainloop_pipeline_override(kernel_type, pipeline_stages: int | None):
+    original_descriptor = vars(kernel_type)["_compute_stages"]
+    if pipeline_stages is None:
+        return original_descriptor
+    pinned_compute_stages = kernel_type._compute_stages
+
+    def compute_stages_with_mainloop_override(
+        tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
+    ):
+        _, epi_stage = pinned_compute_stages(
+            tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
+        )
+        return pipeline_stages, epi_stage
+
+    kernel_type._compute_stages = staticmethod(compute_stages_with_mainloop_override)
+    return original_descriptor
 
 
 def _collect_timing_samples(

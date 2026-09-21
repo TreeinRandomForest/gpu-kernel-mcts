@@ -6,6 +6,7 @@ import pytest
 
 from kernel_mcts.cute_baseline import (
     _collect_timing_samples,
+    _install_mainloop_pipeline_override,
     _launch_once,
     _tensor_helpers,
     run_same_worker_comparison,
@@ -19,6 +20,22 @@ class FakeKernel:
     @staticmethod
     def is_valid_dtypes(*_arguments):
         return False
+
+
+class FakePipelineKernel:
+    @staticmethod
+    def _compute_stages(*_arguments):
+        return 4, 4
+
+
+def test_mainloop_override_preserves_epilogue_and_restores_descriptor() -> None:
+    original = vars(FakePipelineKernel)["_compute_stages"]
+
+    saved = _install_mainloop_pipeline_override(FakePipelineKernel, 2)
+
+    assert FakePipelineKernel._compute_stages(None, None, None, 232448, 1) == (2, 4)
+    setattr(FakePipelineKernel, "_compute_stages", saved)
+    assert vars(FakePipelineKernel)["_compute_stages"] is original
 
 
 def test_feasibility_runner_uses_fixed_bf16_contract_and_marks_limitations(tmp_path) -> None:

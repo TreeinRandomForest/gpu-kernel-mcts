@@ -26,6 +26,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError("CuTe representation is not statically legal")
     result = run_hopper_bf16_comparable(
         schedule=program.schedule,
+        pipeline_stages=program.pipeline_stages,
         raise_on_correctness_failure=False,
         capture_jit_diagnostics=True,
         profile_single_launch=arguments.mode == "profile",

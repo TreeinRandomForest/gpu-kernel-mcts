@@ -243,13 +243,28 @@ python -m kernel_mcts.cute_baseline_cli \
   --output /output/cutedsl-pipeline-stage-2.json
 ```
 
-The guarded H100 feasibility sweep passed JIT and exact correctness for all three
-values. Median times were `190.384 us` (2), `189.936 us` (3), and `190.224 us` (4),
-with 30 samples each. These sub-percent differences should be treated as effectively
-tied without repeated-run uncertainty analysis. Stages 2 and 3 are exposed through
-the deterministic `change_pipeline_stages` mutation; stage 4 remains feasibility
-evidence but is omitted from the reference neighborhood to avoid duplicating the
-heuristic root's effective configuration.
+The initial H100 feasibility sweep appeared to pass JIT and exact correctness for all
+three values, reporting medians of `190.384 us` (2), `189.936 us` (3), and
+`190.224 us` (4). The later mutation trace proved that the backend subprocess had
+ignored the pipeline field, so these were repeated root measurements rather than
+pipeline results. They must not be used as pipeline-performance evidence. Stages 2
+and 3 remain in the deterministic mutation neighborhood for corrected validation;
+stage 4 is omitted to avoid duplicating the heuristic root's effective configuration.
+
+The first `B_mut=6` guarded search revealed that the backend subprocess initially
+forwarded only the tile/cluster schedule and ignored the typed pipeline field. The
+pipeline proposals therefore compiled the root binary and transposed to the root;
+their timing differences were measurement noise, not pipeline evidence. The adapter
+now forwards `pipeline_stages` and applies the bounded override inside the subprocess;
+the corrected results below supersede that first run.
+
+The corrected v7 feasibility sweep produced distinct runtime and normalized-IR
+hashes for every stage count and passed exact correctness. Median times were
+`299.136 us` (2), `191.792 us` (3), and `190.624 us` (4). The corrected
+`B_mut=6` search created a distinct stage-2 node at `297.392 us`; stage 3 was not
+selected within that search budget. Cluster `(2,1)` remained best at `185.344 us`
+(`1.0357x` root speedup). See
+[CuTe pipeline mutation validation](experiments/cutedsl-pipeline-bmut6-v7.md).
 
 ## Guarded remote mutation search
 
