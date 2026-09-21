@@ -16,6 +16,9 @@ class HopperWgmmaGemmKernel:
         self.pipeline_stages = pipeline_stages
         self.use_2cta_instrs = use_2cta_instrs
 
+    def _compute_stages(self, smem_capacity, occupancy) -> tuple[int, int]:
+        return self.pipeline_stages, occupancy
+
 def run(a, b, *, use_tma_store=True, epilogue_tile=(64, 64)) -> None:
     producer_warp = 0
     return tma_store(epilogue_tile, producer_warp)
@@ -60,11 +63,25 @@ def test_structural_capability_report_is_static_evidence(tmp_path) -> None:
     )
     controls = report["candidate_structural_controls"]
     assert "pipeline_stages" in controls["pipeline"]["identifiers"]
+    stage_definition = controls["pipeline"]["definitions"][0]
+    assert stage_definition["name"] == "_compute_stages"
+    assert [item["name"] for item in stage_definition["parameters"]] == [
+        "self",
+        "smem_capacity",
+        "occupancy",
+    ]
+    assert stage_definition["return_expressions"] == [
+        "(self.pipeline_stages, occupancy)"
+    ]
     assert "use_2cta_instrs" in controls["wgmma"]["identifiers"]
     assert "use_tma_store" in controls["tma"]["identifiers"]
     assert "epilogue_tile" in controls["epilogue"]["identifiers"]
     assert "producer_warp" in controls["warp_specialization"]["identifiers"]
     assert all(control["status"] == "evidence_only" for control in controls.values())
+    assert all(
+        not any("GPU device kernel" in identifier for identifier in control["identifiers"])
+        for control in controls.values()
+    )
     assert report["selection_decision"] == "not_made"
 
 

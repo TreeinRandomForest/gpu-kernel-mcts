@@ -196,8 +196,10 @@ python -m kernel_mcts.cute_baseline_cli \
 
 The report records the exact source hash, the `run()` and
 `HopperWgmmaGemmKernel.__init__()` signatures, exposed CLI options, validation
-assertions and exceptions, and bounded source evidence for pipeline, WGMMA, TMA,
-epilogue, warp-specialization, and scheduling controls. Discovery is deliberately
+assertions and exceptions, and bounded executable-source evidence for pipeline,
+WGMMA, TMA, epilogue, warp-specialization, and scheduling controls. Matching method
+definitions include their typed parameters and return expressions; docstrings are
+excluded from the identifier inventory. Discovery is deliberately
 reported as `evidence_only`: a name appearing in the pinned implementation does not
 yet establish that it is an independent, legal, or useful MCTS mutation. The report
 is the input to selecting and validating the next structural control.

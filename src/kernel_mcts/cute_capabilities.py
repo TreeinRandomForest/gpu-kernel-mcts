@@ -216,6 +216,7 @@ def _candidate_controls(tree: ast.AST, source: str) -> Mapping[str, object]:
     for category, terms in _CONTROL_TERMS.items():
         identifiers: set[str] = set()
         evidence: dict[tuple[int, str], Mapping[str, object]] = {}
+        definitions: list[Mapping[str, object]] = []
         for node in ast.walk(tree):
             names = _node_names(node)
             matches = {
@@ -230,9 +231,35 @@ def _candidate_controls(tree: ast.AST, source: str) -> Mapping[str, object]:
                     "line": node.lineno,
                     "source": snippet,
                 }
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and any(
+                term in node.name.casefold() for term in terms
+            ):
+                definitions.append(
+                    {
+                        "kind": "function",
+                        "name": node.name,
+                        "line": node.lineno,
+                        "parameters": _parameters(node.args),
+                        "returns": (
+                            _unparse(node.returns)
+                            if node.returns is not None
+                            else None
+                        ),
+                        "return_expressions": [
+                            _unparse(item.value)
+                            for item in ast.walk(node)
+                            if isinstance(item, ast.Return)
+                            and item.value is not None
+                        ],
+                    }
+                )
         controls[category] = {
             "status": "evidence_only",
             "identifiers": sorted(identifiers),
+            "definitions": sorted(
+                definitions,
+                key=lambda item: (int(item["line"]), str(item["name"])),
+            ),
             "source_evidence": [
                 evidence[key] for key in sorted(evidence)[:24]
             ],
@@ -247,11 +274,6 @@ def _node_names(node: ast.AST) -> set[str]:
     names.update(item.arg for item in ast.walk(node) if isinstance(item, ast.arg))
     names.update(
         item.attr for item in ast.walk(node) if isinstance(item, ast.Attribute)
-    )
-    names.update(
-        item.value
-        for item in ast.walk(node)
-        if isinstance(item, ast.Constant) and isinstance(item.value, str)
     )
     return names
 
