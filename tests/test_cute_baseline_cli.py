@@ -41,6 +41,12 @@ def test_cli_accepts_artifact_diagnostic_mode() -> None:
     assert arguments.mode == "diagnostic"
 
 
+def test_cli_accepts_structural_capabilities_mode() -> None:
+    arguments = build_parser().parse_args(["--mode", "structural-capabilities"])
+
+    assert arguments.mode == "structural-capabilities"
+
+
 def test_cli_accepts_backend_profile_mode_and_metric_set() -> None:
     arguments = build_parser().parse_args(
         ["--mode", "backend-profile", "--profile-set", "diagnostic_v2"]

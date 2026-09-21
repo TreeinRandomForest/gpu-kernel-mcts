@@ -81,6 +81,10 @@ completed hardware validation is identified explicitly.
   `B_gen=0`, `B_mut=1`. A subsequent `B_mut=4` run exercised both strategies and a
   cached-root transposition and recovered the standalone tuner's best `(128, 256)`,
   `(2, 1)` schedule.
+- [x] GPU-free pinned-source structural-capability diagnostic that records the exact
+  CUTLASS example hash, callable signatures, CLI controls, validation evidence, and
+  bounded pipeline/WGMMA/TMA/epilogue/warp/scheduler source evidence. Discovered
+  controls remain `evidence_only` until legality and H100 behavior are validated.
 - [x] Add core mixed-mechanism proposal routing beneath each semantic strategy using
   the specified mutation-first policy, falling back to LLM generation only when the
   typed neighborhood is unavailable or `B_mut` is exhausted. The router preserves

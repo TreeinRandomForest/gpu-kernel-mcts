@@ -27,6 +27,7 @@ from .cute_diagnostics import (
     select_fingerprint_candidate,
     snapshot_files,
 )
+from .cute_capabilities import inspect_cute_structural_capabilities
 from .evaluation import BackendKernelEvaluator, EvaluationContext
 from .serialization import serialize_environment_manifest, serialize_evaluation
 from .vendor_baselines import VendorBaselineConfig, VendorBaselineSuite
@@ -49,6 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
             "backend-profile",
             "design-space",
             "diagnostic",
+            "structural-capabilities",
         ),
         default="comparison",
     )
@@ -75,6 +77,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _describe_design_space()
     elif arguments.mode == "diagnostic":
         result = _run_artifact_diagnostic(arguments.example)
+    elif arguments.mode == "structural-capabilities":
+        result = inspect_cute_structural_capabilities(arguments.example)
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:

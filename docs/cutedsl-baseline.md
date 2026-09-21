@@ -184,6 +184,24 @@ nine lightweight metrics while leaving the root reward at zero.
 
 ## Initial typed-mutation neighborhood
 
+Before expanding that neighborhood, inspect the pinned CUTLASS 4.5.1 Python source
+without importing it or requiring a GPU:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode structural-capabilities \
+  --example /opt/cutlass/examples/python/CuTeDSL/cute/hopper/kernel/dense_gemm/dense_gemm.py \
+  --output cutedsl-structural-capabilities.json
+```
+
+The report records the exact source hash, the `run()` and
+`HopperWgmmaGemmKernel.__init__()` signatures, exposed CLI options, validation
+assertions and exceptions, and bounded source evidence for pipeline, WGMMA, TMA,
+epilogue, warp-specialization, and scheduling controls. Discovery is deliberately
+reported as `evidence_only`: a name appearing in the pinned implementation does not
+yet establish that it is an independent, legal, or useful MCTS mutation. The report
+is the input to selecting and validating the next structural control.
+
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
 
