@@ -98,7 +98,14 @@ the same canonical configuration transpose to the same cached state.
 The current standalone mutation mechanisms are:
 
 - `change_cta_tile`; and
-- `change_cluster_shape`.
+- `change_cluster_shape`; and
+- `change_pipeline_stages`.
+
+The pipeline mutation changes only A/B mainloop staging and offers explicit depths
+`2` and `3`. The pinned heuristic remains the root behavior, and epilogue staging
+remains pinned. Explicit depth `4` is deliberately excluded from this initial
+neighborhood because it is equivalent to the heuristic for the reference
+`(128,256)` tile and would create duplicate effective states.
 
 They are connected to core MCTS through a deterministic mutation generator and
 covered by a GPU-independent end-to-end search test. Remote-worker orchestration and

@@ -60,6 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("lightweight_v1", "diagnostic_v2"),
         default="lightweight_v1",
     )
+    parser.add_argument("--pipeline-stages", type=int, choices=(2, 3, 4))
     return parser
 
 
@@ -70,9 +71,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif arguments.mode == "tune":
         result = _run_tuning(arguments.example)
     elif arguments.mode == "backend":
-        result = _run_backend_evaluation()
+        result = _run_backend_evaluation(
+            pipeline_stages=arguments.pipeline_stages
+        )
     elif arguments.mode == "backend-profile":
-        result = _run_backend_evaluation(arguments.profile_set)
+        result = _run_backend_evaluation(
+            arguments.profile_set,
+            pipeline_stages=arguments.pipeline_stages,
+        )
     elif arguments.mode == "design-space":
         result = _describe_design_space()
     elif arguments.mode == "diagnostic":
@@ -170,7 +176,11 @@ def _run_tuning(example: Path):
     )
 
 
-def _run_backend_evaluation(profile_metric_set: str | None = None):
+def _run_backend_evaluation(
+    profile_metric_set: str | None = None,
+    *,
+    pipeline_stages: int | None = None,
+):
     import cutlass
     import torch
 
@@ -184,7 +194,11 @@ def _run_backend_evaluation(profile_metric_set: str | None = None):
         pytorch_version=str(torch.__version__),
         driver_version=_driver_version(),
     )
-    program = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+    representation = replace(
+        REFERENCE_CUTE_GEMM,
+        pipeline_stages=pipeline_stages,
+    )
+    program = PinnedCuteGemmRenderer().render(representation)
     backend = CuTeDSLBackend(
         CuteBackendConfig(
             artifact_root=Path("/tmp/kernel-mcts-cute-backend"),
@@ -208,11 +222,12 @@ def _run_backend_evaluation(profile_metric_set: str | None = None):
             worker_id=manifest.worker_id,
             environment_manifest_id=manifest.manifest_id,
             launch_config={
-                "tile_shape_mn": [REFERENCE_CUTE_GEMM.tile_m, REFERENCE_CUTE_GEMM.tile_n],
+                "tile_shape_mn": [representation.tile_m, representation.tile_n],
                 "cluster_shape_mn": [
-                    REFERENCE_CUTE_GEMM.cluster_m,
-                    REFERENCE_CUTE_GEMM.cluster_n,
+                    representation.cluster_m,
+                    representation.cluster_n,
                 ],
+                "pipeline_stages": representation.pipeline_stages,
             },
             hardware_toolchain={
                 "gpu_model": manifest.gpu_model,
@@ -225,7 +240,14 @@ def _run_backend_evaluation(profile_metric_set: str | None = None):
     )
     evaluation = evaluator.evaluate(program, BF16_GEMM_WORKLOAD)
     assert evaluation.compilation is not None
-    report = dict(_backend_evaluation_report(manifest, root_compilation, evaluation))
+    report = dict(
+        _backend_evaluation_report(
+            manifest,
+            root_compilation,
+            evaluation,
+            representation=representation,
+        )
+    )
     if profile_metric_set is not None:
         report["profile"] = dict(
             evaluator.lightweight_profile(
@@ -266,13 +288,19 @@ def _run_artifact_diagnostic(example: Path):
     }
 
 
-def _backend_evaluation_report(manifest, root_compilation, evaluation):
+def _backend_evaluation_report(
+    manifest,
+    root_compilation,
+    evaluation,
+    *,
+    representation=REFERENCE_CUTE_GEMM,
+):
     assert root_compilation.artifact is not None
     assert evaluation.compilation is not None
     return {
         "status": "ok",
-        "representation": REFERENCE_CUTE_GEMM.as_dict(),
-        "configuration_hash": REFERENCE_CUTE_GEMM.configuration_hash,
+        "representation": representation.as_dict(),
+        "configuration_hash": representation.configuration_hash,
         "environment_manifest": serialize_environment_manifest(manifest),
         "initial_jit_evaluation": {
             "artifact_id": root_compilation.artifact.artifact_id,

@@ -24,7 +24,12 @@ from .generation import (
 
 CHANGE_CTA_TILE = "change_cta_tile"
 CHANGE_CLUSTER_SHAPE = "change_cluster_shape"
-CUTE_MUTATION_STRATEGY_IDS = (CHANGE_CTA_TILE, CHANGE_CLUSTER_SHAPE)
+CHANGE_PIPELINE_STAGES = "change_pipeline_stages"
+CUTE_MUTATION_STRATEGY_IDS = (
+    CHANGE_CTA_TILE,
+    CHANGE_CLUSTER_SHAPE,
+    CHANGE_PIPELINE_STAGES,
+)
 CUTE_MUTATION_STRATEGIES = (
     Strategy(
         CHANGE_CTA_TILE,
@@ -43,6 +48,16 @@ CUTE_MUTATION_STRATEGIES = (
             "cute_dsl": (
                 "Change only cluster_m and cluster_n. Choose one supported pair: "
                 "(1,1), (1,2), or (2,1)."
+            )
+        },
+    ),
+    Strategy(
+        CHANGE_PIPELINE_STAGES,
+        "Change the A/B mainloop pipeline depth while preserving epilogue staging.",
+        {
+            "cute_dsl": (
+                "Change only pipeline_stages. Choose one supported explicit value: "
+                "2 or 3. None preserves the pinned heuristic and is not a proposal."
             )
         },
     ),
@@ -108,6 +123,9 @@ def mutate_cute_program(
     elif strategy_id == CHANGE_CLUSTER_SHAPE:
         values = _exact_integer_parameters(parameters, ("cluster_m", "cluster_n"))
         candidate = replace(parent, **values)
+    elif strategy_id == CHANGE_PIPELINE_STAGES:
+        values = _exact_integer_parameters(parameters, ("pipeline_stages",))
+        candidate = replace(parent, **values)
     else:
         raise ValueError(f"unknown CuTe mutation strategy {strategy_id!r}")
 
@@ -144,6 +162,15 @@ def enumerate_cute_mutations(
                     parent,
                     CHANGE_CLUSTER_SHAPE,
                     {"cluster_m": cluster_m, "cluster_n": cluster_n},
+                )
+            )
+    for pipeline_stages in (2, 3):
+        if pipeline_stages != parent.pipeline_stages:
+            proposals.append(
+                mutate_cute_program(
+                    parent,
+                    CHANGE_PIPELINE_STAGES,
+                    {"pipeline_stages": pipeline_stages},
                 )
             )
     return tuple(proposals)

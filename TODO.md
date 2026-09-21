@@ -85,10 +85,12 @@ completed hardware validation is identified explicitly.
   CUTLASS example hash, callable signatures, CLI controls, validation evidence, and
   bounded pipeline/WGMMA/TMA/epilogue/warp/scheduler source evidence. Discovered
   controls remain `evidence_only` until legality and H100 behavior are validated.
-- [ ] Replace the placeholder singular `pipeline_stages` field only after the pinned
-  source diagnostic establishes separate mainloop (`ab_stage`) and epilogue
-  (`epi_stage`) contracts, legal ranges, and shared-memory interactions. Preserve the
-  pinned heuristic when explicit overrides are absent.
+- [x] Complete standalone H100 validation of the bounded mainloop
+  `pipeline_stages={2,3,4}` renderer control. All values passed JIT and exact
+  correctness; medians were `190.384`, `189.936`, and `190.224 us`. The deterministic
+  mutation exposes stages 2 and 3, while `None` preserves the pinned heuristic and
+  explicit stage 4 is omitted from the reference neighborhood to avoid a duplicate
+  effective state. Epilogue staging remains pinned at 4.
 - [x] Add core mixed-mechanism proposal routing beneath each semantic strategy using
   the specified mutation-first policy, falling back to LLM generation only when the
   typed neighborhood is unavailable or `B_mut` is exhausted. The router preserves

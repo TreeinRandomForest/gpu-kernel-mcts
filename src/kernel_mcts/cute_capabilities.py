@@ -16,6 +16,7 @@ _CONTROL_TERMS: Mapping[str, tuple[str, ...]] = {
     "warp_specialization": ("warp", "producer", "consumer"),
     "scheduler": ("scheduler", "raster", "swizzle", "persistent"),
 }
+_PIPELINE_STATE_NAMES = {"ab_stage", "epi_stage", "occupancy", "smem_capacity"}
 
 
 def inspect_cute_structural_capabilities(path: Path) -> Mapping[str, object]:
@@ -245,11 +246,18 @@ def _candidate_controls(tree: ast.AST, source: str) -> Mapping[str, object]:
                             if node.returns is not None
                             else None
                         ),
+                        "decorators": [_unparse(item) for item in node.decorator_list],
                         "return_expressions": [
                             _unparse(item.value)
                             for item in ast.walk(node)
                             if isinstance(item, ast.Return)
                             and item.value is not None
+                        ],
+                        "assignments": _function_assignments(node),
+                        "conditions": [
+                            {"line": item.lineno, "test": _unparse(item.test)}
+                            for item in ast.walk(node)
+                            if isinstance(item, (ast.If, ast.While))
                         ],
                     }
                 )
@@ -264,6 +272,10 @@ def _candidate_controls(tree: ast.AST, source: str) -> Mapping[str, object]:
                 evidence[key] for key in sorted(evidence)[:24]
             ],
         }
+        if category == "pipeline":
+            controls[category]["state_assignments"] = _named_assignments(
+                tree, _PIPELINE_STATE_NAMES
+            )
     return controls
 
 
@@ -276,6 +288,67 @@ def _node_names(node: ast.AST) -> set[str]:
         item.attr for item in ast.walk(node) if isinstance(item, ast.Attribute)
     )
     return names
+
+
+def _function_assignments(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[Mapping[str, object]]:
+    assignments: list[Mapping[str, object]] = []
+    for item in ast.walk(node):
+        if isinstance(item, ast.Assign):
+            assignments.append(
+                {
+                    "line": item.lineno,
+                    "targets": [_unparse(target) for target in item.targets],
+                    "value": _unparse(item.value),
+                }
+            )
+        elif isinstance(item, ast.AnnAssign):
+            assignments.append(
+                {
+                    "line": item.lineno,
+                    "targets": [_unparse(item.target)],
+                    "value": _unparse(item.value) if item.value is not None else None,
+                }
+            )
+    return sorted(assignments, key=lambda value: int(value["line"]))
+
+
+def _named_assignments(
+    tree: ast.AST, names: set[str]
+) -> list[Mapping[str, object]]:
+    assignments: list[Mapping[str, object]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+            value = node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets = [node.target]
+            value = node.value
+        else:
+            continue
+        matched = [
+            _unparse(target)
+            for target in targets
+            if _target_name(target) in names
+        ]
+        if matched:
+            assignments.append(
+                {
+                    "line": node.lineno,
+                    "targets": matched,
+                    "value": _unparse(value),
+                }
+            )
+    return sorted(assignments, key=lambda item: int(item["line"]))
+
+
+def _target_name(node: ast.expr) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return None
 
 
 def _source_segment(source: str, node: ast.AST) -> str:

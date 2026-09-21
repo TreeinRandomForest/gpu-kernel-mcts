@@ -38,7 +38,7 @@ def test_legality_returns_structured_violations() -> None:
         128,
         1,
         1,
-        pipeline_stages=3,
+        pipeline_stages=5,
     )
 
     result = validate_cute_gemm_program(program)
@@ -64,7 +64,35 @@ def test_renderer_is_deterministic_and_backend_typed() -> None:
 
 
 def test_renderer_rejects_unimplemented_structural_controls() -> None:
-    with pytest.raises(ValueError, match="explicit pipeline stages"):
+    with pytest.raises(ValueError, match="pipeline_stages must be one of"):
         PinnedCuteGemmRenderer().render(
-            CuteGemmProgram(128, 256, 1, 1, pipeline_stages=3)
+            CuteGemmProgram(128, 256, 1, 1, pipeline_stages=5)
         )
+
+
+@pytest.mark.parametrize("pipeline_stages", (2, 3, 4))
+def test_renderer_supports_bounded_mainloop_pipeline_override(
+    pipeline_stages: int,
+) -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        1,
+        1,
+        pipeline_stages=pipeline_stages,
+    )
+
+    legality = validate_cute_gemm_program(program)
+    rendered = PinnedCuteGemmRenderer().render(program)
+
+    assert legality.valid is True
+    assert f"pipeline_stages = {pipeline_stages}" in rendered.source
+    assert "_, epi_stage = pinned_compute_stages(" in rendered.source
+    assert "return pipeline_stages, epi_stage" in rendered.source
+
+
+def test_default_renderer_preserves_pinned_pipeline_heuristic() -> None:
+    rendered = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+
+    assert "pipeline_stages = None" in rendered.source
+    assert "if pipeline_stages is not None:" in rendered.source

@@ -87,7 +87,7 @@ def test_full_source_with_incorrect_embedded_hash_is_canonicalized() -> None:
 
 
 def test_statically_unsupported_typed_output_produces_no_program() -> None:
-    representation = {**REFERENCE_CUTE_GEMM.as_dict(), "pipeline_stages": 3}
+    representation = {**REFERENCE_CUTE_GEMM.as_dict(), "pipeline_stages": 5}
 
     result = CuteTypedLLMGenerator(
         FixedGenerator(json.dumps(representation))

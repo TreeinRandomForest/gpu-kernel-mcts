@@ -15,8 +15,14 @@ class HopperWgmmaGemmKernel:
             raise ValueError("tile must match WGMMA")
         self.pipeline_stages = pipeline_stages
         self.use_2cta_instrs = use_2cta_instrs
+        self.smem_capacity = 232448
+        self.occupancy = 1
 
+    @staticmethod
     def _compute_stages(self, smem_capacity, occupancy) -> tuple[int, int]:
+        available = smem_capacity // 1024
+        if available < 2:
+            raise ValueError("insufficient shared memory")
         return self.pipeline_stages, occupancy
 
 def run(a, b, *, use_tma_store=True, epilogue_tile=(64, 64)) -> None:
@@ -65,6 +71,7 @@ def test_structural_capability_report_is_static_evidence(tmp_path) -> None:
     assert "pipeline_stages" in controls["pipeline"]["identifiers"]
     stage_definition = controls["pipeline"]["definitions"][0]
     assert stage_definition["name"] == "_compute_stages"
+    assert stage_definition["decorators"] == ["staticmethod"]
     assert [item["name"] for item in stage_definition["parameters"]] == [
         "self",
         "smem_capacity",
@@ -72,6 +79,20 @@ def test_structural_capability_report_is_static_evidence(tmp_path) -> None:
     ]
     assert stage_definition["return_expressions"] == [
         "(self.pipeline_stages, occupancy)"
+    ]
+    assert stage_definition["assignments"] == [
+        {
+            "line": 13,
+            "targets": ["available"],
+            "value": "smem_capacity // 1024",
+        }
+    ]
+    assert stage_definition["conditions"] == [
+        {"line": 14, "test": "available < 2"}
+    ]
+    assert controls["pipeline"]["state_assignments"][:2] == [
+        {"line": 8, "targets": ["self.smem_capacity"], "value": "232448"},
+        {"line": 9, "targets": ["self.occupancy"], "value": "1"},
     ]
     assert "use_2cta_instrs" in controls["wgmma"]["identifiers"]
     assert "use_tma_store" in controls["tma"]["identifiers"]

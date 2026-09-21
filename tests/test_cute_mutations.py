@@ -6,6 +6,7 @@ from kernel_mcts.cute_mutations import (
     CUTE_MUTATION_STRATEGIES,
     CHANGE_CLUSTER_SHAPE,
     CHANGE_CTA_TILE,
+    CHANGE_PIPELINE_STAGES,
     CuteMutationGenerator,
     enumerate_cute_mutations,
     mutate_cute_program,
@@ -23,9 +24,11 @@ def test_enumerates_stable_valid_one_hop_neighborhood() -> None:
         CHANGE_CTA_TILE,
         CHANGE_CLUSTER_SHAPE,
         CHANGE_CLUSTER_SHAPE,
+        CHANGE_PIPELINE_STAGES,
+        CHANGE_PIPELINE_STAGES,
     ]
     assert all(proposal.validation.valid for proposal in proposals)
-    assert len({proposal.candidate.configuration_hash for proposal in proposals}) == 4
+    assert len({proposal.candidate.configuration_hash for proposal in proposals}) == 6
     assert all(
         PinnedCuteGemmRenderer().render(proposal.candidate).backend == "cute_dsl"
         for proposal in proposals
@@ -75,6 +78,47 @@ def test_different_mutation_paths_reach_same_canonical_state() -> None:
 
     assert tile_then_cluster == cluster_then_tile
     assert tile_then_cluster.configuration_hash == cluster_then_tile.configuration_hash
+
+
+def test_pipeline_and_tile_mutation_paths_transpose() -> None:
+    pipeline_first = mutate_cute_program(
+        REFERENCE_CUTE_GEMM,
+        CHANGE_PIPELINE_STAGES,
+        {"pipeline_stages": 3},
+    ).candidate
+    pipeline_then_tile = mutate_cute_program(
+        pipeline_first,
+        CHANGE_CTA_TILE,
+        {"tile_m": 128, "tile_n": 128},
+    ).candidate
+    tile_first = mutate_cute_program(
+        REFERENCE_CUTE_GEMM,
+        CHANGE_CTA_TILE,
+        {"tile_m": 128, "tile_n": 128},
+    ).candidate
+    tile_then_pipeline = mutate_cute_program(
+        tile_first,
+        CHANGE_PIPELINE_STAGES,
+        {"pipeline_stages": 3},
+    ).candidate
+
+    assert pipeline_then_tile == tile_then_pipeline
+    assert pipeline_then_tile.configuration_hash == (
+        tile_then_pipeline.configuration_hash
+    )
+
+
+def test_pipeline_neighborhood_excludes_explicit_stage_four_alias() -> None:
+    pipeline_proposals = [
+        proposal
+        for proposal in enumerate_cute_mutations(REFERENCE_CUTE_GEMM)
+        if proposal.strategy_id == CHANGE_PIPELINE_STAGES
+    ]
+
+    assert [proposal.candidate.pipeline_stages for proposal in pipeline_proposals] == [
+        2,
+        3,
+    ]
 
 
 def test_rejects_noop_unknown_and_malformed_mutations() -> None:

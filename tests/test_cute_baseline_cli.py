@@ -35,6 +35,14 @@ def test_cli_accepts_backend_evaluation_mode() -> None:
     assert arguments.mode == "backend"
 
 
+def test_cli_accepts_bounded_pipeline_stage_evaluation() -> None:
+    arguments = build_parser().parse_args(
+        ["--mode", "backend", "--pipeline-stages", "3"]
+    )
+
+    assert arguments.pipeline_stages == 3
+
+
 def test_cli_accepts_artifact_diagnostic_mode() -> None:
     arguments = build_parser().parse_args(["--mode", "diagnostic"])
 
@@ -61,7 +69,7 @@ def test_design_space_report_contains_typed_mutations_without_budget() -> None:
     report = _describe_design_space()
 
     assert arguments.mode == "design-space"
-    assert report["proposal_count"] == 4
+    assert report["proposal_count"] == 6
     assert report["budget"] == {"b_gen": 0, "b_tune": 0}
     assert all(
         proposal["proposal_mechanism"] == "typed_mutation"

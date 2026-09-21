@@ -11,6 +11,7 @@ from .domain import KernelProgram
 
 
 CUTE_GEMM_SCHEMA_VERSION = 1
+SUPPORTED_MAINLOOP_PIPELINE_STAGES = (2, 3, 4)
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,11 +128,15 @@ def validate_cute_gemm_program(program: CuteGemmProgram) -> CuteLegalityResult:
                     field,
                 )
             )
-    if program.pipeline_stages is not None:
+    if (
+        program.pipeline_stages is not None
+        and program.pipeline_stages not in SUPPORTED_MAINLOOP_PIPELINE_STAGES
+    ):
         violations.append(
             CuteLegalityViolation(
                 "unsupported_structural_value",
-                "explicit pipeline stages are not yet supported by the pinned renderer",
+                "pipeline_stages must be one of "
+                f"{SUPPORTED_MAINLOOP_PIPELINE_STAGES} or None",
                 "pipeline_stages",
             )
         )
@@ -175,7 +180,23 @@ def _load_example():
 
 
 def run():
-    return _load_example().run(
+    module = _load_example()
+    pipeline_stages = {program.pipeline_stages!r}
+    if pipeline_stages is not None:
+        pinned_compute_stages = module.HopperWgmmaGemmKernel._compute_stages
+
+        def compute_stages_with_mainloop_override(
+            tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
+        ):
+            _, epi_stage = pinned_compute_stages(
+                tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
+            )
+            return pipeline_stages, epi_stage
+
+        module.HopperWgmmaGemmKernel._compute_stages = staticmethod(
+            compute_stages_with_mainloop_override
+        )
+    return module.run(
         mnkl=(4096, 4096, 4096, 1),
         a_dtype=cutlass.BFloat16,
         b_dtype=cutlass.BFloat16,

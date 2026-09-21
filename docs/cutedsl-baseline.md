@@ -198,8 +198,10 @@ The report records the exact source hash, the `run()` and
 `HopperWgmmaGemmKernel.__init__()` signatures, exposed CLI options, validation
 assertions and exceptions, and bounded executable-source evidence for pipeline,
 WGMMA, TMA, epilogue, warp-specialization, and scheduling controls. Matching method
-definitions include their typed parameters and return expressions; docstrings are
-excluded from the identifier inventory. Discovery is deliberately
+definitions include their typed parameters, assignments, branch conditions, and
+return expressions. Pipeline evidence also records assignments to stage count,
+shared-memory-capacity, and occupancy state. Docstrings are excluded from the
+identifier inventory. Discovery is deliberately
 reported as `evidence_only`: a name appearing in the pinned implementation does not
 yet establish that it is an independent, legal, or useful MCTS mutation. The report
 is the input to selecting and validating the next structural control.
@@ -223,6 +225,31 @@ shared-memory, and epilogue mutations remain rejected until the renderer can exp
 and validate them. The neighborhood is connected to core MCTS with separate `B_mut`
 accounting. Remote orchestration is wired, while H100 search validation remains
 pending.
+
+The renderer now has a pre-search pipeline feasibility control. `pipeline_stages=None`
+preserves the pinned `_compute_stages` heuristic. Explicit values `2`, `3`, and `4`
+override only the A/B mainloop stage count while retaining the pinned epilogue stage
+calculation. This bounded set never requests more stages than the working reference
+tile's heuristic; it is not yet an MCTS mutation. Each value must first pass standalone
+H100 JIT, correctness, and benchmark validation for the fixed workload.
+
+Run each feasibility point with the backend evaluation contract, changing only the
+stage value and output filename:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode backend \
+  --pipeline-stages 2 \
+  --output /output/cutedsl-pipeline-stage-2.json
+```
+
+The guarded H100 feasibility sweep passed JIT and exact correctness for all three
+values. Median times were `190.384 us` (2), `189.936 us` (3), and `190.224 us` (4),
+with 30 samples each. These sub-percent differences should be treated as effectively
+tied without repeated-run uncertainty analysis. Stages 2 and 3 are exposed through
+the deterministic `change_pipeline_stages` mutation; stage 4 remains feasibility
+evidence but is omitted from the reference neighborhood to avoid duplicating the
+heuristic root's effective configuration.
 
 ## Guarded remote mutation search
 
