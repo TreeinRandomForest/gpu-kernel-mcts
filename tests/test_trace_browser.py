@@ -147,6 +147,28 @@ def test_catalog_reports_invalid_sqlite_and_rejects_unknown_trace_id(tmp_path) -
         catalog.graph("not-an-id", "run-1")
 
 
+def test_catalog_reads_trace_created_before_mutation_budget_columns(tmp_path) -> None:
+    path = _browser_trace(tmp_path)
+    with sqlite3.connect(path) as connection:
+        connection.execute("ALTER TABLE search_runs DROP COLUMN mutation_budget")
+        connection.execute("ALTER TABLE search_runs DROP COLUMN final_b_mut")
+        connection.execute("ALTER TABLE generations DROP COLUMN b_mut")
+        connection.execute("ALTER TABLE generations DROP COLUMN api_instructions")
+        connection.execute("ALTER TABLE iterations DROP COLUMN b_mut")
+
+    catalog = TraceCatalog(tmp_path)
+    trace = catalog.list_traces()[0]
+
+    assert "error" not in trace
+    assert trace["runs"][0]["mutation_budget"] is None
+    assert trace["runs"][0]["b_mut"] == 0
+    graph = catalog.graph(trace["trace_id"], "run-1")
+    assert graph["analysis"]["timeline"] == []
+    node = catalog.node(trace["trace_id"], "run-1", "left")
+    assert node["generations"][0]["b_mut"] == 0
+    assert node["generations"][0]["api_instructions"] is None
+
+
 def test_graph_exposes_exact_selection_decision_candidates(tmp_path) -> None:
     path = _browser_trace(tmp_path)
     with sqlite3.connect(path) as connection:

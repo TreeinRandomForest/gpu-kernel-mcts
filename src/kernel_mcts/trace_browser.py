@@ -50,6 +50,25 @@ def _connection(path: Path) -> sqlite3.Connection:
     return connection
 
 
+def _columns(connection: sqlite3.Connection, table: str) -> set[str]:
+    return {
+        str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})")
+    }
+
+
+def _optional_column(
+    connection: sqlite3.Connection,
+    table: str,
+    column: str,
+    default_sql: str,
+) -> str:
+    return column if column in _columns(connection, table) else f"{default_sql} AS {column}"
+
+
+def _row_value(row: sqlite3.Row, column: str, default: object = None) -> object:
+    return row[column] if column in row.keys() else default
+
+
 class TraceCatalog:
     """Discovers and queries trace databases beneath one allowed directory."""
 
@@ -108,8 +127,11 @@ class TraceCatalog:
                    ORDER BY parent_node_id, strategy_id, child_node_id""",
                 (run_id,),
             ).fetchall()
+            generation_b_mut = _optional_column(
+                connection, "generations", "b_mut", "0"
+            )
             failures = connection.execute(
-                """SELECT generation_id, iteration, b_gen, b_mut, repair_attempt, parent_node_id,
+                f"""SELECT generation_id, iteration, b_gen, {generation_b_mut}, repair_attempt, parent_node_id,
                           strategy_id, proposal_status, invalid_reason, compile_status,
                           correctness_status
                    FROM generations
@@ -209,9 +231,15 @@ class TraceCatalog:
             ).fetchone()
             if row is None:
                 raise TraceBrowserError(f"node not found: {node_id}")
+            generation_b_mut = _optional_column(
+                connection, "generations", "b_mut", "0"
+            )
+            api_instructions = _optional_column(
+                connection, "generations", "api_instructions", "NULL"
+            )
             generations = connection.execute(
-                """SELECT generation_id, iteration, b_gen, b_mut, parent_node_id, strategy_id,
-                          repair_attempt, reused_node, prompt_text, api_instructions,
+                f"""SELECT generation_id, iteration, b_gen, {generation_b_mut}, parent_node_id, strategy_id,
+                          repair_attempt, reused_node, prompt_text, {api_instructions},
                           raw_output, input_tokens, output_tokens, llm_latency_seconds
                    FROM generations
                    WHERE run_id = ? AND created_node_id = ?
@@ -639,9 +667,12 @@ class TraceCatalog:
         best_reward = root_reward
         best_node_id = root_id
         timeline: list[dict[str, object]] = []
+        iteration_b_mut = _optional_column(
+            connection, "iterations", "b_mut", "0"
+        )
         for row in connection.execute(
-            """SELECT iteration, status, selected_strategy_id, leaf_node_id,
-                      backed_up_reward, b_gen, b_mut, b_prior
+            f"""SELECT iteration, status, selected_strategy_id, leaf_node_id,
+                      backed_up_reward, b_gen, {iteration_b_mut}, b_prior
                FROM iterations WHERE run_id = ? ORDER BY iteration""",
             (run_id,),
         ).fetchall():
@@ -756,9 +787,14 @@ class TraceCatalog:
         observed_b_gen = connection.execute(
             "SELECT coalesce(max(b_gen), 0) FROM generations WHERE run_id = ?", (run_id,)
         ).fetchone()[0]
-        observed_b_mut = connection.execute(
-            "SELECT coalesce(max(b_mut), 0) FROM generations WHERE run_id = ?", (run_id,)
-        ).fetchone()[0]
+        observed_b_mut = (
+            connection.execute(
+                "SELECT coalesce(max(b_mut), 0) FROM generations WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()[0]
+            if "b_mut" in _columns(connection, "generations")
+            else 0
+        )
         observed_iterations = connection.execute(
             "SELECT count(*) FROM iterations WHERE run_id = ?", (run_id,)
         ).fetchone()[0]
@@ -784,9 +820,13 @@ class TraceCatalog:
             "model_name": run["model_name"],
             "seed": run["seed"],
             "generation_budget": run["generation_budget"],
-            "mutation_budget": run["mutation_budget"],
+            "mutation_budget": _row_value(run, "mutation_budget"),
             "b_gen": run["final_b_gen"] if run["final_b_gen"] is not None else observed_b_gen,
-            "b_mut": run["final_b_mut"] if run["final_b_mut"] is not None else observed_b_mut,
+            "b_mut": (
+                _row_value(run, "final_b_mut")
+                if _row_value(run, "final_b_mut") is not None
+                else observed_b_mut
+            ),
             "b_prior": run["final_b_prior"],
             "iterations": (
                 run["final_iterations"]
