@@ -167,6 +167,7 @@ def run_hopper_bf16_comparable(
     *,
     schedule: CuteSchedule = DEFAULT_CUTE_SCHEDULE,
     pipeline_stages: int | None = None,
+    wgmma_configuration: str = "pinned_default",
     raise_on_correctness_failure: bool = True,
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
@@ -214,6 +215,7 @@ def run_hopper_bf16_comparable(
             schedule,
             raise_on_correctness_failure,
             pipeline_stages=pipeline_stages,
+            wgmma_configuration=wgmma_configuration,
             capture_jit_diagnostics=capture_jit_diagnostics,
             profile_single_launch=profile_single_launch,
         )
@@ -231,6 +233,7 @@ def _run_with_repository_hooks(
     schedule: CuteSchedule,
     raise_on_correctness_failure: bool = True,
     pipeline_stages: int | None = None,
+    wgmma_configuration: str = "pinned_default",
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
 ) -> dict[str, Any]:
@@ -243,6 +246,9 @@ def _run_with_repository_hooks(
     original_benchmark = example.testing.benchmark
     original_compute_stages = _install_mainloop_pipeline_override(
         kernel_type, pipeline_stages
+    )
+    original_init = _install_wgmma_configuration_override(
+        kernel_type, wgmma_configuration
     )
     tensor_index = 0
     timings: list[float] = []
@@ -339,6 +345,7 @@ def _run_with_repository_hooks(
         torch.testing.assert_close = original_assert_close
         example.testing.benchmark = original_benchmark
         kernel_type._compute_stages = original_compute_stages
+        kernel_type.__init__ = original_init
 
     if profile_single_launch:
         return {
@@ -363,6 +370,7 @@ def _run_with_repository_hooks(
             "cluster_shape_mn": [schedule.cluster_m, schedule.cluster_n],
             "schedule_id": schedule.configuration_id,
             "pipeline_stages": pipeline_stages,
+            "wgmma_configuration": wgmma_configuration,
             "rtol": 2.0e-2,
             "atol": 2.0e-2,
             "seed": 0,
@@ -401,6 +409,24 @@ def _install_mainloop_pipeline_override(kernel_type, pipeline_stages: int | None
         return pipeline_stages, epi_stage
 
     kernel_type._compute_stages = staticmethod(compute_stages_with_mainloop_override)
+    return original_descriptor
+
+
+def _install_wgmma_configuration_override(kernel_type, configuration: str):
+    original_descriptor = vars(kernel_type)["__init__"]
+    if configuration == "pinned_default":
+        return original_descriptor
+    if configuration != "single_warp_group":
+        raise ValueError(f"unsupported WGMMA configuration {configuration!r}")
+    pinned_init = kernel_type.__init__
+
+    def init_with_single_warp_group(self, *args, **kwargs):
+        pinned_init(self, *args, **kwargs)
+        self.atom_layout_mnk = (1, 1, 1)
+        self.mma_warp_groups = 1
+        self.threads_per_cta = self.num_threads_per_warp_group
+
+    kernel_type.__init__ = init_with_single_warp_group
     return original_descriptor
 
 

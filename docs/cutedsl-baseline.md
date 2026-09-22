@@ -212,6 +212,14 @@ construction. This diagnostic precedes any WGMMA representation field: it is use
 identify one bounded control and its tile/layout coupling without treating internal
 implementation variables as independently mutable.
 
+The first bounded WGMMA template control compares the pinned automatic decomposition
+with `single_warp_group`. For the `(128,256)` root, the pinned example chooses two
+128-thread warp groups to reduce register spilling; the alternative forces
+`atom_layout_mnk=(1,1,1)` and a 128-thread CTA while leaving tile shape, pipeline,
+layouts, and epilogue unchanged. Evaluate it standalone with
+`--mode backend --wgmma-configuration single_warp_group`. It is not an MCTS strategy
+or mutation until H100 JIT, correctness, artifact identity, and timing are validated.
+
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
 

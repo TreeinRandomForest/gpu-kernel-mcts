@@ -7,6 +7,7 @@ import pytest
 from kernel_mcts.cute_baseline import (
     _collect_timing_samples,
     _install_mainloop_pipeline_override,
+    _install_wgmma_configuration_override,
     _launch_once,
     _tensor_helpers,
     run_same_worker_comparison,
@@ -23,6 +24,12 @@ class FakeKernel:
 
 
 class FakePipelineKernel:
+    def __init__(self):
+        self.atom_layout_mnk = (2, 1, 1)
+        self.mma_warp_groups = 2
+        self.num_threads_per_warp_group = 128
+        self.threads_per_cta = 256
+
     @staticmethod
     def _compute_stages(*_arguments):
         return 4, 4
@@ -36,6 +43,21 @@ def test_mainloop_override_preserves_epilogue_and_restores_descriptor() -> None:
     assert FakePipelineKernel._compute_stages(None, None, None, 232448, 1) == (2, 4)
     setattr(FakePipelineKernel, "_compute_stages", saved)
     assert vars(FakePipelineKernel)["_compute_stages"] is original
+
+
+def test_single_warp_group_override_updates_dependent_thread_counts() -> None:
+    original = vars(FakePipelineKernel)["__init__"]
+
+    saved = _install_wgmma_configuration_override(
+        FakePipelineKernel, "single_warp_group"
+    )
+    kernel = FakePipelineKernel()
+
+    assert kernel.atom_layout_mnk == (1, 1, 1)
+    assert kernel.mma_warp_groups == 1
+    assert kernel.threads_per_cta == 128
+    setattr(FakePipelineKernel, "__init__", saved)
+    assert vars(FakePipelineKernel)["__init__"] is original
 
 
 def test_feasibility_runner_uses_fixed_bf16_contract_and_marks_limitations(tmp_path) -> None:

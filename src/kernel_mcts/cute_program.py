@@ -12,6 +12,7 @@ from .domain import KernelProgram
 
 CUTE_GEMM_SCHEMA_VERSION = 1
 SUPPORTED_MAINLOOP_PIPELINE_STAGES = (2, 3, 4)
+SUPPORTED_WGMMA_CONFIGURATIONS = ("pinned_default", "single_warp_group")
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,7 +114,6 @@ def validate_cute_gemm_program(program: CuteGemmProgram) -> CuteLegalityResult:
         violations.append(CuteLegalityViolation("invalid_schedule", reason, "schedule"))
     supported_defaults = {
         "mainloop": (program.mainloop, "hopper_wgmma_tma"),
-        "wgmma_configuration": (program.wgmma_configuration, "pinned_default"),
         "tma_copy_layout": (program.tma_copy_layout, "pinned_default"),
         "shared_memory_swizzle": (program.shared_memory_swizzle, "pinned_default"),
         "warp_specialization": (program.warp_specialization, "pinned_default"),
@@ -128,6 +128,15 @@ def validate_cute_gemm_program(program: CuteGemmProgram) -> CuteLegalityResult:
                     field,
                 )
             )
+    if program.wgmma_configuration not in SUPPORTED_WGMMA_CONFIGURATIONS:
+        violations.append(
+            CuteLegalityViolation(
+                "unsupported_structural_value",
+                "wgmma_configuration must be one of "
+                f"{SUPPORTED_WGMMA_CONFIGURATIONS}",
+                "wgmma_configuration",
+            )
+        )
     if (
         program.pipeline_stages is not None
         and program.pipeline_stages not in SUPPORTED_MAINLOOP_PIPELINE_STAGES
@@ -181,6 +190,17 @@ def _load_example():
 
 def run():
     module = _load_example()
+    wgmma_configuration = {program.wgmma_configuration!r}
+    if wgmma_configuration == "single_warp_group":
+        pinned_init = module.HopperWgmmaGemmKernel.__init__
+
+        def init_with_single_warp_group(self, *args, **kwargs):
+            pinned_init(self, *args, **kwargs)
+            self.atom_layout_mnk = (1, 1, 1)
+            self.mma_warp_groups = 1
+            self.threads_per_cta = self.num_threads_per_warp_group
+
+        module.HopperWgmmaGemmKernel.__init__ = init_with_single_warp_group
     pipeline_stages = {program.pipeline_stages!r}
     if pipeline_stages is not None:
         pinned_compute_stages = module.HopperWgmmaGemmKernel._compute_stages

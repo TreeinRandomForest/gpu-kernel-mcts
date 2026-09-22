@@ -96,3 +96,34 @@ def test_default_renderer_preserves_pinned_pipeline_heuristic() -> None:
 
     assert "pipeline_stages = None" in rendered.source
     assert "if pipeline_stages is not None:" in rendered.source
+
+
+def test_renderer_supports_single_warp_group_configuration() -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        1,
+        1,
+        wgmma_configuration="single_warp_group",
+    )
+
+    legality = validate_cute_gemm_program(program)
+    rendered = PinnedCuteGemmRenderer().render(program)
+
+    assert legality.valid is True
+    assert "wgmma_configuration = 'single_warp_group'" in rendered.source
+    assert "self.atom_layout_mnk = (1, 1, 1)" in rendered.source
+    assert "self.mma_warp_groups = 1" in rendered.source
+
+
+def test_renderer_rejects_unknown_wgmma_configuration() -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        1,
+        1,
+        wgmma_configuration="unknown",
+    )
+
+    with pytest.raises(ValueError, match="wgmma_configuration must be one of"):
+        PinnedCuteGemmRenderer().render(program)

@@ -49,6 +49,14 @@ def test_cli_accepts_bounded_pipeline_stage_evaluation() -> None:
     assert arguments.pipeline_stages == 3
 
 
+def test_cli_accepts_single_warp_group_evaluation() -> None:
+    arguments = build_parser().parse_args(
+        ["--mode", "backend", "--wgmma-configuration", "single_warp_group"]
+    )
+
+    assert arguments.wgmma_configuration == "single_warp_group"
+
+
 def test_cli_accepts_artifact_diagnostic_mode() -> None:
     arguments = build_parser().parse_args(["--mode", "diagnostic"])
 
