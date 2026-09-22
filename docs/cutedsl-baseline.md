@@ -225,27 +225,38 @@ exact correctness and produced distinct runtime artifacts, but
 negative evidence, so the configuration remains representable for diagnostics but is
 not part of the default MCTS mutation neighborhood.
 
-The next pre-search control exposes the pinned mainloop's `k_pipe_mmas` value as
+The next pre-search diagnostic tested the pinned mainloop's `k_pipe_mmas` value as
 `wgmma_inflight_groups={1,2}`. This controls how many WGMMA groups may remain in
 flight before `warpgroup.wait_group`; it does not change the number of CTA warp
-groups. The representation schema is version 2, value 1 preserves the pinned source,
-and value 2 is applied by a syntax-aware transformation guarded by the exact pinned
-example SHA-256. The adapter refuses a changed source hash or an ambiguous assignment
-instead of silently patching a different implementation. When pipeline staging is
-explicit, the static validator requires the in-flight count to be smaller than the
-stage count.
+groups. Value 1 preserves the pinned source, while value 2 is applied by a
+syntax-aware transformation guarded by the exact pinned example SHA-256. The adapter
+refuses a changed source hash or an ambiguous assignment instead of silently patching
+a different implementation. This diagnostic value is deliberately absent from the
+canonical `CuteGemmProgram` representation.
 
 Evaluate the new control outside MCTS with:
 
 ```bash
 python -m kernel_mcts.cute_baseline_cli \
-  --mode backend \
+  --mode wgmma-inflight-diagnostic \
   --wgmma-inflight-groups 2 \
   --output /output/cutedsl-wgmma-inflight-2.json
 ```
 
-This option is intentionally not a strategy or typed mutation until H100 JIT,
-correctness, artifact-identity, and timing validation is complete.
+The guarded v11 validation evaluated values 1 and 2 with both the pinned pipeline
+heuristic and explicit stage 3. All four configurations passed exact correctness.
+The measured medians were `193.504 us` and `192.176 us` under the heuristic, and
+`192.512 us` and `191.936 us` with stage 3. Despite the different generated-source
+and configuration hashes, values 1 and 2 produced identical normalized compiler IR
+and fatbin hashes within each pipeline setting. The apparent 0.3–0.7% differences are
+therefore timing noise rather than evidence of distinct kernels.
+
+This control is rejected as an independent search dimension and must not become an
+MCTS strategy or mutation. Keeping it in canonical search state would assign
+different configuration identities to the same effective compiled kernel, contrary
+to transposition semantics. It has therefore been removed from the typed state and
+schema; the guarded transformer remains only in standalone diagnostic tooling. See
+[CuTe WGMMA in-flight validation v11](experiments/cutedsl-wgmma-inflight-v11.md).
 
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:

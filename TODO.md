@@ -92,10 +92,17 @@ completed hardware validation is identified explicitly.
   artifact identity, and timing before adding an MCTS strategy or mutation. The v10
   run passed exact correctness and produced distinct artifacts, but regressed from
   `192.976 us` to `3015.728 us`; keep this pathological choice out of MCTS.
-- [ ] Validate the SHA-pinned `wgmma_inflight_groups=2` control standalone on H100
+- [x] Validate the SHA-pinned `wgmma_inflight_groups=2` control standalone on H100
   against the default value 1, including its interaction with explicit stage 3.
-  Keep it out of the mutation neighborhood until correctness, distinct artifact
-  identity, and timing are established.
+  All four v11 configurations passed exact correctness, but values 1 and 2 produced
+  identical normalized IR and fatbin hashes at each pipeline setting. The apparent
+  0.3–0.7% timing differences are measurement noise. Reject this as an independent
+  search dimension and do not add an MCTS strategy or mutation.
+- [x] Remove `wgmma_inflight_groups` from the canonical `CuteGemmProgram` state after
+  preserving the v11 diagnostic evidence. Distinct canonical states must not encode
+  the same effective compiled kernel. The SHA-guarded source transformer remains
+  available only through a standalone diagnostic mode and cannot affect search
+  identity, transpositions, or MCTS nodes.
 - [x] Complete corrected standalone H100 validation of bounded mainloop
   `pipeline_stages={2,3,4}` and repeat `B_mut=6` after forwarding the typed field into
   the backend subprocess. All stages passed exact correctness and produced distinct

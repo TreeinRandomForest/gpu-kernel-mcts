@@ -1,10 +1,15 @@
+from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
 
 from kernel_mcts.cute_baseline_cli import (
     _backend_evaluation_report,
     _describe_design_space,
     _enrich_cute_manifest,
+    _run_wgmma_inflight_diagnostic,
     build_parser,
+    main,
 )
 from kernel_mcts.domain import (
     BenchmarkResult,
@@ -59,10 +64,37 @@ def test_cli_accepts_single_warp_group_evaluation() -> None:
 
 def test_cli_accepts_two_wgmma_inflight_groups() -> None:
     arguments = build_parser().parse_args(
-        ["--mode", "backend", "--wgmma-inflight-groups", "2"]
+        ["--mode", "wgmma-inflight-diagnostic", "--wgmma-inflight-groups", "2"]
     )
 
+    assert arguments.mode == "wgmma-inflight-diagnostic"
     assert arguments.wgmma_inflight_groups == 2
+
+
+def test_wgmma_inflight_diagnostic_is_not_canonical_state(monkeypatch) -> None:
+    calls = []
+
+    def run_comparable(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {"status": "ok"}
+
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli.run_hopper_bf16_comparable",
+        run_comparable,
+    )
+
+    result = _run_wgmma_inflight_diagnostic(
+        Path("example.py"), pipeline_stages=3, wgmma_inflight_groups=2
+    )
+
+    assert result["diagnostic_control"]["canonical_search_state"] is False
+    assert calls[0][1]["wgmma_inflight_groups"] == 2
+    assert calls[0][1]["capture_jit_diagnostics"] is True
+
+
+def test_cli_rejects_inflight_override_in_canonical_backend_mode() -> None:
+    with pytest.raises(ValueError, match="only in wgmma-inflight-diagnostic"):
+        main(["--mode", "backend", "--wgmma-inflight-groups", "2"])
 
 
 def test_cli_accepts_artifact_diagnostic_mode() -> None:

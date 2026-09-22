@@ -55,6 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
             "design-space",
             "diagnostic",
             "structural-capabilities",
+            "wgmma-inflight-diagnostic",
         ),
         default="comparison",
     )
@@ -78,6 +79,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
+    if (
+        arguments.mode != "wgmma-inflight-diagnostic"
+        and arguments.wgmma_inflight_groups != 1
+    ):
+        raise ValueError(
+            "--wgmma-inflight-groups is available only in "
+            "wgmma-inflight-diagnostic mode"
+        )
     if arguments.mode == "comparison":
         result = _run_comparison(arguments.example)
     elif arguments.mode == "tune":
@@ -88,14 +97,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_backend_evaluation(
             pipeline_stages=arguments.pipeline_stages,
             wgmma_configuration=arguments.wgmma_configuration,
-            wgmma_inflight_groups=arguments.wgmma_inflight_groups,
         )
     elif arguments.mode == "backend-profile":
         result = _run_backend_evaluation(
             arguments.profile_set,
             pipeline_stages=arguments.pipeline_stages,
             wgmma_configuration=arguments.wgmma_configuration,
-            wgmma_inflight_groups=arguments.wgmma_inflight_groups,
         )
     elif arguments.mode == "design-space":
         result = _describe_design_space()
@@ -103,6 +110,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_artifact_diagnostic(arguments.example)
     elif arguments.mode == "structural-capabilities":
         result = inspect_cute_structural_capabilities(arguments.example)
+    elif arguments.mode == "wgmma-inflight-diagnostic":
+        result = _run_wgmma_inflight_diagnostic(
+            arguments.example,
+            pipeline_stages=arguments.pipeline_stages,
+            wgmma_inflight_groups=arguments.wgmma_inflight_groups,
+        )
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -234,7 +247,6 @@ def _run_backend_evaluation(
     *,
     pipeline_stages: int | None = None,
     wgmma_configuration: str = "pinned_default",
-    wgmma_inflight_groups: int = 1,
 ):
     import cutlass
     import torch
@@ -253,7 +265,6 @@ def _run_backend_evaluation(
         REFERENCE_CUTE_GEMM,
         pipeline_stages=pipeline_stages,
         wgmma_configuration=wgmma_configuration,
-        wgmma_inflight_groups=wgmma_inflight_groups,
     )
     program = PinnedCuteGemmRenderer().render(representation)
     backend = CuTeDSLBackend(
@@ -286,7 +297,6 @@ def _run_backend_evaluation(
                 ],
                 "pipeline_stages": representation.pipeline_stages,
                 "wgmma_configuration": representation.wgmma_configuration,
-                "wgmma_inflight_groups": representation.wgmma_inflight_groups,
             },
             hardware_toolchain={
                 "gpu_model": manifest.gpu_model,
@@ -317,6 +327,35 @@ def _run_backend_evaluation(
         )
         report["profile_did_not_change_reward"] = evaluation.reward == 0.0
     return report
+
+
+def _run_wgmma_inflight_diagnostic(
+    example: Path,
+    *,
+    pipeline_stages: int | None,
+    wgmma_inflight_groups: int,
+) -> Mapping[str, object]:
+    if (
+        pipeline_stages is not None
+        and wgmma_inflight_groups >= pipeline_stages
+    ):
+        raise ValueError(
+            "diagnostic WGMMA in-flight groups must be smaller than pipeline stages"
+        )
+    result = dict(
+        run_hopper_bf16_comparable(
+            example,
+            pipeline_stages=pipeline_stages,
+            wgmma_inflight_groups=wgmma_inflight_groups,
+            capture_jit_diagnostics=True,
+        )
+    )
+    result["diagnostic_control"] = {
+        "name": "wgmma_inflight_groups",
+        "value": wgmma_inflight_groups,
+        "canonical_search_state": False,
+    }
+    return result
 
 
 def _run_artifact_diagnostic(example: Path):
