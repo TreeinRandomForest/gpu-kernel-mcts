@@ -10,9 +10,10 @@ from .cute_schedule import CuteSchedule, validate_cute_schedule
 from .domain import KernelProgram
 
 
-CUTE_GEMM_SCHEMA_VERSION = 1
+CUTE_GEMM_SCHEMA_VERSION = 2
 SUPPORTED_MAINLOOP_PIPELINE_STAGES = (2, 3, 4)
 SUPPORTED_WGMMA_CONFIGURATIONS = ("pinned_default", "single_warp_group")
+SUPPORTED_WGMMA_INFLIGHT_GROUPS = (1, 2)
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +30,7 @@ class CuteGemmProgram:
     cluster_n: int
     mainloop: str = "hopper_wgmma_tma"
     wgmma_configuration: str = "pinned_default"
+    wgmma_inflight_groups: int = 1
     pipeline_stages: int | None = None
     tma_copy_layout: str = "pinned_default"
     shared_memory_swizzle: str = "pinned_default"
@@ -137,6 +139,15 @@ def validate_cute_gemm_program(program: CuteGemmProgram) -> CuteLegalityResult:
                 "wgmma_configuration",
             )
         )
+    if program.wgmma_inflight_groups not in SUPPORTED_WGMMA_INFLIGHT_GROUPS:
+        violations.append(
+            CuteLegalityViolation(
+                "unsupported_structural_value",
+                "wgmma_inflight_groups must be one of "
+                f"{SUPPORTED_WGMMA_INFLIGHT_GROUPS}",
+                "wgmma_inflight_groups",
+            )
+        )
     if (
         program.pipeline_stages is not None
         and program.pipeline_stages not in SUPPORTED_MAINLOOP_PIPELINE_STAGES
@@ -147,6 +158,18 @@ def validate_cute_gemm_program(program: CuteGemmProgram) -> CuteLegalityResult:
                 "pipeline_stages must be one of "
                 f"{SUPPORTED_MAINLOOP_PIPELINE_STAGES} or None",
                 "pipeline_stages",
+            )
+        )
+    if (
+        program.pipeline_stages in SUPPORTED_MAINLOOP_PIPELINE_STAGES
+        and program.wgmma_inflight_groups in SUPPORTED_WGMMA_INFLIGHT_GROUPS
+        and program.wgmma_inflight_groups >= program.pipeline_stages
+    ):
+        violations.append(
+            CuteLegalityViolation(
+                "incompatible_structural_values",
+                "wgmma_inflight_groups must be smaller than pipeline_stages",
+                "wgmma_inflight_groups",
             )
         )
     return CuteLegalityResult(tuple(violations))
@@ -170,9 +193,8 @@ class PinnedCuteGemmRenderer:
             messages = "; ".join(item.message for item in legality.violations)
             raise ValueError(f"illegal CuTe GEMM program: {messages}")
         source = f'''# Generated deterministically from CuteGemmProgram schema v{program.schema_version}.
-import importlib.util
-
 import cutlass
+from kernel_mcts.cute_source_transform import load_pinned_cute_gemm
 
 EXAMPLE_PATH = {self.example_path!r}
 CONFIGURATION_HASH = {program.configuration_hash!r}
@@ -180,12 +202,10 @@ KERNEL_MCTS_REPRESENTATION = {program.as_dict()!r}
 
 
 def _load_example():
-    spec = importlib.util.spec_from_file_location("kernel_mcts_pinned_cute_gemm", EXAMPLE_PATH)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("cannot load pinned CuTe DSL example")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load_pinned_cute_gemm(
+        EXAMPLE_PATH,
+        wgmma_inflight_groups={program.wgmma_inflight_groups},
+    )
 
 
 def run():

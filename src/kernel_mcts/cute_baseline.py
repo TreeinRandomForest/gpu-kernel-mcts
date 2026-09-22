@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-import importlib.util
 import ctypes
 import statistics
 import subprocess
@@ -14,6 +13,7 @@ from typing import Any, Callable, Mapping
 from .domain import BenchmarkResult
 from .cute_schedule import DEFAULT_CUTE_SCHEDULE, CuteSchedule, validate_cute_schedule
 from .cute_diagnostics import describe_kernel_callable
+from .cute_source_transform import load_pinned_cute_gemm
 from .serialization import serialize_benchmark
 
 
@@ -168,6 +168,7 @@ def run_hopper_bf16_comparable(
     schedule: CuteSchedule = DEFAULT_CUTE_SCHEDULE,
     pipeline_stages: int | None = None,
     wgmma_configuration: str = "pinned_default",
+    wgmma_inflight_groups: int = 1,
     raise_on_correctness_failure: bool = True,
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
@@ -177,7 +178,9 @@ def run_hopper_bf16_comparable(
     import torch
 
     _require_legal_schedule(schedule)
-    example = _load_example(example_path)
+    example = _load_example(
+        example_path, wgmma_inflight_groups=wgmma_inflight_groups
+    )
     if not input_generator.is_file():
         raise RuntimeError(f"BF16 input generator is unavailable: {input_generator}")
     reference = _CublasReference(reference_library)
@@ -216,6 +219,7 @@ def run_hopper_bf16_comparable(
             raise_on_correctness_failure,
             pipeline_stages=pipeline_stages,
             wgmma_configuration=wgmma_configuration,
+            wgmma_inflight_groups=wgmma_inflight_groups,
             capture_jit_diagnostics=capture_jit_diagnostics,
             profile_single_launch=profile_single_launch,
         )
@@ -234,6 +238,7 @@ def _run_with_repository_hooks(
     raise_on_correctness_failure: bool = True,
     pipeline_stages: int | None = None,
     wgmma_configuration: str = "pinned_default",
+    wgmma_inflight_groups: int = 1,
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
 ) -> dict[str, Any]:
@@ -371,6 +376,7 @@ def _run_with_repository_hooks(
             "schedule_id": schedule.configuration_id,
             "pipeline_stages": pipeline_stages,
             "wgmma_configuration": wgmma_configuration,
+            "wgmma_inflight_groups": wgmma_inflight_groups,
             "rtol": 2.0e-2,
             "atol": 2.0e-2,
             "seed": 0,
@@ -512,15 +518,14 @@ def _tensor_helpers(import_module=importlib.import_module):
     return import_module("cutlass.torch")
 
 
-def _load_example(path: Path) -> ModuleType:
+def _load_example(
+    path: Path, *, wgmma_inflight_groups: int = 1
+) -> ModuleType:
     if not path.is_file():
         raise RuntimeError(f"pinned CuTe DSL example is unavailable: {path}")
-    spec = importlib.util.spec_from_file_location("kernel_mcts_pinned_cute_gemm", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("cannot load pinned CuTe DSL example")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load_pinned_cute_gemm(
+        path, wgmma_inflight_groups=wgmma_inflight_groups
+    )
 
 
 def _sha256(path: Path) -> str:

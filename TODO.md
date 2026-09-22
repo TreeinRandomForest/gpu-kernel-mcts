@@ -88,8 +88,14 @@ completed hardware validation is identified explicitly.
 - [x] Use the targeted WGMMA/warp-group assignment diagnostic to select and implement
   one bounded template control. `single_warp_group` forces `atom_layout_mnk=(1,1,1)`
   and a 128-thread CTA while leaving tile, pipeline, layouts, and epilogue fixed.
-- [ ] Validate `single_warp_group` standalone on H100 for JIT, correctness, distinct
-  artifact identity, and timing before adding an MCTS strategy or mutation.
+- [x] Validate `single_warp_group` standalone on H100 for JIT, correctness, distinct
+  artifact identity, and timing before adding an MCTS strategy or mutation. The v10
+  run passed exact correctness and produced distinct artifacts, but regressed from
+  `192.976 us` to `3015.728 us`; keep this pathological choice out of MCTS.
+- [ ] Validate the SHA-pinned `wgmma_inflight_groups=2` control standalone on H100
+  against the default value 1, including its interaction with explicit stage 3.
+  Keep it out of the mutation neighborhood until correctness, distinct artifact
+  identity, and timing are established.
 - [x] Complete corrected standalone H100 validation of bounded mainloop
   `pipeline_stages={2,3,4}` and repeat `B_mut=6` after forwarding the typed field into
   the backend subprocess. All stages passed exact correctness and produced distinct

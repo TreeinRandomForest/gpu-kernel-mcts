@@ -116,6 +116,41 @@ def test_renderer_supports_single_warp_group_configuration() -> None:
     assert "self.mma_warp_groups = 1" in rendered.source
 
 
+def test_renderer_supports_two_wgmma_inflight_groups() -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        1,
+        1,
+        wgmma_inflight_groups=2,
+    )
+
+    legality = validate_cute_gemm_program(program)
+    rendered = PinnedCuteGemmRenderer().render(program)
+
+    assert legality.valid is True
+    assert "wgmma_inflight_groups=2" in rendered.source
+    assert program.as_dict()["wgmma_inflight_groups"] == 2
+
+
+def test_legality_rejects_inflight_groups_without_spare_pipeline_stage() -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        1,
+        1,
+        pipeline_stages=2,
+        wgmma_inflight_groups=2,
+    )
+
+    result = validate_cute_gemm_program(program)
+
+    assert result.valid is False
+    assert [item.code for item in result.violations] == [
+        "incompatible_structural_values"
+    ]
+
+
 def test_renderer_rejects_unknown_wgmma_configuration() -> None:
     program = CuteGemmProgram(
         128,

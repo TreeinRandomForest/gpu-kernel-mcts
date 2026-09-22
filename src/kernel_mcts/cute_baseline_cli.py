@@ -70,6 +70,9 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("pinned_default", "single_warp_group"),
         default="pinned_default",
     )
+    parser.add_argument(
+        "--wgmma-inflight-groups", type=int, choices=(1, 2), default=1
+    )
     return parser
 
 
@@ -85,12 +88,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_backend_evaluation(
             pipeline_stages=arguments.pipeline_stages,
             wgmma_configuration=arguments.wgmma_configuration,
+            wgmma_inflight_groups=arguments.wgmma_inflight_groups,
         )
     elif arguments.mode == "backend-profile":
         result = _run_backend_evaluation(
             arguments.profile_set,
             pipeline_stages=arguments.pipeline_stages,
             wgmma_configuration=arguments.wgmma_configuration,
+            wgmma_inflight_groups=arguments.wgmma_inflight_groups,
         )
     elif arguments.mode == "design-space":
         result = _describe_design_space()
@@ -229,6 +234,7 @@ def _run_backend_evaluation(
     *,
     pipeline_stages: int | None = None,
     wgmma_configuration: str = "pinned_default",
+    wgmma_inflight_groups: int = 1,
 ):
     import cutlass
     import torch
@@ -247,6 +253,7 @@ def _run_backend_evaluation(
         REFERENCE_CUTE_GEMM,
         pipeline_stages=pipeline_stages,
         wgmma_configuration=wgmma_configuration,
+        wgmma_inflight_groups=wgmma_inflight_groups,
     )
     program = PinnedCuteGemmRenderer().render(representation)
     backend = CuTeDSLBackend(
@@ -279,6 +286,7 @@ def _run_backend_evaluation(
                 ],
                 "pipeline_stages": representation.pipeline_stages,
                 "wgmma_configuration": representation.wgmma_configuration,
+                "wgmma_inflight_groups": representation.wgmma_inflight_groups,
             },
             hardware_toolchain={
                 "gpu_model": manifest.gpu_model,

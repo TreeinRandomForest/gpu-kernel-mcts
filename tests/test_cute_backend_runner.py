@@ -30,5 +30,6 @@ def test_runner_forwards_typed_pipeline_stages(monkeypatch, capsys) -> None:
     assert result == 0
     assert calls[0]["pipeline_stages"] == 3
     assert calls[0]["wgmma_configuration"] == "pinned_default"
+    assert calls[0]["wgmma_inflight_groups"] == 1
     assert calls[0]["schedule"] == REFERENCE_CUTE_GEMM.schedule
     assert json.loads(capsys.readouterr().out) == {"status": "ok"}

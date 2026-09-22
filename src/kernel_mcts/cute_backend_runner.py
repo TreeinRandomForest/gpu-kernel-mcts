@@ -28,6 +28,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         schedule=program.schedule,
         pipeline_stages=program.pipeline_stages,
         wgmma_configuration=program.wgmma_configuration,
+        wgmma_inflight_groups=program.wgmma_inflight_groups,
         raise_on_correctness_failure=False,
         capture_jit_diagnostics=True,
         profile_single_launch=arguments.mode == "profile",

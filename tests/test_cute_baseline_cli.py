@@ -57,6 +57,14 @@ def test_cli_accepts_single_warp_group_evaluation() -> None:
     assert arguments.wgmma_configuration == "single_warp_group"
 
 
+def test_cli_accepts_two_wgmma_inflight_groups() -> None:
+    arguments = build_parser().parse_args(
+        ["--mode", "backend", "--wgmma-inflight-groups", "2"]
+    )
+
+    assert arguments.wgmma_inflight_groups == 2
+
+
 def test_cli_accepts_artifact_diagnostic_mode() -> None:
     arguments = build_parser().parse_args(["--mode", "diagnostic"])
 

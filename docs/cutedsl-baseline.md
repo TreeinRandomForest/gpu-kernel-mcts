@@ -219,6 +219,33 @@ with `single_warp_group`. For the `(128,256)` root, the pinned example chooses t
 layouts, and epilogue unchanged. Evaluate it standalone with
 `--mode backend --wgmma-configuration single_warp_group`. It is not an MCTS strategy
 or mutation until H100 JIT, correctness, artifact identity, and timing are validated.
+The guarded v10 evaluation completed that validation: both configurations passed
+exact correctness and produced distinct runtime artifacts, but
+`single_warp_group` regressed from `192.976 us` to `3015.728 us`. This is useful
+negative evidence, so the configuration remains representable for diagnostics but is
+not part of the default MCTS mutation neighborhood.
+
+The next pre-search control exposes the pinned mainloop's `k_pipe_mmas` value as
+`wgmma_inflight_groups={1,2}`. This controls how many WGMMA groups may remain in
+flight before `warpgroup.wait_group`; it does not change the number of CTA warp
+groups. The representation schema is version 2, value 1 preserves the pinned source,
+and value 2 is applied by a syntax-aware transformation guarded by the exact pinned
+example SHA-256. The adapter refuses a changed source hash or an ambiguous assignment
+instead of silently patching a different implementation. When pipeline staging is
+explicit, the static validator requires the in-flight count to be smaller than the
+stage count.
+
+Evaluate the new control outside MCTS with:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode backend \
+  --wgmma-inflight-groups 2 \
+  --output /output/cutedsl-wgmma-inflight-2.json
+```
+
+This option is intentionally not a strategy or typed mutation until H100 JIT,
+correctness, artifact-identity, and timing validation is complete.
 
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
