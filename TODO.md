@@ -85,6 +85,9 @@ completed hardware validation is identified explicitly.
   CUTLASS example hash, callable signatures, CLI controls, validation evidence, and
   bounded pipeline/WGMMA/TMA/epilogue/warp/scheduler source evidence. Discovered
   controls remain `evidence_only` until legality and H100 behavior are validated.
+- [ ] Use the targeted WGMMA/warp-group assignment diagnostic to select one bounded
+  template control, document its coupling to CTA tile and layouts, then validate it
+  standalone under `B_tune` before adding an MCTS strategy or mutation.
 - [x] Complete corrected standalone H100 validation of bounded mainloop
   `pipeline_stages={2,3,4}` and repeat `B_mut=6` after forwarding the typed field into
   the backend subprocess. All stages passed exact correctness and produced distinct

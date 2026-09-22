@@ -25,6 +25,12 @@ class HopperWgmmaGemmKernel:
             raise ValueError("insufficient shared memory")
         return self.pipeline_stages, occupancy
 
+    def _setup_mma(self, tile_shape_mn):
+        self.mma_inst_shape_mn = (64, tile_shape_mn[1])
+        self.mma_inst_shape_k = 16
+        self.mma_warp_groups, self.num_warps = (1, 4)
+        self.tiled_mma = make_trivial_tiled_mma(self.mma_inst_shape_mn)
+
 def run(a, b, *, use_tma_store=True, epilogue_tile=(64, 64)) -> None:
     producer_warp = 0
     return tma_store(epilogue_tile, producer_warp)
@@ -95,6 +101,18 @@ def test_structural_capability_report_is_static_evidence(tmp_path) -> None:
         {"line": 9, "targets": ["self.occupancy"], "value": "1"},
     ]
     assert "use_2cta_instrs" in controls["wgmma"]["identifiers"]
+    wgmma_assignments = controls["wgmma"]["state_assignments"]
+    assert any(
+        item["targets"] == ["self.mma_inst_shape_mn"]
+        and item["value"] == "(64, tile_shape_mn[1])"
+        for item in wgmma_assignments
+    )
+    assert any(
+        item["targets"] == ["(self.mma_warp_groups, self.num_warps)"]
+        and item["value"] == "(1, 4)"
+        for item in wgmma_assignments
+    )
+    assert controls["warp_specialization"]["state_assignments"] == wgmma_assignments
     assert "use_tma_store" in controls["tma"]["identifiers"]
     assert "epilogue_tile" in controls["epilogue"]["identifiers"]
     assert "producer_warp" in controls["warp_specialization"]["identifiers"]

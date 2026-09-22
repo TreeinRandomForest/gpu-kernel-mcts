@@ -17,6 +17,18 @@ _CONTROL_TERMS: Mapping[str, tuple[str, ...]] = {
     "scheduler": ("scheduler", "raster", "swizzle", "persistent"),
 }
 _PIPELINE_STATE_NAMES = {"ab_stage", "epi_stage", "occupancy", "smem_capacity"}
+_WGMMA_STATE_NAMES = {
+    "k_pipe_mmas",
+    "mma_inst_shape_k",
+    "mma_inst_shape_mn",
+    "mma_inst_tile_k",
+    "mma_warp_groups",
+    "num_threads_per_warp_group",
+    "num_warps",
+    "thr_mma",
+    "tiled_mma",
+    "warp_group_thread_layout",
+}
 
 
 def inspect_cute_structural_capabilities(path: Path) -> Mapping[str, object]:
@@ -276,6 +288,10 @@ def _candidate_controls(tree: ast.AST, source: str) -> Mapping[str, object]:
             controls[category]["state_assignments"] = _named_assignments(
                 tree, _PIPELINE_STATE_NAMES
             )
+        elif category in {"wgmma", "warp_specialization"}:
+            controls[category]["state_assignments"] = _named_assignments(
+                tree, _WGMMA_STATE_NAMES
+            )
     return controls
 
 
@@ -330,7 +346,7 @@ def _named_assignments(
         matched = [
             _unparse(target)
             for target in targets
-            if _target_name(target) in names
+            if _target_names(target) & names
         ]
         if matched:
             assignments.append(
@@ -343,12 +359,14 @@ def _named_assignments(
     return sorted(assignments, key=lambda item: int(item["line"]))
 
 
-def _target_name(node: ast.expr) -> str | None:
+def _target_names(node: ast.expr) -> set[str]:
     if isinstance(node, ast.Name):
-        return node.id
+        return {node.id}
     if isinstance(node, ast.Attribute):
-        return node.attr
-    return None
+        return {node.attr}
+    if isinstance(node, (ast.Tuple, ast.List)):
+        return set().union(*(_target_names(item) for item in node.elts))
+    return set()
 
 
 def _source_segment(source: str, node: ast.AST) -> str:

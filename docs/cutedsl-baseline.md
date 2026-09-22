@@ -206,6 +206,12 @@ reported as `evidence_only`: a name appearing in the pinned implementation does 
 yet establish that it is an independent, legal, or useful MCTS mutation. The report
 is the input to selecting and validating the next structural control.
 
+WGMMA and warp-specialization evidence likewise records targeted assignments for MMA
+instruction shapes, K tiling, warp-group counts, thread layouts, and tiled-MMA
+construction. This diagnostic precedes any WGMMA representation field: it is used to
+identify one bounded control and its tile/layout coupling without treating internal
+implementation variables as independently mutable.
+
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
 
