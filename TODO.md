@@ -140,8 +140,11 @@ completed hardware validation is identified explicitly.
 - [x] Add an auditable all-or-nothing CuTe root-schedule override to the search CLI so
   a guarded mutation run can begin at the validated `(128,256)`, cluster `(2,1)`
   state where epilogue mutations are immediately legal.
-- [ ] Run and inspect a small mutation-only search from that root, verifying distinct
-  epilogue nodes and `B_mut`/cache/SQLite trace behavior before a larger search.
+- [x] Run and inspect a small mutation-only search from that root. The trace contains
+  the root plus distinct stage-2 and stage-3 nodes, two valid typed mutations, exact
+  `B_mut=2`/`B_gen=0` accounting, complete canonical representations, and valid-only
+  backups. Both candidates were slightly slower than the pinned stage-4 root, so the
+  root correctly remained best at reward zero.
 - [x] Complete corrected standalone H100 validation of bounded mainloop
   `pipeline_stages={2,3,4}` and repeat `B_mut=6` after forwarding the typed field into
   the backend subprocess. All stages passed exact correctness and produced distinct

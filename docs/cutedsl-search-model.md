@@ -155,6 +155,11 @@ python -m kernel_mcts.search_cli \
   --confirm-create-and-terminate
 ```
 
+Run `d884b5c3-bc5c-4648-a3a6-d1c68d16b5a9` completed in two iterations with
+`B_mut=2`, `B_gen=0`, three nodes, and two valid measured-leaf backups. Its detailed
+trace analysis is recorded in
+[CuTe epilogue mutation smoke v14](experiments/cutedsl-epilogue-bmut2-v14.md).
+
 They are connected to core MCTS through a deterministic mutation generator and
 covered by a GPU-independent end-to-end search test. Remote-worker orchestration and
 the guarded H100 smoke-search command are not implemented yet.
