@@ -6,6 +6,7 @@ import pytest
 from kernel_mcts.cute_baseline_cli import (
     _backend_evaluation_report,
     _run_canonical_epilogue_validation,
+    _run_canonical_swizzle_validation,
     _describe_design_space,
     _enrich_cute_manifest,
     _run_wgmma_inflight_diagnostic,
@@ -257,6 +258,39 @@ def test_cli_routes_validated_epilogue_state_through_canonical_backend(
         "cluster_n": 1,
     }
     assert calls[0][1]["epilogue_stages"] == 3
+    assert calls[0][1]["shared_memory_swizzle"] == "heuristic"
+
+
+def test_cli_routes_sw64_state_through_canonical_backend(monkeypatch) -> None:
+    calls = []
+
+    def run_backend(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {"status": "ok"}
+
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_backend_evaluation", run_backend
+    )
+
+    result = main(
+        [
+            "--mode",
+            "backend",
+            "--tile-m",
+            "128",
+            "--tile-n",
+            "256",
+            "--cluster-m",
+            "2",
+            "--cluster-n",
+            "1",
+            "--shared-memory-swizzle",
+            "sw64",
+        ]
+    )
+
+    assert result == 0
+    assert calls[0][1]["shared_memory_swizzle"] == "sw64"
 
 
 def test_canonical_epilogue_validation_checks_both_cached_states(monkeypatch) -> None:
@@ -269,7 +303,7 @@ def test_canonical_epilogue_validation_checks_both_cached_states(monkeypatch) ->
         }
         return {
             "representation": {
-                "schema_version": 2,
+                "schema_version": 3,
                 **schedule.as_dict(),
                 "epilogue_stages": epilogue_stages,
             },
@@ -301,7 +335,7 @@ def test_canonical_epilogue_validation_reports_identical_runtime_artifacts(
     def run_backend(*, schedule, epilogue_stages):
         return {
             "representation": {
-                "schema_version": 2,
+                "schema_version": 3,
                 **schedule.as_dict(),
                 "epilogue_stages": epilogue_stages,
             },
@@ -324,6 +358,43 @@ def test_canonical_epilogue_validation_reports_identical_runtime_artifacts(
 
     assert report["status"] == "validation_failed"
     assert report["checks"]["distinct_runtime_fingerprints"] is False
+
+
+def test_canonical_swizzle_validation_checks_cache_artifacts_and_profiles(
+    monkeypatch,
+) -> None:
+    def run_backend(profile_set, *, schedule, shared_memory_swizzle):
+        assert profile_set == "diagnostic_v2"
+        return {
+            "representation": {
+                "schema_version": 3,
+                **schedule.as_dict(),
+                "shared_memory_swizzle": shared_memory_swizzle,
+            },
+            "configuration_hash": f"configuration-{shared_memory_swizzle}",
+            "cache_validation": {"artifact_reused": True},
+            "evaluation": {
+                "status": "VALID",
+                "correctness_status": "PASS",
+                "metadata": {
+                    "runtime_fingerprint": {
+                        "sha256": f"binary-{shared_memory_swizzle}"
+                    }
+                },
+            },
+            "profile": {"metric_set": "diagnostic_v2"},
+            "profile_did_not_change_reward": True,
+        }
+
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_backend_evaluation", run_backend
+    )
+
+    report = _run_canonical_swizzle_validation()
+
+    assert report["status"] == "ok"
+    assert set(report["variants"]) == {"heuristic", "sw64"}
+    assert all(report["checks"].values())
 
 
 def test_cli_requires_complete_canonical_schedule() -> None:

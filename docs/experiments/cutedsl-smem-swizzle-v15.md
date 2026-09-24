@@ -33,8 +33,9 @@ compiled kernel while preserving exact correctness.
 
 ## Decision
 
-Promote the control to versioned typed state with values `heuristic` and `sw64`, then
-validate it through the canonical backend/cache path and profile both variants. The
-promotion is based on proven legality and distinct structure, not a claim that SW64
-is faster. This follows the search invariant that valid locally slower kernels are
-retained rather than pruned solely for their immediate reward.
+The control was promoted to schema-v3 typed state with values `heuristic` and `sw64`
+and a deterministic mutation. The next hardware gate validates the canonical
+backend/cache path and profiles both variants. Promotion is based on proven legality
+and distinct structure, not a claim that SW64 is faster. This follows the search
+invariant that valid locally slower kernels are retained rather than pruned solely
+for their immediate reward.

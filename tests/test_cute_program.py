@@ -19,7 +19,8 @@ def test_reference_representation_is_canonical_and_workload_independent() -> Non
 
     assert value["schema_version"] == CUTE_GEMM_SCHEMA_VERSION
     assert value["tile_m"] == 128
-    assert value["schema_version"] == 2
+    assert value["schema_version"] == 3
+    assert value["shared_memory_swizzle"] == "heuristic"
     assert "wgmma_inflight_groups" not in value
     assert "dtype" not in value
     assert "warmup_count" not in value
@@ -185,4 +186,55 @@ def test_renderer_rejects_unknown_wgmma_configuration() -> None:
     )
 
     with pytest.raises(ValueError, match="wgmma_configuration must be one of"):
+        PinnedCuteGemmRenderer().render(program)
+
+
+def test_renderer_supports_validated_sw64_shared_memory_layout() -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        2,
+        1,
+        shared_memory_swizzle="sw64",
+    )
+
+    legality = validate_cute_gemm_program(program)
+    rendered = PinnedCuteGemmRenderer().render(program)
+
+    assert legality.valid is True
+    assert "shared_memory_swizzle = 'sw64'" in rendered.source
+    assert "select_sw64_layout_atom" in rendered.source
+    assert '"MN_SW64" if selected_name.startswith("MN_") else "K_SW64"' in (
+        rendered.source
+    )
+    compile(rendered.source, "rendered_cute_program.py", "exec")
+
+
+def test_sw64_layout_is_limited_to_validated_schedule() -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        1,
+        1,
+        shared_memory_swizzle="sw64",
+    )
+
+    result = validate_cute_gemm_program(program)
+
+    assert result.valid is False
+    assert [item.code for item in result.violations] == [
+        "incompatible_structural_values"
+    ]
+
+
+def test_renderer_rejects_unknown_shared_memory_swizzle() -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        2,
+        1,
+        shared_memory_swizzle="unknown",
+    )
+
+    with pytest.raises(ValueError, match="shared_memory_swizzle must be one of"):
         PinnedCuteGemmRenderer().render(program)

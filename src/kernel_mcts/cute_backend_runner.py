@@ -29,6 +29,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         pipeline_stages=program.pipeline_stages,
         epilogue_stages=program.epilogue_stages,
         wgmma_configuration=program.wgmma_configuration,
+        smem_swizzle_policy=(
+            "forced_sw64"
+            if program.shared_memory_swizzle == "sw64"
+            else "heuristic"
+        ),
         raise_on_correctness_failure=False,
         capture_jit_diagnostics=True,
         profile_single_launch=arguments.mode == "profile",

@@ -339,11 +339,11 @@ embedded fatbin hash. The differences are below 1% and overlap run-level timing
 variation, so the experiment establishes a real structural dimension rather than a
 performance improvement.
 
-Epilogue depth is promoted in `CuteGemmProgram` schema v2. Explicit values 2 and 3
-are initially legal only for the validated tile `(128,256)`, cluster `(2,1)` and are
-available through `change_epilogue_stages`. `None` means the pinned depth 4. Explicit
-4 is deliberately excluded because it would give the same effective kernel a second
-canonical identity. See
+Epilogue depth was introduced in `CuteGemmProgram` schema v2 and is retained in the
+current schema v3. Explicit values 2 and 3 are initially legal only for the validated
+tile `(128,256)`, cluster `(2,1)` and are available through
+`change_epilogue_stages`. `None` means the pinned depth 4. Explicit 4 is deliberately
+excluded because it would give the same effective kernel a second canonical identity. See
 [CuTe epilogue-stage validation v13](experiments/cutedsl-epilogue-stages-v13.md).
 
 Validate a promoted state through the canonical `CuTeDSLBackend` path with all four
@@ -360,7 +360,7 @@ python -m kernel_mcts.cute_baseline_cli \
   --output /output/cutedsl-epilogue-canonical-stage2-v14.json
 ```
 
-Unlike the pre-search diagnostic, this command constructs schema-v2 canonical state,
+Unlike the pre-search diagnostic, this command constructs current schema-v3 canonical state,
 renders it deterministically, parses it in the backend subprocess, and evaluates it
 through the normal compile/correctness/benchmark cache. Schedule arguments are
 accepted only by backend modes and must be supplied as a complete tuple.
@@ -374,7 +374,7 @@ python -m kernel_mcts.cute_baseline_cli \
   --output /output/cutedsl-epilogue-canonical-v14.json
 ```
 
-The aggregate report fails validation if either state loses its schema-v2 schedule,
+The aggregate report fails validation if either state loses its versioned schedule,
 does not reuse its initial JIT artifact on evaluator lookup, is invalid or incorrect,
 or produces the same configuration or runtime fingerprint as the other stage.
 The completed H100 result is recorded in
@@ -410,6 +410,22 @@ Their normalized IR, fatbins, and generated layout identities were distinct. The
 small timing difference does not establish a performance winner, but SW64 is a valid
 structural state eligible for typed promotion. See
 [CuTe shared-memory swizzle v15](experiments/cutedsl-smem-swizzle-v15.md).
+
+The validated control is represented canonically in schema v3 as
+`shared_memory_swizzle={heuristic,sw64}`. Run both canonical states through normal
+backend caching and diagnostic-v2 profiling with:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode canonical-swizzle-validation \
+  --output /output/cutedsl-smem-swizzle-canonical-v16.json
+```
+
+The first canonical attempt, v17, correctly returned `validation_failed`: the typed
+states had different configuration hashes but identical IR, fatbins, kernel names,
+and profiles. This exposed that the backend subprocess had not forwarded the new
+field to the executable adapter. After fixing that boundary, v18 passed every check.
+See [canonical CuTe shared-memory swizzle v18](experiments/cutedsl-smem-swizzle-canonical-v18.md).
 
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:

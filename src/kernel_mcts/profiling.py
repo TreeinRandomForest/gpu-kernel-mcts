@@ -85,7 +85,7 @@ class ProfileMetricSet:
     id: str
     schema_version: int
     architecture: str
-    ncu_version_prefix: str | None
+    ncu_version_prefixes: tuple[str, ...] | None
     metrics: tuple[str, ...]
     aliases: Mapping[str, str]
 
@@ -103,7 +103,7 @@ _METRIC_SETS = {
         "diagnostic_v2",
         2,
         "sm_90",
-        "2025.1",
+        ("2025.1", "2025.2"),
         LIGHTWEIGHT_V1_METRICS + DIAGNOSTIC_V2_ADDITIONAL_METRICS,
         {**LIGHTWEIGHT_V1_ALIASES, **DIAGNOSTIC_V2_ADDITIONAL_ALIASES},
     ),
@@ -124,12 +124,13 @@ def resolve_profile_metric_set(
         raise ValueError(
             f"profile metric set {metric_set_id!r} is unavailable for {architecture!r}"
         )
-    if definition.ncu_version_prefix is not None:
+    if definition.ncu_version_prefixes is not None:
         normalized_version = normalize_ncu_version(ncu_version)
-        if normalized_version != definition.ncu_version_prefix:
+        if normalized_version not in definition.ncu_version_prefixes:
+            supported = ", ".join(definition.ncu_version_prefixes)
             raise ValueError(
                 f"profile metric set {metric_set_id!r} requires NCU "
-                f"{definition.ncu_version_prefix}, got {normalized_version or 'unknown'}"
+                f"one of ({supported}), got {normalized_version or 'unknown'}"
             )
     return definition
 

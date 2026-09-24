@@ -10,10 +10,11 @@ from .cute_schedule import CuteSchedule, validate_cute_schedule
 from .domain import KernelProgram
 
 
-CUTE_GEMM_SCHEMA_VERSION = 2
+CUTE_GEMM_SCHEMA_VERSION = 3
 SUPPORTED_MAINLOOP_PIPELINE_STAGES = (2, 3, 4)
 SUPPORTED_EPILOGUE_PIPELINE_STAGES = (2, 3)
 SUPPORTED_WGMMA_CONFIGURATIONS = ("pinned_default", "single_warp_group")
+SUPPORTED_SHARED_MEMORY_SWIZZLES = ("heuristic", "sw64")
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,7 +34,7 @@ class CuteGemmProgram:
     pipeline_stages: int | None = None
     epilogue_stages: int | None = None
     tma_copy_layout: str = "pinned_default"
-    shared_memory_swizzle: str = "pinned_default"
+    shared_memory_swizzle: str = "heuristic"
     warp_specialization: str = "pinned_default"
     epilogue_policy: str = "pinned_default"
     schema_version: int = CUTE_GEMM_SCHEMA_VERSION
@@ -117,7 +118,6 @@ def validate_cute_gemm_program(program: CuteGemmProgram) -> CuteLegalityResult:
     supported_defaults = {
         "mainloop": (program.mainloop, "hopper_wgmma_tma"),
         "tma_copy_layout": (program.tma_copy_layout, "pinned_default"),
-        "shared_memory_swizzle": (program.shared_memory_swizzle, "pinned_default"),
         "warp_specialization": (program.warp_specialization, "pinned_default"),
         "epilogue_policy": (program.epilogue_policy, "pinned_default"),
     }
@@ -130,6 +130,29 @@ def validate_cute_gemm_program(program: CuteGemmProgram) -> CuteLegalityResult:
                     field,
                 )
             )
+    if program.shared_memory_swizzle not in SUPPORTED_SHARED_MEMORY_SWIZZLES:
+        violations.append(
+            CuteLegalityViolation(
+                "unsupported_structural_value",
+                "shared_memory_swizzle must be one of "
+                f"{SUPPORTED_SHARED_MEMORY_SWIZZLES}",
+                "shared_memory_swizzle",
+            )
+        )
+    if program.shared_memory_swizzle == "sw64" and (
+        program.tile_m,
+        program.tile_n,
+        program.cluster_m,
+        program.cluster_n,
+    ) != (128, 256, 2, 1):
+        violations.append(
+            CuteLegalityViolation(
+                "incompatible_structural_values",
+                "sw64 shared-memory layout is validated only for tile "
+                "(128,256) with cluster (2,1)",
+                "shared_memory_swizzle",
+            )
+        )
     if program.wgmma_configuration not in SUPPORTED_WGMMA_CONFIGURATIONS:
         violations.append(
             CuteLegalityViolation(
@@ -258,6 +281,29 @@ def run():
         module.HopperWgmmaGemmKernel._compute_stages = staticmethod(
             compute_stages_with_epilogue_override
         )
+    shared_memory_swizzle = {program.shared_memory_swizzle!r}
+    if shared_memory_swizzle == "sw64":
+        pinned_layout_atom_selector = module.sm90_utils.get_smem_layout_atom
+
+        def select_sw64_layout_atom(
+            layout, element_type, major_mode_size, *, loc=None, ip=None
+        ):
+            selected = pinned_layout_atom_selector(
+                layout,
+                element_type,
+                major_mode_size,
+                loc=loc,
+                ip=ip,
+            )
+            selected_name = getattr(
+                selected, "name", str(selected).rsplit(".", 1)[-1]
+            )
+            target_name = (
+                "MN_SW64" if selected_name.startswith("MN_") else "K_SW64"
+            )
+            return getattr(type(selected), target_name)
+
+        module.sm90_utils.get_smem_layout_atom = select_sw64_layout_atom
     return module.run(
         mnkl=(4096, 4096, 4096, 1),
         a_dtype=cutlass.BFloat16,

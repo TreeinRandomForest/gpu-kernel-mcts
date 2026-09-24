@@ -7,6 +7,7 @@ from kernel_mcts.budget import GenerationBudget, MutationBudget
 from kernel_mcts.cute_mutations import (
     CUTE_MUTATION_STRATEGIES,
     CHANGE_EPILOGUE_STAGES,
+    CHANGE_SHARED_MEMORY_SWIZZLE,
     CuteMutationGenerator,
 )
 from kernel_mcts.cute_program import (
@@ -133,7 +134,7 @@ def test_mcts_searches_typed_cute_mutations_under_separate_budget() -> None:
     )
 
 
-def test_mcts_creates_schema_v2_epilogue_node_under_mutation_budget() -> None:
+def test_mcts_creates_schema_v3_epilogue_node_under_mutation_budget() -> None:
     class CuteEvaluator:
         def evaluate(self, program, workload):
             representation = cute_gemm_program_from_source(program.source)
@@ -174,8 +175,53 @@ def test_mcts_creates_schema_v2_epilogue_node_under_mutation_budget() -> None:
     assert len(result.nodes) == 2
     candidate = next(node for node in result.nodes if node is not result.root)
     representation = cute_gemm_program_from_source(candidate.program.source)
-    assert representation.schema_version == 2
+    assert representation.schema_version == 3
     assert representation.epilogue_stages == 2
+
+
+def test_mcts_creates_sw64_node_under_mutation_budget() -> None:
+    class CuteEvaluator:
+        def evaluate(self, program, workload):
+            representation = cute_gemm_program_from_source(program.source)
+            reward = float(representation.shared_memory_swizzle == "sw64")
+            return EvaluationResult(
+                ProposalStatus.VALID,
+                program,
+                representation.configuration_hash,
+                reward,
+                BenchmarkResult((1.0,), 1.0, {"n=1": 1.0}),
+                metadata={
+                    "representation": representation.as_dict(),
+                    "representation_schema_version": representation.schema_version,
+                    "configuration_hash": representation.configuration_hash,
+                },
+            )
+
+    parent = CuteGemmProgram(128, 256, 2, 1)
+    root = CuteEvaluator().evaluate(PinnedCuteGemmRenderer().render(parent), WORKLOAD)
+    strategy = next(
+        item
+        for item in CUTE_MUTATION_STRATEGIES
+        if item.id == CHANGE_SHARED_MEMORY_SWIZZLE
+    )
+    result = MCTS(
+        strategies=(strategy,),
+        workload=WORKLOAD,
+        generator=CuteMutationGenerator(),
+        evaluator=CuteEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(0),
+        mutation_budget=MutationBudget(1),
+        config=MCTSConfig(max_depth=1, k_max=1),
+    ).run(root)
+
+    assert result.generations == 0
+    assert result.mutations == 1
+    assert len(result.nodes) == 2
+    candidate = next(node for node in result.nodes if node is not result.root)
+    representation = cute_gemm_program_from_source(candidate.program.source)
+    assert representation.schema_version == 3
+    assert representation.shared_memory_swizzle == "sw64"
 
 
 def test_mcts_routes_mutation_before_generation_with_separate_budgets() -> None:

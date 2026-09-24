@@ -127,10 +127,11 @@ the same canonical configuration transpose to the same cached state.
 
 The current standalone mutation mechanisms are:
 
-- `change_cta_tile`; and
-- `change_cluster_shape`; and
-- `change_pipeline_stages`; and
-- `change_epilogue_stages`.
+- `change_cta_tile`;
+- `change_cluster_shape`;
+- `change_pipeline_stages`;
+- `change_epilogue_stages`; and
+- `change_shared_memory_swizzle`.
 
 The pipeline mutation changes only A/B mainloop staging and offers explicit depths
 `2` and `3`. The pinned heuristic remains the root behavior, and epilogue staging
@@ -144,10 +145,43 @@ Pinned depth 4 is represented by `None`; explicit 4 is excluded as an identical-
 alias. Mutation generation filters statically invalid cross-schedule combinations.
 The canonical backend CLI accepts a complete tile/cluster tuple for guarded hardware
 validation, and a GPU-independent MCTS integration test verifies that an epilogue
-realization creates a schema-v2 node under `B_mut` without consuming `B_gen`.
+realization creates a schema-v3 node under `B_mut` without consuming `B_gen`.
 A bounded aggregate validation mode runs stages 2 and 3 through that canonical path
 and checks identity, correctness, cache reuse, and distinct runtime fingerprints
 before the field is exercised in a larger search.
+
+The swizzle mutation changes NVIDIA's shared-memory layout-atom selection from its
+heuristic to SW64 while preserving operand majorness. SW64 is initially legal only
+for tile `(128,256)`, cluster `(2,1)`, where standalone H100 validation proved exact
+correctness and distinct IR/fatbin identity. Schema v3 makes `heuristic` versus
+`sw64` explicit canonical state; the mutation consumes `B_mut` and no `B_gen`.
+Canonical v18 validation also confirmed cache reuse and diagnostic-v2 profiling for
+both states. A focused search smoke uses a heuristic root at the validated schedule,
+only `change_shared_memory_swizzle`, `B_mut=1`, and `B_gen=0`.
+
+```bash
+python -m kernel_mcts.search_cli \
+  --provider nebius \
+  --image docker.io/saarora/gpu-kernel-mcts:cutedsl-swizzle-v18 \
+  --trace cutedsl-swizzle-bmut1-v18.sqlite \
+  --backend cute_dsl \
+  --generator cute-mutation \
+  --generation-budget 0 \
+  --mutation-budget 1 \
+  --cute-root-tile-m 128 \
+  --cute-root-tile-n 256 \
+  --cute-root-cluster-m 2 \
+  --cute-root-cluster-n 1 \
+  --cute-strategy change_shared_memory_swizzle \
+  --k-max 1 \
+  --max-depth 1 \
+  --best-output cutedsl-swizzle-bmut1-v18-best.py \
+  --nebius-project-id PROJECT_ID \
+  --nebius-subnet-id SUBNET_ID \
+  --nebius-ssh-public-key ~/.ssh/nebius.pub \
+  --nebius-ssh-private-key ~/.ssh/nebius \
+  --confirm-create-and-terminate
+```
 
 For guarded experiments, the search CLI accepts all four `--cute-root-*` schedule
 arguments together. They are legal only for `--backend=cute_dsl`, are validated and

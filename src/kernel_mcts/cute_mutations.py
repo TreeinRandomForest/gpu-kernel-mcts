@@ -26,11 +26,13 @@ CHANGE_CTA_TILE = "change_cta_tile"
 CHANGE_CLUSTER_SHAPE = "change_cluster_shape"
 CHANGE_PIPELINE_STAGES = "change_pipeline_stages"
 CHANGE_EPILOGUE_STAGES = "change_epilogue_stages"
+CHANGE_SHARED_MEMORY_SWIZZLE = "change_shared_memory_swizzle"
 CUTE_MUTATION_STRATEGY_IDS = (
     CHANGE_CTA_TILE,
     CHANGE_CLUSTER_SHAPE,
     CHANGE_PIPELINE_STAGES,
     CHANGE_EPILOGUE_STAGES,
+    CHANGE_SHARED_MEMORY_SWIZZLE,
 )
 CUTE_MUTATION_STRATEGIES = (
     Strategy(
@@ -74,6 +76,16 @@ CUTE_MUTATION_STRATEGIES = (
             )
         },
     ),
+    Strategy(
+        CHANGE_SHARED_MEMORY_SWIZZLE,
+        "Change the shared-memory layout swizzle while preserving operand majorness.",
+        {
+            "cute_dsl": (
+                "Change only shared_memory_swizzle. Choose heuristic or sw64. "
+                "The sw64 value applies only to tile (128,256) with cluster (2,1)."
+            )
+        },
+    ),
 )
 
 
@@ -84,7 +96,7 @@ class CuteMutationProposal:
     parent: CuteGemmProgram
     candidate: CuteGemmProgram
     strategy_id: str
-    parameters: Mapping[str, int]
+    parameters: Mapping[str, object]
     validation: CuteLegalityResult
 
     @property
@@ -122,7 +134,7 @@ class CuteMutationProposal:
 def mutate_cute_program(
     parent: CuteGemmProgram,
     strategy_id: str,
-    parameters: Mapping[str, int],
+    parameters: Mapping[str, object],
 ) -> CuteMutationProposal:
     """Apply one typed mutation without compiling, profiling, or consuming B_gen."""
 
@@ -141,6 +153,9 @@ def mutate_cute_program(
         candidate = replace(parent, **values)
     elif strategy_id == CHANGE_EPILOGUE_STAGES:
         values = _exact_integer_parameters(parameters, ("epilogue_stages",))
+        candidate = replace(parent, **values)
+    elif strategy_id == CHANGE_SHARED_MEMORY_SWIZZLE:
+        values = _exact_string_parameters(parameters, ("shared_memory_swizzle",))
         candidate = replace(parent, **values)
     else:
         raise ValueError(f"unknown CuTe mutation strategy {strategy_id!r}")
@@ -202,6 +217,15 @@ def enumerate_cute_mutations(
                         parent,
                         CHANGE_EPILOGUE_STAGES,
                         {"epilogue_stages": epilogue_stages},
+                    )
+                )
+        for shared_memory_swizzle in ("heuristic", "sw64"):
+            if shared_memory_swizzle != parent.shared_memory_swizzle:
+                proposals.append(
+                    mutate_cute_program(
+                        parent,
+                        CHANGE_SHARED_MEMORY_SWIZZLE,
+                        {"shared_memory_swizzle": shared_memory_swizzle},
                     )
                 )
     return tuple(proposals)
@@ -276,7 +300,7 @@ class CuteMutationGenerator:
 
 
 def _exact_integer_parameters(
-    parameters: Mapping[str, int], expected: tuple[str, ...]
+    parameters: Mapping[str, object], expected: tuple[str, ...]
 ) -> dict[str, int]:
     if set(parameters) != set(expected):
         raise ValueError(f"mutation parameters must be exactly {list(expected)}")
@@ -286,4 +310,15 @@ def _exact_integer_parameters(
         for value in values.values()
     ):
         raise TypeError("mutation parameters must be integers")
+    return values
+
+
+def _exact_string_parameters(
+    parameters: Mapping[str, object], expected: tuple[str, ...]
+) -> dict[str, str]:
+    if set(parameters) != set(expected):
+        raise ValueError(f"mutation parameters must be exactly {list(expected)}")
+    values = {name: parameters[name] for name in expected}
+    if any(not isinstance(value, str) for value in values.values()):
+        raise TypeError("mutation parameters must be strings")
     return values

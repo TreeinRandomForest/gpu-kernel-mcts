@@ -8,6 +8,7 @@ from kernel_mcts.cute_mutations import (
     CHANGE_CTA_TILE,
     CHANGE_EPILOGUE_STAGES,
     CHANGE_PIPELINE_STAGES,
+    CHANGE_SHARED_MEMORY_SWIZZLE,
     CuteMutationGenerator,
     enumerate_cute_mutations,
     mutate_cute_program,
@@ -154,6 +155,78 @@ def test_explicit_epilogue_stage_four_alias_is_not_a_mutation() -> None:
 
     assert proposal.validation.valid is False
     assert proposal.validation.violations[0].code == "unsupported_structural_value"
+
+
+def test_swizzle_neighborhood_is_limited_to_validated_schedule() -> None:
+    assert not any(
+        proposal.strategy_id == CHANGE_SHARED_MEMORY_SWIZZLE
+        for proposal in enumerate_cute_mutations(REFERENCE_CUTE_GEMM)
+    )
+
+    validated_parent = CuteGemmProgram(128, 256, 2, 1)
+    proposals = [
+        proposal
+        for proposal in enumerate_cute_mutations(validated_parent)
+        if proposal.strategy_id == CHANGE_SHARED_MEMORY_SWIZZLE
+    ]
+
+    assert [proposal.candidate.shared_memory_swizzle for proposal in proposals] == [
+        "sw64"
+    ]
+    assert proposals[0].validation.valid is True
+    assert proposals[0].changed_fields == {
+        "shared_memory_swizzle": {"before": "heuristic", "after": "sw64"}
+    }
+
+
+def test_swizzle_mutation_can_return_to_heuristic_state() -> None:
+    sw64 = CuteGemmProgram(
+        128,
+        256,
+        2,
+        1,
+        shared_memory_swizzle="sw64",
+    )
+
+    proposals = [
+        proposal
+        for proposal in enumerate_cute_mutations(sw64)
+        if proposal.strategy_id == CHANGE_SHARED_MEMORY_SWIZZLE
+    ]
+
+    assert [proposal.candidate.shared_memory_swizzle for proposal in proposals] == [
+        "heuristic"
+    ]
+    assert proposals[0].candidate == CuteGemmProgram(128, 256, 2, 1)
+
+
+def test_swizzle_and_pipeline_mutation_paths_transpose() -> None:
+    parent = CuteGemmProgram(128, 256, 2, 1)
+    swizzle_first = mutate_cute_program(
+        parent,
+        CHANGE_SHARED_MEMORY_SWIZZLE,
+        {"shared_memory_swizzle": "sw64"},
+    ).candidate
+    swizzle_then_pipeline = mutate_cute_program(
+        swizzle_first,
+        CHANGE_PIPELINE_STAGES,
+        {"pipeline_stages": 3},
+    ).candidate
+    pipeline_first = mutate_cute_program(
+        parent,
+        CHANGE_PIPELINE_STAGES,
+        {"pipeline_stages": 3},
+    ).candidate
+    pipeline_then_swizzle = mutate_cute_program(
+        pipeline_first,
+        CHANGE_SHARED_MEMORY_SWIZZLE,
+        {"shared_memory_swizzle": "sw64"},
+    ).candidate
+
+    assert swizzle_then_pipeline == pipeline_then_swizzle
+    assert swizzle_then_pipeline.configuration_hash == (
+        pipeline_then_swizzle.configuration_hash
+    )
 
 def test_rejects_noop_unknown_and_malformed_mutations() -> None:
     with pytest.raises(ValueError, match="must change"):

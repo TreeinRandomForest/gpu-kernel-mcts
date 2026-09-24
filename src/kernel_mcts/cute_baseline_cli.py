@@ -21,7 +21,11 @@ from .cute_tuning import (
     run_cute_schedule_tuning,
 )
 from .cute_backend import CuteBackendConfig, CuTeDSLBackend
-from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
+from .cute_program import (
+    CUTE_GEMM_SCHEMA_VERSION,
+    PinnedCuteGemmRenderer,
+    REFERENCE_CUTE_GEMM,
+)
 from .cute_schedule import CuteSchedule
 from .cute_source_transform import validate_pinned_cute_gemm_source
 from .cute_mutations import enumerate_cute_mutations
@@ -55,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
             "backend",
             "backend-profile",
             "canonical-epilogue-validation",
+            "canonical-swizzle-validation",
             "design-space",
             "diagnostic",
             "structural-capabilities",
@@ -86,6 +91,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto_multicast",
     )
     parser.add_argument("--epilogue-stages", type=int, choices=(2, 3, 4))
+    parser.add_argument(
+        "--shared-memory-swizzle",
+        choices=("heuristic", "sw64"),
+        default="heuristic",
+    )
     parser.add_argument("--tile-m", type=int)
     parser.add_argument("--tile-n", type=int)
     parser.add_argument("--cluster-m", type=int)
@@ -123,6 +133,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         and arguments.epilogue_stages is None
     ):
         raise ValueError("epilogue-stage-diagnostic requires --epilogue-stages")
+    if (
+        arguments.mode not in ("backend", "backend-profile")
+        and arguments.shared_memory_swizzle != "heuristic"
+    ):
+        raise ValueError(
+            "--shared-memory-swizzle is available only in backend modes"
+        )
     schedule_values = (
         arguments.tile_m,
         arguments.tile_n,
@@ -157,6 +174,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             schedule=canonical_schedule,
             pipeline_stages=arguments.pipeline_stages,
             epilogue_stages=arguments.epilogue_stages,
+            shared_memory_swizzle=arguments.shared_memory_swizzle,
             wgmma_configuration=arguments.wgmma_configuration,
         )
     elif arguments.mode == "backend-profile":
@@ -165,10 +183,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             schedule=canonical_schedule,
             pipeline_stages=arguments.pipeline_stages,
             epilogue_stages=arguments.epilogue_stages,
+            shared_memory_swizzle=arguments.shared_memory_swizzle,
             wgmma_configuration=arguments.wgmma_configuration,
         )
     elif arguments.mode == "canonical-epilogue-validation":
         result = _run_canonical_epilogue_validation()
+    elif arguments.mode == "canonical-swizzle-validation":
+        result = _run_canonical_swizzle_validation()
     elif arguments.mode == "design-space":
         result = _describe_design_space()
     elif arguments.mode == "diagnostic":
@@ -325,6 +346,7 @@ def _run_backend_evaluation(
     schedule: CuteSchedule = REFERENCE_CUTE_GEMM.schedule,
     pipeline_stages: int | None = None,
     epilogue_stages: int | None = None,
+    shared_memory_swizzle: str = "heuristic",
     wgmma_configuration: str = "pinned_default",
 ):
     import cutlass
@@ -348,6 +370,7 @@ def _run_backend_evaluation(
         cluster_n=schedule.cluster_n,
         pipeline_stages=pipeline_stages,
         epilogue_stages=epilogue_stages,
+        shared_memory_swizzle=shared_memory_swizzle,
         wgmma_configuration=wgmma_configuration,
     )
     program = PinnedCuteGemmRenderer().render(representation)
@@ -381,6 +404,7 @@ def _run_backend_evaluation(
                 ],
                 "pipeline_stages": representation.pipeline_stages,
                 "epilogue_stages": representation.epilogue_stages,
+                "shared_memory_swizzle": representation.shared_memory_swizzle,
                 "wgmma_configuration": representation.wgmma_configuration,
             },
             hardware_toolchain={
@@ -431,9 +455,9 @@ def _run_canonical_epilogue_validation() -> Mapping[str, object]:
         assert isinstance(representation, Mapping)
         assert isinstance(evaluation, Mapping)
         assert isinstance(cache_validation, Mapping)
-        checks[f"stage_{stage}_schema_v2"] = representation.get(
+        checks[f"stage_{stage}_schema_v{CUTE_GEMM_SCHEMA_VERSION}"] = representation.get(
             "schema_version"
-        ) == 2
+        ) == CUTE_GEMM_SCHEMA_VERSION
         checks[f"stage_{stage}_canonical_schedule"] = (
             representation.get("tile_m"),
             representation.get("tile_n"),
@@ -474,6 +498,73 @@ def _run_canonical_epilogue_validation() -> Mapping[str, object]:
     return {
         "status": "ok" if all(checks.values()) else "validation_failed",
         "validation_kind": "canonical_epilogue_stages",
+        "checks": checks,
+        "variants": variants,
+    }
+
+
+def _run_canonical_swizzle_validation() -> Mapping[str, object]:
+    schedule = CuteSchedule(128, 256, 2, 1)
+    variants = {
+        policy: _run_backend_evaluation(
+            "diagnostic_v2",
+            schedule=schedule,
+            shared_memory_swizzle=policy,
+        )
+        for policy in ("heuristic", "sw64")
+    }
+    checks: dict[str, bool] = {}
+    runtime_fingerprints = set()
+    for policy, report in variants.items():
+        representation = report["representation"]
+        evaluation = report["evaluation"]
+        cache_validation = report["cache_validation"]
+        assert isinstance(representation, Mapping)
+        assert isinstance(evaluation, Mapping)
+        assert isinstance(cache_validation, Mapping)
+        checks[f"{policy}_schema_v{CUTE_GEMM_SCHEMA_VERSION}"] = (
+            representation.get("schema_version") == CUTE_GEMM_SCHEMA_VERSION
+        )
+        checks[f"{policy}_canonical_state"] = (
+            representation.get("tile_m"),
+            representation.get("tile_n"),
+            representation.get("cluster_m"),
+            representation.get("cluster_n"),
+            representation.get("shared_memory_swizzle"),
+        ) == (128, 256, 2, 1, policy)
+        checks[f"{policy}_cache_reused"] = (
+            cache_validation.get("artifact_reused") is True
+        )
+        checks[f"{policy}_valid"] = evaluation.get("status") == "VALID"
+        checks[f"{policy}_correct"] = (
+            evaluation.get("correctness_status") == "PASS"
+        )
+        checks[f"{policy}_profiled"] = (
+            isinstance(report.get("profile"), Mapping)
+            and report.get("profile_did_not_change_reward") is True
+        )
+        metadata = evaluation.get("metadata")
+        runtime_fingerprint = (
+            metadata.get("runtime_fingerprint")
+            if isinstance(metadata, Mapping)
+            else None
+        )
+        runtime_fingerprints.add(
+            runtime_fingerprint.get("sha256")
+            if isinstance(runtime_fingerprint, Mapping)
+            else None
+        )
+
+    configuration_hashes = {
+        report["configuration_hash"] for report in variants.values()
+    }
+    checks["distinct_configuration_hashes"] = len(configuration_hashes) == 2
+    checks["distinct_runtime_fingerprints"] = (
+        None not in runtime_fingerprints and len(runtime_fingerprints) == 2
+    )
+    return {
+        "status": "ok" if all(checks.values()) else "validation_failed",
+        "validation_kind": "canonical_shared_memory_swizzle",
         "checks": checks,
         "variants": variants,
     }

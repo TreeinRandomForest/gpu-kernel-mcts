@@ -191,9 +191,22 @@ completed hardware validation is identified explicitly.
   both passed exact correctness and produced distinct normalized IR, fatbins, and
   kernel layout identities. Medians were `188.016 us` and `188.528 us`; the 0.27%
   difference is within run noise and does not establish a performance winner.
-- [ ] Promote the validated shared-memory control to versioned typed state and a
-  deterministic mutation with `heuristic` and `sw64` values, then run canonical
-  backend/cache validation and profile both variants before a broader MCTS run.
+- [x] Promote the validated shared-memory control to `CuteGemmProgram` schema v3 and
+  a deterministic `change_shared_memory_swizzle` mutation with `heuristic` and
+  `sw64` values. SW64 remains limited to the validated `(128,256)`, cluster `(2,1)`
+  schedule; rendering, identity, transposition, persistence, and `B_mut` behavior
+  have GPU-independent regression coverage.
+- [x] Run the combined canonical H100 validation/profile for heuristic and SW64.
+  The corrected v18 run passed every schema-v3, cache, correctness, artifact, and
+  diagnostic-v2 profile check. SW64 measured `188.576 us` versus `187.072 us` for
+  the heuristic and executed 4.4% more instructions despite higher L2 hit/throughput.
+  The initial v17 run correctly failed distinct-artifact validation and exposed a
+  missing backend-runner forwarding path, which now has regression coverage.
+- [x] Run a focused `B_mut=1`, `B_gen=0` H100 smoke from `(128,256)`, cluster `(2,1)`
+  with only `change_shared_memory_swizzle`. The run created two valid nodes in one
+  iteration, charged exactly `B_mut=1` and `B_gen=0`, and backed up the SW64 reward
+  of `-0.00927`; the heuristic root correctly remained best. The schema-v3 trace is
+  `cutedsl-swizzle-bmut1-v18.sqlite` (local run artifact, not committed).
 - [ ] Add bounded local autotuning for parameterized kernel families, initially for
   CUTLASS SM90 WGMMA/TMA configurations. Keep the algorithm fixed while tuning
   discrete choices such as tile sizes, pipeline stages, warp layout, vector width,
