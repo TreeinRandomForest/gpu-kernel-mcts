@@ -307,6 +307,45 @@ This failure is candidate invalidity rather than an infrastructure outage. Do no
 be a coordinated structural transformation of all coupled components. See
 [CuTe TMA load-policy validation v12](experiments/cutedsl-tma-load-policy-v12.md).
 
+### Epilogue-stage diagnostic
+
+The pinned `_compute_stages` heuristic returns both the A/B mainloop depth and a
+hardcoded epilogue depth of 4. The next pre-search diagnostic holds the validated
+tile `(128,256)` and cluster `(2,1)` fixed, preserves the pinned A/B depth, and tests
+epilogue depths 2, 3, and 4. This first bounded diagnostic excludes single buffering
+because it would change producer/consumer hazard assumptions in addition to depth;
+that exclusion is not a universal legality conclusion for future CuTe kernels.
+
+Run each point in a separate container on the same H100 worker, changing the stage
+and output filename:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode epilogue-stage-diagnostic \
+  --epilogue-stages 2 \
+  --output /output/cutedsl-epilogue-stage2-v13.json
+```
+
+The diagnostic mode requires the exact pinned example SHA-256 and marks its output
+noncanonical. Successful reports include correctness, timing, normalized IR, and
+runtime artifacts. JIT, launch, or evaluation exceptions are serialized as
+`diagnostic_failed` reports with the requested control and error rather than being
+silently lost. No point consumes `B_mut`, `B_gen`, or `B_tune`.
+
+The guarded v13 H100 run validated all three depths with zero observed correctness
+error. Stages 2, 3, and pinned 4 measured `190.000`, `189.728`, and `188.448 us`
+median respectively. Every depth produced a distinct normalized compiler-IR hash and
+embedded fatbin hash. The differences are below 1% and overlap run-level timing
+variation, so the experiment establishes a real structural dimension rather than a
+performance improvement.
+
+Epilogue depth is promoted in `CuteGemmProgram` schema v2. Explicit values 2 and 3
+are initially legal only for the validated tile `(128,256)`, cluster `(2,1)` and are
+available through `change_epilogue_stages`. `None` means the pinned depth 4. Explicit
+4 is deliberately excluded because it would give the same effective kernel a second
+canonical identity. See
+[CuTe epilogue-stage validation v13](experiments/cutedsl-epilogue-stages-v13.md).
+
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
 
@@ -321,18 +360,19 @@ records its canonical candidate representation, static-legality result, parent a
 child configuration hashes, changed fields, and `typed_mutation` mechanism. These
 proposals perform no JIT or GPU work and consume neither `B_gen` nor `B_tune`.
 Different mutation orders that reach the same representation produce the same
-configuration hash, preserving transpositions. Pipeline, TMA-layout, WGMMA-layout,
-shared-memory, and epilogue mutations remain rejected until the renderer can express
-and validate them. The neighborhood is connected to core MCTS with separate `B_mut`
+configuration hash, preserving transpositions. TMA-layout, WGMMA-layout, and
+shared-memory mutations remain rejected until the renderer can express and validate
+them. Epilogue mutations are available only after reaching their validated schedule.
+The neighborhood is connected to core MCTS with separate `B_mut`
 accounting. Remote orchestration is wired, while H100 search validation remains
 pending.
 
 The renderer now has a pre-search pipeline feasibility control. `pipeline_stages=None`
 preserves the pinned `_compute_stages` heuristic. Explicit values `2`, `3`, and `4`
 override only the A/B mainloop stage count while retaining the pinned epilogue stage
-calculation. This bounded set never requests more stages than the working reference
-tile's heuristic; it is not yet an MCTS mutation. Each value must first pass standalone
-H100 JIT, correctness, and benchmark validation for the fixed workload.
+calculation. Explicit values 2 and 3 are available as typed mutations after corrected
+H100 validation. Explicit 4 is diagnostic-only because it aliases the heuristic for
+the reference tile.
 
 Run each feasibility point with the backend evaluation contract, changing only the
 stage value and output filename:

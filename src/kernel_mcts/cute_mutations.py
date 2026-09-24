@@ -25,10 +25,12 @@ from .generation import (
 CHANGE_CTA_TILE = "change_cta_tile"
 CHANGE_CLUSTER_SHAPE = "change_cluster_shape"
 CHANGE_PIPELINE_STAGES = "change_pipeline_stages"
+CHANGE_EPILOGUE_STAGES = "change_epilogue_stages"
 CUTE_MUTATION_STRATEGY_IDS = (
     CHANGE_CTA_TILE,
     CHANGE_CLUSTER_SHAPE,
     CHANGE_PIPELINE_STAGES,
+    CHANGE_EPILOGUE_STAGES,
 )
 CUTE_MUTATION_STRATEGIES = (
     Strategy(
@@ -58,6 +60,17 @@ CUTE_MUTATION_STRATEGIES = (
             "cute_dsl": (
                 "Change only pipeline_stages. Choose one supported explicit value: "
                 "2 or 3. None preserves the pinned heuristic and is not a proposal."
+            )
+        },
+    ),
+    Strategy(
+        CHANGE_EPILOGUE_STAGES,
+        "Change epilogue pipeline depth while preserving A/B mainloop staging.",
+        {
+            "cute_dsl": (
+                "Change only epilogue_stages. Choose 2 or 3. None preserves the "
+                "pinned depth of 4 and is not a proposal. This action applies only "
+                "to tile (128,256) with cluster (2,1)."
             )
         },
     ),
@@ -126,6 +139,9 @@ def mutate_cute_program(
     elif strategy_id == CHANGE_PIPELINE_STAGES:
         values = _exact_integer_parameters(parameters, ("pipeline_stages",))
         candidate = replace(parent, **values)
+    elif strategy_id == CHANGE_EPILOGUE_STAGES:
+        values = _exact_integer_parameters(parameters, ("epilogue_stages",))
+        candidate = replace(parent, **values)
     else:
         raise ValueError(f"unknown CuTe mutation strategy {strategy_id!r}")
 
@@ -173,6 +189,21 @@ def enumerate_cute_mutations(
                     {"pipeline_stages": pipeline_stages},
                 )
             )
+    if (
+        parent.tile_m,
+        parent.tile_n,
+        parent.cluster_m,
+        parent.cluster_n,
+    ) == (128, 256, 2, 1):
+        for epilogue_stages in (2, 3):
+            if epilogue_stages != parent.epilogue_stages:
+                proposals.append(
+                    mutate_cute_program(
+                        parent,
+                        CHANGE_EPILOGUE_STAGES,
+                        {"epilogue_stages": epilogue_stages},
+                    )
+                )
     return tuple(proposals)
 
 
@@ -234,6 +265,7 @@ class CuteMutationGenerator:
             proposal
             for proposal in enumerate_cute_mutations(parent)
             if proposal.strategy_id == request.strategy.id
+            and proposal.validation.valid
             and (
                 parent.configuration_hash,
                 proposal.strategy_id,

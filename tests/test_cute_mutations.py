@@ -6,12 +6,17 @@ from kernel_mcts.cute_mutations import (
     CUTE_MUTATION_STRATEGIES,
     CHANGE_CLUSTER_SHAPE,
     CHANGE_CTA_TILE,
+    CHANGE_EPILOGUE_STAGES,
     CHANGE_PIPELINE_STAGES,
     CuteMutationGenerator,
     enumerate_cute_mutations,
     mutate_cute_program,
 )
-from kernel_mcts.cute_program import REFERENCE_CUTE_GEMM, PinnedCuteGemmRenderer
+from kernel_mcts.cute_program import (
+    REFERENCE_CUTE_GEMM,
+    CuteGemmProgram,
+    PinnedCuteGemmRenderer,
+)
 from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD
 from kernel_mcts.generation import GenerationRequest, ProposalBudgetKind
 
@@ -121,6 +126,35 @@ def test_pipeline_neighborhood_excludes_explicit_stage_four_alias() -> None:
     ]
 
 
+def test_epilogue_neighborhood_is_limited_to_validated_schedule() -> None:
+    assert not any(
+        proposal.strategy_id == CHANGE_EPILOGUE_STAGES
+        for proposal in enumerate_cute_mutations(REFERENCE_CUTE_GEMM)
+    )
+
+    validated_parent = CuteGemmProgram(128, 256, 2, 1)
+    epilogue_proposals = [
+        proposal
+        for proposal in enumerate_cute_mutations(validated_parent)
+        if proposal.strategy_id == CHANGE_EPILOGUE_STAGES
+    ]
+
+    assert [
+        proposal.candidate.epilogue_stages for proposal in epilogue_proposals
+    ] == [2, 3]
+    assert all(proposal.validation.valid for proposal in epilogue_proposals)
+
+
+def test_explicit_epilogue_stage_four_alias_is_not_a_mutation() -> None:
+    proposal = mutate_cute_program(
+        CuteGemmProgram(128, 256, 2, 1),
+        CHANGE_EPILOGUE_STAGES,
+        {"epilogue_stages": 4},
+    )
+
+    assert proposal.validation.valid is False
+    assert proposal.validation.violations[0].code == "unsupported_structural_value"
+
 def test_rejects_noop_unknown_and_malformed_mutations() -> None:
     with pytest.raises(ValueError, match="must change"):
         mutate_cute_program(
@@ -156,3 +190,35 @@ def test_generator_emits_distinct_deterministic_candidates_without_llm_calls() -
     assert first.metadata["llm_call"] is False
     assert first.metadata["proposal_mechanism"] == "typed_mutation"
     assert generator.can_generate(request) is False
+
+
+def test_generator_exposes_epilogue_mutations_only_at_validated_schedule() -> None:
+    generator = CuteMutationGenerator()
+    strategy = next(
+        item for item in CUTE_MUTATION_STRATEGIES
+        if item.id == CHANGE_EPILOGUE_STAGES
+    )
+    root_request = GenerationRequest(
+        PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM),
+        strategy,
+        BF16_GEMM_WORKLOAD,
+        {},
+        None,
+    )
+    validated_parent = CuteGemmProgram(128, 256, 2, 1)
+    validated_request = GenerationRequest(
+        PinnedCuteGemmRenderer().render(validated_parent),
+        strategy,
+        BF16_GEMM_WORKLOAD,
+        {},
+        None,
+    )
+
+    assert generator.can_generate(root_request) is False
+    first = generator.generate(validated_request)
+    second = generator.generate(validated_request)
+
+    assert first.program is not None
+    assert second.program is not None
+    assert first.program != second.program
+    assert generator.can_generate(validated_request) is False

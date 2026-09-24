@@ -113,6 +113,18 @@ completed hardware validation is identified explicitly.
   because the TMA atom no longer matched clustered partitioning, CTA coordinates,
   and multicast masks. Reject it as a bounded field and add no MCTS mutation. A
   future non-multicast experiment would require one coordinated structural rewrite.
+- [x] Add a SHA-guarded, noncanonical epilogue-stage diagnostic over depths
+  `{2,3,4}` for tile `(128,256)`, cluster `(2,1)`. It preserves the pinned A/B
+  mainloop depth, restores the original method after evaluation, and serializes
+  diagnostic failures instead of losing the requested configuration and error.
+- [x] Validate epilogue stages 2, 3, and pinned 4 on one H100. All passed exact
+  correctness and produced distinct normalized IR and fatbins. Medians were
+  `190.000`, `189.728`, and `188.448 us`; the sub-1% timing differences do not
+  establish a performance winner beyond the pinned stage 4 in this run.
+- [x] Promote validated epilogue depth to `CuteGemmProgram` schema v2 and add a
+  deterministic `change_epilogue_stages` mutation. Explicit values 2 and 3 are
+  initially legal only for tile `(128,256)`, cluster `(2,1)`; `None` preserves pinned
+  stage 4, and explicit 4 is excluded as an identical-state alias.
 - [x] Complete corrected standalone H100 validation of bounded mainloop
   `pipeline_stages={2,3,4}` and repeat `B_mut=6` after forwarding the typed field into
   the backend subprocess. All stages passed exact correctness and produced distinct

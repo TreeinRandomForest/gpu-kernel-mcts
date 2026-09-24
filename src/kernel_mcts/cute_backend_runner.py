@@ -27,6 +27,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     result = run_hopper_bf16_comparable(
         schedule=program.schedule,
         pipeline_stages=program.pipeline_stages,
+        epilogue_stages=program.epilogue_stages,
         wgmma_configuration=program.wgmma_configuration,
         raise_on_correctness_failure=False,
         capture_jit_diagnostics=True,

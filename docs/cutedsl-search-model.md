@@ -99,13 +99,19 @@ The current standalone mutation mechanisms are:
 
 - `change_cta_tile`; and
 - `change_cluster_shape`; and
-- `change_pipeline_stages`.
+- `change_pipeline_stages`; and
+- `change_epilogue_stages`.
 
 The pipeline mutation changes only A/B mainloop staging and offers explicit depths
 `2` and `3`. The pinned heuristic remains the root behavior, and epilogue staging
 remains pinned. Explicit depth `4` is deliberately excluded from this initial
 neighborhood because it is equivalent to the heuristic for the reference
 `(128,256)` tile and would create duplicate effective states.
+
+The epilogue mutation changes only output-pipeline depth and currently offers values
+2 and 3 only for tile `(128,256)`, cluster `(2,1)`, the schedule validated on H100.
+Pinned depth 4 is represented by `None`; explicit 4 is excluded as an identical-state
+alias. Mutation generation filters statically invalid cross-schedule combinations.
 
 They are connected to core MCTS through a deterministic mutation generator and
 covered by a GPU-independent end-to-end search test. Remote-worker orchestration and

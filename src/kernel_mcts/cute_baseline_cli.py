@@ -59,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
             "structural-capabilities",
             "wgmma-inflight-diagnostic",
             "tma-copy-diagnostic",
+            "epilogue-stage-diagnostic",
         ),
         default="comparison",
     )
@@ -82,6 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("auto_multicast", "non_multicast"),
         default="auto_multicast",
     )
+    parser.add_argument("--epilogue-stages", type=int, choices=(2, 3, 4))
     return parser
 
 
@@ -102,6 +104,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError(
             "--tma-load-policy is available only in tma-copy-diagnostic mode"
         )
+    if (
+        arguments.mode != "epilogue-stage-diagnostic"
+        and arguments.epilogue_stages is not None
+    ):
+        raise ValueError(
+            "--epilogue-stages is available only in epilogue-stage-diagnostic mode"
+        )
+    if (
+        arguments.mode == "epilogue-stage-diagnostic"
+        and arguments.epilogue_stages is None
+    ):
+        raise ValueError("epilogue-stage-diagnostic requires --epilogue-stages")
     if arguments.mode == "comparison":
         result = _run_comparison(arguments.example)
     elif arguments.mode == "tune":
@@ -135,6 +149,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_tma_copy_diagnostic(
             arguments.example,
             tma_load_policy=arguments.tma_load_policy,
+        )
+    elif arguments.mode == "epilogue-stage-diagnostic":
+        result = _run_epilogue_stage_diagnostic(
+            arguments.example,
+            epilogue_stages=arguments.epilogue_stages,
         )
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
@@ -316,6 +335,7 @@ def _run_backend_evaluation(
                     representation.cluster_n,
                 ],
                 "pipeline_stages": representation.pipeline_stages,
+                "epilogue_stages": representation.epilogue_stages,
                 "wgmma_configuration": representation.wgmma_configuration,
             },
             hardware_toolchain={
@@ -400,6 +420,41 @@ def _run_tma_copy_diagnostic(
         "cluster_shape_mn": [schedule.cluster_m, schedule.cluster_n],
         "canonical_search_state": False,
     }
+    return result
+
+
+def _run_epilogue_stage_diagnostic(
+    example: Path,
+    *,
+    epilogue_stages: int,
+) -> Mapping[str, object]:
+    schedule = CuteSchedule(128, 256, 2, 1)
+    diagnostic_control = {
+        "name": "epilogue_stages",
+        "value": epilogue_stages,
+        "pinned_behavior": 4,
+        "cluster_shape_mn": [schedule.cluster_m, schedule.cluster_n],
+        "canonical_search_state": False,
+    }
+    try:
+        validate_pinned_cute_gemm_source(example)
+        result = dict(
+            run_hopper_bf16_comparable(
+                example,
+                schedule=schedule,
+                epilogue_stages=epilogue_stages,
+                capture_jit_diagnostics=True,
+            )
+        )
+    except Exception as error:
+        return {
+            "status": "diagnostic_failed",
+            "candidate_status": "NOT_ADMITTED",
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+            "diagnostic_control": diagnostic_control,
+        }
+    result["diagnostic_control"] = diagnostic_control
     return result
 
 

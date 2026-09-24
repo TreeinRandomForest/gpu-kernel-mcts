@@ -167,6 +167,9 @@ representation, configuration-hash, validation, transformation, and proposal-mec
 fields to the existing node and generation tables. Existing CUDA traces and browser
 queries remain valid; CuTe nodes use the same graph, profile, decision, and comparison
 APIs, while analysis bundles export rendered CuTe programs with a `.py` suffix.
+`CuteGemmProgram` schema v2 adds H100-validated epilogue depths 2 and 3 for tile
+`(128,256)`, cluster `(2,1)`. Pinned depth 4 remains encoded as `None`, preventing an
+identical effective kernel from receiving two canonical identities.
 
 Milestone B phase 2 implements `CuTeDSLBackend` without enabling CuTe MCTS. It accepts
 only source that exactly matches the deterministic renderer for its embedded typed

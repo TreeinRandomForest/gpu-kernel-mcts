@@ -19,7 +19,7 @@ def test_reference_representation_is_canonical_and_workload_independent() -> Non
 
     assert value["schema_version"] == CUTE_GEMM_SCHEMA_VERSION
     assert value["tile_m"] == 128
-    assert value["schema_version"] == 1
+    assert value["schema_version"] == 2
     assert "wgmma_inflight_groups" not in value
     assert "dtype" not in value
     assert "warmup_count" not in value
@@ -89,7 +89,7 @@ def test_renderer_supports_bounded_mainloop_pipeline_override(
 
     assert legality.valid is True
     assert f"pipeline_stages = {pipeline_stages}" in rendered.source
-    assert "_, epi_stage = pinned_compute_stages(" in rendered.source
+    assert "_, epi_stage = pinned_mainloop_compute_stages(" in rendered.source
     assert "return pipeline_stages, epi_stage" in rendered.source
 
 
@@ -98,6 +98,63 @@ def test_default_renderer_preserves_pinned_pipeline_heuristic() -> None:
 
     assert "pipeline_stages = None" in rendered.source
     assert "if pipeline_stages is not None:" in rendered.source
+    assert "epilogue_stages = None" in rendered.source
+
+
+@pytest.mark.parametrize("epilogue_stages", (2, 3))
+def test_renderer_supports_validated_epilogue_pipeline_depth(
+    epilogue_stages: int,
+) -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        2,
+        1,
+        epilogue_stages=epilogue_stages,
+    )
+
+    legality = validate_cute_gemm_program(program)
+    rendered = PinnedCuteGemmRenderer().render(program)
+
+    assert legality.valid is True
+    assert f"epilogue_stages = {epilogue_stages}" in rendered.source
+    assert "mainloop_stages, _ = pinned_epilogue_compute_stages(" in rendered.source
+    assert "return mainloop_stages, epilogue_stages" in rendered.source
+
+
+def test_epilogue_depth_is_limited_to_validated_schedule() -> None:
+    program = CuteGemmProgram(128, 256, 1, 1, epilogue_stages=2)
+
+    result = validate_cute_gemm_program(program)
+
+    assert result.valid is False
+    assert [item.code for item in result.violations] == [
+        "incompatible_structural_values"
+    ]
+
+
+def test_explicit_epilogue_stage_four_alias_is_rejected() -> None:
+    program = CuteGemmProgram(128, 256, 2, 1, epilogue_stages=4)
+
+    with pytest.raises(ValueError, match="epilogue_stages must be one of"):
+        PinnedCuteGemmRenderer().render(program)
+
+
+def test_mainloop_and_epilogue_renderer_overrides_use_distinct_closures() -> None:
+    program = CuteGemmProgram(
+        128,
+        256,
+        2,
+        1,
+        pipeline_stages=3,
+        epilogue_stages=2,
+    )
+
+    rendered = PinnedCuteGemmRenderer().render(program)
+
+    assert "pinned_mainloop_compute_stages" in rendered.source
+    assert "pinned_epilogue_compute_stages" in rendered.source
+    compile(rendered.source, "rendered_cute_program.py", "exec")
 
 
 def test_renderer_supports_single_warp_group_configuration() -> None:

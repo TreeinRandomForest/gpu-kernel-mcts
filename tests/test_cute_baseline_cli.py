@@ -9,6 +9,7 @@ from kernel_mcts.cute_baseline_cli import (
     _enrich_cute_manifest,
     _run_wgmma_inflight_diagnostic,
     _run_tma_copy_diagnostic,
+    _run_epilogue_stage_diagnostic,
     build_parser,
     main,
 )
@@ -132,6 +133,67 @@ def test_tma_copy_diagnostic_is_not_canonical_state(monkeypatch) -> None:
 def test_cli_rejects_tma_override_in_canonical_backend_mode() -> None:
     with pytest.raises(ValueError, match="only in tma-copy-diagnostic"):
         main(["--mode", "backend", "--tma-load-policy", "non_multicast"])
+
+
+def test_epilogue_stage_diagnostic_is_not_canonical_state(monkeypatch) -> None:
+    calls = []
+
+    def run_comparable(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {"status": "ok"}
+
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli.run_hopper_bf16_comparable",
+        run_comparable,
+    )
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli.validate_pinned_cute_gemm_source",
+        lambda _path: "pinned-hash",
+    )
+
+    result = _run_epilogue_stage_diagnostic(
+        Path("example.py"), epilogue_stages=3
+    )
+
+    assert result["diagnostic_control"]["canonical_search_state"] is False
+    assert result["diagnostic_control"]["pinned_behavior"] == 4
+    assert calls[0][1]["epilogue_stages"] == 3
+    assert calls[0][1]["schedule"].as_dict() == {
+        "tile_m": 128,
+        "tile_n": 256,
+        "cluster_m": 2,
+        "cluster_n": 1,
+    }
+
+
+def test_epilogue_stage_diagnostic_serializes_failure(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli.validate_pinned_cute_gemm_source",
+        lambda _path: "pinned-hash",
+    )
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli.run_hopper_bf16_comparable",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("JIT failed")),
+    )
+
+    result = _run_epilogue_stage_diagnostic(
+        Path("example.py"), epilogue_stages=2
+    )
+
+    assert result["status"] == "diagnostic_failed"
+    assert result["candidate_status"] == "NOT_ADMITTED"
+    assert result["error_type"] == "RuntimeError"
+    assert result["error_message"] == "JIT failed"
+
+
+def test_cli_rejects_epilogue_override_in_canonical_backend_mode() -> None:
+    with pytest.raises(ValueError, match="only in epilogue-stage-diagnostic"):
+        main(["--mode", "backend", "--epilogue-stages", "3"])
+
+
+def test_epilogue_diagnostic_requires_stage_argument() -> None:
+    with pytest.raises(ValueError, match="requires --epilogue-stages"):
+        main(["--mode", "epilogue-stage-diagnostic"])
 
 
 def test_cli_accepts_artifact_diagnostic_mode() -> None:

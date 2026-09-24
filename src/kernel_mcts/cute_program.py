@@ -10,8 +10,9 @@ from .cute_schedule import CuteSchedule, validate_cute_schedule
 from .domain import KernelProgram
 
 
-CUTE_GEMM_SCHEMA_VERSION = 1
+CUTE_GEMM_SCHEMA_VERSION = 2
 SUPPORTED_MAINLOOP_PIPELINE_STAGES = (2, 3, 4)
+SUPPORTED_EPILOGUE_PIPELINE_STAGES = (2, 3)
 SUPPORTED_WGMMA_CONFIGURATIONS = ("pinned_default", "single_warp_group")
 
 
@@ -30,6 +31,7 @@ class CuteGemmProgram:
     mainloop: str = "hopper_wgmma_tma"
     wgmma_configuration: str = "pinned_default"
     pipeline_stages: int | None = None
+    epilogue_stages: int | None = None
     tma_copy_layout: str = "pinned_default"
     shared_memory_swizzle: str = "pinned_default"
     warp_specialization: str = "pinned_default"
@@ -149,6 +151,32 @@ def validate_cute_gemm_program(program: CuteGemmProgram) -> CuteLegalityResult:
                 "pipeline_stages",
             )
         )
+    if (
+        program.epilogue_stages is not None
+        and program.epilogue_stages not in SUPPORTED_EPILOGUE_PIPELINE_STAGES
+    ):
+        violations.append(
+            CuteLegalityViolation(
+                "unsupported_structural_value",
+                "epilogue_stages must be one of "
+                f"{SUPPORTED_EPILOGUE_PIPELINE_STAGES} or None",
+                "epilogue_stages",
+            )
+        )
+    if program.epilogue_stages is not None and (
+        program.tile_m,
+        program.tile_n,
+        program.cluster_m,
+        program.cluster_n,
+    ) != (128, 256, 2, 1):
+        violations.append(
+            CuteLegalityViolation(
+                "incompatible_structural_values",
+                "explicit epilogue_stages are validated only for tile "
+                "(128,256) with cluster (2,1)",
+                "epilogue_stages",
+            )
+        )
     return CuteLegalityResult(tuple(violations))
 
 
@@ -202,18 +230,33 @@ def run():
         module.HopperWgmmaGemmKernel.__init__ = init_with_single_warp_group
     pipeline_stages = {program.pipeline_stages!r}
     if pipeline_stages is not None:
-        pinned_compute_stages = module.HopperWgmmaGemmKernel._compute_stages
+        pinned_mainloop_compute_stages = module.HopperWgmmaGemmKernel._compute_stages
 
         def compute_stages_with_mainloop_override(
             tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
         ):
-            _, epi_stage = pinned_compute_stages(
+            _, epi_stage = pinned_mainloop_compute_stages(
                 tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
             )
             return pipeline_stages, epi_stage
 
         module.HopperWgmmaGemmKernel._compute_stages = staticmethod(
             compute_stages_with_mainloop_override
+        )
+    epilogue_stages = {program.epilogue_stages!r}
+    if epilogue_stages is not None:
+        pinned_epilogue_compute_stages = module.HopperWgmmaGemmKernel._compute_stages
+
+        def compute_stages_with_epilogue_override(
+            tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
+        ):
+            mainloop_stages, _ = pinned_epilogue_compute_stages(
+                tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
+            )
+            return mainloop_stages, epilogue_stages
+
+        module.HopperWgmmaGemmKernel._compute_stages = staticmethod(
+            compute_stages_with_epilogue_override
         )
     return module.run(
         mnkl=(4096, 4096, 4096, 1),

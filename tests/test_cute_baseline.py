@@ -7,6 +7,7 @@ import pytest
 from kernel_mcts.cute_baseline import (
     _collect_timing_samples,
     _install_mainloop_pipeline_override,
+    _install_epilogue_pipeline_override,
     _install_tma_load_policy_override,
     _install_wgmma_configuration_override,
     _launch_once,
@@ -50,6 +51,31 @@ def test_mainloop_override_preserves_epilogue_and_restores_descriptor() -> None:
     assert FakePipelineKernel._compute_stages(None, None, None, 232448, 1) == (2, 4)
     setattr(FakePipelineKernel, "_compute_stages", saved)
     assert vars(FakePipelineKernel)["_compute_stages"] is original
+
+
+def test_epilogue_override_preserves_mainloop_and_restores_descriptor() -> None:
+    original = vars(FakePipelineKernel)["_compute_stages"]
+
+    saved = _install_epilogue_pipeline_override(FakePipelineKernel, 2)
+
+    assert FakePipelineKernel._compute_stages(None, None, None, 232448, 1) == (4, 2)
+    setattr(FakePipelineKernel, "_compute_stages", saved)
+    assert vars(FakePipelineKernel)["_compute_stages"] is original
+
+
+def test_pipeline_overrides_compose_without_cross_talk() -> None:
+    original = vars(FakePipelineKernel)["_compute_stages"]
+
+    _install_mainloop_pipeline_override(FakePipelineKernel, 2)
+    _install_epilogue_pipeline_override(FakePipelineKernel, 3)
+
+    assert FakePipelineKernel._compute_stages(None, None, None, 232448, 1) == (2, 3)
+    setattr(FakePipelineKernel, "_compute_stages", original)
+
+
+def test_epilogue_override_rejects_unsupported_depth() -> None:
+    with pytest.raises(ValueError, match="epilogue stages must be one of"):
+        _install_epilogue_pipeline_override(FakePipelineKernel, 1)
 
 
 def test_single_warp_group_override_updates_dependent_thread_counts() -> None:

@@ -173,6 +173,7 @@ def run_hopper_bf16_comparable(
     wgmma_configuration: str = "pinned_default",
     wgmma_inflight_groups: int = 1,
     tma_load_policy: str = "auto_multicast",
+    epilogue_stages: int | None = None,
     raise_on_correctness_failure: bool = True,
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
@@ -182,7 +183,9 @@ def run_hopper_bf16_comparable(
     import torch
 
     _require_legal_schedule(schedule)
-    if tma_load_policy != "auto_multicast":
+    if epilogue_stages is not None and epilogue_stages not in (2, 3, 4):
+        raise ValueError("epilogue stages must be one of (2, 3, 4)")
+    if tma_load_policy != "auto_multicast" or epilogue_stages is not None:
         validate_pinned_cute_gemm_source(example_path)
     example = _load_example(
         example_path, wgmma_inflight_groups=wgmma_inflight_groups
@@ -227,6 +230,7 @@ def run_hopper_bf16_comparable(
             wgmma_configuration=wgmma_configuration,
             wgmma_inflight_groups=wgmma_inflight_groups,
             tma_load_policy=tma_load_policy,
+            epilogue_stages=epilogue_stages,
             capture_jit_diagnostics=capture_jit_diagnostics,
             profile_single_launch=profile_single_launch,
         )
@@ -247,6 +251,7 @@ def _run_with_repository_hooks(
     wgmma_configuration: str = "pinned_default",
     wgmma_inflight_groups: int = 1,
     tma_load_policy: str = "auto_multicast",
+    epilogue_stages: int | None = None,
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
 ) -> dict[str, Any]:
@@ -260,6 +265,7 @@ def _run_with_repository_hooks(
     original_compute_stages = _install_mainloop_pipeline_override(
         kernel_type, pipeline_stages
     )
+    _install_epilogue_pipeline_override(kernel_type, epilogue_stages)
     original_init = _install_wgmma_configuration_override(
         kernel_type, wgmma_configuration
     )
@@ -390,6 +396,7 @@ def _run_with_repository_hooks(
             "wgmma_configuration": wgmma_configuration,
             "wgmma_inflight_groups": wgmma_inflight_groups,
             "tma_load_policy": tma_load_policy,
+            "epilogue_stages": epilogue_stages,
             "rtol": 2.0e-2,
             "atol": 2.0e-2,
             "seed": 0,
@@ -428,6 +435,30 @@ def _install_mainloop_pipeline_override(kernel_type, pipeline_stages: int | None
         return pipeline_stages, epi_stage
 
     kernel_type._compute_stages = staticmethod(compute_stages_with_mainloop_override)
+    return original_descriptor
+
+
+def _install_epilogue_pipeline_override(
+    kernel_type, epilogue_stages: int | None
+):
+    original_descriptor = vars(kernel_type)["_compute_stages"]
+    if epilogue_stages is None:
+        return original_descriptor
+    if epilogue_stages not in (2, 3, 4):
+        raise ValueError("epilogue stages must be one of (2, 3, 4)")
+    pinned_compute_stages = kernel_type._compute_stages
+
+    def compute_stages_with_epilogue_override(
+        tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
+    ):
+        mainloop_stages, _ = pinned_compute_stages(
+            tile_shape_mnk, a_dtype, b_dtype, smem_capacity, occupancy
+        )
+        return mainloop_stages, epilogue_stages
+
+    kernel_type._compute_stages = staticmethod(
+        compute_stages_with_epilogue_override
+    )
     return original_descriptor
 
 
