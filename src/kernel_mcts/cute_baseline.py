@@ -13,7 +13,10 @@ from typing import Any, Callable, Mapping
 from .domain import BenchmarkResult
 from .cute_schedule import DEFAULT_CUTE_SCHEDULE, CuteSchedule, validate_cute_schedule
 from .cute_diagnostics import describe_kernel_callable
-from .cute_source_transform import load_pinned_cute_gemm
+from .cute_source_transform import (
+    load_pinned_cute_gemm,
+    validate_pinned_cute_gemm_source,
+)
 from .serialization import serialize_benchmark
 
 
@@ -169,6 +172,7 @@ def run_hopper_bf16_comparable(
     pipeline_stages: int | None = None,
     wgmma_configuration: str = "pinned_default",
     wgmma_inflight_groups: int = 1,
+    tma_load_policy: str = "auto_multicast",
     raise_on_correctness_failure: bool = True,
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
@@ -178,6 +182,8 @@ def run_hopper_bf16_comparable(
     import torch
 
     _require_legal_schedule(schedule)
+    if tma_load_policy != "auto_multicast":
+        validate_pinned_cute_gemm_source(example_path)
     example = _load_example(
         example_path, wgmma_inflight_groups=wgmma_inflight_groups
     )
@@ -220,6 +226,7 @@ def run_hopper_bf16_comparable(
             pipeline_stages=pipeline_stages,
             wgmma_configuration=wgmma_configuration,
             wgmma_inflight_groups=wgmma_inflight_groups,
+            tma_load_policy=tma_load_policy,
             capture_jit_diagnostics=capture_jit_diagnostics,
             profile_single_launch=profile_single_launch,
         )
@@ -239,6 +246,7 @@ def _run_with_repository_hooks(
     pipeline_stages: int | None = None,
     wgmma_configuration: str = "pinned_default",
     wgmma_inflight_groups: int = 1,
+    tma_load_policy: str = "auto_multicast",
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
 ) -> dict[str, Any]:
@@ -254,6 +262,9 @@ def _run_with_repository_hooks(
     )
     original_init = _install_wgmma_configuration_override(
         kernel_type, wgmma_configuration
+    )
+    original_tma_loader = _install_tma_load_policy_override(
+        kernel_type, tma_load_policy
     )
     tensor_index = 0
     timings: list[float] = []
@@ -351,6 +362,7 @@ def _run_with_repository_hooks(
         example.testing.benchmark = original_benchmark
         kernel_type._compute_stages = original_compute_stages
         kernel_type.__init__ = original_init
+        kernel_type._make_tma_atoms_and_tensors = original_tma_loader
 
     if profile_single_launch:
         return {
@@ -377,6 +389,7 @@ def _run_with_repository_hooks(
             "pipeline_stages": pipeline_stages,
             "wgmma_configuration": wgmma_configuration,
             "wgmma_inflight_groups": wgmma_inflight_groups,
+            "tma_load_policy": tma_load_policy,
             "rtol": 2.0e-2,
             "atol": 2.0e-2,
             "seed": 0,
@@ -433,6 +446,30 @@ def _install_wgmma_configuration_override(kernel_type, configuration: str):
         self.threads_per_cta = self.num_threads_per_warp_group
 
     kernel_type.__init__ = init_with_single_warp_group
+    return original_descriptor
+
+
+def _install_tma_load_policy_override(kernel_type, policy: str):
+    original_descriptor = vars(kernel_type)["_make_tma_atoms_and_tensors"]
+    if policy == "auto_multicast":
+        return original_descriptor
+    if policy != "non_multicast":
+        raise ValueError(f"unsupported TMA load policy {policy!r}")
+    pinned_make_tma_atoms = kernel_type._make_tma_atoms_and_tensors
+
+    def make_non_multicast_tma_atoms(
+        tensor, smem_layout_staged, smem_tile, _mcast_dim
+    ):
+        return pinned_make_tma_atoms(
+            tensor,
+            smem_layout_staged,
+            smem_tile,
+            1,
+        )
+
+    kernel_type._make_tma_atoms_and_tensors = staticmethod(
+        make_non_multicast_tma_atoms
+    )
     return original_descriptor
 
 

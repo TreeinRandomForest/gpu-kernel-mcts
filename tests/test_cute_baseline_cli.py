@@ -8,6 +8,7 @@ from kernel_mcts.cute_baseline_cli import (
     _describe_design_space,
     _enrich_cute_manifest,
     _run_wgmma_inflight_diagnostic,
+    _run_tma_copy_diagnostic,
     build_parser,
     main,
 )
@@ -95,6 +96,42 @@ def test_wgmma_inflight_diagnostic_is_not_canonical_state(monkeypatch) -> None:
 def test_cli_rejects_inflight_override_in_canonical_backend_mode() -> None:
     with pytest.raises(ValueError, match="only in wgmma-inflight-diagnostic"):
         main(["--mode", "backend", "--wgmma-inflight-groups", "2"])
+
+
+def test_tma_copy_diagnostic_is_not_canonical_state(monkeypatch) -> None:
+    calls = []
+
+    def run_comparable(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {"status": "ok"}
+
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli.run_hopper_bf16_comparable",
+        run_comparable,
+    )
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli.validate_pinned_cute_gemm_source",
+        lambda _path: "pinned-hash",
+    )
+
+    result = _run_tma_copy_diagnostic(
+        Path("example.py"), tma_load_policy="non_multicast"
+    )
+
+    assert result["diagnostic_control"]["canonical_search_state"] is False
+    assert result["diagnostic_control"]["cluster_shape_mn"] == [2, 1]
+    assert calls[0][1]["tma_load_policy"] == "non_multicast"
+    assert calls[0][1]["schedule"].as_dict() == {
+        "tile_m": 128,
+        "tile_n": 256,
+        "cluster_m": 2,
+        "cluster_n": 1,
+    }
+
+
+def test_cli_rejects_tma_override_in_canonical_backend_mode() -> None:
+    with pytest.raises(ValueError, match="only in tma-copy-diagnostic"):
+        main(["--mode", "backend", "--tma-load-policy", "non_multicast"])
 
 
 def test_cli_accepts_artifact_diagnostic_mode() -> None:

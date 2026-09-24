@@ -258,6 +258,41 @@ to transposition semantics. It has therefore been removed from the typed state a
 schema; the guarded transformer remains only in standalone diagnostic tooling. See
 [CuTe WGMMA in-flight validation v11](experiments/cutedsl-wgmma-inflight-v11.md).
 
+### TMA load-policy diagnostic
+
+The pinned implementation derives TMA tensor layouts from its shared-memory layouts;
+it does not expose an independent bounded TMA-layout enum. Its clustered input loads
+do expose one concrete copy-policy decision: when a tile is shared across CTAs, use a
+multicast TMA load or let each CTA issue a non-multicast load. The first TMA diagnostic
+holds the CTA tile at `(128,256)` and cluster at `(2,1)`. Under that cluster, the
+pinned policy multicasts B across two CTAs while A remains a single-CTA load.
+
+`auto_multicast` preserves the official implementation. `non_multicast` wraps only
+the pinned `_make_tma_atoms_and_tensors` helper and forces its multicast dimension to
+one for both inputs. The alternative may fail JIT or launch if downstream partition
+or copy semantics require multicast; such a failure is valid diagnostic evidence,
+not a reason to weaken correctness checks. The override is guarded by the exact
+pinned example SHA-256 and is absent from canonical `CuteGemmProgram` state.
+
+Run both standalone points on the same H100 worker:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode tma-copy-diagnostic \
+  --tma-load-policy auto_multicast \
+  --output /output/cutedsl-tma-auto-v12.json
+
+python -m kernel_mcts.cute_baseline_cli \
+  --mode tma-copy-diagnostic \
+  --tma-load-policy non_multicast \
+  --output /output/cutedsl-tma-non-multicast-v12.json
+```
+
+Each report uses the repository input, correctness, and timing contract and captures
+JIT diagnostics. Compare correctness, normalized compiler IR, embedded fatbin hash,
+and timing before deciding whether this is a real searchable dimension. It remains
+outside MCTS and consumes no `B_mut`, `B_gen`, or `B_tune` during this validation.
+
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
 

@@ -7,6 +7,7 @@ import pytest
 from kernel_mcts.cute_baseline import (
     _collect_timing_samples,
     _install_mainloop_pipeline_override,
+    _install_tma_load_policy_override,
     _install_wgmma_configuration_override,
     _launch_once,
     _tensor_helpers,
@@ -34,6 +35,12 @@ class FakePipelineKernel:
     def _compute_stages(*_arguments):
         return 4, 4
 
+    @staticmethod
+    def _make_tma_atoms_and_tensors(
+        _tensor, _smem_layout_staged, _smem_tile, mcast_dim
+    ):
+        return mcast_dim
+
 
 def test_mainloop_override_preserves_epilogue_and_restores_descriptor() -> None:
     original = vars(FakePipelineKernel)["_compute_stages"]
@@ -58,6 +65,23 @@ def test_single_warp_group_override_updates_dependent_thread_counts() -> None:
     assert kernel.threads_per_cta == 128
     setattr(FakePipelineKernel, "__init__", saved)
     assert vars(FakePipelineKernel)["__init__"] is original
+
+
+def test_non_multicast_tma_override_forces_single_cta_copy() -> None:
+    original = vars(FakePipelineKernel)["_make_tma_atoms_and_tensors"]
+
+    saved = _install_tma_load_policy_override(
+        FakePipelineKernel, "non_multicast"
+    )
+
+    assert FakePipelineKernel._make_tma_atoms_and_tensors(None, None, None, 2) == 1
+    setattr(FakePipelineKernel, "_make_tma_atoms_and_tensors", saved)
+    assert vars(FakePipelineKernel)["_make_tma_atoms_and_tensors"] is original
+
+
+def test_tma_override_rejects_unknown_policy() -> None:
+    with pytest.raises(ValueError, match="unsupported TMA load policy"):
+        _install_tma_load_policy_override(FakePipelineKernel, "unknown")
 
 
 def test_feasibility_runner_uses_fixed_bf16_contract_and_marks_limitations(tmp_path) -> None:

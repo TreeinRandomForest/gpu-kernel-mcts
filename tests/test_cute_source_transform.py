@@ -4,7 +4,10 @@ import hashlib
 
 import pytest
 
-from kernel_mcts.cute_source_transform import transform_wgmma_inflight_groups
+from kernel_mcts.cute_source_transform import (
+    transform_wgmma_inflight_groups,
+    validate_pinned_cute_gemm_source,
+)
 
 
 _SOURCE = """\
@@ -55,3 +58,21 @@ def test_transform_rejects_changed_pinned_default() -> None:
 
     with pytest.raises(ValueError, match="must have value 1"):
         transform_wgmma_inflight_groups(source, 2, expected_sha256=digest)
+
+
+def test_pinned_source_validator_accepts_expected_hash(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "dense_gemm.py"
+    path.write_text(_SOURCE, encoding="utf-8")
+    monkeypatch.setattr(
+        "kernel_mcts.cute_source_transform.PINNED_CUTE_GEMM_SHA256", _SHA256
+    )
+
+    assert validate_pinned_cute_gemm_source(path) == _SHA256
+
+
+def test_pinned_source_validator_rejects_other_source(tmp_path) -> None:
+    path = tmp_path / "dense_gemm.py"
+    path.write_text(_SOURCE, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="source hash mismatch"):
+        validate_pinned_cute_gemm_source(path)

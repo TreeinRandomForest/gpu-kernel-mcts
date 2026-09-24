@@ -12,6 +12,19 @@ PINNED_CUTE_GEMM_SHA256 = (
 )
 
 
+def validate_pinned_cute_gemm_source(path: str | Path) -> str:
+    """Require the exact official source used by structural diagnostics."""
+
+    source = Path(path).read_text(encoding="utf-8")
+    digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    if digest != PINNED_CUTE_GEMM_SHA256:
+        raise ValueError(
+            "pinned CuTe GEMM source hash mismatch: "
+            f"expected {PINNED_CUTE_GEMM_SHA256}, got {digest}"
+        )
+    return digest
+
+
 def transform_wgmma_inflight_groups(
     source: str,
     groups: int,

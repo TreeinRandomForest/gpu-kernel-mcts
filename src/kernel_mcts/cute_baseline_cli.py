@@ -22,6 +22,8 @@ from .cute_tuning import (
 )
 from .cute_backend import CuteBackendConfig, CuTeDSLBackend
 from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
+from .cute_schedule import CuteSchedule
+from .cute_source_transform import validate_pinned_cute_gemm_source
 from .cute_mutations import enumerate_cute_mutations
 from .cute_diagnostics import (
     artifact_changes,
@@ -56,6 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
             "diagnostic",
             "structural-capabilities",
             "wgmma-inflight-diagnostic",
+            "tma-copy-diagnostic",
         ),
         default="comparison",
     )
@@ -74,6 +77,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--wgmma-inflight-groups", type=int, choices=(1, 2), default=1
     )
+    parser.add_argument(
+        "--tma-load-policy",
+        choices=("auto_multicast", "non_multicast"),
+        default="auto_multicast",
+    )
     return parser
 
 
@@ -86,6 +94,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError(
             "--wgmma-inflight-groups is available only in "
             "wgmma-inflight-diagnostic mode"
+        )
+    if (
+        arguments.mode != "tma-copy-diagnostic"
+        and arguments.tma_load_policy != "auto_multicast"
+    ):
+        raise ValueError(
+            "--tma-load-policy is available only in tma-copy-diagnostic mode"
         )
     if arguments.mode == "comparison":
         result = _run_comparison(arguments.example)
@@ -115,6 +130,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             arguments.example,
             pipeline_stages=arguments.pipeline_stages,
             wgmma_inflight_groups=arguments.wgmma_inflight_groups,
+        )
+    elif arguments.mode == "tma-copy-diagnostic":
+        result = _run_tma_copy_diagnostic(
+            arguments.example,
+            tma_load_policy=arguments.tma_load_policy,
         )
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
@@ -353,6 +373,31 @@ def _run_wgmma_inflight_diagnostic(
     result["diagnostic_control"] = {
         "name": "wgmma_inflight_groups",
         "value": wgmma_inflight_groups,
+        "canonical_search_state": False,
+    }
+    return result
+
+
+def _run_tma_copy_diagnostic(
+    example: Path,
+    *,
+    tma_load_policy: str,
+) -> Mapping[str, object]:
+    validate_pinned_cute_gemm_source(example)
+    schedule = CuteSchedule(128, 256, 2, 1)
+    result = dict(
+        run_hopper_bf16_comparable(
+            example,
+            schedule=schedule,
+            tma_load_policy=tma_load_policy,
+            capture_jit_diagnostics=True,
+        )
+    )
+    result["diagnostic_control"] = {
+        "name": "tma_load_policy",
+        "value": tma_load_policy,
+        "pinned_behavior": "auto_multicast",
+        "cluster_shape_mn": [schedule.cluster_m, schedule.cluster_n],
         "canonical_search_state": False,
     }
     return result
