@@ -365,6 +365,19 @@ renders it deterministically, parses it in the backend subprocess, and evaluates
 through the normal compile/correctness/benchmark cache. Schedule arguments are
 accepted only by backend modes and must be supplied as a complete tuple.
 
+For the guarded promotion check, evaluate stages 2 and 3 together and retain both
+complete canonical backend reports:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode canonical-epilogue-validation \
+  --output /output/cutedsl-epilogue-canonical-v14.json
+```
+
+The aggregate report fails validation if either state loses its schema-v2 schedule,
+does not reuse its initial JIT artifact on evaluator lookup, is invalid or incorrect,
+or produces the same configuration or runtime fingerprint as the other stage.
+
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
 

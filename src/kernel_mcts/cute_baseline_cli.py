@@ -54,6 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
             "pipeline-tune",
             "backend",
             "backend-profile",
+            "canonical-epilogue-validation",
             "design-space",
             "diagnostic",
             "structural-capabilities",
@@ -165,6 +166,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             epilogue_stages=arguments.epilogue_stages,
             wgmma_configuration=arguments.wgmma_configuration,
         )
+    elif arguments.mode == "canonical-epilogue-validation":
+        result = _run_canonical_epilogue_validation()
     elif arguments.mode == "design-space":
         result = _describe_design_space()
     elif arguments.mode == "diagnostic":
@@ -406,6 +409,71 @@ def _run_backend_evaluation(
         )
         report["profile_did_not_change_reward"] = evaluation.reward == 0.0
     return report
+
+
+def _run_canonical_epilogue_validation() -> Mapping[str, object]:
+    schedule = CuteSchedule(128, 256, 2, 1)
+    variants = {
+        str(stage): _run_backend_evaluation(
+            schedule=schedule,
+            epilogue_stages=stage,
+        )
+        for stage in (2, 3)
+    }
+    checks: dict[str, bool] = {}
+    for stage, report in variants.items():
+        representation = report["representation"]
+        evaluation = report["evaluation"]
+        cache_validation = report["cache_validation"]
+        assert isinstance(representation, Mapping)
+        assert isinstance(evaluation, Mapping)
+        assert isinstance(cache_validation, Mapping)
+        checks[f"stage_{stage}_schema_v2"] = representation.get(
+            "schema_version"
+        ) == 2
+        checks[f"stage_{stage}_canonical_schedule"] = (
+            representation.get("tile_m"),
+            representation.get("tile_n"),
+            representation.get("cluster_m"),
+            representation.get("cluster_n"),
+            representation.get("epilogue_stages"),
+        ) == (128, 256, 2, 1, int(stage))
+        checks[f"stage_{stage}_cache_reused"] = (
+            cache_validation.get("artifact_reused") is True
+        )
+        checks[f"stage_{stage}_valid"] = evaluation.get("status") == "VALID"
+        checks[f"stage_{stage}_correct"] = (
+            evaluation.get("correctness_status") == "PASS"
+        )
+
+    configuration_hashes = {
+        report["configuration_hash"] for report in variants.values()
+    }
+    runtime_fingerprints = set()
+    for report in variants.values():
+        evaluation = report["evaluation"]
+        assert isinstance(evaluation, Mapping)
+        metadata = evaluation.get("metadata")
+        runtime_fingerprint = (
+            metadata.get("runtime_fingerprint")
+            if isinstance(metadata, Mapping)
+            else None
+        )
+        runtime_fingerprints.add(
+            runtime_fingerprint.get("sha256")
+            if isinstance(runtime_fingerprint, Mapping)
+            else None
+        )
+    checks["distinct_configuration_hashes"] = len(configuration_hashes) == 2
+    checks["distinct_runtime_fingerprints"] = (
+        None not in runtime_fingerprints and len(runtime_fingerprints) == 2
+    )
+    return {
+        "status": "ok" if all(checks.values()) else "validation_failed",
+        "validation_kind": "canonical_epilogue_stages",
+        "checks": checks,
+        "variants": variants,
+    }
 
 
 def _run_wgmma_inflight_diagnostic(

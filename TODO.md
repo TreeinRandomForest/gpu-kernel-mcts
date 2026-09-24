@@ -128,6 +128,10 @@ completed hardware validation is identified explicitly.
 - [x] Add canonical backend CLI schedule arguments and schema-v2 epilogue forwarding,
   plus a GPU-independent MCTS test proving one epilogue realization consumes
   `B_mut`, creates a valid node, and consumes no `B_gen`.
+- [x] Add one canonical epilogue-validation command that evaluates stages 2 and 3,
+  verifies schema/schedule identity, validity, correctness, in-memory artifact-cache
+  reuse, and distinct configuration/runtime fingerprints, and retains both complete
+  backend reports.
 - [ ] Run the canonical backend-mode H100 smoke for epilogue stages 2 and 3 and verify
   the report preserves schema v2, configuration identity, cached second evaluation,
   correctness, and the same distinct runtime artifacts observed by the diagnostic.

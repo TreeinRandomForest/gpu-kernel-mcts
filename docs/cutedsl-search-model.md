@@ -115,6 +115,9 @@ alias. Mutation generation filters statically invalid cross-schedule combination
 The canonical backend CLI accepts a complete tile/cluster tuple for guarded hardware
 validation, and a GPU-independent MCTS integration test verifies that an epilogue
 realization creates a schema-v2 node under `B_mut` without consuming `B_gen`.
+A bounded aggregate validation mode runs stages 2 and 3 through that canonical path
+and checks identity, correctness, cache reuse, and distinct runtime fingerprints
+before the field is exercised in a larger search.
 
 They are connected to core MCTS through a deterministic mutation generator and
 covered by a GPU-independent end-to-end search test. Remote-worker orchestration and

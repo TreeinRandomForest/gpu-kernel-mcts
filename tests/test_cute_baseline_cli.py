@@ -5,6 +5,7 @@ import pytest
 
 from kernel_mcts.cute_baseline_cli import (
     _backend_evaluation_report,
+    _run_canonical_epilogue_validation,
     _describe_design_space,
     _enrich_cute_manifest,
     _run_wgmma_inflight_diagnostic,
@@ -224,6 +225,73 @@ def test_cli_routes_validated_epilogue_state_through_canonical_backend(
         "cluster_n": 1,
     }
     assert calls[0][1]["epilogue_stages"] == 3
+
+
+def test_canonical_epilogue_validation_checks_both_cached_states(monkeypatch) -> None:
+    def run_backend(*, schedule, epilogue_stages):
+        assert schedule.as_dict() == {
+            "tile_m": 128,
+            "tile_n": 256,
+            "cluster_m": 2,
+            "cluster_n": 1,
+        }
+        return {
+            "representation": {
+                "schema_version": 2,
+                **schedule.as_dict(),
+                "epilogue_stages": epilogue_stages,
+            },
+            "configuration_hash": f"configuration-{epilogue_stages}",
+            "cache_validation": {"artifact_reused": True},
+            "evaluation": {
+                "status": "VALID",
+                "correctness_status": "PASS",
+                "metadata": {
+                    "runtime_fingerprint": {"sha256": f"binary-{epilogue_stages}"}
+                },
+            },
+        }
+
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_backend_evaluation", run_backend
+    )
+
+    report = _run_canonical_epilogue_validation()
+
+    assert report["status"] == "ok"
+    assert set(report["variants"]) == {"2", "3"}
+    assert all(report["checks"].values())
+
+
+def test_canonical_epilogue_validation_reports_identical_runtime_artifacts(
+    monkeypatch,
+) -> None:
+    def run_backend(*, schedule, epilogue_stages):
+        return {
+            "representation": {
+                "schema_version": 2,
+                **schedule.as_dict(),
+                "epilogue_stages": epilogue_stages,
+            },
+            "configuration_hash": f"configuration-{epilogue_stages}",
+            "cache_validation": {"artifact_reused": True},
+            "evaluation": {
+                "status": "VALID",
+                "correctness_status": "PASS",
+                "metadata": {
+                    "runtime_fingerprint": {"sha256": "same-binary"}
+                },
+            },
+        }
+
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_backend_evaluation", run_backend
+    )
+
+    report = _run_canonical_epilogue_validation()
+
+    assert report["status"] == "validation_failed"
+    assert report["checks"]["distinct_runtime_fingerprints"] is False
 
 
 def test_cli_requires_complete_canonical_schedule() -> None:
