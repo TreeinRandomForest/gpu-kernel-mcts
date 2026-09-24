@@ -132,9 +132,16 @@ completed hardware validation is identified explicitly.
   verifies schema/schedule identity, validity, correctness, in-memory artifact-cache
   reuse, and distinct configuration/runtime fingerprints, and retains both complete
   backend reports.
-- [ ] Run the canonical backend-mode H100 smoke for epilogue stages 2 and 3 and verify
+- [x] Run the canonical backend-mode H100 smoke for epilogue stages 2 and 3 and verify
   the report preserves schema v2, configuration identity, cached second evaluation,
   correctness, and the same distinct runtime artifacts observed by the diagnostic.
+  Both passed exact correctness and cache reuse; medians were `189.008 us` and
+  `189.168 us`, and their IR/fatbin hashes matched the earlier diagnostic.
+- [x] Add an auditable all-or-nothing CuTe root-schedule override to the search CLI so
+  a guarded mutation run can begin at the validated `(128,256)`, cluster `(2,1)`
+  state where epilogue mutations are immediately legal.
+- [ ] Run and inspect a small mutation-only search from that root, verifying distinct
+  epilogue nodes and `B_mut`/cache/SQLite trace behavior before a larger search.
 - [x] Complete corrected standalone H100 validation of bounded mainloop
   `pipeline_stages={2,3,4}` and repeat `B_mut=6` after forwarding the typed field into
   the backend subprocess. All stages passed exact correctness and produced distinct

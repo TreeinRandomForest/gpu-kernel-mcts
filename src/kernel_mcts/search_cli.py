@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import os
 import sys
 from pathlib import Path
@@ -9,9 +10,17 @@ from typing import Mapping, TextIO
 from .autotuning import TuningConfig
 from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from .config import load_data, parse_strategies
-from .cute_mutations import CUTE_MUTATION_STRATEGIES, CuteMutationGenerator
+from .cute_mutations import (
+    CUTE_MUTATION_STRATEGIES,
+    CUTE_MUTATION_STRATEGY_IDS,
+    CuteMutationGenerator,
+)
 from .cute_generation import CuteTypedLLMGenerator
-from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
+from .cute_program import (
+    PinnedCuteGemmRenderer,
+    REFERENCE_CUTE_GEMM,
+    cute_gemm_program_from_source,
+)
 from .domain import Strategy
 from .generation import (
     GenerationRequest,
@@ -199,6 +208,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--volume-name", default="gpu-kernel-mcts")
     parser.add_argument("--generation-budget", type=int, default=1)
     parser.add_argument("--mutation-budget", type=int, default=0)
+    parser.add_argument("--cute-root-tile-m", type=int)
+    parser.add_argument("--cute-root-tile-n", type=int)
+    parser.add_argument("--cute-root-cluster-m", type=int)
+    parser.add_argument("--cute-root-cluster-n", type=int)
+    parser.add_argument(
+        "--cute-strategy",
+        action="append",
+        choices=CUTE_MUTATION_STRATEGY_IDS,
+        help=(
+            "restrict a CuTe mutation or mixed run to this semantic strategy; "
+            "repeat to select multiple strategies"
+        ),
+    )
     parser.add_argument("--autotune", action="store_true")
     parser.add_argument("--tuning-budget", type=int, default=20)
     parser.add_argument("--tuning-method", choices=("random", "grid"), default="random")
@@ -290,6 +312,7 @@ def main(argv: list[str] | None = None) -> int:
     strategies, generator, model_name, mcts_config = _search_components(
         parser, arguments
     )
+    root_program = _root_program(parser, arguments)
     repository = capture_repository_state(Path(__file__).resolve().parents[2])
     image_digest = image_digest_from_reference(arguments.image)
     provenance: dict[str, object] = {
@@ -301,6 +324,10 @@ def main(argv: list[str] | None = None) -> int:
         ),
         "backend": arguments.backend,
     }
+    if arguments.backend == "cute_dsl":
+        provenance["cute_root_representation"] = cute_gemm_program_from_source(
+            root_program.source
+        ).as_dict()
     if repository.commit is not None:
         provenance["git_commit"] = repository.commit
     if repository.dirty is not None:
@@ -376,11 +403,7 @@ def main(argv: list[str] | None = None) -> int:
                     required_profilers=("ncu",),
                 ),
                 workload=BF16_GEMM_WORKLOAD,
-                root_program=(
-                    load_bf16_gemm_root()
-                    if arguments.backend == "cuda_cpp"
-                    else PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
-                ),
+                root_program=root_program,
                 strategies=strategies,
                 generator=ProgressKernelGenerator(generator),
                 prior_provider=UniformStrategyPrior(),
@@ -453,11 +476,46 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _root_program(
+    parser: argparse.ArgumentParser,
+    arguments: argparse.Namespace,
+):
+    values = (
+        arguments.cute_root_tile_m,
+        arguments.cute_root_tile_n,
+        arguments.cute_root_cluster_m,
+        arguments.cute_root_cluster_n,
+    )
+    if any(value is not None for value in values):
+        if arguments.backend != "cute_dsl":
+            parser.error("CuTe root schedule arguments require --backend=cute_dsl")
+        if any(value is None for value in values):
+            parser.error(
+                "all four --cute-root-* schedule arguments must be provided together"
+            )
+        representation = replace(
+            REFERENCE_CUTE_GEMM,
+            tile_m=arguments.cute_root_tile_m,
+            tile_n=arguments.cute_root_tile_n,
+            cluster_m=arguments.cute_root_cluster_m,
+            cluster_n=arguments.cute_root_cluster_n,
+        )
+        try:
+            return PinnedCuteGemmRenderer().render(representation)
+        except ValueError as error:
+            parser.error(str(error))
+    if arguments.backend == "cute_dsl":
+        return PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+    return load_bf16_gemm_root()
+
+
 def _search_components(
     parser: argparse.ArgumentParser,
     arguments: argparse.Namespace,
 ) -> tuple[tuple[Strategy, ...], KernelGenerator, str | None, MCTSConfig]:
     if arguments.generator == "smoke":
+        if arguments.cute_strategy:
+            parser.error("--cute-strategy requires a CuTe generator")
         if arguments.backend != "cuda_cpp":
             parser.error("--generator=smoke requires --backend=cuda_cpp")
         if arguments.generation_budget != 1:
@@ -498,7 +556,7 @@ def _search_components(
                 "a positive --mutation-budget"
             )
         return (
-            CUTE_MUTATION_STRATEGIES,
+            _selected_cute_strategies(arguments),
             CuteMutationGenerator(),
             None,
             _mcts_config(arguments, max_repairs=0),
@@ -506,6 +564,8 @@ def _search_components(
 
     if arguments.generator == "openai" and arguments.backend != "cuda_cpp":
         parser.error("--generator=openai requires --backend=cuda_cpp")
+    if arguments.generator == "openai" and arguments.cute_strategy:
+        parser.error("--cute-strategy requires a CuTe generator")
     if arguments.generator == "cute-mixed" and arguments.backend != "cute_dsl":
         parser.error("--generator=cute-mixed requires --backend=cute_dsl")
     if arguments.generation_budget < 1:
@@ -521,7 +581,7 @@ def _search_components(
             f"environment variable {arguments.openai_api_key_env!r} is not set"
         )
     strategies = (
-        CUTE_MUTATION_STRATEGIES
+        _selected_cute_strategies(arguments)
         if arguments.generator == "cute-mixed"
         else parse_strategies(load_data(arguments.strategies))
     )
@@ -552,6 +612,20 @@ def _search_components(
         routed_generator,
         arguments.model,
         _mcts_config(arguments, max_repairs=arguments.max_repairs),
+    )
+
+
+def _selected_cute_strategies(
+    arguments: argparse.Namespace,
+) -> tuple[Strategy, ...]:
+    selected = arguments.cute_strategy
+    if not selected:
+        return CUTE_MUTATION_STRATEGIES
+    selected_ids = set(selected)
+    return tuple(
+        strategy
+        for strategy in CUTE_MUTATION_STRATEGIES
+        if strategy.id in selected_ids
     )
 
 

@@ -119,6 +119,42 @@ A bounded aggregate validation mode runs stages 2 and 3 through that canonical p
 and checks identity, correctness, cache reuse, and distinct runtime fingerprints
 before the field is exercised in a larger search.
 
+For guarded experiments, the search CLI accepts all four `--cute-root-*` schedule
+arguments together. They are legal only for `--backend=cute_dsl`, are validated and
+rendered through the normal typed path, and the complete root representation is
+recorded in run provenance. This permits an epilogue-focused run to begin at the
+validated `(128,256)`, cluster `(2,1)` state without changing the default CuTe root.
+`--cute-strategy` may be repeated to select an explicit subset of the registered
+CuTe semantic actions for a guarded ablation. It changes only the configured action
+set; selection and budget semantics within that set are unchanged.
+
+The first epilogue-only mutation smoke uses two deterministic proposals so both
+validated realizations can be represented beneath one strategy edge:
+
+```bash
+python -m kernel_mcts.search_cli \
+  --provider nebius \
+  --image docker.io/saarora/gpu-kernel-mcts:cutedsl-epilogue-v14 \
+  --trace cutedsl-epilogue-bmut2-v14.sqlite \
+  --backend cute_dsl \
+  --generator cute-mutation \
+  --generation-budget 0 \
+  --mutation-budget 2 \
+  --cute-root-tile-m 128 \
+  --cute-root-tile-n 256 \
+  --cute-root-cluster-m 2 \
+  --cute-root-cluster-n 1 \
+  --cute-strategy change_epilogue_stages \
+  --k-max 2 \
+  --max-depth 1 \
+  --best-output cutedsl-epilogue-bmut2-v14-best.py \
+  --nebius-project-id PROJECT_ID \
+  --nebius-subnet-id SUBNET_ID \
+  --nebius-ssh-public-key ~/.ssh/nebius.pub \
+  --nebius-ssh-private-key ~/.ssh/nebius \
+  --confirm-create-and-terminate
+```
+
 They are connected to core MCTS through a deterministic mutation generator and
 covered by a GPU-independent end-to-end search test. Remote-worker orchestration and
 the guarded H100 smoke-search command are not implemented yet.

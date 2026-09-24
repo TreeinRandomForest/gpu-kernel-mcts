@@ -16,6 +16,7 @@ from kernel_mcts.generation import (
 from kernel_mcts.llm_generation import LLMKernelGenerator
 from kernel_mcts.cute_mutations import CuteMutationGenerator
 from kernel_mcts.cute_generation import CuteTypedLLMGenerator
+from kernel_mcts.cute_program import cute_gemm_program_from_source
 from kernel_mcts.provenance import RepositoryState
 from kernel_mcts.search_cli import (
     ProgressKernelGenerator,
@@ -450,6 +451,16 @@ def test_cute_mutation_search_wires_backend_root_and_budget(
             "0",
             "--mutation-budget",
             "2",
+            "--cute-root-tile-m",
+            "128",
+            "--cute-root-tile-n",
+            "256",
+            "--cute-root-cluster-m",
+            "2",
+            "--cute-root-cluster-n",
+            "1",
+            "--cute-strategy",
+            "change_epilogue_stages",
             "--ephemeral-storage",
             "--confirm-create-and-terminate",
         ]
@@ -459,12 +470,53 @@ def test_cute_mutation_search_wires_backend_root_and_budget(
     assert captured["provider_config"].backend == "cute_dsl"
     search = captured["search"]
     assert search["root_program"].backend == "cute_dsl"
+    root_representation = cute_gemm_program_from_source(
+        search["root_program"].source
+    )
+    assert root_representation.schedule.as_dict() == {
+        "tile_m": 128,
+        "tile_n": 256,
+        "cluster_m": 2,
+        "cluster_n": 1,
+    }
+    assert search["run_metadata"]["cute_root_representation"] == (
+        root_representation.as_dict()
+    )
     assert search["generation_budget"] == 0
     assert search["mutation_budget"] == 2
+    assert tuple(strategy.id for strategy in search["strategies"]) == (
+        "change_epilogue_stages",
+    )
     assert isinstance(search["generator"], ProgressKernelGenerator)
     assert isinstance(search["generator"]._generator, CuteMutationGenerator)
     assert search["mcts_config"].max_repairs == 0
     assert "CuTe mutation search completed" in capsys.readouterr().out
+
+
+def test_cute_root_schedule_requires_complete_tuple(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("RUNPOD_API_KEY", "test-runpod-key")
+
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--image",
+                "cute-worker:v1",
+                "--trace",
+                str(tmp_path / "cute.sqlite"),
+                "--backend",
+                "cute_dsl",
+                "--generator",
+                "cute-mutation",
+                "--generation-budget",
+                "0",
+                "--mutation-budget",
+                "1",
+                "--cute-root-cluster-m",
+                "2",
+                "--ephemeral-storage",
+                "--confirm-create-and-terminate",
+            ]
+        )
 
 
 def test_cute_mixed_search_constructs_mutation_first_router(

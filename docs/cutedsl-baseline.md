@@ -377,6 +377,8 @@ python -m kernel_mcts.cute_baseline_cli \
 The aggregate report fails validation if either state loses its schema-v2 schedule,
 does not reuse its initial JIT artifact on evaluator lookup, is invalid or incorrect,
 or produces the same configuration or runtime fingerprint as the other stage.
+The completed H100 result is recorded in
+[canonical CuTe epilogue validation v14](experiments/cutedsl-epilogue-canonical-v14.md).
 
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
