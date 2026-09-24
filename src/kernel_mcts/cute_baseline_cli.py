@@ -84,6 +84,10 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto_multicast",
     )
     parser.add_argument("--epilogue-stages", type=int, choices=(2, 3, 4))
+    parser.add_argument("--tile-m", type=int)
+    parser.add_argument("--tile-n", type=int)
+    parser.add_argument("--cluster-m", type=int)
+    parser.add_argument("--cluster-n", type=int)
     return parser
 
 
@@ -105,7 +109,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "--tma-load-policy is available only in tma-copy-diagnostic mode"
         )
     if (
-        arguments.mode != "epilogue-stage-diagnostic"
+        arguments.mode
+        not in ("backend", "backend-profile", "epilogue-stage-diagnostic")
         and arguments.epilogue_stages is not None
     ):
         raise ValueError(
@@ -116,6 +121,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         and arguments.epilogue_stages is None
     ):
         raise ValueError("epilogue-stage-diagnostic requires --epilogue-stages")
+    schedule_values = (
+        arguments.tile_m,
+        arguments.tile_n,
+        arguments.cluster_m,
+        arguments.cluster_n,
+    )
+    if arguments.mode not in ("backend", "backend-profile") and any(
+        value is not None for value in schedule_values
+    ):
+        raise ValueError(
+            "typed schedule arguments are available only in backend modes"
+        )
+    if any(value is not None for value in schedule_values) and any(
+        value is None for value in schedule_values
+    ):
+        raise ValueError(
+            "--tile-m, --tile-n, --cluster-m, and --cluster-n must be provided together"
+        )
+    canonical_schedule = (
+        CuteSchedule(*schedule_values)
+        if all(value is not None for value in schedule_values)
+        else REFERENCE_CUTE_GEMM.schedule
+    )
     if arguments.mode == "comparison":
         result = _run_comparison(arguments.example)
     elif arguments.mode == "tune":
@@ -124,13 +152,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_pipeline_tuning(arguments.example)
     elif arguments.mode == "backend":
         result = _run_backend_evaluation(
+            schedule=canonical_schedule,
             pipeline_stages=arguments.pipeline_stages,
+            epilogue_stages=arguments.epilogue_stages,
             wgmma_configuration=arguments.wgmma_configuration,
         )
     elif arguments.mode == "backend-profile":
         result = _run_backend_evaluation(
             arguments.profile_set,
+            schedule=canonical_schedule,
             pipeline_stages=arguments.pipeline_stages,
+            epilogue_stages=arguments.epilogue_stages,
             wgmma_configuration=arguments.wgmma_configuration,
         )
     elif arguments.mode == "design-space":
@@ -284,7 +316,9 @@ def _run_pipeline_tuning(example: Path):
 def _run_backend_evaluation(
     profile_metric_set: str | None = None,
     *,
+    schedule: CuteSchedule = REFERENCE_CUTE_GEMM.schedule,
     pipeline_stages: int | None = None,
+    epilogue_stages: int | None = None,
     wgmma_configuration: str = "pinned_default",
 ):
     import cutlass
@@ -302,7 +336,12 @@ def _run_backend_evaluation(
     )
     representation = replace(
         REFERENCE_CUTE_GEMM,
+        tile_m=schedule.tile_m,
+        tile_n=schedule.tile_n,
+        cluster_m=schedule.cluster_m,
+        cluster_n=schedule.cluster_n,
         pipeline_stages=pipeline_stages,
+        epilogue_stages=epilogue_stages,
         wgmma_configuration=wgmma_configuration,
     )
     program = PinnedCuteGemmRenderer().render(representation)

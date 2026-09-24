@@ -195,7 +195,14 @@ def test_trace_store_materializes_cute_representation_and_proposal_provenance(
     tmp_path,
 ) -> None:
     path = tmp_path / "trace.sqlite"
-    representation = {"schema_version": 1, "tile_m": 128, "tile_n": 256}
+    representation = {
+        "schema_version": 2,
+        "tile_m": 128,
+        "tile_n": 256,
+        "cluster_m": 2,
+        "cluster_n": 1,
+        "epilogue_stages": 2,
+    }
     validation = {"valid": True, "violations": []}
     transformation = {"field": "cluster_m", "before": 1, "after": 2}
     evaluation = {
@@ -220,7 +227,7 @@ def test_trace_store_materializes_cute_representation_and_proposal_provenance(
                 "reward": 0.5,
                 "evaluation": evaluation,
                 "representation": representation,
-                "representation_schema_version": 1,
+                "representation_schema_version": 2,
                 "configuration_hash": "config-hash",
             },
         )
@@ -241,7 +248,7 @@ def test_trace_store_materializes_cute_representation_and_proposal_provenance(
                 "evaluation": evaluation,
                 "proposal_mechanism": "typed_mutation",
                 "representation": representation,
-                "representation_schema_version": 1,
+                "representation_schema_version": 2,
                 "configuration_hash": "config-hash",
                 "static_validation": validation,
                 "transformation": transformation,
@@ -252,7 +259,7 @@ def test_trace_store_materializes_cute_representation_and_proposal_provenance(
         assert connection.execute(
             """SELECT representation_json, representation_schema_version,
                       configuration_hash FROM nodes"""
-        ).fetchone() == (json.dumps(representation, sort_keys=True), 1, "config-hash")
+        ).fetchone() == (json.dumps(representation, sort_keys=True), 2, "config-hash")
         row = connection.execute(
             """SELECT proposal_mechanism, b_mut, representation_json,
                       representation_schema_version, configuration_hash,
@@ -263,7 +270,7 @@ def test_trace_store_materializes_cute_representation_and_proposal_provenance(
             "typed_mutation",
             1,
             json.dumps(representation, sort_keys=True),
-            1,
+            2,
             "config-hash",
             json.dumps(validation, sort_keys=True),
             json.dumps(transformation, sort_keys=True),

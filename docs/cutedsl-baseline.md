@@ -346,6 +346,25 @@ available through `change_epilogue_stages`. `None` means the pinned depth 4. Exp
 canonical identity. See
 [CuTe epilogue-stage validation v13](experiments/cutedsl-epilogue-stages-v13.md).
 
+Validate a promoted state through the canonical `CuTeDSLBackend` path with all four
+schedule components supplied together:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode backend \
+  --tile-m 128 \
+  --tile-n 256 \
+  --cluster-m 2 \
+  --cluster-n 1 \
+  --epilogue-stages 2 \
+  --output /output/cutedsl-epilogue-canonical-stage2-v14.json
+```
+
+Unlike the pre-search diagnostic, this command constructs schema-v2 canonical state,
+renders it deterministically, parses it in the backend subprocess, and evaluates it
+through the normal compile/correctness/benchmark cache. Schedule arguments are
+accepted only by backend modes and must be supplied as a complete tuple.
+
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
 

@@ -112,6 +112,9 @@ The epilogue mutation changes only output-pipeline depth and currently offers va
 2 and 3 only for tile `(128,256)`, cluster `(2,1)`, the schedule validated on H100.
 Pinned depth 4 is represented by `None`; explicit 4 is excluded as an identical-state
 alias. Mutation generation filters statically invalid cross-schedule combinations.
+The canonical backend CLI accepts a complete tile/cluster tuple for guarded hardware
+validation, and a GPU-independent MCTS integration test verifies that an epilogue
+realization creates a schema-v2 node under `B_mut` without consuming `B_gen`.
 
 They are connected to core MCTS through a deterministic mutation generator and
 covered by a GPU-independent end-to-end search test. Remote-worker orchestration and

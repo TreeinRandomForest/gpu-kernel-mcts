@@ -125,6 +125,12 @@ completed hardware validation is identified explicitly.
   deterministic `change_epilogue_stages` mutation. Explicit values 2 and 3 are
   initially legal only for tile `(128,256)`, cluster `(2,1)`; `None` preserves pinned
   stage 4, and explicit 4 is excluded as an identical-state alias.
+- [x] Add canonical backend CLI schedule arguments and schema-v2 epilogue forwarding,
+  plus a GPU-independent MCTS test proving one epilogue realization consumes
+  `B_mut`, creates a valid node, and consumes no `B_gen`.
+- [ ] Run the canonical backend-mode H100 smoke for epilogue stages 2 and 3 and verify
+  the report preserves schema v2, configuration identity, cached second evaluation,
+  correctness, and the same distinct runtime artifacts observed by the diagnostic.
 - [x] Complete corrected standalone H100 validation of bounded mainloop
   `pipeline_stages={2,3,4}` and repeat `B_mut=6` after forwarding the typed field into
   the backend subprocess. All stages passed exact correctness and produced distinct

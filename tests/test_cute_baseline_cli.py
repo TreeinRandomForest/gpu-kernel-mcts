@@ -186,9 +186,67 @@ def test_epilogue_stage_diagnostic_serializes_failure(monkeypatch) -> None:
     assert result["error_message"] == "JIT failed"
 
 
-def test_cli_rejects_epilogue_override_in_canonical_backend_mode() -> None:
-    with pytest.raises(ValueError, match="only in epilogue-stage-diagnostic"):
-        main(["--mode", "backend", "--epilogue-stages", "3"])
+def test_cli_routes_validated_epilogue_state_through_canonical_backend(
+    monkeypatch,
+) -> None:
+    calls = []
+
+    def run_backend(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {"status": "ok"}
+
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_backend_evaluation", run_backend
+    )
+
+    result = main(
+        [
+            "--mode",
+            "backend",
+            "--tile-m",
+            "128",
+            "--tile-n",
+            "256",
+            "--cluster-m",
+            "2",
+            "--cluster-n",
+            "1",
+            "--epilogue-stages",
+            "3",
+        ]
+    )
+
+    assert result == 0
+    assert calls[0][1]["schedule"].as_dict() == {
+        "tile_m": 128,
+        "tile_n": 256,
+        "cluster_m": 2,
+        "cluster_n": 1,
+    }
+    assert calls[0][1]["epilogue_stages"] == 3
+
+
+def test_cli_requires_complete_canonical_schedule() -> None:
+    with pytest.raises(ValueError, match="must be provided together"):
+        main(["--mode", "backend", "--cluster-m", "2"])
+
+
+def test_cli_rejects_canonical_schedule_outside_backend_modes() -> None:
+    with pytest.raises(ValueError, match="only in backend modes"):
+        main(
+            [
+                "--mode",
+                "comparison",
+                "--tile-m",
+                "128",
+                "--tile-n",
+                "256",
+                "--cluster-m",
+                "2",
+                "--cluster-n",
+                "1",
+            ]
+        )
 
 
 def test_epilogue_diagnostic_requires_stage_argument() -> None:
