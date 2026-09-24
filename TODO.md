@@ -107,10 +107,12 @@ completed hardware validation is identified explicitly.
   `(128,256)` tile with cluster `(2,1)`. It compares the pinned automatic multicast
   load with redundant non-multicast loads, is guarded by the exact pinned source
   hash, and cannot affect CuTe search identity or MCTS budgets.
-- [ ] Validate `tma_load_policy={auto_multicast,non_multicast}` standalone on H100 for
-  JIT/launch behavior, exact correctness, normalized IR and fatbin identity, and
-  timing. Add no canonical field or MCTS mutation unless both policies produce
-  distinct correct effective kernels and the alternative is not pathological.
+- [x] Validate `tma_load_policy={auto_multicast,non_multicast}` standalone on H100.
+  The pinned multicast configuration passed exact correctness at `187.216 us` median.
+  The one-field non-multicast override launched but hit an illegal memory access,
+  because the TMA atom no longer matched clustered partitioning, CTA coordinates,
+  and multicast masks. Reject it as a bounded field and add no MCTS mutation. A
+  future non-multicast experiment would require one coordinated structural rewrite.
 - [x] Complete corrected standalone H100 validation of bounded mainloop
   `pipeline_stages={2,3,4}` and repeat `B_mut=6` after forwarding the typed field into
   the backend subprocess. All stages passed exact correctness and produced distinct

@@ -293,6 +293,20 @@ JIT diagnostics. Compare correctness, normalized compiler IR, embedded fatbin ha
 and timing before deciding whether this is a real searchable dimension. It remains
 outside MCTS and consumes no `B_mut`, `B_gen`, or `B_tune` during this validation.
 
+The guarded v12 H100 experiment rejected this as a bounded independent control. The
+pinned `auto_multicast` configuration passed exact correctness with zero observed
+error and measured `187.216 us` median. Its normalized compiler-IR hash was
+`671224e5...` and its embedded fatbin hash was `4be702f4...`. The
+`non_multicast` override reached kernel launch but CUDA reported an illegal memory
+access at synchronization, so it produced no valid benchmark or artifact report.
+
+Changing only TMA atom construction is insufficient: clustered TMA partitioning,
+CTA coordinates, copy masks, and data ownership still encode the multicast policy.
+This failure is candidate invalidity rather than an infrastructure outage. Do not add
+`tma_load_policy` to canonical state or MCTS. Any future non-multicast experiment must
+be a coordinated structural transformation of all coupled components. See
+[CuTe TMA load-policy validation v12](experiments/cutedsl-tma-load-policy-v12.md).
+
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
 
