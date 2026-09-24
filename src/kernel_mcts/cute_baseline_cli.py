@@ -61,6 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
             "wgmma-inflight-diagnostic",
             "tma-copy-diagnostic",
             "epilogue-stage-diagnostic",
+            "smem-swizzle-diagnostic",
         ),
         default="comparison",
     )
@@ -190,6 +191,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             arguments.example,
             epilogue_stages=arguments.epilogue_stages,
         )
+    elif arguments.mode == "smem-swizzle-diagnostic":
+        result = _run_smem_swizzle_diagnostic(arguments.example)
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -563,6 +566,52 @@ def _run_epilogue_stage_diagnostic(
         }
     result["diagnostic_control"] = diagnostic_control
     return result
+
+
+def _run_smem_swizzle_diagnostic(example: Path) -> Mapping[str, object]:
+    validate_pinned_cute_gemm_source(example)
+    schedule = CuteSchedule(128, 256, 2, 1)
+    variants: dict[str, Mapping[str, object]] = {}
+    for policy in ("heuristic", "forced_sw64"):
+        control = {
+            "name": "smem_swizzle_policy",
+            "value": policy,
+            "scope": (
+                "layout-atom heuristic; for this BF16 workload A/B change from "
+                "SW128 to SW64 while the epilogue remains SW64"
+            ),
+            "tile_shape_mn": [schedule.tile_m, schedule.tile_n],
+            "cluster_shape_mn": [schedule.cluster_m, schedule.cluster_n],
+            "canonical_search_state": False,
+        }
+        try:
+            result = dict(
+                run_hopper_bf16_comparable(
+                    example,
+                    schedule=schedule,
+                    smem_swizzle_policy=policy,
+                    capture_jit_diagnostics=True,
+                )
+            )
+            result["diagnostic_control"] = control
+        except Exception as error:
+            result = {
+                "status": "diagnostic_failed",
+                "candidate_status": "NOT_ADMITTED",
+                "error_type": type(error).__name__,
+                "error_message": str(error),
+                "diagnostic_control": control,
+            }
+        variants[policy] = result
+    return {
+        "status": "ok",
+        "diagnostic": "smem_swizzle_policy",
+        "interpretation": (
+            "Diagnostic only; forced SW64 is not canonical CuTe state or an "
+            "MCTS mutation until H100 validation succeeds."
+        ),
+        "variants": variants,
+    }
 
 
 def _run_artifact_diagnostic(example: Path):

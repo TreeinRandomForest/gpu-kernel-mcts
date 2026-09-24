@@ -380,6 +380,37 @@ or produces the same configuration or runtime fingerprint as the other stage.
 The completed H100 result is recorded in
 [canonical CuTe epilogue validation v14](experiments/cutedsl-epilogue-canonical-v14.md).
 
+## Shared-memory swizzle diagnostic
+
+The next bounded structural experiment changes the shared-memory layout atom rather
+than a schedule scalar. NVIDIA's Hopper helper selects SW128 for the BF16/K-major A
+and B tiles at the validated `(128,256)`, cluster `(2,1)` schedule, while the
+epilogue already uses SW64. The diagnostic compares that heuristic with a coordinated
+SW64 selection that preserves each tensor's MN/K majorness. TMA descriptors and
+WGMMA partitions are then constructed from the resulting layouts by the pinned
+implementation.
+
+This override is guarded by the pinned NVIDIA example hash and is not represented by
+`CuteGemmProgram`, available to MCTS, or charged to `B_mut`. Run both variants on one
+H100 with:
+
+```bash
+python -m kernel_mcts.cute_baseline_cli \
+  --mode smem-swizzle-diagnostic \
+  --output /output/cutedsl-smem-swizzle-v15.json
+```
+
+Promotion requires successful JIT and exact repository-contract correctness plus
+distinct normalized IR and fatbin identity. Performance alone cannot make an invalid
+or artifact-identical configuration a search state.
+
+The v15 H100 run satisfied those requirements. Heuristic SW128 measured `188.016 us`
+median and forced SW64 measured `188.528 us`; both had zero maximum and mean error.
+Their normalized IR, fatbins, and generated layout identities were distinct. The
+small timing difference does not establish a performance winner, but SW64 is a valid
+structural state eligible for typed promotion. See
+[CuTe shared-memory swizzle v15](experiments/cutedsl-smem-swizzle-v15.md).
+
 The first GPU-free structural neighborhood exposes only controls already validated by
 the pinned renderer: CTA tile and cluster shape. Inspect it locally with:
 

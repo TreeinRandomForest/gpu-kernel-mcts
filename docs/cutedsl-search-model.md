@@ -20,8 +20,38 @@ state may eventually include:
 - epilogue ownership and staging.
 
 Only fields that the typed schema, deterministic renderer, and static validator
-actually support belong to the active search space. Initially, only CTA tile and
-cluster shape have deterministic mutation support.
+actually support belong to the active search space. The current search supports CTA
+tile, cluster shape, mainloop pipeline depth, and epilogue pipeline depth.
+
+## Expert template versus structural search
+
+The current renderer uses NVIDIA's pinned Hopper dense-GEMM CuTe implementation as
+its executable foundation. The typed fields configure that expert implementation;
+they do not replace its WGMMA/TMA algorithm. Consequently, the current search is a
+structured way to tune and combine exposed choices around an already optimized
+kernel. On this small space, MCTS should be expected to recover roughly the same
+answer as exhaustive grid search rather than outperform it.
+
+The next stage still begins from the pinned NVIDIA implementation, but introduces
+one bounded structural transformation at a time—for example, a supported alternative
+shared-memory layout or swizzle. Each transformation is first diagnostic-only and is
+promoted to typed state plus an MCTS strategy only after H100 JIT, correctness,
+artifact-identity, and performance validation. This is analogous to adding a CUDA
+strategy, except the realization is a typed CuTe transformation rather than an
+unrestricted source rewrite.
+
+A simpler independently controlled CuTe GEMM representation remains a separate
+Milestone B objective. Until that exists, results must be described as search over
+an expert template, not synthesis of a new GEMM implementation.
+
+The first such structural diagnostic overrides NVIDIA's shared-memory layout-atom
+heuristic from SW128 to SW64 for the BF16 A/B mainloop while preserving operand
+majorness and the already-SW64 epilogue. It remains outside canonical state until an
+H100 run proves JIT legality, correctness, and distinct compiled artifacts.
+The v15 H100 diagnostic supplied that evidence: both variants were exactly correct
+and produced distinct normalized IR, fatbins, and kernel layout identities. SW64 was
+0.27% slower by median in this run, which is within noise; promotion is justified by
+legality and distinct structure rather than a performance claim.
 
 ## One expansion
 
@@ -78,9 +108,9 @@ formulas. A later explicit ablation may compare this rule with a bandit or learn
 mechanism policy using observed validity, reward, and cost.
 
 Each proposal trace records the eligible mechanism sequence and the selected
-mechanism's budget kind. The CLI can construct mutation-only and mixed CuTe searches
-and providers initialize a CuTe worker backend. Guarded remote H100 validation of
-these paths remains pending.
+mechanism's budget kind. The CLI constructs mutation-only and mixed CuTe searches,
+providers initialize a CuTe worker backend, and both paths have completed guarded
+remote H100 validation.
 
 ## Deterministic mutations
 
@@ -160,9 +190,13 @@ Run `d884b5c3-bc5c-4648-a3a6-d1c68d16b5a9` completed in two iterations with
 trace analysis is recorded in
 [CuTe epilogue mutation smoke v14](experiments/cutedsl-epilogue-bmut2-v14.md).
 
-They are connected to core MCTS through a deterministic mutation generator and
-covered by a GPU-independent end-to-end search test. Remote-worker orchestration and
-the guarded H100 smoke-search command are not implemented yet.
+The subsequent four-strategy `B_mut=35` run explored 24 unique nodes, recovered the
+same pinned-stage `(128,256)`, cluster `(2,1)` schedule selected by grid tuning, and
+showed no meaningful benefit from the additional staging controls. See
+[CuTe mutation search B_mut=35 v14](experiments/cutedsl-mutation-bmut35-v14.md).
+
+They are connected to core MCTS through a deterministic mutation generator, covered
+by GPU-independent tests, and validated through remote H100 mutation searches.
 
 ## Stochastic LLM proposals
 

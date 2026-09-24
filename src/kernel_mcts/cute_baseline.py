@@ -174,6 +174,7 @@ def run_hopper_bf16_comparable(
     wgmma_inflight_groups: int = 1,
     tma_load_policy: str = "auto_multicast",
     epilogue_stages: int | None = None,
+    smem_swizzle_policy: str = "heuristic",
     raise_on_correctness_failure: bool = True,
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
@@ -185,7 +186,11 @@ def run_hopper_bf16_comparable(
     _require_legal_schedule(schedule)
     if epilogue_stages is not None and epilogue_stages not in (2, 3, 4):
         raise ValueError("epilogue stages must be one of (2, 3, 4)")
-    if tma_load_policy != "auto_multicast" or epilogue_stages is not None:
+    if (
+        tma_load_policy != "auto_multicast"
+        or epilogue_stages is not None
+        or smem_swizzle_policy != "heuristic"
+    ):
         validate_pinned_cute_gemm_source(example_path)
     example = _load_example(
         example_path, wgmma_inflight_groups=wgmma_inflight_groups
@@ -231,6 +236,7 @@ def run_hopper_bf16_comparable(
             wgmma_inflight_groups=wgmma_inflight_groups,
             tma_load_policy=tma_load_policy,
             epilogue_stages=epilogue_stages,
+            smem_swizzle_policy=smem_swizzle_policy,
             capture_jit_diagnostics=capture_jit_diagnostics,
             profile_single_launch=profile_single_launch,
         )
@@ -252,6 +258,7 @@ def _run_with_repository_hooks(
     wgmma_inflight_groups: int = 1,
     tma_load_policy: str = "auto_multicast",
     epilogue_stages: int | None = None,
+    smem_swizzle_policy: str = "heuristic",
     capture_jit_diagnostics: bool = False,
     profile_single_launch: bool = False,
 ) -> dict[str, Any]:
@@ -271,6 +278,9 @@ def _run_with_repository_hooks(
     )
     original_tma_loader = _install_tma_load_policy_override(
         kernel_type, tma_load_policy
+    )
+    original_smem_layout_selector = _install_smem_swizzle_override(
+        example, smem_swizzle_policy
     )
     tensor_index = 0
     timings: list[float] = []
@@ -369,6 +379,7 @@ def _run_with_repository_hooks(
         kernel_type._compute_stages = original_compute_stages
         kernel_type.__init__ = original_init
         kernel_type._make_tma_atoms_and_tensors = original_tma_loader
+        example.sm90_utils.get_smem_layout_atom = original_smem_layout_selector
 
     if profile_single_launch:
         return {
@@ -502,6 +513,30 @@ def _install_tma_load_policy_override(kernel_type, policy: str):
         make_non_multicast_tma_atoms
     )
     return original_descriptor
+
+
+def _install_smem_swizzle_override(example, policy: str):
+    helper_module = example.sm90_utils
+    original_selector = helper_module.get_smem_layout_atom
+    if policy == "heuristic":
+        return original_selector
+    if policy != "forced_sw64":
+        raise ValueError(f"unsupported shared-memory swizzle policy {policy!r}")
+
+    def select_sw64(layout, element_type, major_mode_size, *, loc=None, ip=None):
+        selected = original_selector(
+            layout,
+            element_type,
+            major_mode_size,
+            loc=loc,
+            ip=ip,
+        )
+        selected_name = getattr(selected, "name", str(selected).rsplit(".", 1)[-1])
+        target_name = "MN_SW64" if selected_name.startswith("MN_") else "K_SW64"
+        return getattr(type(selected), target_name)
+
+    helper_module.get_smem_layout_atom = select_sw64
+    return original_selector
 
 
 def _collect_timing_samples(

@@ -171,10 +171,29 @@ completed hardware validation is identified explicitly.
 
 ## Next
 
-- [ ] Implement Milestone B's searchable `CuTeDSLBackend`: begin with a simpler typed
-  Hopper GEMM representation, deterministic rendering, and static legality checks;
-  then expose structural WGMMA, TMA, pipeline, layout, warp-specialization, and
-  epilogue strategies beneath the existing MCTS strategy layer.
+- [x] Implement an initial searchable expert-template `CuTeDSLBackend` with canonical
+  typed state, deterministic rendering, static legality checks, separate mutation
+  accounting, and remote MCTS integration. The validated active fields are CTA tile,
+  cluster shape, mainloop pipeline depth, and epilogue pipeline depth. A `B_mut=35`
+  run recovered the same pinned-stage `(128,256)`, cluster `(2,1)` schedule as grid
+  tuning; the additional staging fields produced no improvement beyond noise.
+- [ ] Build Milestone B's simpler independently controlled typed Hopper GEMM rather
+  than describing current expert-template parameter search as new kernel synthesis.
+  Introduce structural WGMMA, TMA, layout/swizzle, warp-specialization, and epilogue
+  transformations one bounded diagnostic at a time, promoting only distinct,
+  correct H100-validated controls to MCTS state.
+- [x] Identify and implement one SHA-guarded shared-memory layout/swizzle diagnostic
+  in the pinned NVIDIA template. The bounded alternative preserves MN/K majorness
+  while forcing SW64 layout atoms; for the BF16 workload this changes A/B from the
+  heuristic SW128 choice while the epilogue remains SW64. It is diagnostic-only and
+  cannot enter canonical state or consume an MCTS budget.
+- [x] Run the same-worker H100 swizzle diagnostic. Heuristic SW128 and forced SW64
+  both passed exact correctness and produced distinct normalized IR, fatbins, and
+  kernel layout identities. Medians were `188.016 us` and `188.528 us`; the 0.27%
+  difference is within run noise and does not establish a performance winner.
+- [ ] Promote the validated shared-memory control to versioned typed state and a
+  deterministic mutation with `heuristic` and `sw64` values, then run canonical
+  backend/cache validation and profile both variants before a broader MCTS run.
 - [ ] Add bounded local autotuning for parameterized kernel families, initially for
   CUTLASS SM90 WGMMA/TMA configurations. Keep the algorithm fixed while tuning
   discrete choices such as tile sizes, pipeline stages, warp layout, vector width,

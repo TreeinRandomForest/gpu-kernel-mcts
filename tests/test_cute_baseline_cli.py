@@ -11,6 +11,7 @@ from kernel_mcts.cute_baseline_cli import (
     _run_wgmma_inflight_diagnostic,
     _run_tma_copy_diagnostic,
     _run_epilogue_stage_diagnostic,
+    _run_smem_swizzle_diagnostic,
     build_parser,
     main,
 )
@@ -185,6 +186,37 @@ def test_epilogue_stage_diagnostic_serializes_failure(monkeypatch) -> None:
     assert result["candidate_status"] == "NOT_ADMITTED"
     assert result["error_type"] == "RuntimeError"
     assert result["error_message"] == "JIT failed"
+
+
+def test_smem_swizzle_diagnostic_compares_heuristic_and_sw64(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli.validate_pinned_cute_gemm_source",
+        lambda _path: "pinned-hash",
+    )
+
+    def run_comparable(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {"status": "ok", "benchmark": {"median_us": 1.0}}
+
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli.run_hopper_bf16_comparable",
+        run_comparable,
+    )
+
+    result = _run_smem_swizzle_diagnostic(Path("example.py"))
+
+    assert result["status"] == "ok"
+    assert set(result["variants"]) == {"heuristic", "forced_sw64"}
+    assert [call[1]["smem_swizzle_policy"] for call in calls] == [
+        "heuristic",
+        "forced_sw64",
+    ]
+    assert all(call[1]["capture_jit_diagnostics"] is True for call in calls)
+    assert all(
+        variant["diagnostic_control"]["canonical_search_state"] is False
+        for variant in result["variants"].values()
+    )
 
 
 def test_cli_routes_validated_epilogue_state_through_canonical_backend(

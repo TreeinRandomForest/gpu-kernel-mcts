@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from types import SimpleNamespace
 
 import pytest
@@ -8,6 +9,7 @@ from kernel_mcts.cute_baseline import (
     _collect_timing_samples,
     _install_mainloop_pipeline_override,
     _install_epilogue_pipeline_override,
+    _install_smem_swizzle_override,
     _install_tma_load_policy_override,
     _install_wgmma_configuration_override,
     _launch_once,
@@ -43,6 +45,23 @@ class FakePipelineKernel:
         return mcast_dim
 
 
+class FakeSmemLayoutAtomKind(Enum):
+    MN_SW128 = "mn_sw128"
+    MN_SW64 = "mn_sw64"
+    K_SW128 = "k_sw128"
+    K_SW64 = "k_sw64"
+
+
+class FakeSmemHelpers:
+    @staticmethod
+    def get_smem_layout_atom(layout, *_args, **_kwargs):
+        return (
+            FakeSmemLayoutAtomKind.MN_SW128
+            if layout == "mn"
+            else FakeSmemLayoutAtomKind.K_SW128
+        )
+
+
 def test_mainloop_override_preserves_epilogue_and_restores_descriptor() -> None:
     original = vars(FakePipelineKernel)["_compute_stages"]
 
@@ -76,6 +95,29 @@ def test_pipeline_overrides_compose_without_cross_talk() -> None:
 def test_epilogue_override_rejects_unsupported_depth() -> None:
     with pytest.raises(ValueError, match="epilogue stages must be one of"):
         _install_epilogue_pipeline_override(FakePipelineKernel, 1)
+
+
+def test_forced_sw64_override_preserves_major_mode_and_restores_selector() -> None:
+    example = SimpleNamespace(smem90_unused=None, sm90_utils=FakeSmemHelpers)
+    original = FakeSmemHelpers.get_smem_layout_atom
+
+    saved = _install_smem_swizzle_override(example, "forced_sw64")
+
+    assert example.sm90_utils.get_smem_layout_atom("mn", None, 64) is (
+        FakeSmemLayoutAtomKind.MN_SW64
+    )
+    assert example.sm90_utils.get_smem_layout_atom("k", None, 64) is (
+        FakeSmemLayoutAtomKind.K_SW64
+    )
+    example.sm90_utils.get_smem_layout_atom = saved
+    assert example.sm90_utils.get_smem_layout_atom is original
+
+
+def test_smem_swizzle_override_rejects_unknown_policy() -> None:
+    example = SimpleNamespace(sm90_utils=FakeSmemHelpers)
+
+    with pytest.raises(ValueError, match="unsupported shared-memory swizzle policy"):
+        _install_smem_swizzle_override(example, "unknown")
 
 
 def test_single_warp_group_override_updates_dependent_thread_counts() -> None:
