@@ -309,10 +309,19 @@ def test_independent_neighborhood_contains_only_validated_root_transitions() -> 
     proposals = enumerate_independent_cute_mutations(root)
 
     assert [proposal.strategy_id for proposal in proposals] == [
+        CHANGE_CTA_TILE,
         CHANGE_SHARED_MEMORY_SWIZZLE,
         CHANGE_PIPELINE_STAGES,
     ]
-    swizzle, pipeline = proposals
+    cooperative, swizzle, pipeline = proposals
+    assert cooperative.parameters == {
+        "tile_m": 128,
+        "warp_groups_m": 2,
+        "epilogue_stages": 8,
+    }
+    assert cooperative.candidate.mainloop.tile_m == 128
+    assert cooperative.candidate.consumer.warp_groups_m == 2
+    assert cooperative.candidate.epilogue.pipeline_stages == 8
     assert swizzle.parameters == {"swizzle_bytes": 64}
     assert swizzle.candidate.mainloop.a_copy.swizzle_bytes == 64
     assert swizzle.candidate.mainloop.b_copy.swizzle_bytes == 64
@@ -344,10 +353,67 @@ def test_independent_neighborhood_excludes_unvalidated_stage_swizzle_combination
     )
 
 
-def test_cooperative_independent_kernel_has_no_searchable_mutations() -> None:
+def test_cooperative_independent_kernel_has_only_validated_return_mutation() -> None:
     cooperative = make_independent_cute_gemm(tile_m=128)
 
-    assert enumerate_independent_cute_mutations(cooperative) == ()
+    proposals = enumerate_independent_cute_mutations(cooperative)
+
+    assert [proposal.strategy_id for proposal in proposals] == [CHANGE_CTA_TILE]
+    assert proposals[0].parameters == {
+        "tile_m": 64,
+        "warp_groups_m": 1,
+        "epilogue_stages": 4,
+    }
+    assert proposals[0].candidate == make_independent_cute_gemm()
+
+
+def test_cooperative_mutation_is_excluded_from_unvalidated_combinations() -> None:
+    stage_two = make_independent_cute_gemm(pipeline_stages=2)
+    sw64 = make_independent_cute_gemm(swizzle_bytes=64)
+
+    assert CHANGE_CTA_TILE not in {
+        proposal.strategy_id
+        for proposal in enumerate_independent_cute_mutations(stage_two)
+    }
+    assert CHANGE_CTA_TILE not in {
+        proposal.strategy_id
+        for proposal in enumerate_independent_cute_mutations(sw64)
+    }
+
+
+def test_generator_emits_atomic_independent_cooperative_candidate() -> None:
+    generator = CuteMutationGenerator()
+    strategy = next(
+        item for item in CUTE_MUTATION_STRATEGIES if item.id == CHANGE_CTA_TILE
+    )
+    request = GenerationRequest(
+        IndependentCuteGemmRenderer().render(make_independent_cute_gemm()),
+        strategy,
+        BF16_GEMM_WORKLOAD,
+        {},
+        None,
+    )
+
+    result = generator.generate(request)
+
+    assert result.program is not None
+    candidate = independent_cute_gemm_from_source(result.program.source)
+    assert candidate.mainloop.tile_m == 128
+    assert candidate.consumer.warp_groups_m == 2
+    assert candidate.epilogue.pipeline_stages == 8
+    assert candidate.execution.agents[2].count == 256
+    assert result.metadata["transformation"]["parameters"] == {
+        "tile_m": 128,
+        "warp_groups_m": 2,
+        "epilogue_stages": 8,
+    }
+    assert set(result.metadata["transformation"]["changed_fields"]) == {
+        "mainloop",
+        "consumer",
+        "epilogue",
+        "execution",
+    }
+    assert generator.can_generate(request) is False
 
 
 def test_generator_emits_independent_swizzle_and_exhausts_parent_strategy() -> None:

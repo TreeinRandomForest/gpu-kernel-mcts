@@ -247,8 +247,10 @@ the bounded one-K diagnostic with identity tile mapping and passed the complete
 samples. See [cooperative independent GEMM v52](experiments/cutedsl-cooperative-v52.md).
 `spec.md` section 47.4 now admits the paired `(64,256,64)` one-group to
 `(128,256,64)` two-group transition as an atomic `change_cta_tile` realization under
-`B_mut`. It remains absent from mutation enumeration until that promotion is
-implemented and tested.
+`B_mut`. Mutation enumeration and the CLI now expose that transition only from the
+validated three-stage SW128 endpoint. The proposal rebuilds the complete coupled
+representation and consumes no `B_gen`; cooperative SW64 and two-stage combinations
+remain ineligible.
 
 ```bash
 python -m kernel_mcts.search_cli \

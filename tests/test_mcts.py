@@ -6,6 +6,7 @@ import math
 from kernel_mcts.budget import GenerationBudget, MutationBudget
 from kernel_mcts.cute_mutations import (
     CUTE_MUTATION_STRATEGIES,
+    CHANGE_CTA_TILE,
     CHANGE_EPILOGUE_STAGES,
     CHANGE_PIPELINE_STAGES,
     CHANGE_SHARED_MEMORY_SWIZZLE,
@@ -317,6 +318,52 @@ def test_mcts_creates_independent_two_stage_node_under_mutation_budget() -> None
     assert candidate.reward == -0.01
     representation = independent_cute_gemm_from_source(candidate.program.source)
     assert representation.mainloop.pipeline_stages == 2
+
+
+def test_mcts_creates_cooperative_independent_node_under_mutation_budget() -> None:
+    class IndependentEvaluator:
+        def evaluate(self, program, workload):
+            representation = independent_cute_gemm_from_source(program.source)
+            tile_m = representation.mainloop.tile_m
+            return EvaluationResult(
+                ProposalStatus.VALID,
+                program,
+                representation.configuration_hash,
+                0.4 if tile_m == 128 else 0.0,
+                BenchmarkResult((1.0,), 1.0, {"n=1": 1.0}),
+                metadata={"representation": representation.as_dict()},
+            )
+
+    evaluator = IndependentEvaluator()
+    root = evaluator.evaluate(
+        IndependentCuteGemmRenderer().render(make_independent_cute_gemm()),
+        WORKLOAD,
+    )
+    strategy = next(
+        item for item in CUTE_MUTATION_STRATEGIES if item.id == CHANGE_CTA_TILE
+    )
+
+    result = MCTS(
+        strategies=(strategy,),
+        workload=WORKLOAD,
+        generator=CuteMutationGenerator(),
+        evaluator=evaluator,
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(0),
+        mutation_budget=MutationBudget(1),
+        config=MCTSConfig(max_depth=1, k_max=1),
+    ).run(root)
+
+    assert result.generations == 0
+    assert result.mutations == 1
+    assert len(result.nodes) == 2
+    assert result.best.reward == 0.4
+    candidate = next(node for node in result.nodes if node is not result.root)
+    representation = independent_cute_gemm_from_source(candidate.program.source)
+    assert representation.mainloop.tile_m == 128
+    assert representation.consumer.warp_groups_m == 2
+    assert representation.epilogue.pipeline_stages == 8
+    assert representation.execution.agents[2].count == 256
 
 
 def test_mcts_routes_mutation_before_generation_with_separate_budgets() -> None:

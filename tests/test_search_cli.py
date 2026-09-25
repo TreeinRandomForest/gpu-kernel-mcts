@@ -574,7 +574,7 @@ def test_independent_cute_root_wires_matching_worker_and_mutation(
             "--mutation-budget",
             "1",
             "--cute-strategy",
-            "change_shared_memory_swizzle",
+            "change_cta_tile",
             "--ephemeral-storage",
             "--confirm-create-and-terminate",
         ]
@@ -589,7 +589,7 @@ def test_independent_cute_root_wires_matching_worker_and_mutation(
         "tile_m"
     ] == 64
     assert tuple(strategy.id for strategy in search["strategies"]) == (
-        "change_shared_memory_swizzle",
+        "change_cta_tile",
     )
 
 

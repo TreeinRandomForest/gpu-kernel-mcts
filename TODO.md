@@ -197,8 +197,10 @@ completed hardware validation is identified explicitly.
   bounded one-K diagnostic and the complete repository contract with exact tile
   identity and correctness. The full workload measured 448.384 us median over 30
   samples. `spec.md` section 47.4 now admits the paired one-group/two-group
-  transition as an atomic `change_cta_tile` mutation under `B_mut`; implementation
-  of that searchable transition remains.
+  transition as an atomic `change_cta_tile` mutation under `B_mut`. The mutation
+  now rebuilds every coupled typed field atomically, is selectable from the CLI,
+  and has GPU-independent generator and end-to-end MCTS coverage proving
+  `B_mut=1`, `B_gen=0`. A remote mutation smoke remains.
 - [x] Define the complete typed structural contract for that kernel: two WGMMA
   consumer warp groups cover the `(128,256,64)` CTA tile with FP32 register
   accumulators, and a four-stage N-major BF16 TMA-store epilogue owns disjoint

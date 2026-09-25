@@ -182,13 +182,37 @@ def enumerate_independent_cute_mutations(
 ) -> tuple[IndependentCuteMutationProposal, ...]:
     """Return only independently H100-validated one-hop controls."""
 
-    if parent.mainloop.tile_m != 64:
-        # The cooperative two-warp-group shape is diagnostic-only until its
-        # complete lowering passes the repository contract on H100.
-        return ()
     proposals = []
     current_swizzle = parent.mainloop.a_copy.swizzle_bytes
     current_stages = parent.mainloop.pipeline_stages
+    if (
+        current_swizzle == 128
+        and current_stages == 3
+        and parent.mainloop.tile_m in (64, 128)
+    ):
+        tile_m = 128 if parent.mainloop.tile_m == 64 else 64
+        candidate = make_independent_cute_gemm(
+            swizzle_bytes=current_swizzle,
+            pipeline_stages=current_stages,
+            tile_m=tile_m,
+        )
+        proposals.append(
+            IndependentCuteMutationProposal(
+                parent=parent,
+                candidate=candidate,
+                strategy_id=CHANGE_CTA_TILE,
+                parameters={
+                    "tile_m": tile_m,
+                    "warp_groups_m": tile_m // 64,
+                    "epilogue_stages": (tile_m // 64) * 4,
+                },
+                validation=validate_independent_cute_gemm(candidate),
+            )
+        )
+    if parent.mainloop.tile_m != 64:
+        # Only the paired return transition is admitted from the cooperative
+        # state; its SW64 and two-stage combinations remain unvalidated.
+        return tuple(proposals)
     if current_stages == 3:
         swizzle_bytes = 64 if current_swizzle == 128 else 128
         candidate = make_independent_cute_gemm(

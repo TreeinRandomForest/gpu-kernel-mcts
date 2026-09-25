@@ -45,6 +45,6 @@ and its fatbin hash is
 
 The raw local reports are `cutedsl-cooperative-one-k-v52.json` and
 `cutedsl-cooperative-v52.json`; they are not intended for source control. The shape
-remains excluded from mutation enumeration even though `spec.md` section 47.4 now
-admits the paired one-group/two-group transition as an atomic `change_cta_tile`
-mutation. The code promotion remains a separate reviewable change.
+is now exposed through the paired one-group/two-group atomic `change_cta_tile`
+mutation admitted by `spec.md` section 47.4. Cooperative SW64 and two-stage
+combinations remain excluded from mutation enumeration.
