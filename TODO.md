@@ -229,6 +229,75 @@ completed hardware validation is identified explicitly.
   protocol. All v23 stages then passed: empty launch, A load/barrier, A round trip,
   single-CTA A/B, clustered A/B without multicast, and clustered A/B with multicast.
   Final A and B comparisons were exact with zero maximum error.
+- [x] Add the first standalone WGMMA lowering stages on top of the validated TMA
+  tiles. The generated diagnostic constructs the typed `64x256x16` tiled MMA,
+  partitions shared A/B across two consumer warp groups, allocates FP32 register
+  accumulators, and emits fence/GEMM/commit/wait. It remains outside MCTS.
+- [ ] Validate `wgmma_compile_only`, `wgmma_issue_only`, and `wgmma_one_k` on H100
+  in that order. The final stage must match a PyTorch FP32-accumulation reference
+  within the BF16 workload tolerances before implementing the production epilogue.
+  The first compile-only attempt correctly exposed an invalid FP32-register to BF16-
+  global direct copy. Compile and WGMMA issue then passed, but
+  the first numerical run had large error because an accumulator tensor created from
+  shape alone lost the MMA fragment's thread/value-to-C mapping. The diagnostic now
+  uses `tiled_mma.make_fragment_C(tCgC)`. The v26 run produced identical error,
+  strongly indicating a zero output and implicating the diagnostic global-copy path.
+  Explicit scalar mapped stores in v27 proved WGMMA produced nonzero accumulators but
+  wrote only 256 C elements—one per thread—because integer indexing did not flatten
+  the hierarchical fragment. `autovec_copy` in v28 produced the same 256 nonzero
+  elements, confirming that Hopper WGMMA accumulator ownership requires the tiled
+  register-to-shared retile used by its epilogue. The diagnostic now lowers the typed
+  FP32-register to BF16-shared conversion and complete shared-to-global TMA-store
+  epilogue for revalidation. The first combined epilogue run triggered an illegal
+  memory access, so `wgmma_r2s_only` now isolates the register-to-shared boundary
+  before the shared-to-global TMA store is enabled. That boundary also triggered an
+  illegal access; `wgmma_r2s_first_tile` now distinguishes the first tiled store
+  from indexing or buffering across later epilogue tiles. The first-tile v31 run
+  passed, localizing the error to later-tile traversal. A tentative fragment-count
+  change did not fix the v32 run, and a hierarchical slicing attempt failed during
+  v33 compilation. NVIDIA's pinned Hopper epilogue confirms that CTA-wide tile count
+  and scalar fragment traversal are intentional, so both are restored. The new
+  `wgmma_r2s_two_tiles` stage narrows the first failing tile without diverging from
+  the reference lowering. Its v34 H100 run passed; `wgmma_r2s_four_tiles` now checks
+  the complete four-tile partition expected for each M-oriented consumer warp group.
+  The v35 four-tile run failed, so `wgmma_r2s_three_tiles` isolates whether tile three
+  or tile four is the first invalid access. The v36 three-tile run passed, proving
+  tile four is the boundary. `wgmma_r2s_four_reuse_zero` now distinguishes an invalid
+  fourth accumulator tile from an invalid fourth shared-memory stage by reusing
+  epilogue buffer zero for all four stores. Its v37 run passed, proving the fourth
+  accumulator tile is valid and shared stage index three is the fault. Because the
+  typed contract requires four stages, `wgmma_r2s_four_padded` tests whether the
+  generated shared allocation is one tile short without changing that contract. Its
+  first rendering attempt referenced a single-stage layout before definition; the
+  padding then used the equivalent statically known epilogue-tile element count. The
+  v39 padded run passed, confirming an undersized generated allocation. The ordinary
+  four-tile allocation still failed in v40, proving the physical footprint is five
+  tiles although the pipeline retains four logical stages. The typed epilogue now
+  records that extra guard-tile padding explicitly, and renderer allocation, state
+  identity, and shared-memory legality accounting all consume the same value. The
+  full v41 register-to-shared traversal passed. Before re-enabling TMA, the global
+  epilogue-tile coordinate stride was aligned with NVIDIA's reference ordering. The
+  v42 combined run wrote all 32,768 output elements but failed correctness, so store
+  coverage is complete while numerical ordering remains wrong. Compact cosine,
+  64x64 tile-permutation, and within-tile transpose diagnostics now distinguish
+  global tile order from accumulator-to-shared mapping errors. The v43 result had
+  only 0.13 cosine similarity and remained far from correct under every tested tile
+  permutation, localizing the error upstream of TMA. Comparison with NVIDIA's Hopper
+  mainloop initially suggested direct fragment construction, but pinned CUTLASS 4.5.1
+  rejected that during v44 compilation. Inspection of the exact pinned source showed
+  that A/B partitioning was correct; the defect was using a warp-group coordinate
+  rather than `tidx` for `tiled_mma.get_slice`. A v45 run disproved that hypothesis:
+  it produced the identical incorrect output. Further inspection showed the pinned
+  implementation does use the original warp-group slice, synchronizes all warp
+  groups before its collaborative epilogue, and uses tile stride `(shape[1], 1)`.
+  The diagnostic now matches those pinned v4.5.1 details together. In v46 this raised
+  cosine similarity from 0.13 to 0.50 and mapped the first four output tiles
+  correctly, while the four tiles written after buffer-ring wrap remained corrupt.
+  `wgmma_one_k_no_reuse` uses eight logical epilogue stages plus the physical guard
+  tile to test whether four-stage shared-buffer reuse is the remaining fault. Its v47
+  output was identical to v46, ruling reuse out. `wgmma_one_group` now runs the same
+  path with a `64x256x64` CTA tile and one consumer warp group to isolate cooperative
+  two-warp-group decomposition from common operand and epilogue logic.
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms

@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 from typing import Literal
 
 
-INDEPENDENT_TMA_SMEM_SCHEMA_VERSION = 1
+INDEPENDENT_TMA_SMEM_SCHEMA_VERSION = 2
 H100_MAX_SHARED_MEMORY_BYTES = 227_328
 BF16_BYTES = 2
 
@@ -105,10 +105,14 @@ class IndependentGemmEpilogue:
     alignment_bytes: int
     storage_offset_bytes: int
     stage_stride_bytes: int
+    allocation_padding_bytes: int
 
     @property
     def shared_memory_bytes(self) -> int:
-        return self.pipeline_stages * self.stage_stride_bytes
+        return (
+            self.pipeline_stages * self.stage_stride_bytes
+            + self.allocation_padding_bytes
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -287,6 +291,7 @@ def make_independent_cute_gemm(
             alignment_bytes=16,
             storage_offset_bytes=mainloop.shared_memory_bytes,
             stage_stride_bytes=64 * 64 * BF16_BYTES,
+            allocation_padding_bytes=64 * 64 * BF16_BYTES,
         ),
         execution=IndependentExecutionSchedule(
             agents=(
@@ -606,6 +611,15 @@ def validate_independent_cute_gemm(
             "overlapping_epilogue_stages",
             "epilogue stage stride is smaller than one output tile",
             "epilogue.stage_stride_bytes",
+        )
+    if (
+        epilogue.allocation_padding_bytes < expected_epilogue_stage_bytes
+        or epilogue.allocation_padding_bytes % epilogue.alignment_bytes
+    ):
+        reject(
+            "insufficient_epilogue_layout_padding",
+            "the initial composed epilogue layout requires one aligned guard tile",
+            "epilogue.allocation_padding_bytes",
         )
     if epilogue.storage_offset_bytes < mainloop.shared_memory_bytes:
         reject(

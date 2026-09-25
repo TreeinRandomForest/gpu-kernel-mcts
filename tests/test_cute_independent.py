@@ -108,7 +108,8 @@ def test_complete_kernel_contract_coordinates_wgmma_and_epilogue() -> None:
     assert kernel.mainloop.tile_k % kernel.consumer.instruction_k == 0
     assert kernel.epilogue.accumulator_source == "registers"
     assert kernel.epilogue.store_kind == "tma"
-    assert kernel.shared_memory_bytes == 180_224
+    assert kernel.epilogue.allocation_padding_bytes == 8_192
+    assert kernel.shared_memory_bytes == 188_416
 
 
 def test_complete_kernel_identity_includes_memory_layout() -> None:

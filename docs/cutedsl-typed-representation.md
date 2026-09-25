@@ -54,6 +54,9 @@ consumer-owned registers.
 
 The initial epilogue converts register accumulators to N-major BF16, stages `(64,64)`
 tiles in a separate four-stage shared-memory region, and uses a TMA global store.
+The representation separately records one `(64,64)` physical guard tile required
+by the lowered composed layout; it is allocation padding, not a fifth logical
+pipeline stage, and participates in identity and shared-memory capacity checks.
 
 ### Execution schedule
 
@@ -102,6 +105,14 @@ The staged v23 H100 run passed all copy-only checks, including exact two-CTA A/B
 round trips with B multicast. The debugging sequence exposed and corrected a
 warp-uniform TMA issuance requirement. Detailed evidence is recorded in
 [Independent CuTe TMA copy diagnostic v23](experiments/cutedsl-independent-tma-v23.md).
+
+The next standalone diagnostic layers one WGMMA K tile onto the validated single-CTA
+TMA path. Two consumer warp groups partition shared A/B, issue `64x256x16` WGMMA
+operations into FP32 register accumulators, retile and convert those accumulators into
+BF16 shared memory, and use TMA to store the complete output tile. Its stages
+separately test WGMMA JIT, instruction issue/completion, and numerical output against
+a PyTorch FP32-accumulation reference. This remains a diagnostic lowering and is not
+yet a searchable state.
 
 After rebuilding the CuTe image, run:
 

@@ -49,6 +49,18 @@ def test_tma_diagnostic_lowers_cluster_multicast_and_exact_round_trip() -> None:
         ("single_cta_ab", "(1, 1)", True, False, True),
         ("cluster_ab_no_multicast", "(2, 1)", True, False, True),
         ("cluster_ab_multicast", "(2, 1)", True, True, True),
+        ("wgmma_compile_only", "(1, 1)", True, False, False),
+        ("wgmma_issue_only", "(1, 1)", True, False, True),
+        ("wgmma_r2s_first_tile", "(1, 1)", True, False, True),
+        ("wgmma_r2s_two_tiles", "(1, 1)", True, False, True),
+        ("wgmma_r2s_three_tiles", "(1, 1)", True, False, True),
+        ("wgmma_r2s_four_reuse_zero", "(1, 1)", True, False, True),
+        ("wgmma_r2s_four_padded", "(1, 1)", True, False, True),
+        ("wgmma_r2s_four_tiles", "(1, 1)", True, False, True),
+        ("wgmma_r2s_only", "(1, 1)", True, False, True),
+        ("wgmma_one_group", "(1, 1)", True, False, True),
+        ("wgmma_one_k_no_reuse", "(1, 1)", True, False, True),
+        ("wgmma_one_k", "(1, 1)", True, False, True),
     ),
 )
 def test_tma_debug_stages_render_bounded_progression(
@@ -70,7 +82,92 @@ def test_tma_debug_stages_render_bounded_progression(
     assert f"LAUNCH_KERNEL = {launch!r}" in source
     assert f"EMPTY_KERNEL = {(stage == 'launch_empty')!r}" in source
     assert f"LOAD_ONLY = {(stage == 'single_cta_a_load')!r}" in source
+    assert f"ENABLE_WGMMA = {stage.startswith('wgmma_')!r}" in source
+    assert f"WGMMA_ISSUE_ONLY = {(stage == 'wgmma_issue_only')!r}" in source
+    expected_r2s_only = stage in (
+        "wgmma_r2s_first_tile",
+        "wgmma_r2s_two_tiles",
+        "wgmma_r2s_three_tiles",
+        "wgmma_r2s_four_reuse_zero",
+        "wgmma_r2s_four_padded",
+        "wgmma_r2s_four_tiles",
+        "wgmma_r2s_only",
+    )
+    assert f"WGMMA_R2S_ONLY = {expected_r2s_only!r}" in source
+    expected_first_tile = stage == "wgmma_r2s_first_tile"
+    assert f"WGMMA_R2S_FIRST_TILE = {expected_first_tile!r}" in source
+    expected_two_tiles = stage == "wgmma_r2s_two_tiles"
+    assert f"WGMMA_R2S_TWO_TILES = {expected_two_tiles!r}" in source
+    expected_three_tiles = stage == "wgmma_r2s_three_tiles"
+    assert f"WGMMA_R2S_THREE_TILES = {expected_three_tiles!r}" in source
+    expected_reuse_zero = stage == "wgmma_r2s_four_reuse_zero"
+    assert f"WGMMA_R2S_FOUR_REUSE_ZERO = {expected_reuse_zero!r}" in source
+    expected_padded = stage == "wgmma_r2s_four_padded"
+    assert f"WGMMA_R2S_FOUR_PADDED = {expected_padded!r}" in source
+    expected_four_tiles = stage == "wgmma_r2s_four_tiles"
+    assert f"WGMMA_R2S_FOUR_TILES = {expected_four_tiles!r}" in source
     compile(source, f"independent_tma_{stage}.py", "exec")
+
+    expected_epilogue_stages = 8 if stage == "wgmma_one_k_no_reuse" else 4
+    assert f"EPILOGUE_STAGES = {expected_epilogue_stages}" in source
+
+
+def test_wgmma_diagnostic_lowers_partition_gemm_and_tma_epilogue() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(),
+        debug_stage="wgmma_one_k",
+    ).source
+
+    assert "sm90_utils.make_trivial_tiled_mma(" in source
+    assert "warp_group_thread_layout = cute.make_layout(" in source
+    assert "warp_group_thread_layout(warp_group_idx)" in source
+    assert "tCsA = thr_mma.partition_A(sA)" in source
+    assert "tCsB = thr_mma.partition_B(sB)" in source
+    assert "tCrA = tiled_mma.make_fragment_A(tCsA)" in source
+    assert "tCrB = tiled_mma.make_fragment_B(tCsB)" in source
+    assert "cute.make_rmem_tensor(tCgC.shape, self.acc_dtype)" in source
+    assert "cute.nvgpu.warpgroup.fence()" in source
+    assert "cute.nvgpu.warpgroup.commit_group()" in source
+    assert "cute.nvgpu.warpgroup.wait_group(0)" in source
+    assert "cute.arch.sync_threads()" in source
+    assert "sm90_utils.sm90_get_smem_store_op(" in source
+    assert "tiled_copy_r2s.retile(accumulators)" in source
+    assert "epi_index * rC_size + value_index" in source
+    assert "if cutlass.const_expr(WGMMA_R2S_FOUR_REUSE_ZERO):" in source
+    assert "EPILOGUE_STORAGE_ELEMENTS = 20480" in source
+    assert "self.c_dtype,\n                    EPILOGUE_STORAGE_ELEMENTS" in source
+    assert "rC_out.store(rC.load().to(self.c_dtype))" in source
+    assert "epi_tile_count = cute.size(gC_for_tma, mode=[1])" in source
+    assert "pipeline.PipelineTmaStore.create(" in source
+    assert "stride=(epi_tile_shape[1], 1)" in source
+    assert "c_pipeline.producer_tail()" in source
+    assert "if cutlass.const_expr(not WGMMA_R2S_ONLY):" in source
+    assert '"output_nonzero": output_nonzero' in source
+    assert '"cosine_similarity": cosine_similarity' in source
+    assert '"best_tile_permutation": best_tile_permutation' in source
+    assert '"best_transposed_tile_permutation": best_transposed_tile_permutation' in source
+    assert "torch.matmul(a.float(), b.float().transpose(0, 1))" in source
+
+
+def test_wgmma_no_reuse_diagnostic_allocates_eight_stages_plus_guard() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(),
+        debug_stage="wgmma_one_k_no_reuse",
+    ).source
+
+    assert "EPILOGUE_STAGES = 8" in source
+    assert "EPILOGUE_STORAGE_ELEMENTS = 36864" in source
+
+
+def test_wgmma_one_group_diagnostic_uses_64_row_tile() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(),
+        debug_stage="wgmma_one_group",
+    ).source
+
+    assert "TILE_SHAPE_MNK = (64, 256, 64)" in source
+    assert "THREADS_PER_CTA = 128" in source
+    assert "MMA_WARP_GROUPS = 1" in source
 
 
 def test_tma_diagnostic_identity_changes_with_swizzle() -> None:

@@ -2919,6 +2919,11 @@ interactions are understood. Candidate dimensions include:
 - accumulator ownership; and
 - epilogue ownership, staging, and vectorization.
 
+The typed memory contract must distinguish logical pipeline-stage count from any
+additional physical allocation padding required by the lowered composed layout.
+Both contribute to canonical state identity and shared-memory legality accounting;
+padding must not exist only as an untracked renderer detail.
+
 The initial fixed schedule experiment has validated CTA tiles `(64, 128)`,
 `(128, 128)`, and `(128, 256)` with cluster shapes `(1, 1)`, `(1, 2)`, and
 `(2, 1)` for the pinned example. These values are evidence for that implementation,
