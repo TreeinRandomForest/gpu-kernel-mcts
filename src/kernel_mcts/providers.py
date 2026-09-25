@@ -142,6 +142,7 @@ class RunPodConfig:
     project_dirty_tree: bool | None = None
     container_digest: str | None = None
     backend: str = "cuda_cpp"
+    cute_root_kind: str = "pinned"
 
     def __post_init__(self) -> None:
         if not self.image:
@@ -158,6 +159,10 @@ class RunPodConfig:
             raise ValueError("unsupported RunPod cloud type")
         if self.backend not in {"cuda_cpp", "cute_dsl"}:
             raise ValueError("unsupported worker backend")
+        if self.cute_root_kind not in {"pinned", "independent"}:
+            raise ValueError("unsupported CuTe root kind")
+        if self.backend != "cute_dsl" and self.cute_root_kind != "pinned":
+            raise ValueError("CuTe root kind requires the cute_dsl backend")
         if bool(self.network_volume_id) != bool(self.data_center_ids):
             raise ValueError(
                 "RunPod network volume ID and data-center IDs must be configured together"
@@ -367,6 +372,11 @@ class RunPodProvider:
                         **(
                             {"KERNEL_MCTS_BACKEND": self.config.backend}
                             if self.config.backend != "cuda_cpp"
+                            else {}
+                        ),
+                        **(
+                            {"KERNEL_MCTS_CUTE_ROOT_KIND": self.config.cute_root_kind}
+                            if self.config.backend == "cute_dsl"
                             else {}
                         ),
                         **(

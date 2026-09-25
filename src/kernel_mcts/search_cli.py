@@ -21,6 +21,11 @@ from .cute_program import (
     REFERENCE_CUTE_GEMM,
     cute_gemm_program_from_source,
 )
+from .cute_independent import make_independent_cute_gemm
+from .cute_independent_program import (
+    IndependentCuteGemmRenderer,
+    independent_cute_gemm_from_source,
+)
 from .domain import Strategy
 from .generation import (
     GenerationRequest,
@@ -208,6 +213,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--volume-name", default="gpu-kernel-mcts")
     parser.add_argument("--generation-budget", type=int, default=1)
     parser.add_argument("--mutation-budget", type=int, default=0)
+    parser.add_argument(
+        "--cute-root-kind",
+        choices=("pinned", "independent"),
+        default="pinned",
+    )
     parser.add_argument("--cute-root-tile-m", type=int)
     parser.add_argument("--cute-root-tile-n", type=int)
     parser.add_argument("--cute-root-cluster-m", type=int)
@@ -305,6 +315,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--tuning-budget must be positive")
     if arguments.backend == "cute_dsl" and arguments.autotune:
         parser.error("post-search autotuning is not implemented for --backend=cute_dsl")
+    if arguments.backend != "cute_dsl" and arguments.cute_root_kind != "pinned":
+        parser.error("--cute-root-kind requires --backend=cute_dsl")
+    if arguments.cute_root_kind == "independent" and arguments.generator == "cute-mixed":
+        parser.error("the independent CuTe root does not yet support LLM proposals")
     if arguments.tuned_best_output is not None and arguments.tuned_best_output.exists():
         parser.error(
             f"refusing to overwrite existing tuned output: {arguments.tuned_best_output}"
@@ -325,9 +339,13 @@ def main(argv: list[str] | None = None) -> int:
         "backend": arguments.backend,
     }
     if arguments.backend == "cute_dsl":
-        provenance["cute_root_representation"] = cute_gemm_program_from_source(
-            root_program.source
-        ).as_dict()
+        representation = (
+            independent_cute_gemm_from_source(root_program.source)
+            if arguments.cute_root_kind == "independent"
+            else cute_gemm_program_from_source(root_program.source)
+        )
+        provenance["cute_root_kind"] = arguments.cute_root_kind
+        provenance["cute_root_representation"] = representation.as_dict()
     if repository.commit is not None:
         provenance["git_commit"] = repository.commit
     if repository.dirty is not None:
@@ -354,6 +372,7 @@ def main(argv: list[str] | None = None) -> int:
                 project_dirty_tree=repository.dirty,
                 container_digest=image_digest,
                 backend=arguments.backend,
+                cute_root_kind=arguments.cute_root_kind,
             ),
             readiness_progress=progress,
         )
@@ -388,6 +407,7 @@ def main(argv: list[str] | None = None) -> int:
                 project_dirty_tree=repository.dirty,
                 container_digest=image_digest,
                 backend=arguments.backend,
+                cute_root_kind=arguments.cute_root_kind,
             ),
             readiness_progress=progress,
         )
@@ -486,6 +506,10 @@ def _root_program(
         arguments.cute_root_cluster_m,
         arguments.cute_root_cluster_n,
     )
+    if arguments.cute_root_kind == "independent":
+        if any(value is not None for value in values):
+            parser.error("--cute-root-* schedule arguments require the pinned root")
+        return IndependentCuteGemmRenderer().render(make_independent_cute_gemm())
     if any(value is not None for value in values):
         if arguments.backend != "cute_dsl":
             parser.error("CuTe root schedule arguments require --backend=cute_dsl")
@@ -556,7 +580,7 @@ def _search_components(
                 "a positive --mutation-budget"
             )
         return (
-            _selected_cute_strategies(arguments),
+            _selected_cute_strategies(parser, arguments),
             CuteMutationGenerator(),
             None,
             _mcts_config(arguments, max_repairs=0),
@@ -581,7 +605,7 @@ def _search_components(
             f"environment variable {arguments.openai_api_key_env!r} is not set"
         )
     strategies = (
-        _selected_cute_strategies(arguments)
+        _selected_cute_strategies(parser, arguments)
         if arguments.generator == "cute-mixed"
         else parse_strategies(load_data(arguments.strategies))
     )
@@ -616,9 +640,18 @@ def _search_components(
 
 
 def _selected_cute_strategies(
+    parser: argparse.ArgumentParser,
     arguments: argparse.Namespace,
 ) -> tuple[Strategy, ...]:
     selected = arguments.cute_strategy
+    if arguments.cute_root_kind == "independent":
+        supported = {"change_shared_memory_swizzle"}
+        if selected and not set(selected) <= supported:
+            parser.error(
+                "the independent CuTe root currently supports only "
+                "change_shared_memory_swizzle"
+            )
+        selected = selected or tuple(supported)
     if not selected:
         return CUTE_MUTATION_STRATEGIES
     selected_ids = set(selected)

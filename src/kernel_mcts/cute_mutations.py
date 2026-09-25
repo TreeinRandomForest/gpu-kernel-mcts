@@ -14,6 +14,15 @@ from .cute_program import (
     validate_cute_gemm_program,
 )
 from .cute_schedule import CLUSTER_SHAPE_CHOICES, CTA_TILE_CHOICES
+from .cute_independent import (
+    IndependentCuteGemmKernel,
+    IndependentTmaSmemLegality,
+    validate_independent_cute_gemm,
+)
+from .cute_independent_program import (
+    IndependentCuteGemmRenderer,
+    independent_cute_gemm_from_source,
+)
 from .domain import Strategy
 from .generation import (
     GenerationRequest,
@@ -81,8 +90,9 @@ CUTE_MUTATION_STRATEGIES = (
         "Change the shared-memory layout swizzle while preserving operand majorness.",
         {
             "cute_dsl": (
-                "Change only shared_memory_swizzle. Choose heuristic or sw64. "
-                "The sw64 value applies only to tile (128,256) with cluster (2,1)."
+                "Change only the typed shared-memory swizzle. For the pinned "
+                "representation choose heuristic or sw64; for the independent "
+                "representation choose the validated 128-byte or 64-byte swizzle."
             )
         },
     ),
@@ -130,6 +140,68 @@ class CuteMutationProposal:
             "transformation": self.transformation_evidence(),
         }
 
+
+@dataclass(frozen=True, slots=True)
+class IndependentCuteMutationProposal:
+    """One deterministic transition in the independent typed design space."""
+
+    parent: IndependentCuteGemmKernel
+    candidate: IndependentCuteGemmKernel
+    strategy_id: str
+    parameters: Mapping[str, object]
+    validation: IndependentTmaSmemLegality
+
+    def as_dict(self) -> dict[str, object]:
+        before = self.parent.as_dict()
+        after = self.candidate.as_dict()
+        return {
+            "proposal_mechanism": "typed_mutation",
+            "strategy_id": self.strategy_id,
+            "representation": after,
+            "representation_schema_version": self.candidate.schema_version,
+            "configuration_hash": self.candidate.configuration_hash,
+            "static_validation": self.validation.as_dict(),
+            "transformation": {
+                "mechanism": "typed_mutation",
+                "strategy_id": self.strategy_id,
+                "parameters": dict(self.parameters),
+                "parent_configuration_hash": self.parent.configuration_hash,
+                "child_configuration_hash": self.candidate.configuration_hash,
+                "changed_fields": {
+                    name: {"before": before[name], "after": after[name]}
+                    for name in before
+                    if before[name] != after[name]
+                },
+            },
+        }
+
+
+def enumerate_independent_cute_mutations(
+    parent: IndependentCuteGemmKernel,
+) -> tuple[IndependentCuteMutationProposal, ...]:
+    """Return only independently H100-validated one-hop controls."""
+
+    proposals = []
+    current = parent.mainloop.a_copy.swizzle_bytes
+    for swizzle_bytes in (128, 64):
+        if swizzle_bytes == current:
+            continue
+        mainloop = replace(
+            parent.mainloop,
+            a_copy=replace(parent.mainloop.a_copy, swizzle_bytes=swizzle_bytes),
+            b_copy=replace(parent.mainloop.b_copy, swizzle_bytes=swizzle_bytes),
+        )
+        candidate = replace(parent, mainloop=mainloop)
+        proposals.append(
+            IndependentCuteMutationProposal(
+                parent=parent,
+                candidate=candidate,
+                strategy_id=CHANGE_SHARED_MEMORY_SWIZZLE,
+                parameters={"swizzle_bytes": swizzle_bytes},
+                validation=validate_independent_cute_gemm(candidate),
+            )
+        )
+    return tuple(proposals)
 
 def mutate_cute_program(
     parent: CuteGemmProgram,
@@ -234,8 +306,13 @@ def enumerate_cute_mutations(
 class CuteMutationGenerator:
     """Deterministically realize untried typed neighbors for a selected strategy."""
 
-    def __init__(self, renderer: PinnedCuteGemmRenderer | None = None) -> None:
+    def __init__(
+        self,
+        renderer: PinnedCuteGemmRenderer | None = None,
+        independent_renderer: IndependentCuteGemmRenderer | None = None,
+    ) -> None:
         self._renderer = renderer or PinnedCuteGemmRenderer()
+        self._independent_renderer = independent_renderer or IndependentCuteGemmRenderer()
         self._issued: set[tuple[str, str, str]] = set()
 
     @staticmethod
@@ -263,14 +340,15 @@ class CuteMutationGenerator:
             sort_keys=True,
             separators=(",", ":"),
         )
+        rendered = (
+            self._independent_renderer.render(proposal.candidate)
+            if isinstance(proposal.candidate, IndependentCuteGemmKernel)
+            else self._renderer.render(proposal.candidate)
+        )
         return GenerationResult(
             generation_id=f"mutation:{uuid4()}",
             raw_output=proposal.candidate.canonical_json(),
-            program=(
-                self._renderer.render(proposal.candidate)
-                if proposal.validation.valid
-                else None
-            ),
+            program=rendered if proposal.validation.valid else None,
             prompt_hash=hashlib.sha256(identity.encode()).hexdigest(),
             metadata={
                 "generator": "typed_mutation",
@@ -281,13 +359,18 @@ class CuteMutationGenerator:
 
     def _available(
         self, request: GenerationRequest
-    ) -> tuple[CuteMutationProposal, ...]:
+    ) -> tuple[CuteMutationProposal | IndependentCuteMutationProposal, ...]:
         if request.parent.backend != "cute_dsl":
             return ()
-        parent = cute_gemm_program_from_source(request.parent.source)
+        try:
+            parent = independent_cute_gemm_from_source(request.parent.source)
+            proposals = enumerate_independent_cute_mutations(parent)
+        except ValueError:
+            parent = cute_gemm_program_from_source(request.parent.source)
+            proposals = enumerate_cute_mutations(parent)
         return tuple(
             proposal
-            for proposal in enumerate_cute_mutations(parent)
+            for proposal in proposals
             if proposal.strategy_id == request.strategy.id
             and proposal.validation.valid
             and (

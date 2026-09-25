@@ -16,6 +16,11 @@ from kernel_mcts.cute_program import (
     REFERENCE_CUTE_GEMM,
     cute_gemm_program_from_source,
 )
+from kernel_mcts.cute_independent import make_independent_cute_gemm
+from kernel_mcts.cute_independent_program import (
+    IndependentCuteGemmRenderer,
+    independent_cute_gemm_from_source,
+)
 import pytest
 
 from kernel_mcts.domain import (
@@ -222,6 +227,50 @@ def test_mcts_creates_sw64_node_under_mutation_budget() -> None:
     representation = cute_gemm_program_from_source(candidate.program.source)
     assert representation.schema_version == 3
     assert representation.shared_memory_swizzle == "sw64"
+
+
+def test_mcts_creates_independent_sw64_node_under_mutation_budget() -> None:
+    class IndependentEvaluator:
+        def evaluate(self, program, workload):
+            representation = independent_cute_gemm_from_source(program.source)
+            swizzle = representation.mainloop.a_copy.swizzle_bytes
+            return EvaluationResult(
+                ProposalStatus.VALID,
+                program,
+                representation.configuration_hash,
+                float(swizzle == 64),
+                BenchmarkResult((1.0,), 1.0, {"n=1": 1.0}),
+                metadata={"representation": representation.as_dict()},
+            )
+
+    renderer = IndependentCuteGemmRenderer()
+    root = IndependentEvaluator().evaluate(
+        renderer.render(make_independent_cute_gemm()), WORKLOAD
+    )
+    strategy = next(
+        item
+        for item in CUTE_MUTATION_STRATEGIES
+        if item.id == CHANGE_SHARED_MEMORY_SWIZZLE
+    )
+
+    result = MCTS(
+        strategies=(strategy,),
+        workload=WORKLOAD,
+        generator=CuteMutationGenerator(),
+        evaluator=IndependentEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(0),
+        mutation_budget=MutationBudget(1),
+        config=MCTSConfig(max_depth=1, k_max=1),
+    ).run(root)
+
+    assert result.generations == 0
+    assert result.mutations == 1
+    assert len(result.nodes) == 2
+    assert result.best.reward == 1.0
+    candidate = next(node for node in result.nodes if node is not result.root)
+    representation = independent_cute_gemm_from_source(candidate.program.source)
+    assert representation.mainloop.a_copy.swizzle_bytes == 64
 
 
 def test_mcts_routes_mutation_before_generation_with_separate_budgets() -> None:

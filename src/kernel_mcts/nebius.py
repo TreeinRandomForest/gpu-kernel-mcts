@@ -64,6 +64,7 @@ class NebiusConfig:
     project_dirty_tree: bool | None = None
     container_digest: str | None = None
     backend: str = "cuda_cpp"
+    cute_root_kind: str = "pinned"
 
     def __post_init__(self) -> None:
         if (
@@ -87,6 +88,10 @@ class NebiusConfig:
             raise ValueError("Nebius timeouts must be positive")
         if self.backend not in {"cuda_cpp", "cute_dsl"}:
             raise ValueError("unsupported worker backend")
+        if self.cute_root_kind not in {"pinned", "independent"}:
+            raise ValueError("unsupported CuTe root kind")
+        if self.backend != "cute_dsl" and self.cute_root_kind != "pinned":
+            raise ValueError("CuTe root kind requires the cute_dsl backend")
 
 
 @dataclass(frozen=True, slots=True)
@@ -355,6 +360,11 @@ class NebiusCLIClient:
                 *(
                     (f"KERNEL_MCTS_BACKEND={self.config.backend}",)
                     if self.config.backend != "cuda_cpp"
+                    else ()
+                ),
+                *(
+                    (f"KERNEL_MCTS_CUTE_ROOT_KIND={self.config.cute_root_kind}",)
+                    if self.config.backend == "cute_dsl"
                     else ()
                 ),
                 *(

@@ -224,6 +224,40 @@ Run `d884b5c3-bc5c-4648-a3a6-d1c68d16b5a9` completed in two iterations with
 trace analysis is recorded in
 [CuTe epilogue mutation smoke v14](experiments/cutedsl-epilogue-bmut2-v14.md).
 
+## Independent typed root
+
+`--cute-root-kind independent` selects the independently lowered
+`(64,256,64)` single-warp-group root on both the client and worker. Worker
+calibration therefore measures the same program used as the search root. The
+initial independent neighborhood deliberately contains only one H100-validated
+transition: atomically changing both A and B shared-memory swizzles from 128 bytes
+to 64 bytes. It consumes `B_mut`; no independent LLM proposal path is enabled yet.
+
+```bash
+python -m kernel_mcts.search_cli \
+  --provider nebius \
+  --image IMAGE_WITH_THIS_CHANGE \
+  --trace cutedsl-independent-swizzle.sqlite \
+  --backend cute_dsl \
+  --cute-root-kind independent \
+  --generator cute-mutation \
+  --generation-budget 0 \
+  --mutation-budget 1 \
+  --cute-strategy change_shared_memory_swizzle \
+  --k-max 1 \
+  --max-depth 1 \
+  --best-output cutedsl-independent-swizzle-best.py \
+  --nebius-project-id PROJECT_ID \
+  --nebius-subnet-id SUBNET_ID \
+  --nebius-ssh-public-key ~/.ssh/nebius.pub \
+  --nebius-ssh-private-key ~/.ssh/nebius \
+  --confirm-create-and-terminate
+```
+
+The SW64 candidate passed the canonical repository contract on H100 but was slower
+than SW128 (718.832 us versus 670.592 us median). It remains a valid MCTS node; the
+search does not prune it merely for being locally slower.
+
 The subsequent four-strategy `B_mut=35` run explored 24 unique nodes, recovered the
 same pinned-stage `(128,256)`, cluster `(2,1)` schedule selected by grid tuning, and
 showed no meaningful benefit from the additional staging controls. See

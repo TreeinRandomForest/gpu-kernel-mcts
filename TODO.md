@@ -325,8 +325,16 @@ completed hardware validation is identified explicitly.
   existing NCU metric sets. H100 validation on 2026-09-25 passed correctness with
   30 CUDA-event samples (median 670.592 us) and a lightweight profile reporting
   154 registers/thread, 6.2% achieved occupancy, and 27.06% tensor-pipe utilization.
-  Search-root selection and independent typed proposal mechanisms remain the next
-  integration boundary before these states are admitted to MCTS.
+  Search-root selection and independent typed proposal mechanisms are tracked in
+  the next completed item.
+- [x] Make the independent CuTe root selectable end to end with matching worker
+  calibration. The CLI, RunPod, Nebius, and worker bootstrap now carry an explicit
+  `independent` root kind. Admit only the paired SW128/SW64 shared-memory mutation
+  under `B_mut`; both operands change atomically and all other independent strategy
+  IDs remain ineligible. The SW64 candidate passed the repository contract on H100
+  on 2026-09-25 (correctness pass, median 718.832 us versus 670.592 us for SW128).
+  A GPU-independent MCTS regression proves the valid candidate becomes a node,
+  consumes one mutation and zero generations, and retains the slower valid state.
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms

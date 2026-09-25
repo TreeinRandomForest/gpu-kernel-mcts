@@ -363,6 +363,7 @@ def test_cli_client_starts_privileged_worker_behind_ssh_tunnel(tmp_path) -> None
             project_dirty_tree=True,
             container_digest="sha256:" + "b" * 64,
             backend="cute_dsl",
+            cute_root_kind="independent",
         ),
         runner=runner,
         tunnel_factory=lambda command: tunnel,
@@ -400,6 +401,7 @@ def test_cli_client_starts_privileged_worker_behind_ssh_tunnel(tmp_path) -> None
     assert "KERNEL_MCTS_DIRTY_TREE=1" in upload
     assert f"KERNEL_MCTS_CONTAINER_DIGEST=sha256:{'b' * 64}" in upload
     assert "KERNEL_MCTS_BACKEND=cute_dsl" in upload
+    assert "KERNEL_MCTS_CUTE_ROOT_KIND=independent" in upload
     assert any(command[-3:-1] == ["rm", "-f"] for command in commands)
 
     client.terminate_instance("instance-1")

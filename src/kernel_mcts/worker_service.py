@@ -16,6 +16,8 @@ from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from .cuda_backend import CudaBackendConfig, CudaCppBackend
 from .cute_backend import CuteBackendConfig, CuTeDSLBackend
 from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
+from .cute_independent import make_independent_cute_gemm
+from .cute_independent_program import IndependentCuteGemmRenderer
 from .evaluation import BackendKernelEvaluator, EvaluationContext
 from .providers import EnvironmentManifest
 from .serialization import serialize_benchmark
@@ -131,7 +133,15 @@ def _build_backend(environment, manifest):
                 ncu_version=manifest.profiler_versions.get("ncu"),
             )
         )
-        root_program = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+        root_kind = environment.get("KERNEL_MCTS_CUTE_ROOT_KIND", "pinned")
+        if root_kind == "independent":
+            root_program = IndependentCuteGemmRenderer().render(
+                make_independent_cute_gemm()
+            )
+        elif root_kind == "pinned":
+            root_program = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+        else:
+            raise RuntimeError(f"unsupported CuTe root kind {root_kind!r}")
     else:
         raise RuntimeError(f"unsupported worker backend {backend_name!r}")
     return backend_name, backend, root_program

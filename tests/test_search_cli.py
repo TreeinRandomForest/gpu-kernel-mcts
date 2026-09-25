@@ -519,6 +519,80 @@ def test_cute_root_schedule_requires_complete_tuple(tmp_path, monkeypatch) -> No
         )
 
 
+def test_independent_cute_root_wires_matching_worker_and_mutation(
+    tmp_path, monkeypatch
+) -> None:
+    captured = {}
+
+    def fake_provider(config, **_kwargs):
+        captured["provider_config"] = config
+        return object()
+
+    def fake_search(**values):
+        captured["search"] = values
+        node = SimpleNamespace(program=values["root_program"], reward=0.0)
+        return SimpleNamespace(
+            run_id="independent-cute-run",
+            tuning=None,
+            result=SimpleNamespace(
+                best=node,
+                nodes=(node,),
+                iterations=1,
+                generations=0,
+                mutations=1,
+                profile_calls=1,
+                drift_probe_calls=0,
+            ),
+        )
+
+    monkeypatch.setenv("RUNPOD_API_KEY", "test-runpod-key")
+    monkeypatch.setattr("kernel_mcts.search_cli.create_runpod_provider", fake_provider)
+    monkeypatch.setattr("kernel_mcts.search_cli.run_mcts_search", fake_search)
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.resolve_reusable_volume",
+        lambda *args: (None, None),
+    )
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.capture_repository_state",
+        lambda path: RepositoryState("a" * 40, False),
+    )
+
+    assert main(
+        [
+            "--image",
+            "cute-worker:v1",
+            "--trace",
+            str(tmp_path / "independent.sqlite"),
+            "--backend",
+            "cute_dsl",
+            "--cute-root-kind",
+            "independent",
+            "--generator",
+            "cute-mutation",
+            "--generation-budget",
+            "0",
+            "--mutation-budget",
+            "1",
+            "--cute-strategy",
+            "change_shared_memory_swizzle",
+            "--ephemeral-storage",
+            "--confirm-create-and-terminate",
+        ]
+    ) == 0
+
+    config = captured["provider_config"]
+    assert config.backend == "cute_dsl"
+    assert config.cute_root_kind == "independent"
+    search = captured["search"]
+    assert search["run_metadata"]["cute_root_kind"] == "independent"
+    assert search["run_metadata"]["cute_root_representation"]["mainloop"][
+        "tile_m"
+    ] == 64
+    assert tuple(strategy.id for strategy in search["strategies"]) == (
+        "change_shared_memory_swizzle",
+    )
+
+
 def test_cute_mixed_search_constructs_mutation_first_router(
     tmp_path, monkeypatch
 ) -> None:

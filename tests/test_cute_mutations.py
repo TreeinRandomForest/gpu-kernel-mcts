@@ -11,7 +11,13 @@ from kernel_mcts.cute_mutations import (
     CHANGE_SHARED_MEMORY_SWIZZLE,
     CuteMutationGenerator,
     enumerate_cute_mutations,
+    enumerate_independent_cute_mutations,
     mutate_cute_program,
+)
+from kernel_mcts.cute_independent import make_independent_cute_gemm
+from kernel_mcts.cute_independent_program import (
+    IndependentCuteGemmRenderer,
+    independent_cute_gemm_from_source,
 )
 from kernel_mcts.cute_program import (
     REFERENCE_CUTE_GEMM,
@@ -295,3 +301,40 @@ def test_generator_exposes_epilogue_mutations_only_at_validated_schedule() -> No
     assert second.program is not None
     assert first.program != second.program
     assert generator.can_generate(validated_request) is False
+
+
+def test_independent_neighborhood_contains_only_validated_swizzle_transition() -> None:
+    root = make_independent_cute_gemm()
+
+    proposals = enumerate_independent_cute_mutations(root)
+
+    assert len(proposals) == 1
+    assert proposals[0].strategy_id == CHANGE_SHARED_MEMORY_SWIZZLE
+    assert proposals[0].parameters == {"swizzle_bytes": 64}
+    assert proposals[0].candidate.mainloop.a_copy.swizzle_bytes == 64
+    assert proposals[0].candidate.mainloop.b_copy.swizzle_bytes == 64
+    assert proposals[0].validation.valid is True
+
+
+def test_generator_emits_independent_swizzle_and_exhausts_parent_strategy() -> None:
+    generator = CuteMutationGenerator()
+    strategy = next(
+        item
+        for item in CUTE_MUTATION_STRATEGIES
+        if item.id == CHANGE_SHARED_MEMORY_SWIZZLE
+    )
+    request = GenerationRequest(
+        IndependentCuteGemmRenderer().render(make_independent_cute_gemm()),
+        strategy,
+        BF16_GEMM_WORKLOAD,
+        {},
+        None,
+    )
+
+    result = generator.generate(request)
+
+    assert result.program is not None
+    candidate = independent_cute_gemm_from_source(result.program.source)
+    assert candidate.mainloop.a_copy.swizzle_bytes == 64
+    assert result.metadata["transformation"]["parameters"] == {"swizzle_bytes": 64}
+    assert generator.can_generate(request) is False
