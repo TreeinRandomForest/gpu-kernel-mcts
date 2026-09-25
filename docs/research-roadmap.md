@@ -124,6 +124,35 @@ valid improvement. A successful prototype should demonstrate that the structured
 representation improves proposal efficiency without preventing architecture-changing
 transformations.
 
+### Overlay with a calibrated GPU resource graph
+
+Overlay the computation/schedule graph with a separate model of GPU resources and
+movement paths. Hardware nodes may represent HBM, L2, shared memory, register files,
+TMA engines, tensor cores, CUDA cores, SMs, CTAs, warp groups, and clusters. Edges
+should describe scope plus uncertain or calibrated attributes such as latency,
+sustainable bandwidth, transaction granularity, issue throughput, multicast,
+synchronization cost, and contention.
+
+The overlay maps semantic values and operations onto hardware paths:
+
+```text
+A/B tile: HBM -> L2 -> TMA -> shared memory
+matmul:   shared memory -> WGMMA -> register accumulators
+output:   registers -> shared memory -> TMA -> L2 -> HBM
+```
+
+Treat this as an uncertainty-aware analytical model rather than a cycle-accurate
+simulator. Begin with symbolic bytes, operations, reuse, lifetime, and capacity;
+then add roofline bounds, occupancy constraints, and pipeline-overlap estimates.
+Calibrate estimates against NCU and timings while retaining measured GPU latency as
+the search reward.
+
+Candidate uses include resource validation, bottleneck explanations, strategy
+prompts, and optional priors. Predicted performance must not become a hard pruning
+rule unless it proves a launch or correctness impossibility. Compare graph-informed
+and uninformed search under identical budgets and report sensitivity to incorrect
+hardware parameters.
+
 ## Analytical strategy priors
 
 Map predicted bottlenecks and transformation opportunities to a normalized prior over

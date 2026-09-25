@@ -250,6 +250,57 @@ The roles are therefore:
 - repository/compiler development adds new schema fields, rendering behavior, and
   proven legality rules, thereby expanding the actual search space.
 
+## Independent TMA-to-shared-memory mainloop
+
+The first step away from the pinned NVIDIA expert template is a GPU-free typed
+contract in `cute_independent.py`. It describes the producer side of one fixed
+Hopper BF16 GEMM mainloop rather than patching a hidden template choice:
+
+- A transfers a `(128,64)` BF16 tile and B transfers a `(64,256)` tile;
+- both global and shared-memory operands are K-major and 16-byte aligned;
+- the `(2,1)` CTA cluster loads A independently and multicasts B across the M axis;
+- three stages have disjoint A/B storage regions and one arrival-barrier slot each;
+- A and B change together between coordinated SW128 and SW64 layouts; and
+- canonical JSON and a stable configuration hash identify the complete contract.
+
+Static validation rejects partial layout changes, incompatible multicast ownership,
+incomplete tile coverage, insufficient alignment, overlapping stages or operands,
+and shared-memory capacity violations. The deterministic output is intentionally a
+structural renderer input, not an executable kernel. It cannot become an MCTS node
+or consume `B_mut` until it becomes a complete executable kernel and both variants
+pass standalone H100 validation.
+
+The next typed layer specifies the consumer and epilogue contract. Two WGMMA
+consumer warp groups cover the `(128,256,64)` CTA tile using `64x256x16` operations
+and own FP32 register accumulators. A four-stage `(64,64)` epilogue converts those
+accumulators to N-major BF16, stages them in a dedicated shared-memory region, and
+uses a TMA store. The combined 180,224-byte bound fits the configured H100 per-CTA
+limit. Cross-component validation ensures complete WGMMA and epilogue coverage and
+prevents storage overlap.
+
+This is a complete *typed design*, not executable CuTe DSL yet. The next lowering
+must map every field to CUTLASS 4.5.1 APIs for descriptors, multicast masks,
+barriers, WGMMA partitioning, accumulator ownership, and TMA stores. Until that
+lowering compiles and passes correctness on H100, the independent representation is
+kept outside `CuTeDSLBackend`, transpositions, mutation enumeration, and all budgets.
+
+The first lowering checkpoint maps the typed design to concrete CUTLASS 4.5.1 APIs
+for tiled WGMMA construction, cluster and shared-memory layouts, TMA load/store
+atoms, and TMA mainloop/epilogue pipeline constructors. The generated module does
+not import `HopperWgmmaGemmKernel` or the pinned `dense_gemm.py`. A container-side
+binding diagnostic resolved all ten required symbols and records the lowering source
+hash plus explicit implemented/missing component lists. It deliberately reports
+`executable_kernel=false`: shared storage, coordinates and multicast masks, producer
+and consumer loops, the register-to-shared epilogue, TMA store loop, and launch still
+require dynamic lowering.
+
+The binding checkpoint can be repeated inside an image containing the current source:
+
+```bash
+python -m kernel_mcts.cute_entrypoint \
+  --mode independent-lowering-bindings
+```
+
 ## Budgets and autotuning
 
 The intended accounting is:

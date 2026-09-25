@@ -459,6 +459,14 @@ def test_design_space_report_contains_typed_mutations_without_budget() -> None:
     )
 
 
+def test_cli_accepts_independent_lowering_binding_diagnostic() -> None:
+    arguments = build_parser().parse_args(
+        ["--mode", "independent-lowering-bindings"]
+    )
+
+    assert arguments.mode == "independent-lowering-bindings"
+
+
 def test_backend_manifest_adds_cute_libraries_and_driver() -> None:
     manifest = EnvironmentManifest(
         worker_id="worker",

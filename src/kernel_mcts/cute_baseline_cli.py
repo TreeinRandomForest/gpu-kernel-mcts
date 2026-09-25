@@ -67,6 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
             "tma-copy-diagnostic",
             "epilogue-stage-diagnostic",
             "smem-swizzle-diagnostic",
+            "independent-lowering-bindings",
         ),
         default="comparison",
     )
@@ -214,6 +215,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     elif arguments.mode == "smem-swizzle-diagnostic":
         result = _run_smem_swizzle_diagnostic(arguments.example)
+    elif arguments.mode == "independent-lowering-bindings":
+        result = _run_independent_lowering_bindings()
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -236,6 +239,28 @@ def _describe_design_space() -> Mapping[str, object]:
         "proposal_count": len(proposals),
         "proposals": [proposal.as_dict() for proposal in proposals],
         "budget": {"b_gen": 0, "b_tune": 0},
+    }
+
+
+def _run_independent_lowering_bindings() -> Mapping[str, object]:
+    from .cute_independent import make_independent_cute_gemm
+    from .cute_independent_lowering import lower_independent_cute_gemm_static
+
+    kernel = make_independent_cute_gemm()
+    lowering = lower_independent_cute_gemm_static(kernel)
+    namespace: dict[str, object] = {}
+    exec(compile(lowering.source, "independent_cute_lowering.py", "exec"), namespace)
+    required_api_bindings = namespace["required_api_bindings"]
+    if not callable(required_api_bindings):
+        raise TypeError("generated required_api_bindings must be callable")
+    bindings = required_api_bindings()
+    return {
+        "status": "ok",
+        "phase": "static_lowering_bindings",
+        "cutlass_version": str(namespace["cutlass"].__version__),
+        "binding_count": len(bindings),
+        "all_bindings_callable": all(callable(binding) for binding in bindings),
+        **lowering.as_dict(),
     }
 
 

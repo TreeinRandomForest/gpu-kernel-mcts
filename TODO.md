@@ -182,6 +182,40 @@ completed hardware validation is identified explicitly.
   Introduce structural WGMMA, TMA, layout/swizzle, warp-specialization, and epilogue
   transformations one bounded diagnostic at a time, promoting only distinct,
   correct H100-validated controls to MCTS state.
+- [x] Define the first GPU-free independent TMA-to-shared-memory contract for the
+  fixed BF16 Hopper target. It coordinates complete A/B CTA tiles, K-major global
+  and shared layouts, cluster-aware B multicast, three non-overlapping pipeline
+  buffers, arrival-barrier slots, alignment, and the paired SW128/SW64 choice. Its
+  canonical renderer output is explicitly structural and cannot enter MCTS yet.
+- [ ] Combine the independent TMA/shared-memory contract with a minimal WGMMA
+  consumer and epilogue to render a complete executable CuTe DSL GEMM. Validate the
+  two layout variants standalone on H100 before adding identity, backend, or search
+  integration.
+- [x] Define the complete typed structural contract for that kernel: two WGMMA
+  consumer warp groups cover the `(128,256,64)` CTA tile with FP32 register
+  accumulators, and a four-stage N-major BF16 TMA-store epilogue owns disjoint
+  shared storage. Cross-component legality checks reject incomplete WGMMA coverage,
+  incompatible ownership, unsafe epilogue tiling, overlap, and excess CTA storage.
+- [ ] Lower the complete independent contract into actual CUTLASS 4.5.1 CuTe DSL
+  calls. The lowering must implement—not merely annotate—TMA descriptors and
+  multicast masks, producer/consumer barriers, WGMMA partitioning, accumulator
+  ownership, and the output TMA store before it is called executable.
+- [x] Complete and validate the static half of that lowering against the pinned
+  CUTLASS 4.5.1 container. The generated module directly binds tiled WGMMA, cluster
+  and shared layouts, TMA load/store atoms, and both pipeline constructors without
+  importing NVIDIA's dense-GEMM kernel. All ten required API bindings resolved. The
+  report remains `executable_kernel=false` and enumerates every missing dynamic
+  kernel component.
+- [x] Extend the independent language with a typed execution schedule. GPU agents,
+  staged shared-memory buffer rings, dynamic phases, read/write sets, waited-on
+  signals, and emitted signals now form a canonical dependency DAG. Validation
+  rejects unknown ownership, inconsistent stage counts, unproduced signals, and
+  cycles before lowering.
+- [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
+  computation/schedule values onto it. Start with bytes, operations, reuse, storage,
+  ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms
+  from NCU and timings. Use it for explanations, prompts, and optional priors—not as
+  an unmeasured reward or performance-based hard-pruning rule.
 - [x] Identify and implement one SHA-guarded shared-memory layout/swizzle diagnostic
   in the pinned NVIDIA template. The bounded alternative preserves MN/K majorness
   while forcing SW64 layout atoms; for the BF16 workload this changes A/B from the
