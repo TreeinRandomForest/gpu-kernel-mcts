@@ -182,6 +182,10 @@ def enumerate_independent_cute_mutations(
 ) -> tuple[IndependentCuteMutationProposal, ...]:
     """Return only independently H100-validated one-hop controls."""
 
+    if parent.mainloop.tile_m != 64:
+        # The cooperative two-warp-group shape is diagnostic-only until its
+        # complete lowering passes the repository contract on H100.
+        return ()
     proposals = []
     current_swizzle = parent.mainloop.a_copy.swizzle_bytes
     current_stages = parent.mainloop.pipeline_stages

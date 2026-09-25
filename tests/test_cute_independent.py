@@ -41,6 +41,40 @@ def test_two_stage_mainloop_has_distinct_identity_and_compact_storage() -> None:
     assert [buffer.stages for buffer in stage_two.execution.buffers] == [2, 2, 4]
 
 
+def test_cooperative_kernel_owns_two_accumulator_rows_and_eight_output_tiles() -> None:
+    single = make_independent_cute_gemm()
+    cooperative = make_independent_cute_gemm(tile_m=128)
+
+    assert cooperative.mainloop.tile_m == 128
+    assert cooperative.mainloop.a_copy.tile_rows == 128
+    assert cooperative.consumer.warp_groups_m == 2
+    assert cooperative.consumer.warp_groups_n == 1
+    assert cooperative.epilogue.pipeline_stages == 8
+    assert cooperative.epilogue.barrier_slots == 8
+    assert cooperative.execution.agents[1].count == 2
+    assert cooperative.execution.agents[2].count == 256
+    assert cooperative.execution.buffers[2].stages == 8
+    assert cooperative.configuration_hash != single.configuration_hash
+    assert validate_independent_cute_gemm(cooperative).valid
+
+
+def test_cooperative_kernel_rejects_incomplete_execution_ownership() -> None:
+    cooperative = make_independent_cute_gemm(tile_m=128)
+    agents = list(cooperative.execution.agents)
+    agents[1] = replace(agents[1], count=1)
+    invalid = replace(
+        cooperative,
+        execution=replace(cooperative.execution, agents=tuple(agents)),
+    )
+
+    result = validate_independent_cute_gemm(invalid)
+
+    assert result.valid is False
+    assert "inconsistent_consumer_agents" in {
+        violation.code for violation in result.violations
+    }
+
+
 def test_contract_coordinates_operand_tiles_multicast_and_storage() -> None:
     plan = make_independent_tma_smem_mainloop()
 

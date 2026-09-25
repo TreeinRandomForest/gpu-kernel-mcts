@@ -178,13 +178,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         arguments.cluster_m,
         arguments.cluster_n,
     )
+    backend_only_schedule_values = (
+        arguments.tile_n,
+        arguments.cluster_m,
+        arguments.cluster_n,
+    )
     if arguments.mode not in ("backend", "backend-profile") and any(
-        value is not None for value in schedule_values
+        value is not None for value in backend_only_schedule_values
     ):
         raise ValueError(
             "typed schedule arguments are available only in backend modes"
         )
-    if any(value is not None for value in schedule_values) and any(
+    if (
+        arguments.mode
+        not in ("backend", "backend-profile", "independent-tma-copy")
+        and arguments.tile_m is not None
+    ):
+        raise ValueError(
+            "--tile-m is available only in backend or independent-tma-copy modes"
+        )
+    if arguments.mode in ("backend", "backend-profile") and any(
+        value is not None for value in schedule_values
+    ) and any(
         value is None for value in schedule_values
     ):
         raise ValueError(
@@ -253,9 +268,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError(
                 "independent-tma-copy supports pipeline stages 2 or 3"
             )
+        if arguments.tile_m not in (None, 64, 128):
+            raise ValueError(
+                "independent-tma-copy supports tile M values 64 or 128"
+            )
         result = _run_independent_tma_copy(
             arguments.independent_tma_stage,
             pipeline_stages=arguments.pipeline_stages or 3,
+            tile_m=arguments.tile_m or 64,
             repository_contract=arguments.independent_repository_contract,
         )
     elif arguments.mode == "comparable":
@@ -309,13 +329,17 @@ def _run_independent_tma_copy(
     debug_stage: str,
     *,
     pipeline_stages: int = 3,
+    tile_m: int = 64,
     repository_contract: bool = False,
 ) -> Mapping[str, object]:
     from .cute_independent import make_independent_cute_gemm
     from .cute_independent_tma import render_independent_tma_copy_diagnostic
 
     rendered = render_independent_tma_copy_diagnostic(
-        make_independent_cute_gemm(pipeline_stages=pipeline_stages),
+        make_independent_cute_gemm(
+            pipeline_stages=pipeline_stages,
+            tile_m=tile_m,
+        ),
         debug_stage=debug_stage,
         repository_contract=repository_contract,
     )

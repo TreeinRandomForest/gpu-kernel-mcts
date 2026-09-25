@@ -94,7 +94,9 @@ def render_independent_tma_copy_diagnostic(
         else kernel.consumer.warp_groups_m * kernel.consumer.warp_groups_n
     )
     diagnostic_epilogue_stages = (
-        8 if debug_stage == "wgmma_one_k_no_reuse" else epilogue.pipeline_stages
+        8
+        if debug_stage == "wgmma_one_k_no_reuse" or diagnostic_warp_groups == 2
+        else epilogue.pipeline_stages
     )
     full_workload = debug_stage == "wgmma_full_workload"
     full_k = debug_stage in ("wgmma_full_k", "wgmma_full_workload")
@@ -174,6 +176,8 @@ def render_independent_tma_copy_diagnostic(
     wgmma_r2s_four_padded = debug_stage == "wgmma_r2s_four_padded"
     wgmma_r2s_four_tiles = debug_stage == "wgmma_r2s_four_tiles"
     consumer_threads = diagnostic_warp_groups * 128
+    cooperative_epilogue = diagnostic_warp_groups > 1
+    epilogue_tiles_per_warp_group = mainloop.tile_n // epilogue.tile_n
     problem_m = 4096 if full_workload else diagnostic_tile_m * active_cluster[0]
     problem_n = 4096 if full_workload else mainloop.tile_n * active_cluster[1]
     grid_m = problem_m // diagnostic_tile_m
@@ -205,6 +209,8 @@ MAINLOOP_STAGES = {mainloop.pipeline_stages}
 SWIZZLE_BYTES = {mainloop.a_copy.swizzle_bytes}
 THREADS_PER_CTA = {consumer_threads}
 MMA_WARP_GROUPS = {diagnostic_warp_groups}
+COOPERATIVE_EPILOGUE = {cooperative_epilogue!r}
+EPILOGUE_TILES_PER_WARP_GROUP = {epilogue_tiles_per_warp_group}
 EPILOGUE_TILE = ({epilogue.tile_m}, {epilogue.tile_n})
 EPILOGUE_STAGES = {diagnostic_epilogue_stages}
 EPILOGUE_STORAGE_ELEMENTS = {diagnostic_epilogue_storage_elements}
@@ -585,7 +591,10 @@ class IndependentTmaCopyKernel:
             tiled_copy_r2s = cute.make_tiled_copy_S(
                 copy_atom_r2s, tiled_copy_c_atom
             )
-            thr_copy_r2s = tiled_copy_r2s.get_slice(tidx)
+            epilogue_thread_idx = tidx
+            if cutlass.const_expr(COOPERATIVE_EPILOGUE):
+                epilogue_thread_idx = tidx % 128
+            thr_copy_r2s = tiled_copy_r2s.get_slice(epilogue_thread_idx)
             tRS_sC = thr_copy_r2s.partition_D(sC)
             tRS_rAcc = tiled_copy_r2s.retile(accumulators)
             rC_shape = cute.shape(thr_copy_r2s.partition_S(sC))
@@ -626,35 +635,75 @@ class IndependentTmaCopyKernel:
                     pipeline.Agent.Thread, THREADS_PER_CTA
                 ),
             )
-            for epi_index in cutlass.range_constexpr(epi_tile_count):
-                for value_index in cutlass.range_constexpr(rC_size):
-                    rC[value_index] = tRS_rAcc[
-                        epi_index * rC_size + value_index
-                    ]
-                rC_out.store(rC.load().to(self.c_dtype))
-                epi_buffer = epi_index % cute.size(tRS_sC, mode=[3])
-                if cutlass.const_expr(WGMMA_R2S_FOUR_REUSE_ZERO):
-                    epi_buffer = 0
-                cute.copy(
-                    tiled_copy_r2s,
-                    rC_out,
-                    tRS_sC[(None, None, None, epi_buffer)],
-                )
+            if cutlass.const_expr(COOPERATIVE_EPILOGUE):
+                # Each warp group owns one 64-row accumulator partition. Stage its
+                # four N tiles into disjoint shared-memory buffers before one elected
+                # warp issues all CTA-level TMA stores. This avoids treating the
+                # second warp group's local accumulator as a continuation of the
+                # first group's register fragment.
+                for local_epi_index in cutlass.range_constexpr(
+                    EPILOGUE_TILES_PER_WARP_GROUP
+                ):
+                    for value_index in cutlass.range_constexpr(rC_size):
+                        rC[value_index] = tRS_rAcc[
+                            local_epi_index * rC_size + value_index
+                        ]
+                    rC_out.store(rC.load().to(self.c_dtype))
+                    epi_buffer = (
+                        warp_group_idx * EPILOGUE_TILES_PER_WARP_GROUP
+                        + local_epi_index
+                    )
+                    cute.copy(
+                        tiled_copy_r2s,
+                        rC_out,
+                        tRS_sC[(None, None, None, epi_buffer)],
+                    )
                 cute.arch.fence_proxy("async.shared", space="cta")
                 pipeline.sync(barrier_id=1)
                 if cutlass.const_expr(not WGMMA_R2S_ONLY):
-                    global_coord = epi_tile_layout.get_hier_coord(epi_index)
                     if warp_idx == 0:
-                        cute.copy(
-                            tma_c,
-                            tma_sC[(None, epi_buffer)],
-                            tma_gC[(None, global_coord)],
-                        )
-                        c_pipeline.producer_commit()
-                        c_pipeline.producer_acquire()
+                        for epi_index in cutlass.range_constexpr(epi_tile_count):
+                            global_coord = epi_tile_layout.get_hier_coord(epi_index)
+                            cute.copy(
+                                tma_c,
+                                tma_sC[(None, epi_index)],
+                                tma_gC[(None, global_coord)],
+                            )
+                            c_pipeline.producer_commit()
+                            c_pipeline.producer_acquire()
                 pipeline.sync(barrier_id=1)
-            if cutlass.const_expr(not WGMMA_R2S_ONLY) and warp_idx == 0:
-                c_pipeline.producer_tail()
+                if cutlass.const_expr(not WGMMA_R2S_ONLY) and warp_idx == 0:
+                    c_pipeline.producer_tail()
+            else:
+                for epi_index in cutlass.range_constexpr(epi_tile_count):
+                    for value_index in cutlass.range_constexpr(rC_size):
+                        rC[value_index] = tRS_rAcc[
+                            epi_index * rC_size + value_index
+                        ]
+                    rC_out.store(rC.load().to(self.c_dtype))
+                    epi_buffer = epi_index % cute.size(tRS_sC, mode=[3])
+                    if cutlass.const_expr(WGMMA_R2S_FOUR_REUSE_ZERO):
+                        epi_buffer = 0
+                    cute.copy(
+                        tiled_copy_r2s,
+                        rC_out,
+                        tRS_sC[(None, None, None, epi_buffer)],
+                    )
+                    cute.arch.fence_proxy("async.shared", space="cta")
+                    pipeline.sync(barrier_id=1)
+                    if cutlass.const_expr(not WGMMA_R2S_ONLY):
+                        global_coord = epi_tile_layout.get_hier_coord(epi_index)
+                        if warp_idx == 0:
+                            cute.copy(
+                                tma_c,
+                                tma_sC[(None, epi_buffer)],
+                                tma_gC[(None, global_coord)],
+                            )
+                            c_pipeline.producer_commit()
+                            c_pipeline.producer_acquire()
+                    pipeline.sync(barrier_id=1)
+                if cutlass.const_expr(not WGMMA_R2S_ONLY) and warp_idx == 0:
+                    c_pipeline.producer_tail()
             return
         cute.arch.fence_proxy("async.shared", space="cta")
         pipeline.sync(barrier_id=1)

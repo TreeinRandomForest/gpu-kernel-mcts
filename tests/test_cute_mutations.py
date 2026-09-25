@@ -344,6 +344,12 @@ def test_independent_neighborhood_excludes_unvalidated_stage_swizzle_combination
     )
 
 
+def test_cooperative_independent_kernel_has_no_searchable_mutations() -> None:
+    cooperative = make_independent_cute_gemm(tile_m=128)
+
+    assert enumerate_independent_cute_mutations(cooperative) == ()
+
+
 def test_generator_emits_independent_swizzle_and_exhausts_parent_strategy() -> None:
     generator = CuteMutationGenerator()
     strategy = next(

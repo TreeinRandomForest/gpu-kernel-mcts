@@ -2930,10 +2930,28 @@ The initial fixed schedule experiment has validated CTA tiles `(64, 128)`,
 not universal legality rules for every future CuTe kernel.
 
 The first independently lowered searchable root uses CTA tile `(64,256,64)`, cluster
-`(1,1)`, and one consumer warp group. Its standalone H100 diagnostic matched the
-BF16 FP32-accumulation reference exactly for one K tile. The cooperative
-`(128,256,64)` two-warp-group lowering remains experimental because its second
-output-tile row failed correctness; it must not become an MCTS node until corrected.
+`(1,1)`, one consumer warp group, a three-stage SW128 mainloop, and four no-reuse
+64x64 epilogue buffers. Its standalone H100 diagnostic matched the BF16
+FP32-accumulation reference exactly.
+
+The corrected cooperative `(128,256,64)` lowering is also an admitted typed state.
+It uses cluster `(1,1)`, two M-axis consumer warp groups, the same three-stage SW128
+mainloop, and eight disjoint no-reuse 64x64 epilogue buffers. Each consumer group
+stages its four warp-group-local accumulator tiles using a warp-group-local thread
+index; one elected CTA warp then issues all eight TMA stores. On 2026-09-25, the v52
+H100 validation passed both the bounded one-K diagnostic with identity tile mapping
+and the complete fixed `bf16_gemm_4096_h100` repository contract with zero error. It
+measured 448.384 us median over 30 CUDA-event samples.
+
+The paired transition between the `(64,256,64)` one-group state and the
+`(128,256,64)` two-group state is an allowed deterministic realization of
+`change_cta_tile` and consumes one `B_mut`. The mutation must atomically rebuild the
+A tile and storage size, WGMMA warp-group ownership, CTA thread ownership, epilogue
+stage and barrier count, shared-memory allocation, launch grid, canonical identity,
+and rendered source. It must not independently mutate only the CTA M extent or only
+the warp-group count. Cooperative combinations with SW64, a two-stage mainloop,
+another cluster geometry, or another epilogue organization remain outside the
+validated initial space until separately admitted by a later amendment.
 
 Static validation should reject only proven violations, including incompatible
 shapes/layouts, unsupported MMA partitions, invalid cluster geometry, insufficient

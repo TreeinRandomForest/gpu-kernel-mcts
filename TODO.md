@@ -190,7 +190,15 @@ completed hardware validation is identified explicitly.
 - [ ] Combine the independent TMA/shared-memory contract with a minimal WGMMA
   consumer and epilogue to render a complete executable CuTe DSL GEMM. Validate the
   two layout variants standalone on H100 before adding identity, backend, or search
-  integration.
+  integration. The experimental `(128,256,64)` cooperative form now has a distinct
+  typed state with two consumer warp groups and eight disjoint no-reuse epilogue
+  buffers. Each group stages its own four local accumulator tiles; one elected CTA
+  warp then issues all eight TMA stores. The v52 H100 validation passed both the
+  bounded one-K diagnostic and the complete repository contract with exact tile
+  identity and correctness. The full workload measured 448.384 us median over 30
+  samples. `spec.md` section 47.4 now admits the paired one-group/two-group
+  transition as an atomic `change_cta_tile` mutation under `B_mut`; implementation
+  of that searchable transition remains.
 - [x] Define the complete typed structural contract for that kernel: two WGMMA
   consumer warp groups cover the `(128,256,64)` CTA tile with FP32 register
   accumulators, and a four-stage N-major BF16 TMA-store epilogue owns disjoint

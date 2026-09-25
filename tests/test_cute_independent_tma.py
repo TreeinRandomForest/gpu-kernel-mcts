@@ -111,7 +111,9 @@ def test_tma_debug_stages_render_bounded_progression(
     assert f"WGMMA_R2S_FOUR_TILES = {expected_four_tiles!r}" in source
     compile(source, f"independent_tma_{stage}.py", "exec")
 
-    expected_epilogue_stages = 8 if stage == "wgmma_one_k_no_reuse" else 4
+    expected_epilogue_stages = (
+        8 if stage in ("wgmma_one_k_no_reuse", "wgmma_two_group") else 4
+    )
     assert f"EPILOGUE_STAGES = {expected_epilogue_stages}" in source
 
 
@@ -182,6 +184,27 @@ def test_wgmma_two_group_diagnostic_preserves_experimental_path() -> None:
     assert "TILE_SHAPE_MNK = (128, 256, 64)" in source
     assert "THREADS_PER_CTA = 256" in source
     assert "MMA_WARP_GROUPS = 2" in source
+    assert "EPILOGUE_STAGES = 8" in source
+    assert "EPILOGUE_STORAGE_ELEMENTS = 36864" in source
+
+
+def test_cooperative_typed_diagnostic_stages_each_warp_group_separately() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(tile_m=128),
+        debug_stage="wgmma_full_workload",
+        repository_contract=True,
+    ).source
+
+    assert "TILE_SHAPE_MNK = (128, 256, 64)" in source
+    assert "THREADS_PER_CTA = 256" in source
+    assert "MMA_WARP_GROUPS = 2" in source
+    assert "COOPERATIVE_EPILOGUE = True" in source
+    assert "EPILOGUE_STAGES = 8" in source
+    assert "EPILOGUE_STORAGE_ELEMENTS = 36864" in source
+    assert "epilogue_thread_idx = tidx % 128" in source
+    assert "local_epi_index * rC_size + value_index" in source
+    assert "warp_group_idx * EPILOGUE_TILES_PER_WARP_GROUP" in source
+    compile(source, "independent_cooperative_gemm.py", "exec")
 
 
 def test_wgmma_full_k_cycles_the_three_stage_mainloop_ring() -> None:

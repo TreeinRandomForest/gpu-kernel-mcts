@@ -210,11 +210,14 @@ class IndependentTmaSmemLegality:
 
 
 def make_independent_tma_smem_mainloop(
-    *, swizzle_bytes: int = 128, pipeline_stages: int = 3
+    *,
+    swizzle_bytes: int = 128,
+    pipeline_stages: int = 3,
+    tile_m: int = 64,
 ) -> IndependentTmaSmemMainloop:
     """Build one of the two initial coordinated BF16 copy/layout variants."""
 
-    tile_m, tile_n, tile_k = 64, 256, 64
+    tile_n, tile_k = 256, 64
     stages = pipeline_stages
     a_tile_bytes = tile_m * tile_k * BF16_BYTES
     b_tile_bytes = tile_k * tile_n * BF16_BYTES
@@ -257,7 +260,10 @@ def make_independent_tma_smem_mainloop(
 
 
 def make_independent_cute_gemm(
-    *, swizzle_bytes: int = 128, pipeline_stages: int = 3
+    *,
+    swizzle_bytes: int = 128,
+    pipeline_stages: int = 3,
+    tile_m: int = 64,
 ) -> IndependentCuteGemmKernel:
     """Build the first complete structural GEMM contract.
 
@@ -268,14 +274,17 @@ def make_independent_cute_gemm(
     mainloop = make_independent_tma_smem_mainloop(
         swizzle_bytes=swizzle_bytes,
         pipeline_stages=pipeline_stages,
+        tile_m=tile_m,
     )
+    consumer_warp_groups = tile_m // 64
+    epilogue_stages = consumer_warp_groups * 4
     return IndependentCuteGemmKernel(
         mainloop=mainloop,
         consumer=IndependentWgmmaConsumer(
             instruction_m=64,
             instruction_n=256,
             instruction_k=16,
-            warp_groups_m=1,
+            warp_groups_m=consumer_warp_groups,
             warp_groups_n=1,
             accumulator_dtype="float32",
             a_source="shared_memory",
@@ -289,8 +298,8 @@ def make_independent_cute_gemm(
             store_kind="tma",
             tile_m=64,
             tile_n=64,
-            pipeline_stages=4,
-            barrier_slots=4,
+            pipeline_stages=epilogue_stages,
+            barrier_slots=epilogue_stages,
             alignment_bytes=16,
             storage_offset_bytes=mainloop.shared_memory_bytes,
             stage_stride_bytes=64 * 64 * BF16_BYTES,
@@ -302,10 +311,16 @@ def make_independent_cute_gemm(
                     "tma_load_agent", "warp", 1, "mainloop_producer"
                 ),
                 IndependentExecutionAgent(
-                    "wgmma_agents", "warp_group", 1, "mainloop_consumer"
+                    "wgmma_agents",
+                    "warp_group",
+                    consumer_warp_groups,
+                    "mainloop_consumer",
                 ),
                 IndependentExecutionAgent(
-                    "epilogue_agents", "thread", 128, "epilogue_producer"
+                    "epilogue_agents",
+                    "thread",
+                    consumer_warp_groups * 128,
+                    "epilogue_producer",
                 ),
                 IndependentExecutionAgent(
                     "tma_store_agent", "warp", 1, "epilogue_consumer"
@@ -331,7 +346,7 @@ def make_independent_cute_gemm(
                 IndependentBufferRing(
                     "shared_c",
                     "shared_memory",
-                    4,
+                    epilogue_stages,
                     "epilogue_agents",
                     "tma_store_agent",
                     "tma_store_pipeline",
@@ -440,10 +455,13 @@ def validate_independent_tma_smem_mainloop(
             f"schema version must be {INDEPENDENT_TMA_SMEM_SCHEMA_VERSION}",
             "schema_version",
         )
-    if (plan.tile_m, plan.tile_n, plan.tile_k) != (64, 256, 64):
+    if (plan.tile_m, plan.tile_n, plan.tile_k) not in (
+        (64, 256, 64),
+        (128, 256, 64),
+    ):
         reject(
             "unsupported_tile",
-            "the initial independent mainloop supports only tile (64,256,64)",
+            "the independent mainloop supports tiles (64,256,64) and (128,256,64)",
             "tile",
         )
     if (plan.cluster_m, plan.cluster_n) != (1, 1):
@@ -516,7 +534,7 @@ def validate_independent_tma_smem_mainloop(
         if copy.multicast_axis != expected_multicast[copy.operand]:
             reject(
                 "incompatible_multicast_partition",
-                "multicast must follow operand reuse across the (2,1) cluster",
+                "the initial single-CTA contract does not multicast operands",
                 name,
             )
         if copy.stage_stride_bytes < copy.tile_bytes:
@@ -642,10 +660,16 @@ def validate_independent_cute_gemm(
             "epilogue tiles must evenly cover the CTA output tile",
             "epilogue",
         )
-    if epilogue.pipeline_stages != 4 or epilogue.barrier_slots != 4:
+    expected_epilogue_stages = (
+        mainloop.tile_m // epilogue.tile_m
+    ) * (mainloop.tile_n // epilogue.tile_n)
+    if (
+        epilogue.pipeline_stages != expected_epilogue_stages
+        or epilogue.barrier_slots != expected_epilogue_stages
+    ):
         reject(
             "incomplete_epilogue_pipeline",
-            "the initial TMA-store epilogue requires four stages and barriers",
+            "the no-reuse TMA-store epilogue requires one stage and barrier per output tile",
             "epilogue",
         )
     if epilogue.alignment_bytes < 16 or epilogue.alignment_bytes % 16:
@@ -709,6 +733,20 @@ def validate_independent_cute_gemm(
                 f"agent {agent.agent_id!r} must have positive count",
                 "execution.agents",
             )
+    agent_counts = {agent.agent_id: agent.count for agent in execution.agents}
+    expected_consumer_groups = consumer.warp_groups_m * consumer.warp_groups_n
+    if agent_counts.get("wgmma_agents") != expected_consumer_groups:
+        reject(
+            "inconsistent_consumer_agents",
+            "execution must contain one WGMMA agent per consumer warp group",
+            "execution.agents",
+        )
+    if agent_counts.get("epilogue_agents") != expected_consumer_groups * 128:
+        reject(
+            "inconsistent_epilogue_agents",
+            "epilogue ownership must include every consumer warp-group thread",
+            "execution.agents",
+        )
     for buffer in execution.buffers:
         if buffer.producer_agent not in known_agents:
             reject(

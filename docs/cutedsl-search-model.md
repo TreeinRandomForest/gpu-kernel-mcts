@@ -236,6 +236,20 @@ barrier ring and storage offsets. Each consumes `B_mut`; no independent LLM prop
 path is enabled yet. The router excludes the unvalidated two-stage-plus-SW64
 combination.
 
+An experimental cooperative diagnostic represents a `(128,256,64)` CTA tile with
+two M-axis consumer warp groups. Its epilogue gives each group four local 64x64
+accumulator tiles and uses eight distinct shared-memory buffers across the CTA.
+After both groups stage their local fragments, one elected warp issues all eight TMA
+stores. This shape is accepted by static validation and has a guarded CLI path, but
+it remains deliberately excluded from mutation enumeration. The v52 H100 run passed
+the bounded one-K diagnostic with identity tile mapping and passed the complete
+4096x4096x4096 repository contract exactly. It measured 448.384 us median over 30
+samples. See [cooperative independent GEMM v52](experiments/cutedsl-cooperative-v52.md).
+`spec.md` section 47.4 now admits the paired `(64,256,64)` one-group to
+`(128,256,64)` two-group transition as an atomic `change_cta_tile` realization under
+`B_mut`. It remains absent from mutation enumeration until that promotion is
+implemented and tested.
+
 ```bash
 python -m kernel_mcts.search_cli \
   --provider nebius \
@@ -325,13 +339,13 @@ structural renderer input, not an executable kernel. It cannot become an MCTS no
 or consume `B_mut` until it becomes a complete executable kernel and both variants
 pass standalone H100 validation.
 
-The next typed layer specifies the consumer and epilogue contract. Two WGMMA
-consumer warp groups cover the `(128,256,64)` CTA tile using `64x256x16` operations
-and own FP32 register accumulators. A four-stage `(64,64)` epilogue converts those
-accumulators to N-major BF16, stages them in a dedicated shared-memory region, and
-uses a TMA store. The combined 180,224-byte bound fits the configured H100 per-CTA
-limit. Cross-component validation ensures complete WGMMA and epilogue coverage and
-prevents storage overlap.
+The cooperative typed layer specifies two WGMMA consumer warp groups covering the
+`(128,256,64)` CTA tile with `64x256x16` operations and owning FP32 register
+accumulators. An eight-stage `(64,64)` no-reuse epilogue converts those accumulators
+to N-major BF16, stages them in a dedicated shared-memory region, and uses TMA
+stores. The combined 221,184-byte bound fits the configured H100 per-CTA limit.
+Cross-component validation ensures complete WGMMA and epilogue coverage and prevents
+storage overlap.
 
 This is a complete *typed design*, not executable CuTe DSL yet. The next lowering
 must map every field to CUTLASS 4.5.1 APIs for descriptors, multicast masks,
