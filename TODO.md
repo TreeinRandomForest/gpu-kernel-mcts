@@ -423,6 +423,12 @@ completed hardware validation is identified explicitly.
   latency ratio, and degradation relative to the kernel's optimized workload. Keep
   this diagnostic sweep separately budgeted from `B_gen` and `B_tune`, and retain
   invalid or unsupported cases rather than silently excluding them.
+- [ ] After the typed CuTe DSL search flow is complete, run a bounded GPU MODE
+  external-generalization study over four to six computational motifs. Freeze the
+  search configuration, use equal explicit budgets, and report validity, latency,
+  cost, and shape/hardware sensitivity in addition to leaderboard placement. Keep
+  this secondary to attention, fusion, and forward-pass optimization; see
+  `docs/research-roadmap.md`.
 
 ## Validation status
 

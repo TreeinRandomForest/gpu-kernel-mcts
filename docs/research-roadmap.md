@@ -308,6 +308,38 @@ fused reference, and searched partitions under identical correctness and end-to-
 latency measurement. Only after those experiments should the graph grow toward a full
 transformer block or forward pass.
 
+## External generalization with GPU MODE
+
+After the complete CuTe DSL flow works end to end—typed computation and schedule
+representations, typed parameters, structural strategies, deterministic lowering,
+profiling, and search—use a bounded selection of
+[GPU MODE reference problems](https://github.com/gpu-mode/reference-kernels) as an
+external generalization suite. This is a secondary validation milestone, not the main
+research objective: attention against FlashAttention, useful operator fusion, and
+forward-pass graph optimization remain higher-value targets.
+
+Select roughly four to six problems spanning different computational motifs, such as
+elementwise maps, reduction or scan, normalization or softmax, matrix operations, and
+an irregular or fused operation. Freeze the search algorithm before inspecting
+leaderboard outcomes, then give each problem fixed and separately reported `B_gen`,
+`B_mut`, profiling, and wall-clock budgets. Compare the initial implementation,
+deterministic mutation search, mixed LLM/mutation search, a strong library baseline,
+and the public leaderboard where the hardware and measurement contract are
+comparable.
+
+Report more than rank: correctness and compile-valid rates, unique valid schedules,
+best latency, search cost, budget-to-improvement curves, and sensitivity across the
+published shapes and GPU targets. Treat leaderboard-specific specialization and
+fixed-shape tricks as findings rather than allowing them to reshape the general search
+architecture. The purpose is to expose overfitting to BF16 GEMM, identify which typed
+language features fail to generalize, and provide reproducible external comparison.
+
+As a rough effort allocation, keep GPU MODE evaluation to 20--25% of this research
+phase and reserve 75--80% for attention, fusion, dataflow reasoning, and calibrated
+architecture models. The maintained
+[Popcorn CLI](https://github.com/gpu-mode/popcorn-cli) can be integrated only after a
+small manual submission validates the benchmark and authentication workflow.
+
 ## Suggested staging
 
 1. Define and validate a static feature schema on existing BF16 GEMM traces.
