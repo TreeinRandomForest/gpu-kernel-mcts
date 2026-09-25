@@ -252,6 +252,12 @@ validated three-stage SW128 endpoint. The proposal rebuilds the complete coupled
 representation and consumes no `B_gen`; cooperative SW64 and two-stage combinations
 remain ineligible.
 
+The v53 remote MCTS smoke exercised only this strategy with `B_mut=1`, `B_gen=0`,
+`k_max=1`, and `max_depth=1`. It measured the 64-row root at 668.832 us median and
+the cooperative child at 448.608 us, for reward `0.399383`. The trace contains one
+valid typed proposal, one valid-only backup, two distinct canonical states and
+binaries, and two profile calls.
+
 ```bash
 python -m kernel_mcts.search_cli \
   --provider nebius \

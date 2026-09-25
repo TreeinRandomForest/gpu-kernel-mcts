@@ -48,3 +48,11 @@ The raw local reports are `cutedsl-cooperative-one-k-v52.json` and
 is now exposed through the paired one-group/two-group atomic `change_cta_tile`
 mutation admitted by `spec.md` section 47.4. Cooperative SW64 and two-stage
 combinations remain excluded from mutation enumeration.
+
+## MCTS promotion smoke
+
+Image v53 exercised the promoted transition in a bounded Nebius H100 search with
+`B_mut=1`, `B_gen=0`, `k_max=1`, and `max_depth=1`. The measured root was 668.832 us
+median and the cooperative child was 448.608 us, giving log-speedup reward
+`0.399383`. The SQLite trace contains one valid proposal, one valid-only backup, two
+distinct canonical states and binaries, two profile calls, and no LLM generation.

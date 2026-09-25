@@ -200,7 +200,10 @@ completed hardware validation is identified explicitly.
   transition as an atomic `change_cta_tile` mutation under `B_mut`. The mutation
   now rebuilds every coupled typed field atomically, is selectable from the CLI,
   and has GPU-independent generator and end-to-end MCTS coverage proving
-  `B_mut=1`, `B_gen=0`. A remote mutation smoke remains.
+  `B_mut=1`, `B_gen=0`. The v53 remote mutation smoke completed with one valid
+  proposal and backup, two distinct nodes and binaries, and two profile calls. The
+  root measured 668.832 us and the cooperative child 448.608 us median, producing
+  reward `0.399383` without an LLM call.
 - [x] Define the complete typed structural contract for that kernel: two WGMMA
   consumer warp groups cover the `(128,256,64)` CTA tile with FP32 register
   accumulators, and a four-stage N-major BF16 TMA-store epilogue owns disjoint
