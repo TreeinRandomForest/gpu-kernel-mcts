@@ -74,6 +74,8 @@ def render_independent_tma_copy_diagnostic(
     kernel: IndependentCuteGemmKernel,
     *,
     debug_stage: IndependentTmaDebugStage = "cluster_ab_multicast",
+    repository_contract: bool = False,
+    profile_single_launch: bool = False,
 ) -> IndependentTmaDiagnosticSource:
     """Render a fixed-cluster TMA round-trip diagnostic from typed state."""
 
@@ -193,6 +195,8 @@ PROBLEM_M = {problem_m}
 PROBLEM_N = {problem_n}
 FULL_K = {full_k!r}
 FULL_WORKLOAD = {full_workload!r}
+REPOSITORY_CONTRACT = {repository_contract!r}
+PROFILE_SINGLE_LAUNCH = {profile_single_launch!r}
 FULL_K_TILE_COUNT = PROBLEM_K // TILE_SHAPE_MNK[2]
 GRID_M = {grid_m}
 GRID_N = {grid_n}
@@ -692,22 +696,49 @@ class IndependentTmaCopyKernel:
 
 
 def run_diagnostic():
+    import ctypes
     import itertools
+    import subprocess
     import statistics
+    import tempfile
+    from pathlib import Path
     import torch
+    from kernel_mcts.cute_diagnostics import describe_kernel_callable
 
     print(f"Independent TMA {{DEBUG_STAGE}}: allocating tensors", flush=True)
-    torch.manual_seed(0)
-    a = torch.randn(
-        (PROBLEM_M, PROBLEM_K),
-        device="cuda",
-        dtype=torch.bfloat16,
-    )
-    b = torch.randn(
-        (PROBLEM_N, PROBLEM_K),
-        device="cuda",
-        dtype=torch.bfloat16,
-    )
+    input_directory = None
+    if REPOSITORY_CONTRACT:
+        input_directory = tempfile.TemporaryDirectory(
+            prefix="kernel-mcts-independent-inputs-"
+        )
+        root = Path(input_directory.name)
+        a_path = root / "a.bf16"
+        b_path = root / "b.bf16"
+        subprocess.run(
+            [
+                "/usr/local/bin/kernel-mcts-bf16-inputs",
+                str(PROBLEM_M), str(PROBLEM_N), str(PROBLEM_K), "0",
+                str(a_path), str(b_path),
+            ],
+            check=True,
+            timeout=120,
+        )
+        a = torch.from_file(
+            str(a_path), shared=False, size=PROBLEM_M * PROBLEM_K,
+            dtype=torch.bfloat16,
+        ).reshape(PROBLEM_M, PROBLEM_K).to("cuda")
+        b = torch.from_file(
+            str(b_path), shared=False, size=PROBLEM_N * PROBLEM_K,
+            dtype=torch.bfloat16,
+        ).reshape(PROBLEM_N, PROBLEM_K).to("cuda")
+    else:
+        torch.manual_seed(0)
+        a = torch.randn(
+            (PROBLEM_M, PROBLEM_K), device="cuda", dtype=torch.bfloat16
+        )
+        b = torch.randn(
+            (PROBLEM_N, PROBLEM_K), device="cuda", dtype=torch.bfloat16
+        )
     a_out = torch.zeros_like(a)
     b_out = torch.zeros_like(b)
     c = torch.zeros(
@@ -723,6 +754,7 @@ def run_diagnostic():
     diagnostic = IndependentTmaCopyKernel()
     print(f"Independent TMA {{DEBUG_STAGE}}: JIT started", flush=True)
     compiled = cute.compile(diagnostic, *tensors, stream)
+    jit_diagnostics = describe_kernel_callable(compiled, {{}})
     print(f"Independent TMA {{DEBUG_STAGE}}: JIT completed", flush=True)
     if not LAUNCH_KERNEL:
         return {{
@@ -761,9 +793,28 @@ def run_diagnostic():
             "configuration_hash": CONFIGURATION_HASH,
         }}
     if ENABLE_WGMMA:
-        reference = torch.matmul(a.float(), b.float().transpose(0, 1)).to(
-            torch.bfloat16
-        )
+        if REPOSITORY_CONTRACT:
+            reference = torch.empty_like(c)
+            library = ctypes.CDLL(
+                "/usr/local/lib/kernel-mcts-bf16-reference.so"
+            )
+            reference_call = library.kernel_mcts_bf16_reference
+            reference_call.argtypes = [
+                ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
+                ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            ]
+            reference_call.restype = ctypes.c_int
+            status = reference_call(
+                a.data_ptr(), b.data_ptr(), reference.data_ptr(),
+                PROBLEM_M, PROBLEM_N, PROBLEM_K,
+            )
+            if status != 0:
+                raise RuntimeError(f"cuBLAS reference failed with status {{status}}")
+            torch.cuda.synchronize()
+        else:
+            reference = torch.matmul(a.float(), b.float().transpose(0, 1)).to(
+                torch.bfloat16
+            )
         output_float = c.float()
         reference_float = reference.float()
         maximum_error = float((c.float() - reference.float()).abs().max().item())
@@ -828,14 +879,19 @@ def run_diagnostic():
                 best_transposed_tile_mean_error,
                 best_transposed_tile_permutation,
             ) = best_assignment(transposed_tile_costs)
-        correct = bool(torch.allclose(c, reference, atol=0.02, rtol=0.02))
+        error = (c.float() - reference.float()).abs()
+        correct = bool(torch.all(torch.isfinite(c) & (
+            error <= 0.02 + 0.02 * reference.float().abs()
+        )).item())
         benchmark = None
         if FULL_WORKLOAD:
-            for _ in range(10):
+            warmup_count = 0 if PROFILE_SINGLE_LAUNCH else 10
+            measurement_count = 1 if PROFILE_SINGLE_LAUNCH else 30
+            for _ in range(warmup_count):
                 compiled(*tensors, stream)
             torch.cuda.synchronize()
             timings_us = []
-            for _ in range(30):
+            for _ in range(measurement_count):
                 start = torch.cuda.Event(enable_timing=True)
                 end = torch.cuda.Event(enable_timing=True)
                 start.record()
@@ -852,7 +908,7 @@ def run_diagnostic():
                 "min_us": min(timings_us),
                 "max_us": max(timings_us),
             }}
-        return {{
+        result = {{
             "status": "ok" if correct else "correctness_failed",
             "debug_stage": DEBUG_STAGE,
             "configuration_hash": CONFIGURATION_HASH,
@@ -868,7 +924,36 @@ def run_diagnostic():
             "best_transposed_tile_mean_error": best_transposed_tile_mean_error,
             "best_transposed_tile_permutation": best_transposed_tile_permutation,
             "benchmark": benchmark,
+            "jit_diagnostics": jit_diagnostics,
         }}
+        if REPOSITORY_CONTRACT:
+            result.update({{
+                "implementation": "independent_cute_gemm_v1",
+                "comparable_to_repository_baselines": True,
+                "comparability_blockers": [],
+                "correctness": {{
+                    "success": correct,
+                    "maximum_error": maximum_error,
+                    "mean_error": mean_error,
+                    "failed_test_id": None if correct else "fixed_shape",
+                    "reference_metadata": {{
+                        "implementation": "cuBLAS",
+                        "compute_type": "CUBLAS_COMPUTE_32F",
+                        "seed": 0,
+                    }},
+                }},
+                "contract": {{
+                    "mnkl": [PROBLEM_M, PROBLEM_N, PROBLEM_K, 1],
+                    "rtol": 0.02,
+                    "atol": 0.02,
+                    "seed": 0,
+                    "warmup_count": warmup_count,
+                    "measurement_count": measurement_count,
+                }},
+            }})
+        if input_directory is not None:
+            input_directory.cleanup()
+        return result
     a_equal = bool(torch.equal(a, a_out))
     b_equal = bool(torch.equal(b, b_out)) if ENABLE_B else None
     passed = a_equal and (b_equal if ENABLE_B else True)

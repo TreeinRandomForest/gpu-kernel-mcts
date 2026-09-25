@@ -213,8 +213,8 @@ def test_wgmma_full_workload_launches_complete_mn_grid() -> None:
     assert "GRID_N = 16" in source
     assert "grid=(GRID_M, GRID_N, 1)" in source
     assert "(bidx, bidy)" in source
-    assert "for _ in range(10):" in source
-    assert "for _ in range(30):" in source
+    assert "warmup_count = 0 if PROFILE_SINGLE_LAUNCH else 10" in source
+    assert "measurement_count = 1 if PROFILE_SINGLE_LAUNCH else 30" in source
     assert '"median_us": float(statistics.median(timings_us))' in source
 
 

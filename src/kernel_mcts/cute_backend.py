@@ -20,6 +20,14 @@ from .cute_program import (
     cute_gemm_program_from_source,
     validate_cute_gemm_program,
 )
+from .cute_independent import (
+    IndependentCuteGemmKernel,
+    validate_independent_cute_gemm,
+)
+from .cute_independent_program import (
+    IndependentCuteGemmRenderer,
+    independent_cute_gemm_from_source,
+)
 from .cute_diagnostics import select_runtime_fingerprint
 from .cuda_backend import (
     _ncu_csv_output,
@@ -37,8 +45,11 @@ from .profiling import (
 )
 
 
+CuteRepresentation = CuteGemmProgram | IndependentCuteGemmKernel
+
+
 class CuteExecutor(Protocol):
-    def __call__(self, program: CuteGemmProgram) -> Mapping[str, Any]: ...
+    def __call__(self, program: CuteRepresentation) -> Mapping[str, Any]: ...
 
 
 class TelemetryReader(Protocol):
@@ -93,7 +104,7 @@ class CuteBackendConfig:
 class CuteArtifact:
     artifact_id: str
     source_path: Path
-    representation: CuteGemmProgram
+    representation: CuteRepresentation
     result: Mapping[str, Any]
     operating_state: Mapping[str, object]
 
@@ -133,12 +144,14 @@ class CuTeDSLBackend:
         executor: CuteExecutor | None = None,
         telemetry: TelemetryReader | None = None,
         renderer: PinnedCuteGemmRenderer | None = None,
+        independent_renderer: IndependentCuteGemmRenderer | None = None,
         profile_runner: ProfileRunner | None = None,
     ) -> None:
         self.config = config
         self._executor = executor or self._execute_pinned_program
         self._telemetry = telemetry or _gpu_operating_state
         self._renderer = renderer or PinnedCuteGemmRenderer()
+        self._independent_renderer = independent_renderer or IndependentCuteGemmRenderer()
         self._profile_runner = profile_runner or _run_command
         self._artifacts: dict[str, CuteArtifact] = {}
         self._profiles: dict[tuple[str, str], Mapping[str, object]] = {}
@@ -160,14 +173,23 @@ class CuTeDSLBackend:
         started = time.monotonic()
         try:
             self._validate_contract(program, workload)
-            representation = cute_gemm_program_from_source(program.source)
-            legality = validate_cute_gemm_program(representation)
+            representation = self._parse_representation(program.source)
+            legality = (
+                validate_cute_gemm_program(representation)
+                if isinstance(representation, CuteGemmProgram)
+                else validate_independent_cute_gemm(representation)
+            )
             if not legality.valid:
                 diagnostic = "; ".join(item.message for item in legality.violations)
                 return CuteCompilationResult(
                     False, None, "", diagnostic, time.monotonic() - started
                 )
-            if self._renderer.render(representation) != program:
+            renderer = (
+                self._renderer
+                if isinstance(representation, CuteGemmProgram)
+                else self._independent_renderer
+            )
+            if renderer.render(representation) != program:
                 return CuteCompilationResult(
                     False,
                     None,
@@ -319,6 +341,7 @@ class CuTeDSLBackend:
                 else "rendered_source_and_pinned_template"
             ),
             "pinned_example_sha256": artifact.result.get("example_sha256"),
+            "implementation": artifact.result.get("implementation"),
         }
         if selected is not None:
             value["runtime_fingerprint"] = dict(selected)
@@ -384,6 +407,8 @@ class CuTeDSLBackend:
             "--representation-json",
             artifact.representation.canonical_json(),
         ]
+        if isinstance(artifact.representation, IndependentCuteGemmKernel):
+            command.extend(("--representation-kind", "independent"))
         try:
             result = self._profile_runner(
                 command,
@@ -478,7 +503,7 @@ class CuTeDSLBackend:
             )
         self._validated_profile_metric_sets.add(definition.id)
 
-    def _execute_pinned_program(self, program: CuteGemmProgram) -> Mapping[str, Any]:
+    def _execute_pinned_program(self, program: CuteRepresentation) -> Mapping[str, Any]:
         command = [
             self.config.python_executable,
             "-m",
@@ -486,6 +511,8 @@ class CuTeDSLBackend:
             "--representation-json",
             program.canonical_json(),
         ]
+        if isinstance(program, IndependentCuteGemmKernel):
+            command.extend(("--representation-kind", "independent"))
         try:
             completed = subprocess.run(
                 command,
@@ -509,6 +536,16 @@ class CuTeDSLBackend:
         if completed.returncode != 0 or not isinstance(payload, Mapping):
             raise EvaluationInfrastructureError("CuTe evaluation subprocess failed")
         return payload
+
+    @staticmethod
+    def _parse_representation(source: str) -> CuteRepresentation:
+        try:
+            return cute_gemm_program_from_source(source)
+        except ValueError as pinned_error:
+            try:
+                return independent_cute_gemm_from_source(source)
+            except ValueError:
+                raise pinned_error
 
     @staticmethod
     def _require_backend(program: KernelProgram) -> None:

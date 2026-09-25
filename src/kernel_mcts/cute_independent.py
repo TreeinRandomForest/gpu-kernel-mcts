@@ -375,6 +375,54 @@ def make_independent_cute_gemm(
     )
 
 
+def independent_cute_gemm_from_dict(
+    value: dict[str, object],
+) -> IndependentCuteGemmKernel:
+    """Reconstruct the versioned typed kernel from canonical JSON data."""
+
+    try:
+        mainloop_value = dict(value["mainloop"])
+        mainloop = IndependentTmaSmemMainloop(
+            **{
+                **mainloop_value,
+                "a_copy": IndependentTmaOperandCopy(**dict(mainloop_value["a_copy"])),
+                "b_copy": IndependentTmaOperandCopy(**dict(mainloop_value["b_copy"])),
+            }
+        )
+        execution_value = dict(value["execution"])
+        execution = IndependentExecutionSchedule(
+            agents=tuple(
+                IndependentExecutionAgent(**dict(item))
+                for item in execution_value["agents"]
+            ),
+            buffers=tuple(
+                IndependentBufferRing(**dict(item))
+                for item in execution_value["buffers"]
+            ),
+            phases=tuple(
+                IndependentExecutionPhase(
+                    **{
+                        **dict(item),
+                        "reads": tuple(dict(item)["reads"]),
+                        "writes": tuple(dict(item)["writes"]),
+                        "waits_for": tuple(dict(item).get("waits_for", ())),
+                        "signals": tuple(dict(item).get("signals", ())),
+                    }
+                )
+                for item in execution_value["phases"]
+            ),
+        )
+        return IndependentCuteGemmKernel(
+            mainloop=mainloop,
+            consumer=IndependentWgmmaConsumer(**dict(value["consumer"])),
+            epilogue=IndependentGemmEpilogue(**dict(value["epilogue"])),
+            execution=execution,
+            schema_version=int(value.get("schema_version", INDEPENDENT_TMA_SMEM_SCHEMA_VERSION)),
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("invalid independent CuTe GEMM representation") from error
+
+
 def validate_independent_tma_smem_mainloop(
     plan: IndependentTmaSmemMainloop,
 ) -> IndependentTmaSmemLegality:

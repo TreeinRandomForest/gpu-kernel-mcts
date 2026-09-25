@@ -307,7 +307,7 @@ completed hardware validation is identified explicitly.
   `wgmma_one_k` lowering of the promoted state passed on H100 with cosine similarity
   1.0 and zero maximum and mean error; configuration hash
   `88f1c51b9352902fa905d1b32547b7e71752369aa8b29f2385949828aa4de6c1`.
-- [ ] Extend the promoted independent root from the validated single K tile
+- [x] Extend the promoted independent root from the validated single K tile
   (`K=64`) to the complete `K=4096` workload with a staged TMA/WGMMA mainloop, then
   validate correctness, timing, profiling, and artifact provenance before MCTS use.
 - [x] Validate staged K traversal and full M/N coverage independently on H100. The
@@ -317,9 +317,16 @@ completed hardware validation is identified explicitly.
   CUDA-event measurements, median time was 665.792 us (mean 666.053 us, range
   656.736--674.976 us). This is a diagnostic checkpoint because it still uses seeded
   PyTorch inputs rather than the repository's canonical input generator.
-- [ ] Route the independent full-workload lowering through the repository workload,
-  correctness, artifact, benchmark, and profiling contracts. Only then promote it
-  from a standalone diagnostic to `CuTeDSLBackend` evaluation and MCTS nodes.
+- [x] Route the independent full-workload lowering through the repository workload,
+  correctness, artifact, benchmark, and profiling contracts. The deterministic
+  file-backed renderer now round-trips the typed state through `CuTeDSLBackend`,
+  uses the canonical seed-0 input generator and cuBLAS reference, caches the full
+  evaluation artifact, fingerprints normalized MLIR/fatbin output, and supports the
+  existing NCU metric sets. H100 validation on 2026-09-25 passed correctness with
+  30 CUDA-event samples (median 670.592 us) and a lightweight profile reporting
+  154 registers/thread, 6.2% achieved occupancy, and 27.06% tensor-pipe utilization.
+  Search-root selection and independent typed proposal mechanisms remain the next
+  integration boundary before these states are admitted to MCTS.
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms

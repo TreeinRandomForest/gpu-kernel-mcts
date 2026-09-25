@@ -6,6 +6,8 @@ import subprocess
 from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD
 from kernel_mcts.cute_backend import CuteBackendConfig, CuTeDSLBackend
 from kernel_mcts.cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
+from kernel_mcts.cute_independent import make_independent_cute_gemm
+from kernel_mcts.cute_independent_program import IndependentCuteGemmRenderer
 from kernel_mcts.domain import BenchmarkResult, CompileStatus, CorrectnessStatus
 from kernel_mcts.evaluation import BackendKernelEvaluator, EvaluationContext
 
@@ -68,6 +70,34 @@ def test_backend_evaluates_once_and_reuses_cached_artifact(tmp_path) -> None:
     assert benchmark.median_us == 100.0
     assert benchmark.gpu_operating_state["before"]["sample"] == 1
     assert benchmark.gpu_operating_state["after"]["sample"] == 2
+
+
+def test_backend_accepts_and_caches_independent_typed_root(tmp_path) -> None:
+    executions = []
+
+    def execute(program):
+        executions.append(program)
+        payload = _payload(665.0)
+        payload["implementation"] = "independent_cute_gemm_v1"
+        payload.pop("example_sha256")
+        return payload
+
+    backend = CuTeDSLBackend(
+        CuteBackendConfig(tmp_path), executor=execute, telemetry=lambda: {}
+    )
+    representation = make_independent_cute_gemm()
+    rendered = IndependentCuteGemmRenderer().render(representation)
+
+    first = backend.compile(rendered, BF16_GEMM_WORKLOAD)
+    second = backend.compile(rendered, BF16_GEMM_WORKLOAD)
+
+    assert first.success is True
+    assert first.artifact is not None
+    assert second.artifact is first.artifact
+    assert executions == [representation]
+    metadata = backend.evaluation_metadata(first.artifact)
+    assert metadata["implementation"] == "independent_cute_gemm_v1"
+    assert metadata["configuration_hash"] == representation.configuration_hash
 
 
 def test_backend_rejects_source_not_matching_deterministic_rendering(tmp_path) -> None:
