@@ -28,6 +28,9 @@ IndependentTmaDebugStage = Literal[
     "wgmma_r2s_four_tiles",
     "wgmma_r2s_only",
     "wgmma_one_group",
+    "wgmma_two_group",
+    "wgmma_full_k",
+    "wgmma_full_workload",
     "wgmma_one_k_no_reuse",
     "wgmma_one_k",
 ]
@@ -49,6 +52,9 @@ INDEPENDENT_TMA_DEBUG_STAGES = (
     "wgmma_r2s_four_tiles",
     "wgmma_r2s_only",
     "wgmma_one_group",
+    "wgmma_two_group",
+    "wgmma_full_k",
+    "wgmma_full_workload",
     "wgmma_one_k_no_reuse",
     "wgmma_one_k",
 )
@@ -79,18 +85,26 @@ def render_independent_tma_copy_diagnostic(
         raise ValueError(f"unknown independent TMA debug stage {debug_stage!r}")
     mainloop = kernel.mainloop
     epilogue = kernel.epilogue
-    diagnostic_tile_m = 64 if debug_stage == "wgmma_one_group" else mainloop.tile_m
-    diagnostic_warp_groups = 1 if debug_stage == "wgmma_one_group" else 2
+    diagnostic_tile_m = 128 if debug_stage == "wgmma_two_group" else mainloop.tile_m
+    diagnostic_warp_groups = (
+        2
+        if debug_stage == "wgmma_two_group"
+        else kernel.consumer.warp_groups_m * kernel.consumer.warp_groups_n
+    )
     diagnostic_epilogue_stages = (
         8 if debug_stage == "wgmma_one_k_no_reuse" else epilogue.pipeline_stages
     )
+    full_workload = debug_stage == "wgmma_full_workload"
+    full_k = debug_stage in ("wgmma_full_k", "wgmma_full_workload")
+    problem_k = 4096 if full_k else mainloop.tile_k
     diagnostic_epilogue_storage_elements = (
         (diagnostic_epilogue_stages + 1) * epilogue.tile_m * epilogue.tile_n
     )
     active_cluster = (
-        (1, 1)
-        if debug_stage
-        in (
+        (2, 1)
+        if debug_stage in ("cluster_ab_no_multicast", "cluster_ab_multicast")
+        else (1, 1)
+        if debug_stage in (
             "launch_empty",
             "single_cta_a_load",
             "single_cta_a",
@@ -105,6 +119,9 @@ def render_independent_tma_copy_diagnostic(
             "wgmma_r2s_four_tiles",
             "wgmma_r2s_only",
             "wgmma_one_group",
+            "wgmma_two_group",
+            "wgmma_full_k",
+            "wgmma_full_workload",
             "wgmma_one_k_no_reuse",
             "wgmma_one_k",
         )
@@ -115,10 +132,7 @@ def render_independent_tma_copy_diagnostic(
         "single_cta_a_load",
         "single_cta_a",
     )
-    enable_multicast = debug_stage in (
-        "compile_only",
-        "cluster_ab_multicast",
-    )
+    enable_multicast = debug_stage == "cluster_ab_multicast"
     launch_kernel = debug_stage != "compile_only"
     if debug_stage == "wgmma_compile_only":
         launch_kernel = False
@@ -135,6 +149,9 @@ def render_independent_tma_copy_diagnostic(
         "wgmma_r2s_four_tiles",
         "wgmma_r2s_only",
         "wgmma_one_group",
+        "wgmma_two_group",
+        "wgmma_full_k",
+        "wgmma_full_workload",
         "wgmma_one_k_no_reuse",
         "wgmma_one_k",
     )
@@ -155,6 +172,10 @@ def render_independent_tma_copy_diagnostic(
     wgmma_r2s_four_padded = debug_stage == "wgmma_r2s_four_padded"
     wgmma_r2s_four_tiles = debug_stage == "wgmma_r2s_four_tiles"
     consumer_threads = diagnostic_warp_groups * 128
+    problem_m = 4096 if full_workload else diagnostic_tile_m * active_cluster[0]
+    problem_n = 4096 if full_workload else mainloop.tile_n * active_cluster[1]
+    grid_m = problem_m // diagnostic_tile_m
+    grid_n = problem_n // mainloop.tile_n
     source = f'''# Generated independent Hopper TMA copy-only diagnostic.
 import cuda.bindings.driver as cuda
 import cutlass
@@ -167,6 +188,14 @@ from cutlass.cute.runtime import from_dlpack
 CONFIGURATION_HASH = {kernel.configuration_hash!r}
 DEBUG_STAGE = {debug_stage!r}
 TILE_SHAPE_MNK = ({diagnostic_tile_m}, {mainloop.tile_n}, {mainloop.tile_k})
+PROBLEM_K = {problem_k}
+PROBLEM_M = {problem_m}
+PROBLEM_N = {problem_n}
+FULL_K = {full_k!r}
+FULL_WORKLOAD = {full_workload!r}
+FULL_K_TILE_COUNT = PROBLEM_K // TILE_SHAPE_MNK[2]
+GRID_M = {grid_m}
+GRID_N = {grid_n}
 CLUSTER_SHAPE_MN = {active_cluster!r}
 MAINLOOP_STAGES = {mainloop.pipeline_stages}
 SWIZZLE_BYTES = {mainloop.a_copy.swizzle_bytes}
@@ -250,7 +279,7 @@ class IndependentTmaCopyKernel:
 
         @cute.struct
         class SharedStorage:
-            load_barrier: cute.struct.MemRange[cutlass.Int64, 1]
+            load_barrier: cute.struct.MemRange[cutlass.Int64, MAINLOOP_STAGES]
             sA: cute.struct.Align[
                 cute.struct.MemRange[self.dtype, cute.cosize(a_smem_layout_staged)],
                 self.buffer_align_bytes,
@@ -328,7 +357,7 @@ class IndependentTmaCopyKernel:
             b_smem_layout_staged,
             epi_smem_layout_staged,
         ).launch(
-            grid=(*CLUSTER_SHAPE_MN, 1),
+            grid=(GRID_M, GRID_N, 1),
             block=(THREADS_PER_CTA, 1, 1),
             cluster=(*CLUSTER_SHAPE_MN, 1),
             stream=stream,
@@ -357,7 +386,7 @@ class IndependentTmaCopyKernel:
             return
         tidx, _, _ = cute.arch.thread_idx()
         warp_idx = cute.arch.make_warp_uniform(cute.arch.warp_idx())
-        bidx, _, _ = cute.arch.block_idx()
+        bidx, bidy, _ = cute.arch.block_idx()
         cta_rank = cute.arch.make_warp_uniform(cute.arch.block_idx_in_cluster())
         cluster_coord = cta_layout_mnk.get_flat_coord(cta_rank)
 
@@ -372,7 +401,7 @@ class IndependentTmaCopyKernel:
         sC = storage.sC.get_tensor(
             epi_smem_layout_staged.outer, swizzle=epi_smem_layout_staged.inner
         )
-        load_barrier = storage.load_barrier.data_ptr()
+        load_barriers = storage.load_barrier.data_ptr()
         a_smem = cute.slice_(a_smem_layout_staged, (None, None, 0))
         b_smem = cute.slice_(b_smem_layout_staged, (None, None, 0))
         transaction_bytes = cute.size_in_bytes(self.dtype, a_smem)
@@ -382,8 +411,8 @@ class IndependentTmaCopyKernel:
             )
 
         if tidx == 0:
-            cute.arch.mbarrier_init(load_barrier, 1)
-            cute.arch.mbarrier_expect_tx(load_barrier, transaction_bytes)
+            for barrier_index in cutlass.range_constexpr(MAINLOOP_STAGES):
+                cute.arch.mbarrier_init(load_barriers + barrier_index, 1)
         cute.arch.mbarrier_init_fence()
         pipeline.sync(barrier_id=1)
         if cute.size(CLUSTER_SHAPE_MN) > 1:
@@ -428,7 +457,10 @@ class IndependentTmaCopyKernel:
             b_mcast_mask = cute.make_layout_image_mask(
                 cta_layout_mnk, cluster_coord, mode=0
             )
-        if warp_idx == 0:
+        load_barrier = load_barriers
+        if cutlass.const_expr(not FULL_K) and tidx == 0:
+            cute.arch.mbarrier_expect_tx(load_barrier, transaction_bytes)
+        if cutlass.const_expr(not FULL_K) and warp_idx == 0:
             cute.copy(
                 tma_a,
                 tAgA[(None, bidx, 0)],
@@ -446,14 +478,15 @@ class IndependentTmaCopyKernel:
             with cute.arch.elect_one():
                 cute.arch.mbarrier_arrive(load_barrier)
 
-        cute.arch.mbarrier_wait(load_barrier, 0)
+        if cutlass.const_expr(not FULL_K):
+            cute.arch.mbarrier_wait(load_barrier, 0)
         if cutlass.const_expr(LOAD_ONLY):
             return
         if cutlass.const_expr(ENABLE_WGMMA):
             gC = cute.local_tile(
                 tensor_c,
                 (TILE_SHAPE_MNK[0], TILE_SHAPE_MNK[1]),
-                (bidx, 0),
+                (bidx, bidy),
             )
             warp_group_idx = cute.arch.make_warp_uniform(tidx // 128)
             warp_group_thread_layout = cute.make_layout(
@@ -469,20 +502,65 @@ class IndependentTmaCopyKernel:
             tCrB = tiled_mma.make_fragment_B(tCsB)
             accumulators = cute.make_rmem_tensor(tCgC.shape, self.acc_dtype)
             tiled_mma.set(cute.nvgpu.warpgroup.Field.ACCUMULATE, False)
-            cute.nvgpu.warpgroup.fence()
-            for k_block in cutlass.range(
-                cute.size(tCrA, mode=[2]), unroll_full=True
-            ):
-                cute.gemm(
-                    tiled_mma,
-                    accumulators,
-                    tCrA[(None, None, k_block, 0)],
-                    tCrB[(None, None, k_block, 0)],
-                    accumulators,
-                )
-                tiled_mma.set(cute.nvgpu.warpgroup.Field.ACCUMULATE, True)
-            cute.nvgpu.warpgroup.commit_group()
-            cute.nvgpu.warpgroup.wait_group(0)
+            if cutlass.const_expr(FULL_K):
+                for k_tile in cutlass.range(0, FULL_K_TILE_COUNT, 1, unroll=1):
+                    stage = k_tile % MAINLOOP_STAGES
+                    phase = (k_tile // MAINLOOP_STAGES) % 2
+                    stage_barrier = load_barriers + stage
+                    if tidx == 0:
+                        cute.arch.mbarrier_expect_tx(
+                            stage_barrier, transaction_bytes
+                        )
+                    if warp_idx == 0:
+                        cute.copy(
+                            tma_a,
+                            tAgA[(None, bidx, k_tile)],
+                            tAsA[(None, stage)],
+                            tma_bar_ptr=stage_barrier,
+                        )
+                        cute.copy(
+                            tma_b,
+                            tBgB[(None, bidy, k_tile)],
+                            tBsB[(None, stage)],
+                            tma_bar_ptr=stage_barrier,
+                            mcast_mask=b_mcast_mask,
+                        )
+                        with cute.arch.elect_one():
+                            cute.arch.mbarrier_arrive(stage_barrier)
+                    cute.arch.mbarrier_wait(stage_barrier, phase)
+                    cute.nvgpu.warpgroup.fence()
+                    for k_block in cutlass.range(
+                        cute.size(tCrA, mode=[2]), unroll_full=True
+                    ):
+                        cute.gemm(
+                            tiled_mma,
+                            accumulators,
+                            tCrA[(None, None, k_block, stage)],
+                            tCrB[(None, None, k_block, stage)],
+                            accumulators,
+                        )
+                        tiled_mma.set(
+                            cute.nvgpu.warpgroup.Field.ACCUMULATE, True
+                        )
+                    cute.nvgpu.warpgroup.commit_group()
+                    cute.nvgpu.warpgroup.wait_group(0)
+            else:
+                cute.nvgpu.warpgroup.fence()
+                for k_block in cutlass.range(
+                    cute.size(tCrA, mode=[2]), unroll_full=True
+                ):
+                    cute.gemm(
+                        tiled_mma,
+                        accumulators,
+                        tCrA[(None, None, k_block, 0)],
+                        tCrB[(None, None, k_block, 0)],
+                        accumulators,
+                    )
+                    tiled_mma.set(
+                        cute.nvgpu.warpgroup.Field.ACCUMULATE, True
+                    )
+                cute.nvgpu.warpgroup.commit_group()
+                cute.nvgpu.warpgroup.wait_group(0)
             if cutlass.const_expr(WGMMA_ISSUE_ONLY):
                 return
             cute.arch.sync_threads()
@@ -615,24 +693,25 @@ class IndependentTmaCopyKernel:
 
 def run_diagnostic():
     import itertools
+    import statistics
     import torch
 
     print(f"Independent TMA {{DEBUG_STAGE}}: allocating tensors", flush=True)
     torch.manual_seed(0)
     a = torch.randn(
-        (TILE_SHAPE_MNK[0] * CLUSTER_SHAPE_MN[0], TILE_SHAPE_MNK[2]),
+        (PROBLEM_M, PROBLEM_K),
         device="cuda",
         dtype=torch.bfloat16,
     )
     b = torch.randn(
-        (TILE_SHAPE_MNK[1], TILE_SHAPE_MNK[2]),
+        (PROBLEM_N, PROBLEM_K),
         device="cuda",
         dtype=torch.bfloat16,
     )
     a_out = torch.zeros_like(a)
     b_out = torch.zeros_like(b)
     c = torch.zeros(
-        (TILE_SHAPE_MNK[0] * CLUSTER_SHAPE_MN[0], TILE_SHAPE_MNK[1]),
+        (PROBLEM_M, PROBLEM_N),
         device="cuda",
         dtype=torch.bfloat16,
     )
@@ -698,49 +777,81 @@ def run_diagnostic():
                 reference_float.reshape(1, -1),
             ).item()
         )
-        output_tiles = [
-            output_float[
-                tile_m * EPILOGUE_TILE[0] : (tile_m + 1) * EPILOGUE_TILE[0],
-                tile_n * EPILOGUE_TILE[1] : (tile_n + 1) * EPILOGUE_TILE[1],
+        best_tile_mean_error = None
+        best_tile_permutation = None
+        best_transposed_tile_mean_error = None
+        best_transposed_tile_permutation = None
+        if not FULL_WORKLOAD:
+            output_tiles = [
+                output_float[
+                    tile_m * EPILOGUE_TILE[0] : (tile_m + 1) * EPILOGUE_TILE[0],
+                    tile_n * EPILOGUE_TILE[1] : (tile_n + 1) * EPILOGUE_TILE[1],
+                ]
+                for tile_m in range(TILE_SHAPE_MNK[0] // EPILOGUE_TILE[0])
+                for tile_n in range(TILE_SHAPE_MNK[1] // EPILOGUE_TILE[1])
             ]
-            for tile_m in range(TILE_SHAPE_MNK[0] // EPILOGUE_TILE[0])
-            for tile_n in range(TILE_SHAPE_MNK[1] // EPILOGUE_TILE[1])
-        ]
-        reference_tiles = [
-            reference_float[
-                tile_m * EPILOGUE_TILE[0] : (tile_m + 1) * EPILOGUE_TILE[0],
-                tile_n * EPILOGUE_TILE[1] : (tile_n + 1) * EPILOGUE_TILE[1],
+            reference_tiles = [
+                reference_float[
+                    tile_m * EPILOGUE_TILE[0] : (tile_m + 1) * EPILOGUE_TILE[0],
+                    tile_n * EPILOGUE_TILE[1] : (tile_n + 1) * EPILOGUE_TILE[1],
+                ]
+                for tile_m in range(TILE_SHAPE_MNK[0] // EPILOGUE_TILE[0])
+                for tile_n in range(TILE_SHAPE_MNK[1] // EPILOGUE_TILE[1])
             ]
-            for tile_m in range(TILE_SHAPE_MNK[0] // EPILOGUE_TILE[0])
-            for tile_n in range(TILE_SHAPE_MNK[1] // EPILOGUE_TILE[1])
-        ]
-        tile_costs = [
-            [float((out - ref).abs().mean().item()) for ref in reference_tiles]
-            for out in output_tiles
-        ]
-        transposed_tile_costs = [
-            [
-                float((out - ref.transpose(0, 1)).abs().mean().item())
-                for ref in reference_tiles
+            tile_costs = [
+                [float((out - ref).abs().mean().item()) for ref in reference_tiles]
+                for out in output_tiles
             ]
-            for out in output_tiles
-        ]
+            transposed_tile_costs = [
+                [
+                    float((out - ref.transpose(0, 1)).abs().mean().item())
+                    for ref in reference_tiles
+                ]
+                for out in output_tiles
+            ]
 
-        def best_assignment(costs):
-            best_cost = float("inf")
-            best_permutation = None
-            for permutation in itertools.permutations(range(len(costs))):
-                cost = sum(costs[index][source] for index, source in enumerate(permutation))
-                if cost < best_cost:
-                    best_cost = cost
-                    best_permutation = permutation
-            return best_cost / len(costs), list(best_permutation)
+            def best_assignment(costs):
+                best_cost = float("inf")
+                best_permutation = None
+                for permutation in itertools.permutations(range(len(costs))):
+                    cost = sum(
+                        costs[index][source]
+                        for index, source in enumerate(permutation)
+                    )
+                    if cost < best_cost:
+                        best_cost = cost
+                        best_permutation = permutation
+                return best_cost / len(costs), list(best_permutation)
 
-        best_tile_mean_error, best_tile_permutation = best_assignment(tile_costs)
-        best_transposed_tile_mean_error, best_transposed_tile_permutation = best_assignment(
-            transposed_tile_costs
-        )
+            best_tile_mean_error, best_tile_permutation = best_assignment(tile_costs)
+            (
+                best_transposed_tile_mean_error,
+                best_transposed_tile_permutation,
+            ) = best_assignment(transposed_tile_costs)
         correct = bool(torch.allclose(c, reference, atol=0.02, rtol=0.02))
+        benchmark = None
+        if FULL_WORKLOAD:
+            for _ in range(10):
+                compiled(*tensors, stream)
+            torch.cuda.synchronize()
+            timings_us = []
+            for _ in range(30):
+                start = torch.cuda.Event(enable_timing=True)
+                end = torch.cuda.Event(enable_timing=True)
+                start.record()
+                compiled(*tensors, stream)
+                end.record()
+                end.synchronize()
+                timings_us.append(float(start.elapsed_time(end) * 1000.0))
+            benchmark = {{
+                "warmup_count": 10,
+                "measurement_count": 30,
+                "timings_us": timings_us,
+                "median_us": float(statistics.median(timings_us)),
+                "mean_us": float(statistics.mean(timings_us)),
+                "min_us": min(timings_us),
+                "max_us": max(timings_us),
+            }}
         return {{
             "status": "ok" if correct else "correctness_failed",
             "debug_stage": DEBUG_STAGE,
@@ -756,6 +867,7 @@ def run_diagnostic():
             "best_tile_permutation": best_tile_permutation,
             "best_transposed_tile_mean_error": best_transposed_tile_mean_error,
             "best_transposed_tile_permutation": best_transposed_tile_permutation,
+            "benchmark": benchmark,
         }}
     a_equal = bool(torch.equal(a, a_out))
     b_equal = bool(torch.equal(b, b_out)) if ENABLE_B else None

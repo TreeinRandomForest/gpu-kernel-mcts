@@ -42,7 +42,7 @@ def test_tma_diagnostic_lowers_cluster_multicast_and_exact_round_trip() -> None:
 @pytest.mark.parametrize(
     ("stage", "cluster", "enable_b", "enable_multicast", "launch"),
     (
-        ("compile_only", "(2, 1)", True, True, False),
+        ("compile_only", "(1, 1)", True, False, False),
         ("launch_empty", "(1, 1)", False, False, True),
         ("single_cta_a_load", "(1, 1)", False, False, True),
         ("single_cta_a", "(1, 1)", False, False, True),
@@ -59,6 +59,9 @@ def test_tma_diagnostic_lowers_cluster_multicast_and_exact_round_trip() -> None:
         ("wgmma_r2s_four_tiles", "(1, 1)", True, False, True),
         ("wgmma_r2s_only", "(1, 1)", True, False, True),
         ("wgmma_one_group", "(1, 1)", True, False, True),
+        ("wgmma_two_group", "(1, 1)", True, False, True),
+        ("wgmma_full_k", "(1, 1)", True, False, True),
+        ("wgmma_full_workload", "(1, 1)", True, False, True),
         ("wgmma_one_k_no_reuse", "(1, 1)", True, False, True),
         ("wgmma_one_k", "(1, 1)", True, False, True),
     ),
@@ -168,6 +171,51 @@ def test_wgmma_one_group_diagnostic_uses_64_row_tile() -> None:
     assert "TILE_SHAPE_MNK = (64, 256, 64)" in source
     assert "THREADS_PER_CTA = 128" in source
     assert "MMA_WARP_GROUPS = 1" in source
+
+
+def test_wgmma_two_group_diagnostic_preserves_experimental_path() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(),
+        debug_stage="wgmma_two_group",
+    ).source
+
+    assert "TILE_SHAPE_MNK = (128, 256, 64)" in source
+    assert "THREADS_PER_CTA = 256" in source
+    assert "MMA_WARP_GROUPS = 2" in source
+
+
+def test_wgmma_full_k_cycles_the_three_stage_mainloop_ring() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(),
+        debug_stage="wgmma_full_k",
+    ).source
+
+    assert "PROBLEM_K = 4096" in source
+    assert "FULL_K = True" in source
+    assert "FULL_K_TILE_COUNT = PROBLEM_K // TILE_SHAPE_MNK[2]" in source
+    assert "stage = k_tile % MAINLOOP_STAGES" in source
+    assert "phase = (k_tile // MAINLOOP_STAGES) % 2" in source
+    assert "tAgA[(None, bidx, k_tile)]" in source
+    assert "tCrA[(None, None, k_block, stage)]" in source
+
+
+def test_wgmma_full_workload_launches_complete_mn_grid() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(),
+        debug_stage="wgmma_full_workload",
+    ).source
+
+    assert "PROBLEM_M = 4096" in source
+    assert "PROBLEM_N = 4096" in source
+    assert "PROBLEM_K = 4096" in source
+    assert "FULL_WORKLOAD = True" in source
+    assert "GRID_M = 64" in source
+    assert "GRID_N = 16" in source
+    assert "grid=(GRID_M, GRID_N, 1)" in source
+    assert "(bidx, bidy)" in source
+    assert "for _ in range(10):" in source
+    assert "for _ in range(30):" in source
+    assert '"median_us": float(statistics.median(timings_us))' in source
 
 
 def test_tma_diagnostic_identity_changes_with_swizzle() -> None:

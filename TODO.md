@@ -297,7 +297,29 @@ completed hardware validation is identified explicitly.
   tile to test whether four-stage shared-buffer reuse is the remaining fault. Its v47
   output was identical to v46, ruling reuse out. `wgmma_one_group` now runs the same
   path with a `64x256x64` CTA tile and one consumer warp group to isolate cooperative
-  two-warp-group decomposition from common operand and epilogue logic.
+  two-warp-group decomposition from common operand and epilogue logic. That H100
+  control passed exactly: cosine similarity 1.0 with zero maximum and mean error.
+- [x] Promote the validated `(64,256,64)`, cluster `(1,1)`, single-warp-group design
+  to schema v3 of the initial independent typed root. Shared-memory ownership,
+  legality checks, deterministic lowering, and execution-agent counts now match the
+  correct control. Preserve `(128,256,64)` as the diagnostic-only
+  `wgmma_two_group` path until its second output row is correct. The ordinary
+  `wgmma_one_k` lowering of the promoted state passed on H100 with cosine similarity
+  1.0 and zero maximum and mean error; configuration hash
+  `88f1c51b9352902fa905d1b32547b7e71752369aa8b29f2385949828aa4de6c1`.
+- [ ] Extend the promoted independent root from the validated single K tile
+  (`K=64`) to the complete `K=4096` workload with a staged TMA/WGMMA mainloop, then
+  validate correctness, timing, profiling, and artifact provenance before MCTS use.
+- [x] Validate staged K traversal and full M/N coverage independently on H100. The
+  three-stage ring cycles 64 K tiles with per-stage barrier phase tracking; the
+  complete `4096x4096x4096` grid launches 64x16 CTAs. All 16,777,216 outputs were
+  written, cosine similarity was 1.0, and correctness passed. With 10 warmups and 30
+  CUDA-event measurements, median time was 665.792 us (mean 666.053 us, range
+  656.736--674.976 us). This is a diagnostic checkpoint because it still uses seeded
+  PyTorch inputs rather than the repository's canonical input generator.
+- [ ] Route the independent full-workload lowering through the repository workload,
+  correctness, artifact, benchmark, and profiling contracts. Only then promote it
+  from a standalone diagnostic to `CuTeDSLBackend` evaluation and MCTS nodes.
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms

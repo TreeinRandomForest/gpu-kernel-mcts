@@ -21,7 +21,7 @@ def test_initial_tma_smem_variants_are_valid_distinct_and_deterministic() -> Non
     assert validate_independent_tma_smem_mainloop(sw128).valid is True
     assert validate_independent_tma_smem_mainloop(sw64).valid is True
     assert sw128.configuration_hash != sw64.configuration_hash
-    assert sw128.shared_memory_bytes == 147_456
+    assert sw128.shared_memory_bytes == 122_880
     assert sw128.canonical_json() == make_independent_tma_smem_mainloop(
         swizzle_bytes=128
     ).canonical_json()
@@ -30,12 +30,12 @@ def test_initial_tma_smem_variants_are_valid_distinct_and_deterministic() -> Non
 def test_contract_coordinates_operand_tiles_multicast_and_storage() -> None:
     plan = make_independent_tma_smem_mainloop()
 
-    assert (plan.a_copy.tile_rows, plan.a_copy.tile_columns) == (128, 64)
+    assert (plan.a_copy.tile_rows, plan.a_copy.tile_columns) == (64, 64)
     assert (plan.b_copy.tile_rows, plan.b_copy.tile_columns) == (64, 256)
     assert plan.a_copy.multicast_axis == "none"
-    assert plan.b_copy.multicast_axis == "cluster_m"
+    assert plan.b_copy.multicast_axis == "none"
     assert plan.a_copy.storage_offset_bytes == 0
-    assert plan.b_copy.storage_offset_bytes == 49_152
+    assert plan.b_copy.storage_offset_bytes == 24_576
     assert plan.barrier_slots == plan.pipeline_stages
 
 
@@ -58,7 +58,7 @@ def test_incompatible_multicast_is_statically_rejected() -> None:
     plan = make_independent_tma_smem_mainloop()
     invalid = replace(
         plan,
-        b_copy=replace(plan.b_copy, multicast_axis="none"),
+        b_copy=replace(plan.b_copy, multicast_axis="cluster_m"),
     )
 
     result = validate_independent_tma_smem_mainloop(invalid)
@@ -73,7 +73,7 @@ def test_overlapping_operand_storage_is_statically_rejected() -> None:
     plan = make_independent_tma_smem_mainloop()
     overlapping = replace(
         plan,
-        b_copy=replace(plan.b_copy, storage_offset_bytes=16_384),
+        b_copy=replace(plan.b_copy, storage_offset_bytes=8_192),
     )
 
     result = validate_independent_tma_smem_mainloop(overlapping)
@@ -103,13 +103,13 @@ def test_complete_kernel_contract_coordinates_wgmma_and_epilogue() -> None:
     kernel = make_independent_cute_gemm()
 
     assert validate_independent_cute_gemm(kernel).valid is True
-    assert kernel.consumer.instruction_m * kernel.consumer.warp_groups_m == 128
+    assert kernel.consumer.instruction_m * kernel.consumer.warp_groups_m == 64
     assert kernel.consumer.instruction_n * kernel.consumer.warp_groups_n == 256
     assert kernel.mainloop.tile_k % kernel.consumer.instruction_k == 0
     assert kernel.epilogue.accumulator_source == "registers"
     assert kernel.epilogue.store_kind == "tma"
     assert kernel.epilogue.allocation_padding_bytes == 8_192
-    assert kernel.shared_memory_bytes == 188_416
+    assert kernel.shared_memory_bytes == 163_840
 
 
 def test_complete_kernel_identity_includes_memory_layout() -> None:
@@ -125,7 +125,7 @@ def test_wgmma_must_cover_the_complete_cta_tile() -> None:
     kernel = make_independent_cute_gemm()
     invalid = replace(
         kernel,
-        consumer=replace(kernel.consumer, warp_groups_m=1),
+        consumer=replace(kernel.consumer, warp_groups_m=2),
     )
 
     result = validate_independent_cute_gemm(invalid)

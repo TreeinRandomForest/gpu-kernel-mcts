@@ -2929,6 +2929,12 @@ The initial fixed schedule experiment has validated CTA tiles `(64, 128)`,
 `(2, 1)` for the pinned example. These values are evidence for that implementation,
 not universal legality rules for every future CuTe kernel.
 
+The first independently lowered searchable root uses CTA tile `(64,256,64)`, cluster
+`(1,1)`, and one consumer warp group. Its standalone H100 diagnostic matched the
+BF16 FP32-accumulation reference exactly for one K tile. The cooperative
+`(128,256,64)` two-warp-group lowering remains experimental because its second
+output-tile row failed correctness; it must not become an MCTS node until corrected.
+
 Static validation should reject only proven violations, including incompatible
 shapes/layouts, unsupported MMA partitions, invalid cluster geometry, insufficient
 alignment, overlapping pipeline storage, impossible shared-memory usage, and

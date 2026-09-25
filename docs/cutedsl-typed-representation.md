@@ -39,16 +39,24 @@ costs must not silently prune valid kernels.
 
 ### TMA/shared-memory mainloop
 
-The initial fixed BF16 design uses CTA tile `(128,256,64)`, cluster `(2,1)`, and
-three shared-memory stages. It records complete A and B copy contracts: layouts,
+The initial independent BF16 design uses CTA tile `(64,256,64)`, cluster `(1,1)`,
+one consumer warp group, and three shared-memory stages. It records complete A and B copy contracts: layouts,
 tile coverage, element size, alignment, SW128/SW64 selection, multicast axis, stage
 stride, storage offset, barrier count, and producer ownership.
 
 ### WGMMA consumer
 
-Two consumer warp groups cover the CTA M dimension with `64x256x16` WGMMA
-operations. A and B are consumed from shared memory and FP32 accumulators remain in
-consumer-owned registers.
+One consumer warp group covers the CTA with `64x256x16` WGMMA operations. A and B
+are consumed from shared memory and FP32 accumulators remain in consumer-owned
+registers. A cooperative two-group `(128,256,64)` diagnostic is retained separately;
+its second output row is not yet correct and is not part of the typed root.
+
+The promoted root has also completed a standalone full-workload checkpoint. It
+cycles all 64 K tiles through the typed three-stage shared-memory ring and launches a
+`64x16` CTA grid for the `4096x4096x4096` GEMM. The H100 run passed correctness and
+measured a 665.792 us median over 30 CUDA-event samples after 10 warmups. This timing
+is not yet a repository-contract baseline because the diagnostic uses seeded PyTorch
+inputs; backend evaluation must reuse the canonical workload input generator.
 
 ### Epilogue
 

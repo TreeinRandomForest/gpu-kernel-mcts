@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 from typing import Literal
 
 
-INDEPENDENT_TMA_SMEM_SCHEMA_VERSION = 2
+INDEPENDENT_TMA_SMEM_SCHEMA_VERSION = 3
 H100_MAX_SHARED_MEMORY_BYTES = 227_328
 BF16_BYTES = 2
 
@@ -214,7 +214,7 @@ def make_independent_tma_smem_mainloop(
 ) -> IndependentTmaSmemMainloop:
     """Build one of the two initial coordinated BF16 copy/layout variants."""
 
-    tile_m, tile_n, tile_k = 128, 256, 64
+    tile_m, tile_n, tile_k = 64, 256, 64
     stages = 3
     a_tile_bytes = tile_m * tile_k * BF16_BYTES
     b_tile_bytes = tile_k * tile_n * BF16_BYTES
@@ -222,7 +222,7 @@ def make_independent_tma_smem_mainloop(
         tile_m=tile_m,
         tile_n=tile_n,
         tile_k=tile_k,
-        cluster_m=2,
+        cluster_m=1,
         cluster_n=1,
         pipeline_stages=stages,
         barrier_slots=stages,
@@ -249,7 +249,7 @@ def make_independent_tma_smem_mainloop(
             alignment_bytes=16,
             shared_major="k",
             swizzle_bytes=swizzle_bytes,
-            multicast_axis="cluster_m",
+            multicast_axis="none",
             stage_stride_bytes=b_tile_bytes,
             storage_offset_bytes=a_tile_bytes * stages,
         ),
@@ -272,7 +272,7 @@ def make_independent_cute_gemm(
             instruction_m=64,
             instruction_n=256,
             instruction_k=16,
-            warp_groups_m=2,
+            warp_groups_m=1,
             warp_groups_n=1,
             accumulator_dtype="float32",
             a_source="shared_memory",
@@ -299,10 +299,10 @@ def make_independent_cute_gemm(
                     "tma_load_agent", "warp", 1, "mainloop_producer"
                 ),
                 IndependentExecutionAgent(
-                    "wgmma_agents", "warp_group", 2, "mainloop_consumer"
+                    "wgmma_agents", "warp_group", 1, "mainloop_consumer"
                 ),
                 IndependentExecutionAgent(
-                    "epilogue_agents", "thread", 256, "epilogue_producer"
+                    "epilogue_agents", "thread", 128, "epilogue_producer"
                 ),
                 IndependentExecutionAgent(
                     "tma_store_agent", "warp", 1, "epilogue_consumer"
@@ -389,16 +389,16 @@ def validate_independent_tma_smem_mainloop(
             f"schema version must be {INDEPENDENT_TMA_SMEM_SCHEMA_VERSION}",
             "schema_version",
         )
-    if (plan.tile_m, plan.tile_n, plan.tile_k) != (128, 256, 64):
+    if (plan.tile_m, plan.tile_n, plan.tile_k) != (64, 256, 64):
         reject(
             "unsupported_tile",
-            "the initial independent mainloop supports only tile (128,256,64)",
+            "the initial independent mainloop supports only tile (64,256,64)",
             "tile",
         )
-    if (plan.cluster_m, plan.cluster_n) != (2, 1):
+    if (plan.cluster_m, plan.cluster_n) != (1, 1):
         reject(
             "unsupported_cluster",
-            "the initial independent mainloop supports only cluster (2,1)",
+            "the initial independent mainloop supports only cluster (1,1)",
             "cluster",
         )
     if plan.pipeline_stages != 3:
@@ -424,7 +424,7 @@ def validate_independent_tma_smem_mainloop(
         "a": (plan.tile_m, plan.tile_k),
         "b": (plan.tile_k, plan.tile_n),
     }
-    expected_multicast = {"a": "none", "b": "cluster_m"}
+    expected_multicast = {"a": "none", "b": "none"}
     copies = (plan.a_copy, plan.b_copy)
     if tuple(copy.operand for copy in copies) != ("a", "b"):
         reject(

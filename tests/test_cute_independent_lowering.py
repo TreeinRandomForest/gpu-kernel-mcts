@@ -59,7 +59,7 @@ def test_illegal_kernel_is_rejected_before_lowering() -> None:
     kernel = make_independent_cute_gemm()
     invalid = replace(
         kernel,
-        consumer=replace(kernel.consumer, warp_groups_m=1),
+        consumer=replace(kernel.consumer, warp_groups_m=2),
     )
 
     with pytest.raises(ValueError, match="WGMMA ownership"):
