@@ -211,6 +211,24 @@ completed hardware validation is identified explicitly.
   signals, and emitted signals now form a canonical dependency DAG. Validation
   rejects unknown ownership, inconsistent stage counts, unproduced signals, and
   cycles before lowering.
+- [x] Render the first dynamic phase as a standalone TMA copy-only diagnostic. One
+  `(2,1)` cluster independently round-trips two A tiles, multicasts one B tile across
+  both CTAs, and writes one B result back. The generated kernel includes shared
+  storage, cluster coordinates, a multicast mask, transaction barriers, TMA
+  load/store atoms, and exact BF16 A/B checks. It is not an MCTS state.
+- [x] Build the updated CuTe image and run `independent-tma-copy` on H100. Record JIT,
+  launch, exact A/B round-trip correctness, generated-source hash, and any barrier or
+  multicast failure before adding WGMMA.
+  The first v20 attempt hung before producing a report. The debug path now emits
+  flushed JIT/launch/synchronize milestones and a cluster-wide barrier-initialization
+  handshake. `compile_only` passed, while the first `single_cta_a` launch hung at
+  synchronization, ruling out JIT and multicast. Empty launch passed and A-load-only
+  then hung, isolating the issue to TMA load/barrier handling. The generated kernel
+  had incorrectly entered `cute.copy` from one thread rather than warp-uniformly;
+  load/store TMA issuance now follows the pinned warp-predication plus elected-arrival
+  protocol. All v23 stages then passed: empty launch, A load/barrier, A round trip,
+  single-CTA A/B, clustered A/B without multicast, and clustered A/B with multicast.
+  Final A and B comparisons were exact with zero maximum error.
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms

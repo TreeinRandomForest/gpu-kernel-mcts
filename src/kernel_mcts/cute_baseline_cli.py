@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import replace
+import importlib.util
 import json
 import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
+import tempfile
+from types import ModuleType
 from typing import Mapping, Sequence
 
 from .cute_baseline import (
@@ -20,6 +24,7 @@ from .cute_tuning import (
     run_cute_pipeline_interaction_tuning,
     run_cute_schedule_tuning,
 )
+from .cute_independent_tma import INDEPENDENT_TMA_DEBUG_STAGES
 from .cute_backend import CuteBackendConfig, CuTeDSLBackend
 from .cute_program import (
     CUTE_GEMM_SCHEMA_VERSION,
@@ -68,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
             "epilogue-stage-diagnostic",
             "smem-swizzle-diagnostic",
             "independent-lowering-bindings",
+            "independent-tma-copy",
         ),
         default="comparison",
     )
@@ -101,6 +107,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tile-n", type=int)
     parser.add_argument("--cluster-m", type=int)
     parser.add_argument("--cluster-n", type=int)
+    parser.add_argument(
+        "--independent-tma-stage",
+        choices=INDEPENDENT_TMA_DEBUG_STAGES,
+        default="cluster_ab_multicast",
+    )
     return parser
 
 
@@ -113,6 +124,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError(
             "--wgmma-inflight-groups is available only in "
             "wgmma-inflight-diagnostic mode"
+        )
+    if (
+        arguments.mode != "independent-tma-copy"
+        and arguments.independent_tma_stage != "cluster_ab_multicast"
+    ):
+        raise ValueError(
+            "--independent-tma-stage is available only in independent-tma-copy mode"
         )
     if (
         arguments.mode != "tma-copy-diagnostic"
@@ -217,6 +235,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_smem_swizzle_diagnostic(arguments.example)
     elif arguments.mode == "independent-lowering-bindings":
         result = _run_independent_lowering_bindings()
+    elif arguments.mode == "independent-tma-copy":
+        result = _run_independent_tma_copy(arguments.independent_tma_stage)
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -262,6 +282,56 @@ def _run_independent_lowering_bindings() -> Mapping[str, object]:
         "all_bindings_callable": all(callable(binding) for binding in bindings),
         **lowering.as_dict(),
     }
+
+
+def _run_independent_tma_copy(debug_stage: str) -> Mapping[str, object]:
+    from .cute_independent import make_independent_cute_gemm
+    from .cute_independent_tma import render_independent_tma_copy_diagnostic
+
+    rendered = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(),
+        debug_stage=debug_stage,
+    )
+    with tempfile.TemporaryDirectory(
+        prefix="kernel-mcts-independent-tma-"
+    ) as directory:
+        module = _load_generated_module(
+            rendered.source,
+            module_name=f"kernel_mcts_independent_tma_{rendered.source_hash[:16]}",
+            path=Path(directory) / "independent_tma_copy.py",
+        )
+        try:
+            run_diagnostic = getattr(module, "run_diagnostic", None)
+            if not callable(run_diagnostic):
+                raise TypeError("generated run_diagnostic must be callable")
+            result = run_diagnostic()
+        finally:
+            sys.modules.pop(module.__name__, None)
+    if not isinstance(result, Mapping):
+        raise TypeError("generated TMA diagnostic must return a mapping")
+    return {**result, "source_hash": rendered.source_hash}
+
+
+def _load_generated_module(
+    source: str,
+    *,
+    module_name: str,
+    path: Path,
+) -> ModuleType:
+    """Materialize generated CuTe source so its AST is inspectable during JIT."""
+
+    path.write_text(source, encoding="utf-8")
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot import generated CuTe module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(module_name, None)
+        raise
+    return module
 
 
 def _run_comparison(example: Path):

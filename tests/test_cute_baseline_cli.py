@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -13,6 +14,7 @@ from kernel_mcts.cute_baseline_cli import (
     _run_tma_copy_diagnostic,
     _run_epilogue_stage_diagnostic,
     _run_smem_swizzle_diagnostic,
+    _load_generated_module,
     build_parser,
     main,
 )
@@ -465,6 +467,38 @@ def test_cli_accepts_independent_lowering_binding_diagnostic() -> None:
     )
 
     assert arguments.mode == "independent-lowering-bindings"
+
+
+def test_cli_accepts_independent_tma_copy_diagnostic() -> None:
+    arguments = build_parser().parse_args(
+        [
+            "--mode",
+            "independent-tma-copy",
+            "--independent-tma-stage",
+            "compile_only",
+        ]
+    )
+
+    assert arguments.mode == "independent-tma-copy"
+    assert arguments.independent_tma_stage == "compile_only"
+
+
+def test_generated_module_loader_materializes_inspectable_source(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "generated.py"
+    module = _load_generated_module(
+        "def value():\n    return 7\n",
+        module_name="kernel_mcts_test_generated_module",
+        path=path,
+    )
+
+    try:
+        assert path.read_text(encoding="utf-8").startswith("def value")
+        assert module.value() == 7
+        assert module.value.__code__.co_filename == str(path)
+    finally:
+        sys.modules.pop(module.__name__, None)
 
 
 def test_backend_manifest_adds_cute_libraries_and_driver() -> None:

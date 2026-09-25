@@ -86,11 +86,38 @@ tiled WGMMA, cluster/shared layouts, TMA load/store atoms, and mainloop/epilogue
 pipelines. A pinned-container diagnostic resolves those bindings without importing
 NVIDIA's expert GEMM kernel.
 
-The representation is not yet executable. Dynamic lowering must still generate
-shared-storage allocation, CTA/cluster coordinates, multicast masks, TMA producer
-and WGMMA consumer loops, the register-to-shared epilogue, TMA store loop, and launch.
-It stays outside MCTS until a complete kernel passes H100 compile, correctness,
-artifact, and timing checks.
+The first dynamic-lowering diagnostic now generates shared storage, fixed-cluster
+coordinates, a B multicast mask, transaction barriers, TMA load/store operations,
+and launch configuration. It round-trips two independent A tiles and one multicast B
+tile and requires exact BF16 equality. Its generated module imports successfully in
+the pinned CUTLASS 4.5.1 container, but it still requires H100 JIT, launch, and
+correctness validation.
+
+The diagnostic deliberately omits WGMMA and the production epilogue so TMA address,
+multicast, and synchronization failures can be isolated. The representation stays
+outside MCTS until those checks pass and subsequent WGMMA/epilogue lowering produces
+a complete correct GEMM.
+
+The staged v23 H100 run passed all copy-only checks, including exact two-CTA A/B
+round trips with B multicast. The debugging sequence exposed and corrected a
+warp-uniform TMA issuance requirement. Detailed evidence is recorded in
+[Independent CuTe TMA copy diagnostic v23](experiments/cutedsl-independent-tma-v23.md).
+
+After rebuilding the CuTe image, run:
+
+```bash
+python -m kernel_mcts.cute_entrypoint \
+  --mode independent-tma-copy \
+  --independent-tma-stage compile_only
+```
+
+Then advance one stage at a time through `launch_empty`, `single_cta_a_load`,
+`single_cta_a`, `single_cta_ab`, `cluster_ab_no_multicast`, and
+`cluster_ab_multicast`. The empty launch separates geometry from memory movement;
+the load-only stage separates the transaction barrier from TMA-store completion.
+Each run prints flushed messages before and after JIT, launch, and synchronization.
+The multicast lowering performs a cluster-wide arrive/wait after every CTA
+initializes its transaction barrier and before any multicast can target a remote CTA.
 
 ## Generalization
 

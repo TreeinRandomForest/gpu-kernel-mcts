@@ -294,6 +294,13 @@ hash plus explicit implemented/missing component lists. It deliberately reports
 and consumer loops, the register-to-shared epilogue, TMA store loop, and launch still
 require dynamic lowering.
 
+The first standalone dynamic diagnostic lowers only the TMA round trip. It launches
+one `(2,1)` cluster, loads distinct A tiles per CTA, multicasts one B tile across the
+cluster, and stores the copied values for exact comparison. This intentionally
+precedes WGMMA so illegal addresses, multicast masks, and barrier behavior can be
+debugged without tensor-core or accumulator state. It remains noncanonical and
+cannot consume any search budget.
+
 The binding checkpoint can be repeated inside an image containing the current source:
 
 ```bash
