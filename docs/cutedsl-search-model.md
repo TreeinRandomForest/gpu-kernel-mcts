@@ -263,8 +263,12 @@ search does not prune it merely for being locally slower.
 
 The two-stage candidate also passed exact correctness with distinct MLIR and fatbin
 fingerprints. It measured 671.248 us, effectively tied with the three-stage root.
-To smoke-test that transition, replace the command's strategy with
-`change_pipeline_stages`; keep `B_mut=1`, `B_gen=0`, `k_max=1`, and `max_depth=1`.
+The subsequent v50 remote search smoke used `change_pipeline_stages` with `B_mut=1`,
+`B_gen=0`, `k_max=1`, and `max_depth=1`. It measured the three-stage root at
+673.728 us median and the two-stage child at 668.784 us (`reward=0.007365`). The
+trace contains one valid deterministic proposal, one backup, two distinct nodes and
+compiled artifacts, and two profile calls. This small timing difference is consistent
+with measurement noise rather than evidence that two stages are generally faster.
 
 The subsequent four-strategy `B_mut=35` run explored 24 unique nodes, recovered the
 same pinned-stage `(128,256)`, cluster `(2,1)` schedule selected by grid tuning, and

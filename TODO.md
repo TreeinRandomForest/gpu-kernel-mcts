@@ -348,7 +348,11 @@ completed hardware validation is identified explicitly.
   epilogue offset, execution-buffer stages, canonical identity, and rendered source
   together. Enumeration prevents composing stage two with SW64 because that pair has
   not been H100-validated. GPU-independent MCTS coverage proves one proposal consumes
-  `B_mut=1`, `B_gen=0` and creates a valid measured node. A remote smoke remains.
+  `B_mut=1`, `B_gen=0` and creates a valid measured node. The v50 remote H100 smoke
+  completed on 2026-09-25 with one valid mutation, one valid-only backup, two unique
+  nodes, two profile calls, and no generation calls. The three-stage root measured
+  673.728 us median and the two-stage child measured 668.784 us (`reward=0.007365`),
+  a near-noise difference consistent with the standalone validation.
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms
