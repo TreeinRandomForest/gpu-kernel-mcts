@@ -26,10 +26,13 @@ the [schedule-tuning report](docs/experiments/cutedsl-schedule-tuning-v1.md) and
 for the full contracts and interpretation limits.
 
 Separately, a profiled CUDA C++ MCTS run with `B_gen=50` improved its naive root from
-`28,245.9 us` to `1,172.8 us`, a 24.09x root-relative speedup. That kernel remained
-approximately 6.3x slower than a separately measured cuBLAS result, so these numbers
-should not be treated as a same-run cuBLAS comparison. See the
-[Sol versus Terra report](docs/experiments/nebius-sol-vs-terra-bgen50.md).
+`28,245.9 us` to `1,172.8 us`, a 24.09x root-relative speedup. A later generated
+CUDA kernel followed by an 18-trial standalone grid autotune reached `726.384 us`.
+That is approximately 3.9x slower than the separately measured approximately
+`185.4 us` cuBLAS reference; it is not a same-run cuBLAS comparison. The autotuner
+improved its `739.088 us` input baseline by about 1.7%. See the
+[Sol versus Terra report](docs/experiments/nebius-sol-vs-terra-bgen50.md) and
+[local-autotuning documentation](docs/local-autotuning.md).
 
 <!-- Add a trace-browser screenshot here when a stable demo image is available. -->
 
@@ -45,7 +48,7 @@ path and the Milestone B typed CuTe DSL backend:
 - compile/correctness/benchmark evaluation with fixed root-normalized rewards,
 - provider-neutral LLM generation with an optional OpenAI Responses API adapter,
 - append-oriented SQLite trace events,
-- guarded RunPod H100 SXM lifecycle, worker, calibration, and smoke-search CLIs,
+- guarded Nebius H100 SXM VM lifecycle, worker, NCU profiling, and search CLIs,
 - deterministic CuTe DSL rendering, typed mutations, separate `B_mut` accounting,
   and reusable CUDA/CuTe trace visualization.
 
