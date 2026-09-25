@@ -353,6 +353,12 @@ completed hardware validation is identified explicitly.
   nodes, two profile calls, and no generation calls. The three-stage root measured
   673.728 us median and the two-stage child measured 668.784 us (`reward=0.007365`),
   a near-noise difference consistent with the standalone validation.
+- [x] Exercise both validated independent mutations in one bounded search. The v50
+  `B_mut=2`, `B_gen=0`, `max_depth=1` run created separate SW64 and two-stage children
+  directly beneath the SW128 three-stage root, performed two valid-only backups, and
+  terminated with three unique nodes. The prohibited stage-two plus SW64 composition
+  was never proposed. The trace records the second-step PUCT scores (`0.75` for the
+  unvisited pipeline action versus `0.311221` for the visited swizzle action).
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms

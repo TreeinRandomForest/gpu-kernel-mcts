@@ -270,6 +270,15 @@ trace contains one valid deterministic proposal, one backup, two distinct nodes 
 compiled artifacts, and two profile calls. This small timing difference is consistent
 with measurement noise rather than evidence that two stages are generally faster.
 
+A combined v50 search then enabled both validated strategies with `B_mut=2`,
+`B_gen=0`, and `max_depth=1`. The SW64 child measured 714.960 us and was retained
+despite its `-0.063779` reward; the two-stage SW128 child measured 669.232 us with a
+`0.002316` reward against the 670.784 us root. Both candidates were generated from
+the root, so the unvalidated two-stage/SW64 composition was absent. The trace contains
+two valid proposals, two backups, three distinct states and binaries, and no LLM call.
+On the second selection, exact PUCT scored the unvisited pipeline action at `0.75`
+and the visited swizzle action at `0.311221`.
+
 The subsequent four-strategy `B_mut=35` run explored 24 unique nodes, recovered the
 same pinned-stage `(128,256)`, cluster `(2,1)` schedule selected by grid tuning, and
 showed no meaningful benefit from the additional staging controls. See
