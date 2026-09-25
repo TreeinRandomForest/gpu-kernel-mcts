@@ -112,6 +112,11 @@ def build_parser() -> argparse.ArgumentParser:
         choices=INDEPENDENT_TMA_DEBUG_STAGES,
         default="cluster_ab_multicast",
     )
+    parser.add_argument(
+        "--independent-repository-contract",
+        action="store_true",
+        help="use canonical inputs, cuBLAS reference, and repository timing policy",
+    )
     return parser
 
 
@@ -131,6 +136,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         raise ValueError(
             "--independent-tma-stage is available only in independent-tma-copy mode"
+        )
+    if (
+        arguments.mode != "independent-tma-copy"
+        and arguments.independent_repository_contract
+    ):
+        raise ValueError(
+            "--independent-repository-contract is available only in "
+            "independent-tma-copy mode"
         )
     if (
         arguments.mode != "tma-copy-diagnostic"
@@ -236,7 +249,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif arguments.mode == "independent-lowering-bindings":
         result = _run_independent_lowering_bindings()
     elif arguments.mode == "independent-tma-copy":
-        result = _run_independent_tma_copy(arguments.independent_tma_stage)
+        if arguments.pipeline_stages not in (None, 2, 3):
+            raise ValueError(
+                "independent-tma-copy supports pipeline stages 2 or 3"
+            )
+        result = _run_independent_tma_copy(
+            arguments.independent_tma_stage,
+            pipeline_stages=arguments.pipeline_stages or 3,
+            repository_contract=arguments.independent_repository_contract,
+        )
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -284,13 +305,19 @@ def _run_independent_lowering_bindings() -> Mapping[str, object]:
     }
 
 
-def _run_independent_tma_copy(debug_stage: str) -> Mapping[str, object]:
+def _run_independent_tma_copy(
+    debug_stage: str,
+    *,
+    pipeline_stages: int = 3,
+    repository_contract: bool = False,
+) -> Mapping[str, object]:
     from .cute_independent import make_independent_cute_gemm
     from .cute_independent_tma import render_independent_tma_copy_diagnostic
 
     rendered = render_independent_tma_copy_diagnostic(
-        make_independent_cute_gemm(),
+        make_independent_cute_gemm(pipeline_stages=pipeline_stages),
         debug_stage=debug_stage,
+        repository_contract=repository_contract,
     )
     with tempfile.TemporaryDirectory(
         prefix="kernel-mcts-independent-tma-"

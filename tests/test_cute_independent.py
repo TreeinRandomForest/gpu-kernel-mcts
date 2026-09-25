@@ -27,6 +27,20 @@ def test_initial_tma_smem_variants_are_valid_distinct_and_deterministic() -> Non
     ).canonical_json()
 
 
+def test_two_stage_mainloop_has_distinct_identity_and_compact_storage() -> None:
+    stage_three = make_independent_cute_gemm(pipeline_stages=3)
+    stage_two = make_independent_cute_gemm(pipeline_stages=2)
+
+    assert validate_independent_cute_gemm(stage_two).valid is True
+    assert stage_two.configuration_hash != stage_three.configuration_hash
+    assert stage_two.mainloop.pipeline_stages == 2
+    assert stage_two.mainloop.barrier_slots == 2
+    assert stage_two.mainloop.shared_memory_bytes == 81_920
+    assert stage_two.epilogue.storage_offset_bytes == 81_920
+    assert stage_two.shared_memory_bytes == 122_880
+    assert [buffer.stages for buffer in stage_two.execution.buffers] == [2, 2, 4]
+
+
 def test_contract_coordinates_operand_tiles_multicast_and_storage() -> None:
     plan = make_independent_tma_smem_mainloop()
 

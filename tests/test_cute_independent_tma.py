@@ -218,6 +218,18 @@ def test_wgmma_full_workload_launches_complete_mn_grid() -> None:
     assert '"median_us": float(statistics.median(timings_us))' in source
 
 
+def test_two_stage_full_workload_renders_two_stage_barrier_ring() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(pipeline_stages=2),
+        debug_stage="wgmma_full_workload",
+    ).source
+
+    assert "MAINLOOP_STAGES = 2" in source
+    assert "stage = k_tile % MAINLOOP_STAGES" in source
+    assert "phase = (k_tile // MAINLOOP_STAGES) % 2" in source
+    compile(source, "independent_two_stage_gemm.py", "exec")
+
+
 def test_tma_diagnostic_identity_changes_with_swizzle() -> None:
     sw128 = render_independent_tma_copy_diagnostic(
         make_independent_cute_gemm(swizzle_bytes=128)

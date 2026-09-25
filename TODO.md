@@ -335,6 +335,20 @@ completed hardware validation is identified explicitly.
   on 2026-09-25 (correctness pass, median 718.832 us versus 670.592 us for SW128).
   A GPU-independent MCTS regression proves the valid candidate becomes a node,
   consumes one mutation and zero generations, and retains the slower valid state.
+- [x] Validate a two-stage independent mainloop as the next structural control.
+  The typed builder, storage offsets, barrier ring, canonical identity, and generated
+  full-workload source now support two stages, but mutation enumeration intentionally
+  excludes it from mutations pending a separate promotion change. The v49 H100
+  repository-contract run passed exact correctness and measured 671.248 us median
+  over 30 samples, versus 670.592 us for the three-stage root. It produced distinct
+  normalized MLIR (`ca8b5177...`) and fatbin (`923b9382...`) fingerprints. This
+  evidence supports the mutation promotion recorded below.
+- [x] Promote the validated independent `3 -> 2` mainloop transition under
+  `change_pipeline_stages`. The mutation rebuilds barrier slots, A/B storage,
+  epilogue offset, execution-buffer stages, canonical identity, and rendered source
+  together. Enumeration prevents composing stage two with SW64 because that pair has
+  not been H100-validated. GPU-independent MCTS coverage proves one proposal consumes
+  `B_mut=1`, `B_gen=0` and creates a valid measured node. A remote smoke remains.
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms

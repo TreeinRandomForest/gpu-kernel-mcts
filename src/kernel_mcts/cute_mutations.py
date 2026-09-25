@@ -17,6 +17,7 @@ from .cute_schedule import CLUSTER_SHAPE_CHOICES, CTA_TILE_CHOICES
 from .cute_independent import (
     IndependentCuteGemmKernel,
     IndependentTmaSmemLegality,
+    make_independent_cute_gemm,
     validate_independent_cute_gemm,
 )
 from .cute_independent_program import (
@@ -182,22 +183,35 @@ def enumerate_independent_cute_mutations(
     """Return only independently H100-validated one-hop controls."""
 
     proposals = []
-    current = parent.mainloop.a_copy.swizzle_bytes
-    for swizzle_bytes in (128, 64):
-        if swizzle_bytes == current:
-            continue
-        mainloop = replace(
-            parent.mainloop,
-            a_copy=replace(parent.mainloop.a_copy, swizzle_bytes=swizzle_bytes),
-            b_copy=replace(parent.mainloop.b_copy, swizzle_bytes=swizzle_bytes),
+    current_swizzle = parent.mainloop.a_copy.swizzle_bytes
+    current_stages = parent.mainloop.pipeline_stages
+    if current_stages == 3:
+        swizzle_bytes = 64 if current_swizzle == 128 else 128
+        candidate = make_independent_cute_gemm(
+            swizzle_bytes=swizzle_bytes,
+            pipeline_stages=current_stages,
         )
-        candidate = replace(parent, mainloop=mainloop)
         proposals.append(
             IndependentCuteMutationProposal(
                 parent=parent,
                 candidate=candidate,
                 strategy_id=CHANGE_SHARED_MEMORY_SWIZZLE,
                 parameters={"swizzle_bytes": swizzle_bytes},
+                validation=validate_independent_cute_gemm(candidate),
+            )
+        )
+    if current_swizzle == 128:
+        pipeline_stages = 2 if current_stages == 3 else 3
+        candidate = make_independent_cute_gemm(
+            swizzle_bytes=current_swizzle,
+            pipeline_stages=pipeline_stages,
+        )
+        proposals.append(
+            IndependentCuteMutationProposal(
+                parent=parent,
+                candidate=candidate,
+                strategy_id=CHANGE_PIPELINE_STAGES,
+                parameters={"pipeline_stages": pipeline_stages},
                 validation=validate_independent_cute_gemm(candidate),
             )
         )

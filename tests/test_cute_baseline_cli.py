@@ -483,6 +483,32 @@ def test_cli_accepts_independent_tma_copy_diagnostic() -> None:
     assert arguments.independent_tma_stage == "compile_only"
 
 
+def test_cli_forwards_independent_pipeline_stage(monkeypatch, capsys) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
+        lambda stage, *, pipeline_stages, repository_contract: calls.append(
+            (stage, pipeline_stages, repository_contract)
+        )
+        or {"status": "ok"},
+    )
+
+    assert main(
+        [
+            "--mode",
+            "independent-tma-copy",
+            "--independent-tma-stage",
+            "wgmma_full_workload",
+            "--pipeline-stages",
+            "2",
+            "--independent-repository-contract",
+        ]
+    ) == 0
+
+    assert calls == [("wgmma_full_workload", 2, True)]
+    assert '"status": "ok"' in capsys.readouterr().out
+
+
 def test_generated_module_loader_materializes_inspectable_source(
     tmp_path: Path,
 ) -> None:

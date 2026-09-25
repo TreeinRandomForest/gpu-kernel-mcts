@@ -210,12 +210,12 @@ class IndependentTmaSmemLegality:
 
 
 def make_independent_tma_smem_mainloop(
-    *, swizzle_bytes: int = 128
+    *, swizzle_bytes: int = 128, pipeline_stages: int = 3
 ) -> IndependentTmaSmemMainloop:
     """Build one of the two initial coordinated BF16 copy/layout variants."""
 
     tile_m, tile_n, tile_k = 64, 256, 64
-    stages = 3
+    stages = pipeline_stages
     a_tile_bytes = tile_m * tile_k * BF16_BYTES
     b_tile_bytes = tile_k * tile_n * BF16_BYTES
     return IndependentTmaSmemMainloop(
@@ -257,7 +257,7 @@ def make_independent_tma_smem_mainloop(
 
 
 def make_independent_cute_gemm(
-    *, swizzle_bytes: int = 128
+    *, swizzle_bytes: int = 128, pipeline_stages: int = 3
 ) -> IndependentCuteGemmKernel:
     """Build the first complete structural GEMM contract.
 
@@ -265,7 +265,10 @@ def make_independent_cute_gemm(
     until a CuTe lowering implements every ownership and synchronization field.
     """
 
-    mainloop = make_independent_tma_smem_mainloop(swizzle_bytes=swizzle_bytes)
+    mainloop = make_independent_tma_smem_mainloop(
+        swizzle_bytes=swizzle_bytes,
+        pipeline_stages=pipeline_stages,
+    )
     return IndependentCuteGemmKernel(
         mainloop=mainloop,
         consumer=IndependentWgmmaConsumer(
@@ -449,10 +452,10 @@ def validate_independent_tma_smem_mainloop(
             "the initial independent mainloop supports only cluster (1,1)",
             "cluster",
         )
-    if plan.pipeline_stages != 3:
+    if plan.pipeline_stages not in (2, 3):
         reject(
             "unsupported_pipeline_depth",
-            "the initial independent mainloop requires three pipeline stages",
+            "the independent mainloop supports two or three pipeline stages",
             "pipeline_stages",
         )
     if plan.barrier_slots != plan.pipeline_stages:

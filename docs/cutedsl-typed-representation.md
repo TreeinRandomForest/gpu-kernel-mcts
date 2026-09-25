@@ -40,9 +40,13 @@ costs must not silently prune valid kernels.
 ### TMA/shared-memory mainloop
 
 The initial independent BF16 design uses CTA tile `(64,256,64)`, cluster `(1,1)`,
-one consumer warp group, and three shared-memory stages. It records complete A and B copy contracts: layouts,
-tile coverage, element size, alignment, SW128/SW64 selection, multicast axis, stage
-stride, storage offset, barrier count, and producer ownership.
+one consumer warp group, and three shared-memory stages. It records complete A and B
+copy contracts: layouts, tile coverage, element size, alignment, SW128/SW64
+selection, multicast axis, stage stride, storage offset, barrier count, and producer
+ownership. A two-stage mainloop is now renderable as a guarded standalone candidate;
+its v49 H100 repository-contract validation passed exact correctness and produced
+distinct compiler/runtime fingerprints. It remains outside MCTS until a separate
+mutation-promotion change.
 
 ### WGMMA consumer
 
@@ -54,9 +58,11 @@ its second output row is not yet correct and is not part of the typed root.
 The promoted root has also completed a standalone full-workload checkpoint. It
 cycles all 64 K tiles through the typed three-stage shared-memory ring and launches a
 `64x16` CTA grid for the `4096x4096x4096` GEMM. The H100 run passed correctness and
-measured a 665.792 us median over 30 CUDA-event samples after 10 warmups. This timing
-is not yet a repository-contract baseline because the diagnostic uses seeded PyTorch
-inputs; backend evaluation must reuse the canonical workload input generator.
+measured a 665.792 us median over 30 CUDA-event samples after 10 warmups. Subsequent
+backend integration reused the canonical workload inputs and cuBLAS reference and
+measured 670.592 us while capturing the compiled artifact and NCU profile.
+The two-stage candidate measured 671.248 us under the same 30-sample policy, a
+difference within ordinary run-to-run noise.
 
 ### Epilogue
 
@@ -137,6 +143,18 @@ the load-only stage separates the transaction barrier from TMA-store completion.
 Each run prints flushed messages before and after JIT, launch, and synchronization.
 The multicast lowering performs a cluster-wide arrive/wait after every CTA
 initializes its transaction barrier and before any multicast can target a remote CTA.
+
+The guarded two-stage full-workload validation uses the canonical repository
+contract and does not alter MCTS state:
+
+```bash
+python -m kernel_mcts.cute_entrypoint \
+  --mode independent-tma-copy \
+  --independent-tma-stage wgmma_full_workload \
+  --pipeline-stages 2 \
+  --independent-repository-contract \
+  --output /output/cutedsl-independent-pipeline2.json
+```
 
 ## Generalization
 

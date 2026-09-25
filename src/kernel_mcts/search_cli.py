@@ -645,11 +645,14 @@ def _selected_cute_strategies(
 ) -> tuple[Strategy, ...]:
     selected = arguments.cute_strategy
     if arguments.cute_root_kind == "independent":
-        supported = {"change_shared_memory_swizzle"}
+        supported = {
+            "change_pipeline_stages",
+            "change_shared_memory_swizzle",
+        }
         if selected and not set(selected) <= supported:
             parser.error(
-                "the independent CuTe root currently supports only "
-                "change_shared_memory_swizzle"
+                "the independent CuTe root currently supports only pipeline-stage "
+                "and shared-memory-swizzle changes"
             )
         selected = selected or tuple(supported)
     if not selected:

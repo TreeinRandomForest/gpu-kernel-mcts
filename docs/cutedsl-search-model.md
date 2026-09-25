@@ -229,9 +229,12 @@ trace analysis is recorded in
 `--cute-root-kind independent` selects the independently lowered
 `(64,256,64)` single-warp-group root on both the client and worker. Worker
 calibration therefore measures the same program used as the search root. The
-initial independent neighborhood deliberately contains only one H100-validated
-transition: atomically changing both A and B shared-memory swizzles from 128 bytes
-to 64 bytes. It consumes `B_mut`; no independent LLM proposal path is enabled yet.
+initial independent neighborhood contains two H100-validated transitions:
+atomically changing both A and B shared-memory swizzles from 128 bytes to 64 bytes,
+or changing the mainloop from three stages to two while coherently rebuilding its
+barrier ring and storage offsets. Each consumes `B_mut`; no independent LLM proposal
+path is enabled yet. The router excludes the unvalidated two-stage-plus-SW64
+combination.
 
 ```bash
 python -m kernel_mcts.search_cli \
@@ -257,6 +260,11 @@ python -m kernel_mcts.search_cli \
 The SW64 candidate passed the canonical repository contract on H100 but was slower
 than SW128 (718.832 us versus 670.592 us median). It remains a valid MCTS node; the
 search does not prune it merely for being locally slower.
+
+The two-stage candidate also passed exact correctness with distinct MLIR and fatbin
+fingerprints. It measured 671.248 us, effectively tied with the three-stage root.
+To smoke-test that transition, replace the command's strategy with
+`change_pipeline_stages`; keep `B_mut=1`, `B_gen=0`, `k_max=1`, and `max_depth=1`.
 
 The subsequent four-strategy `B_mut=35` run explored 24 unique nodes, recovered the
 same pinned-stage `(128,256)`, cluster `(2,1)` schedule selected by grid tuning, and
