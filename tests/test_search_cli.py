@@ -573,8 +573,10 @@ def test_independent_cute_root_wires_matching_worker_and_mutation(
             "0",
             "--mutation-budget",
             "1",
+            "--cute-independent-root-mainloop-schedule",
+            "prefetch",
             "--cute-strategy",
-            "change_cta_tile",
+            "change_producer_consumer_specialization",
             "--ephemeral-storage",
             "--confirm-create-and-terminate",
         ]
@@ -588,8 +590,11 @@ def test_independent_cute_root_wires_matching_worker_and_mutation(
     assert search["run_metadata"]["cute_root_representation"]["mainloop"][
         "tile_m"
     ] == 64
+    assert search["run_metadata"]["cute_root_representation"]["mainloop"][
+        "schedule"
+    ] == "prefetch"
     assert tuple(strategy.id for strategy in search["strategies"]) == (
-        "change_cta_tile",
+        "change_producer_consumer_specialization",
     )
 
 

@@ -42,9 +42,14 @@ class IndependentCuteGemmRenderer:
         if not legality.valid:
             messages = "; ".join(item.message for item in legality.violations)
             raise ValueError(f"illegal independent CuTe GEMM: {messages}")
+        debug_stage = (
+            "wgmma_full_workload_specialized"
+            if kernel.mainloop.producer_consumer_mode == "warp_specialized"
+            else "wgmma_full_workload"
+        )
         lowered = render_independent_tma_copy_diagnostic(
             kernel,
-            debug_stage="wgmma_full_workload",
+            debug_stage=debug_stage,
             repository_contract=True,
         )
         header = f"{REPRESENTATION_NAME} = {kernel.as_dict()!r}\n"

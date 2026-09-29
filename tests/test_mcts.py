@@ -10,6 +10,7 @@ from kernel_mcts.cute_mutations import (
     CHANGE_EPILOGUE_STAGES,
     CHANGE_PIPELINE_STAGES,
     CHANGE_MAINLOOP_SCHEDULE,
+    CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
     CHANGE_SHARED_MEMORY_SWIZZLE,
     CuteMutationGenerator,
 )
@@ -364,6 +365,54 @@ def test_mcts_creates_independent_prefetch_node_under_mutation_budget() -> None:
     candidate = next(node for node in result.nodes if node is not result.root)
     representation = independent_cute_gemm_from_source(candidate.program.source)
     assert representation.mainloop.schedule == "prefetch"
+
+
+def test_mcts_creates_warp_specialized_node_under_mutation_budget() -> None:
+    class IndependentEvaluator:
+        def evaluate(self, program, workload):
+            representation = independent_cute_gemm_from_source(program.source)
+            specialized = (
+                representation.mainloop.producer_consumer_mode
+                == "warp_specialized"
+            )
+            return EvaluationResult(
+                ProposalStatus.VALID,
+                program,
+                representation.configuration_hash,
+                0.03 if specialized else 0.0,
+                BenchmarkResult((1.0,), 1.0, {"n=1": 1.0}),
+                metadata={"representation": representation.as_dict()},
+            )
+
+    evaluator = IndependentEvaluator()
+    root_representation = make_independent_cute_gemm(mainloop_schedule="prefetch")
+    root = evaluator.evaluate(
+        IndependentCuteGemmRenderer().render(root_representation),
+        WORKLOAD,
+    )
+    strategy = next(
+        item
+        for item in CUTE_MUTATION_STRATEGIES
+        if item.id == CHANGE_PRODUCER_CONSUMER_SPECIALIZATION
+    )
+
+    result = MCTS(
+        strategies=(strategy,),
+        workload=WORKLOAD,
+        generator=CuteMutationGenerator(),
+        evaluator=evaluator,
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(0),
+        mutation_budget=MutationBudget(1),
+        config=MCTSConfig(max_depth=1, k_max=1),
+    ).run(root)
+
+    assert result.generations == 0
+    assert result.mutations == 1
+    assert len(result.nodes) == 2
+    assert result.best.reward == 0.03
+    representation = independent_cute_gemm_from_source(result.best.program.source)
+    assert representation.mainloop.producer_consumer_mode == "warp_specialized"
 
 
 def test_mcts_creates_cooperative_independent_node_under_mutation_budget() -> None:

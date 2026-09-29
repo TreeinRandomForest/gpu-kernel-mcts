@@ -88,6 +88,23 @@ def test_prefetch_diagnostic_renders_tracked_stage_ring_schedule() -> None:
     compile(source, "independent_tma_prefetch.py", "exec")
 
 
+def test_warp_specialization_diagnostic_separates_dma_and_mma_groups() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(mainloop_schedule="prefetch"),
+        debug_stage="wgmma_full_workload_specialized",
+        repository_contract=True,
+    ).source
+
+    assert "THREADS_PER_CTA = 256" in source
+    assert "CONSUMER_THREADS = 128" in source
+    assert "DMA_WARP_GROUPS = 1" in source
+    assert "WARP_SPECIALIZED = True" in source
+    assert "empty_barrier: cute.struct.MemRange" in source
+    assert "warp_group_idx = warp_group_idx - DMA_WARP_GROUPS" in source
+    assert "consumer_barrier = pipeline.NamedBarrier" in source
+    compile(source, "independent_tma_warp_specialized.py", "exec")
+
+
 @pytest.mark.parametrize(
     ("stage", "cluster", "enable_b", "enable_multicast", "launch"),
     (

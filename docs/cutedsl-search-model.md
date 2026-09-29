@@ -472,3 +472,18 @@ prefetched schedule measured 274.256 us median versus 675.408 us for serial, a
 2.46269x speedup (`reward=0.901255`). `change_mainloop_schedule` exposes only the
 paired serial/prefetch transition and charges `B_mut`; combinations with CTA,
 cluster, stage-depth, or swizzle changes remain excluded pending separate evidence.
+
+## Producer/consumer warp specialization
+
+Schema v5 adds `mainloop.producer_consumer_mode`. `cooperative` preserves the
+prefetch implementation in which warp zero issues TMA and participates in WGMMA.
+`warp_specialized` instead launches two 128-thread warp groups: a dedicated TMA
+producer and a dedicated WGMMA/epilogue consumer. Full and empty barrier rings
+prevent either agent from consuming an unfilled stage or overwriting a live one.
+
+The v67 same-image H100 comparison passed exact repository-contract correctness.
+Cooperative prefetch measured 273.776 us median and warp specialization measured
+264.912 us, a 1.03346x speedup (`reward=0.032913`). The deterministic
+`change_producer_consumer_specialization` transition consumes `B_mut`, and is
+available only from the validated `(64,256,64)`, cluster `(1,1)`, three-stage SW128
+prefetch state. Other compositions remain excluded pending validation.

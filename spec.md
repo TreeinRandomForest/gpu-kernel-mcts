@@ -3000,6 +3000,21 @@ canonical identities. Their paired transition is a deterministic realization of
 `change_mainloop_schedule` and consumes one `B_mut`; combinations with other
 independent controls remain outside the admitted space until separately validated.
 
+The prefetched mainloop also admits a dedicated producer/consumer warp-group
+partition as a schema-v5 typed state. In cooperative mode, warp zero issues TMA
+loads and remains in the 128-thread WGMMA consumer group. In `warp_specialized`
+mode, a distinct 128-thread producer warp group owns TMA loads while a second
+128-thread consumer warp group owns WGMMA and the epilogue. The two agents
+coordinate through full and empty barrier rings; the producer cannot overwrite a
+stage until the consumer signals its prior use complete. On 2026-09-29, a same-image
+H100 repository-contract comparison passed exact correctness for both states. The
+cooperative prefetch control measured 273.776 us median and the specialized state
+measured 264.912 us, a 1.03346x speedup (`reward=0.032913`). The paired transition
+is a deterministic realization of `change_producer_consumer_specialization` and
+consumes one `B_mut`. Specialization requires the prefetch schedule; combinations
+with other independent controls remain outside the admitted space until separately
+validated.
+
 The paired transition between the `(64,256,64)` one-group state and the
 `(128,256,64)` two-group state is an allowed deterministic realization of
 `change_cta_tile` and consumes one `B_mut`. The mutation must atomically rebuild the

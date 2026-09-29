@@ -36,6 +36,7 @@ CHANGE_CTA_TILE = "change_cta_tile"
 CHANGE_CLUSTER_SHAPE = "change_cluster_shape"
 CHANGE_PIPELINE_STAGES = "change_pipeline_stages"
 CHANGE_MAINLOOP_SCHEDULE = "change_mainloop_schedule"
+CHANGE_PRODUCER_CONSUMER_SPECIALIZATION = "change_producer_consumer_specialization"
 CHANGE_EPILOGUE_STAGES = "change_epilogue_stages"
 CHANGE_SHARED_MEMORY_SWIZZLE = "change_shared_memory_swizzle"
 CUTE_MUTATION_STRATEGY_IDS = (
@@ -43,6 +44,7 @@ CUTE_MUTATION_STRATEGY_IDS = (
     CHANGE_CLUSTER_SHAPE,
     CHANGE_PIPELINE_STAGES,
     CHANGE_MAINLOOP_SCHEDULE,
+    CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
     CHANGE_EPILOGUE_STAGES,
     CHANGE_SHARED_MEMORY_SWIZZLE,
 )
@@ -90,6 +92,18 @@ CUTE_MUTATION_STRATEGIES = (
                 "Change only the complete typed mainloop schedule between serial "
                 "and prefetch. The prefetch schedule fills the stage ring and "
                 "refills each stage only after its prior WGMMA use completes."
+            )
+        },
+    ),
+    Strategy(
+        CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
+        "Separate TMA production from WGMMA consumption by warp group.",
+        {
+            "cute_dsl": (
+                "Change only the typed producer/consumer ownership between "
+                "cooperative and warp_specialized. The specialized mode dedicates "
+                "one 128-thread warp group to TMA and one to WGMMA, using the "
+                "validated full/empty barrier-ring protocol."
             )
         },
     ),
@@ -206,17 +220,43 @@ def enumerate_independent_cute_mutations(
     current_tile = (parent.mainloop.tile_m, parent.mainloop.tile_n)
     current_cluster = (parent.mainloop.cluster_m, parent.mainloop.cluster_n)
     current_schedule = parent.mainloop.schedule
+    current_mode = parent.mainloop.producer_consumer_mode
     root_tile = (64, 256)
     alternate_tiles = ((128, 256), (64, 128), (128, 128))
     if current_schedule == "prefetch":
-        candidate = make_independent_cute_gemm(mainloop_schedule="serial")
+        if current_mode == "warp_specialized":
+            candidate = make_independent_cute_gemm(
+                mainloop_schedule="prefetch",
+                producer_consumer_mode="cooperative",
+            )
+            return (
+                IndependentCuteMutationProposal(
+                    parent=parent,
+                    candidate=candidate,
+                    strategy_id=CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
+                    parameters={"producer_consumer_mode": "cooperative"},
+                    validation=validate_independent_cute_gemm(candidate),
+                ),
+            )
+        serial = make_independent_cute_gemm(mainloop_schedule="serial")
+        specialized = make_independent_cute_gemm(
+            mainloop_schedule="prefetch",
+            producer_consumer_mode="warp_specialized",
+        )
         return (
             IndependentCuteMutationProposal(
                 parent=parent,
-                candidate=candidate,
+                candidate=serial,
                 strategy_id=CHANGE_MAINLOOP_SCHEDULE,
                 parameters={"mainloop_schedule": "serial"},
-                validation=validate_independent_cute_gemm(candidate),
+                validation=validate_independent_cute_gemm(serial),
+            ),
+            IndependentCuteMutationProposal(
+                parent=parent,
+                candidate=specialized,
+                strategy_id=CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
+                parameters={"producer_consumer_mode": "warp_specialized"},
+                validation=validate_independent_cute_gemm(specialized),
             ),
         )
     if (

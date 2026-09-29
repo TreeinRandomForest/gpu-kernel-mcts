@@ -6,13 +6,14 @@ from dataclasses import asdict, dataclass
 from typing import Literal
 
 
-INDEPENDENT_TMA_SMEM_SCHEMA_VERSION = 4
+INDEPENDENT_TMA_SMEM_SCHEMA_VERSION = 5
 H100_MAX_SHARED_MEMORY_BYTES = 227_328
 BF16_BYTES = 2
 
 Operand = Literal["a", "b"]
 MulticastAxis = Literal["none", "cluster_m"]
 MainloopSchedule = Literal["serial", "prefetch"]
+ProducerConsumerMode = Literal["cooperative", "warp_specialized"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +55,7 @@ class IndependentTmaSmemMainloop:
     barrier_slots: int
     producer_warp_groups: int
     schedule: MainloopSchedule
+    producer_consumer_mode: ProducerConsumerMode
     a_copy: IndependentTmaOperandCopy
     b_copy: IndependentTmaOperandCopy
     schema_version: int = INDEPENDENT_TMA_SMEM_SCHEMA_VERSION
@@ -219,6 +221,7 @@ def make_independent_tma_smem_mainloop(
     tile_n: int = 256,
     cluster_m: int = 1,
     mainloop_schedule: MainloopSchedule = "serial",
+    producer_consumer_mode: ProducerConsumerMode = "cooperative",
 ) -> IndependentTmaSmemMainloop:
     """Build one coordinated BF16 copy/layout variant."""
 
@@ -236,6 +239,7 @@ def make_independent_tma_smem_mainloop(
         barrier_slots=stages,
         producer_warp_groups=1,
         schedule=mainloop_schedule,
+        producer_consumer_mode=producer_consumer_mode,
         a_copy=IndependentTmaOperandCopy(
             operand="a",
             global_major="k",
@@ -273,6 +277,7 @@ def make_independent_cute_gemm(
     tile_n: int = 256,
     cluster_m: int = 1,
     mainloop_schedule: MainloopSchedule = "serial",
+    producer_consumer_mode: ProducerConsumerMode = "cooperative",
 ) -> IndependentCuteGemmKernel:
     """Build the first complete structural GEMM contract.
 
@@ -287,6 +292,7 @@ def make_independent_cute_gemm(
         tile_n=tile_n,
         cluster_m=cluster_m,
         mainloop_schedule=mainloop_schedule,
+        producer_consumer_mode=producer_consumer_mode,
     )
     consumer_warp_groups = tile_m // 64
     epilogue_stages = consumer_warp_groups * (tile_n // 64)
@@ -320,7 +326,14 @@ def make_independent_cute_gemm(
         execution=IndependentExecutionSchedule(
             agents=(
                 IndependentExecutionAgent(
-                    "tma_load_agent", "warp", 1, "mainloop_producer"
+                    "tma_load_agent",
+                    "warp_group" if producer_consumer_mode == "warp_specialized" else "warp",
+                    1,
+                    (
+                        "dedicated_mainloop_producer"
+                        if producer_consumer_mode == "warp_specialized"
+                        else "cooperative_mainloop_producer"
+                    ),
                 ),
                 IndependentExecutionAgent(
                     "wgmma_agents",
@@ -510,6 +523,21 @@ def validate_independent_tma_smem_mainloop(
             "unsupported_mainloop_schedule",
             "the independent mainloop schedule must be serial or prefetch",
             "schedule",
+        )
+    if plan.producer_consumer_mode not in ("cooperative", "warp_specialized"):
+        reject(
+            "unsupported_producer_consumer_mode",
+            "producer/consumer mode must be cooperative or warp_specialized",
+            "producer_consumer_mode",
+        )
+    if (
+        plan.producer_consumer_mode == "warp_specialized"
+        and plan.schedule != "prefetch"
+    ):
+        reject(
+            "incompatible_producer_consumer_mode",
+            "warp specialization requires the validated prefetch schedule",
+            "producer_consumer_mode",
         )
 
     expected_tiles = {
@@ -760,6 +788,28 @@ def validate_independent_cute_gemm(
                 "execution.agents",
             )
     agent_counts = {agent.agent_id: agent.count for agent in execution.agents}
+    agents_by_id = {agent.agent_id: agent for agent in execution.agents}
+    load_agent = agents_by_id.get("tma_load_agent")
+    expected_load_scope = (
+        "warp_group"
+        if mainloop.producer_consumer_mode == "warp_specialized"
+        else "warp"
+    )
+    expected_load_role = (
+        "dedicated_mainloop_producer"
+        if mainloop.producer_consumer_mode == "warp_specialized"
+        else "cooperative_mainloop_producer"
+    )
+    if (
+        load_agent is None
+        or load_agent.scope != expected_load_scope
+        or load_agent.role != expected_load_role
+    ):
+        reject(
+            "inconsistent_producer_agent",
+            "TMA producer ownership must match the typed producer/consumer mode",
+            "execution.agents",
+        )
     expected_consumer_groups = consumer.warp_groups_m * consumer.warp_groups_n
     if agent_counts.get("wgmma_agents") != expected_consumer_groups:
         reject(

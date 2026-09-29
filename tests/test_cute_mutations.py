@@ -8,6 +8,7 @@ from kernel_mcts.cute_mutations import (
     CHANGE_CTA_TILE,
     CHANGE_EPILOGUE_STAGES,
     CHANGE_MAINLOOP_SCHEDULE,
+    CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
     CHANGE_PIPELINE_STAGES,
     CHANGE_SHARED_MEMORY_SWIZZLE,
     CuteMutationGenerator,
@@ -653,6 +654,35 @@ def test_generator_emits_prefetch_schedule_and_return_transition() -> None:
     assert generator.can_generate(request) is False
     return_proposals = enumerate_independent_cute_mutations(candidate)
     assert [proposal.strategy_id for proposal in return_proposals] == [
-        CHANGE_MAINLOOP_SCHEDULE
+        CHANGE_MAINLOOP_SCHEDULE,
+        CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
     ]
     assert return_proposals[0].candidate == root
+
+
+def test_prefetch_exposes_validated_warp_specialization_pair() -> None:
+    prefetch = make_independent_cute_gemm(mainloop_schedule="prefetch")
+
+    proposals = enumerate_independent_cute_mutations(prefetch)
+    specialized = next(
+        proposal
+        for proposal in proposals
+        if proposal.strategy_id == CHANGE_PRODUCER_CONSUMER_SPECIALIZATION
+    )
+
+    assert specialized.parameters == {
+        "producer_consumer_mode": "warp_specialized"
+    }
+    assert specialized.candidate.mainloop.schedule == "prefetch"
+    assert specialized.candidate.mainloop.producer_consumer_mode == "warp_specialized"
+    assert specialized.candidate.execution.agents[0].scope == "warp_group"
+    assert specialized.candidate.execution.agents[0].role == (
+        "dedicated_mainloop_producer"
+    )
+    assert specialized.validation.valid is True
+    assert specialized.candidate.configuration_hash != prefetch.configuration_hash
+    returns = enumerate_independent_cute_mutations(specialized.candidate)
+    assert [proposal.strategy_id for proposal in returns] == [
+        CHANGE_PRODUCER_CONSUMER_SPECIALIZATION
+    ]
+    assert returns[0].candidate == prefetch

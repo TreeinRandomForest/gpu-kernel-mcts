@@ -27,6 +27,47 @@ def test_initial_tma_smem_variants_are_valid_distinct_and_deterministic() -> Non
     ).canonical_json()
 
 
+def test_warp_specialization_has_distinct_typed_ownership_and_identity() -> None:
+    cooperative = make_independent_cute_gemm(mainloop_schedule="prefetch")
+    specialized = make_independent_cute_gemm(
+        mainloop_schedule="prefetch",
+        producer_consumer_mode="warp_specialized",
+    )
+
+    assert specialized.mainloop.producer_consumer_mode == "warp_specialized"
+    assert specialized.execution.agents[0].scope == "warp_group"
+    assert specialized.execution.agents[0].role == "dedicated_mainloop_producer"
+    assert specialized.configuration_hash != cooperative.configuration_hash
+    assert validate_independent_cute_gemm(specialized).valid is True
+
+
+def test_warp_specialization_requires_prefetch_and_matching_agent_ownership() -> None:
+    invalid_schedule = make_independent_cute_gemm(
+        producer_consumer_mode="warp_specialized"
+    )
+    valid = make_independent_cute_gemm(
+        mainloop_schedule="prefetch",
+        producer_consumer_mode="warp_specialized",
+    )
+    invalid_agent = replace(
+        valid,
+        execution=replace(
+            valid.execution,
+            agents=(replace(valid.execution.agents[0], scope="warp"),)
+            + valid.execution.agents[1:],
+        ),
+    )
+
+    assert "incompatible_producer_consumer_mode" in {
+        violation.code
+        for violation in validate_independent_cute_gemm(invalid_schedule).violations
+    }
+    assert "inconsistent_producer_agent" in {
+        violation.code
+        for violation in validate_independent_cute_gemm(invalid_agent).violations
+    }
+
+
 def test_two_stage_mainloop_has_distinct_identity_and_compact_storage() -> None:
     stage_three = make_independent_cute_gemm(pipeline_stages=3)
     stage_two = make_independent_cute_gemm(pipeline_stages=2)

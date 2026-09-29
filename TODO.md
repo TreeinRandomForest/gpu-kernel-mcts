@@ -390,6 +390,12 @@ completed hardware validation is identified explicitly.
   CLI run passed exact correctness at 274.608 us median. A one-iteration H100 search
   consumed `B_mut=1`, `B_gen=0`, created one distinct node, and backed up reward
   `0.892142` from 670.960 us serial and 274.944 us prefetch medians.
+- [x] Add a typed dedicated producer/consumer warp-group partition. The v67 H100
+  paired comparison passed exact correctness and measured 264.912 us for the
+  specialized state versus 273.776 us for cooperative prefetch, a 1.03346x speedup
+  (`reward=0.032913`). Schema v5 records distinct ownership and identity; the paired
+  `change_producer_consumer_specialization` realization consumes one `B_mut` and is
+  exposed only from the validated prefetch state.
 - [x] Exercise both validated independent mutations in one bounded search. The v50
   `B_mut=2`, `B_gen=0`, `max_depth=1` run created separate SW64 and two-stage children
   directly beneath the SW128 three-stage root, performed two valid-only backups, and

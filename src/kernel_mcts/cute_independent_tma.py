@@ -32,6 +32,7 @@ IndependentTmaDebugStage = Literal[
     "wgmma_full_k",
     "wgmma_full_workload",
     "wgmma_full_workload_prefetch",
+    "wgmma_full_workload_specialized",
     "wgmma_one_k_no_reuse",
     "wgmma_one_k",
 ]
@@ -57,6 +58,7 @@ INDEPENDENT_TMA_DEBUG_STAGES = (
     "wgmma_full_k",
     "wgmma_full_workload",
     "wgmma_full_workload_prefetch",
+    "wgmma_full_workload_specialized",
     "wgmma_one_k_no_reuse",
     "wgmma_one_k",
 )
@@ -103,15 +105,22 @@ def render_independent_tma_copy_diagnostic(
     full_workload = debug_stage in (
         "wgmma_full_workload",
         "wgmma_full_workload_prefetch",
+        "wgmma_full_workload_specialized",
+    )
+    warp_specialized = (
+        debug_stage == "wgmma_full_workload_specialized"
+        or mainloop.producer_consumer_mode == "warp_specialized"
     )
     overlapped_mainloop = (
         mainloop.schedule == "prefetch"
         or debug_stage == "wgmma_full_workload_prefetch"
+        or warp_specialized
     )
     full_k = debug_stage in (
         "wgmma_full_k",
         "wgmma_full_workload",
         "wgmma_full_workload_prefetch",
+        "wgmma_full_workload_specialized",
     )
     problem_k = 4096 if full_k else mainloop.tile_k
     diagnostic_epilogue_storage_elements = (
@@ -172,6 +181,7 @@ def render_independent_tma_copy_diagnostic(
         "wgmma_full_k",
         "wgmma_full_workload",
         "wgmma_full_workload_prefetch",
+        "wgmma_full_workload_specialized",
         "wgmma_one_k_no_reuse",
         "wgmma_one_k",
     )
@@ -192,6 +202,7 @@ def render_independent_tma_copy_diagnostic(
     wgmma_r2s_four_padded = debug_stage == "wgmma_r2s_four_padded"
     wgmma_r2s_four_tiles = debug_stage == "wgmma_r2s_four_tiles"
     consumer_threads = diagnostic_warp_groups * 128
+    threads_per_cta = consumer_threads + (128 if warp_specialized else 0)
     cooperative_epilogue = diagnostic_warp_groups > 1
     epilogue_tiles_per_warp_group = mainloop.tile_n // epilogue.tile_n
     problem_m = 4096 if full_workload else diagnostic_tile_m * active_cluster[0]
@@ -224,7 +235,10 @@ GRID_N = {grid_n}
 CLUSTER_SHAPE_MN = {active_cluster!r}
 MAINLOOP_STAGES = {mainloop.pipeline_stages}
 SWIZZLE_BYTES = {mainloop.a_copy.swizzle_bytes}
-THREADS_PER_CTA = {consumer_threads}
+THREADS_PER_CTA = {threads_per_cta}
+CONSUMER_THREADS = {consumer_threads}
+DMA_WARP_GROUPS = {1 if warp_specialized else 0}
+WARP_SPECIALIZED = {warp_specialized!r}
 MMA_WARP_GROUPS = {diagnostic_warp_groups}
 COOPERATIVE_EPILOGUE = {cooperative_epilogue!r}
 EPILOGUE_TILES_PER_WARP_GROUP = {epilogue_tiles_per_warp_group}
@@ -307,6 +321,7 @@ class IndependentTmaCopyKernel:
         @cute.struct
         class SharedStorage:
             load_barrier: cute.struct.MemRange[cutlass.Int64, MAINLOOP_STAGES]
+            empty_barrier: cute.struct.MemRange[cutlass.Int64, MAINLOOP_STAGES]
             sA: cute.struct.Align[
                 cute.struct.MemRange[self.dtype, cute.cosize(a_smem_layout_staged)],
                 self.buffer_align_bytes,
@@ -429,6 +444,7 @@ class IndependentTmaCopyKernel:
             epi_smem_layout_staged.outer, swizzle=epi_smem_layout_staged.inner
         )
         load_barriers = storage.load_barrier.data_ptr()
+        empty_barriers = storage.empty_barrier.data_ptr()
         a_smem = cute.slice_(a_smem_layout_staged, (None, None, 0))
         b_smem = cute.slice_(b_smem_layout_staged, (None, None, 0))
         transaction_bytes = cute.size_in_bytes(self.dtype, a_smem)
@@ -440,7 +456,11 @@ class IndependentTmaCopyKernel:
         if tidx == 0:
             for barrier_index in cutlass.range_constexpr(MAINLOOP_STAGES):
                 cute.arch.mbarrier_init(load_barriers + barrier_index, 1)
+                cute.arch.mbarrier_init(empty_barriers + barrier_index, 1)
         cute.arch.mbarrier_init_fence()
+        if tidx == 0:
+            for barrier_index in cutlass.range_constexpr(MAINLOOP_STAGES):
+                cute.arch.mbarrier_arrive(empty_barriers + barrier_index)
         pipeline.sync(barrier_id=1)
         if cute.size(CLUSTER_SHAPE_MN) > 1:
             # Every destination barrier must exist before a multicast can target it.
@@ -510,98 +530,92 @@ class IndependentTmaCopyKernel:
         if cutlass.const_expr(LOAD_ONLY):
             return
         if cutlass.const_expr(ENABLE_WGMMA):
-            gC = cute.local_tile(
-                tensor_c,
-                (TILE_SHAPE_MNK[0], TILE_SHAPE_MNK[1]),
-                (bidx, bidy),
-            )
             warp_group_idx = cute.arch.make_warp_uniform(tidx // 128)
-            warp_group_thread_layout = cute.make_layout(
-                MMA_WARP_GROUPS, stride=128
-            )
-            thr_mma = tiled_mma.get_slice(
-                warp_group_thread_layout(warp_group_idx)
-            )
-            tCsA = thr_mma.partition_A(sA)
-            tCsB = thr_mma.partition_B(sB)
-            tCgC = thr_mma.partition_C(gC)
-            tCrA = tiled_mma.make_fragment_A(tCsA)
-            tCrB = tiled_mma.make_fragment_B(tCsB)
-            accumulators = cute.make_rmem_tensor(tCgC.shape, self.acc_dtype)
-            tiled_mma.set(cute.nvgpu.warpgroup.Field.ACCUMULATE, False)
-            if cutlass.const_expr(FULL_K):
-                if cutlass.const_expr(OVERLAPPED_MAINLOOP):
-                    # Fill the complete stage ring before consuming stage zero.
-                    # Later iterations refill a stage only after WGMMA has finished
-                    # reading it, so TMA for tile k+stages can overlap consumption
-                    # of the already-full intervening stages.
-                    for prefetch_tile in cutlass.range_constexpr(MAINLOOP_STAGES):
-                        prefetch_barrier = load_barriers + prefetch_tile
-                        if tidx == 0:
-                            cute.arch.mbarrier_expect_tx(
-                                prefetch_barrier, transaction_bytes
-                            )
-                        if warp_idx == 0:
-                            cute.copy(
-                                tma_a,
-                                tAgA[(None, bidx, prefetch_tile)],
-                                tAsA[(None, prefetch_tile)],
-                                tma_bar_ptr=prefetch_barrier,
-                            )
-                            cute.copy(
-                                tma_b,
-                                tBgB[(None, bidy, prefetch_tile)],
-                                tBsB[(None, prefetch_tile)],
-                                tma_bar_ptr=prefetch_barrier,
-                                mcast_mask=b_mcast_mask,
-                            )
-                            with cute.arch.elect_one():
-                                cute.arch.mbarrier_arrive(prefetch_barrier)
-                for k_tile in cutlass.range(0, FULL_K_TILE_COUNT, 1, unroll=1):
-                    stage = k_tile % MAINLOOP_STAGES
-                    phase = (k_tile // MAINLOOP_STAGES) % 2
-                    stage_barrier = load_barriers + stage
-                    if cutlass.const_expr(not OVERLAPPED_MAINLOOP):
-                        if tidx == 0:
-                            cute.arch.mbarrier_expect_tx(
-                                stage_barrier, transaction_bytes
-                            )
-                        if warp_idx == 0:
-                            cute.copy(
-                                tma_a,
-                                tAgA[(None, bidx, k_tile)],
-                                tAsA[(None, stage)],
-                                tma_bar_ptr=stage_barrier,
-                            )
-                            cute.copy(
-                                tma_b,
-                                tBgB[(None, bidy, k_tile)],
-                                tBsB[(None, stage)],
-                                tma_bar_ptr=stage_barrier,
-                                mcast_mask=b_mcast_mask,
-                            )
-                            with cute.arch.elect_one():
-                                cute.arch.mbarrier_arrive(stage_barrier)
-                    cute.arch.mbarrier_wait(stage_barrier, phase)
-                    cute.nvgpu.warpgroup.fence()
-                    for k_block in cutlass.range(
-                        cute.size(tCrA, mode=[2]), unroll_full=True
+            if cutlass.const_expr(WARP_SPECIALIZED) and warp_group_idx == 0:
+                cute.arch.setmaxregister_decrease(40)
+                for producer_tile in cutlass.range(
+                    0, FULL_K_TILE_COUNT, 1, unroll=1
+                ):
+                    producer_stage = producer_tile % MAINLOOP_STAGES
+                    producer_phase = (producer_tile // MAINLOOP_STAGES) % 2
+                    producer_empty = empty_barriers + producer_stage
+                    producer_full = load_barriers + producer_stage
+                    cute.arch.mbarrier_wait(producer_empty, producer_phase)
+                    if tidx == 0:
+                        cute.arch.mbarrier_expect_tx(
+                            producer_full, transaction_bytes
+                        )
+                    if warp_idx == 0:
+                        cute.copy(
+                            tma_a,
+                            tAgA[(None, bidx, producer_tile)],
+                            tAsA[(None, producer_stage)],
+                            tma_bar_ptr=producer_full,
+                        )
+                        cute.copy(
+                            tma_b,
+                            tBgB[(None, bidy, producer_tile)],
+                            tBsB[(None, producer_stage)],
+                            tma_bar_ptr=producer_full,
+                            mcast_mask=b_mcast_mask,
+                        )
+                        with cute.arch.elect_one():
+                            cute.arch.mbarrier_arrive(producer_full)
+            if not WARP_SPECIALIZED or warp_group_idx >= DMA_WARP_GROUPS:
+                gC = cute.local_tile(
+                    tensor_c,
+                    (TILE_SHAPE_MNK[0], TILE_SHAPE_MNK[1]),
+                    (bidx, bidy),
+                )
+                warp_group_idx = warp_group_idx - DMA_WARP_GROUPS
+                warp_group_thread_layout = cute.make_layout(
+                    MMA_WARP_GROUPS, stride=128
+                )
+                thr_mma = tiled_mma.get_slice(
+                    warp_group_thread_layout(warp_group_idx)
+                )
+                tCsA = thr_mma.partition_A(sA)
+                tCsB = thr_mma.partition_B(sB)
+                tCgC = thr_mma.partition_C(gC)
+                tCrA = tiled_mma.make_fragment_A(tCsA)
+                tCrB = tiled_mma.make_fragment_B(tCsB)
+                accumulators = cute.make_rmem_tensor(tCgC.shape, self.acc_dtype)
+                tiled_mma.set(cute.nvgpu.warpgroup.Field.ACCUMULATE, False)
+                if cutlass.const_expr(FULL_K):
+                    if cutlass.const_expr(
+                        OVERLAPPED_MAINLOOP and not WARP_SPECIALIZED
                     ):
-                        cute.gemm(
-                            tiled_mma,
-                            accumulators,
-                            tCrA[(None, None, k_block, stage)],
-                            tCrB[(None, None, k_block, stage)],
-                            accumulators,
-                        )
-                        tiled_mma.set(
-                            cute.nvgpu.warpgroup.Field.ACCUMULATE, True
-                        )
-                    cute.nvgpu.warpgroup.commit_group()
-                    cute.nvgpu.warpgroup.wait_group(0)
-                    if cutlass.const_expr(OVERLAPPED_MAINLOOP):
-                        future_tile = k_tile + MAINLOOP_STAGES
-                        if future_tile < FULL_K_TILE_COUNT:
+                        # Fill the complete stage ring before consuming stage zero.
+                        # Later iterations refill a stage only after WGMMA has finished
+                        # reading it, so TMA for tile k+stages can overlap consumption
+                        # of the already-full intervening stages.
+                        for prefetch_tile in cutlass.range_constexpr(MAINLOOP_STAGES):
+                            prefetch_barrier = load_barriers + prefetch_tile
+                            if tidx == 0:
+                                cute.arch.mbarrier_expect_tx(
+                                    prefetch_barrier, transaction_bytes
+                                )
+                            if warp_idx == 0:
+                                cute.copy(
+                                    tma_a,
+                                    tAgA[(None, bidx, prefetch_tile)],
+                                    tAsA[(None, prefetch_tile)],
+                                    tma_bar_ptr=prefetch_barrier,
+                                )
+                                cute.copy(
+                                    tma_b,
+                                    tBgB[(None, bidy, prefetch_tile)],
+                                    tBsB[(None, prefetch_tile)],
+                                    tma_bar_ptr=prefetch_barrier,
+                                    mcast_mask=b_mcast_mask,
+                                )
+                                with cute.arch.elect_one():
+                                    cute.arch.mbarrier_arrive(prefetch_barrier)
+                    for k_tile in cutlass.range(0, FULL_K_TILE_COUNT, 1, unroll=1):
+                        stage = k_tile % MAINLOOP_STAGES
+                        phase = (k_tile // MAINLOOP_STAGES) % 2
+                        stage_barrier = load_barriers + stage
+                        if cutlass.const_expr(not OVERLAPPED_MAINLOOP):
                             if tidx == 0:
                                 cute.arch.mbarrier_expect_tx(
                                     stage_barrier, transaction_bytes
@@ -609,169 +623,239 @@ class IndependentTmaCopyKernel:
                             if warp_idx == 0:
                                 cute.copy(
                                     tma_a,
-                                    tAgA[(None, bidx, future_tile)],
+                                    tAgA[(None, bidx, k_tile)],
                                     tAsA[(None, stage)],
                                     tma_bar_ptr=stage_barrier,
                                 )
                                 cute.copy(
                                     tma_b,
-                                    tBgB[(None, bidy, future_tile)],
+                                    tBgB[(None, bidy, k_tile)],
                                     tBsB[(None, stage)],
                                     tma_bar_ptr=stage_barrier,
                                     mcast_mask=b_mcast_mask,
                                 )
                                 with cute.arch.elect_one():
                                     cute.arch.mbarrier_arrive(stage_barrier)
-            else:
-                cute.nvgpu.warpgroup.fence()
-                for k_block in cutlass.range(
-                    cute.size(tCrA, mode=[2]), unroll_full=True
-                ):
-                    cute.gemm(
-                        tiled_mma,
-                        accumulators,
-                        tCrA[(None, None, k_block, 0)],
-                        tCrB[(None, None, k_block, 0)],
-                        accumulators,
+                        cute.arch.mbarrier_wait(stage_barrier, phase)
+                        cute.nvgpu.warpgroup.fence()
+                        for k_block in cutlass.range(
+                            cute.size(tCrA, mode=[2]), unroll_full=True
+                        ):
+                            cute.gemm(
+                                tiled_mma,
+                                accumulators,
+                                tCrA[(None, None, k_block, stage)],
+                                tCrB[(None, None, k_block, stage)],
+                                accumulators,
+                            )
+                            tiled_mma.set(
+                                cute.nvgpu.warpgroup.Field.ACCUMULATE, True
+                            )
+                        cute.nvgpu.warpgroup.commit_group()
+                        cute.nvgpu.warpgroup.wait_group(0)
+                        if cutlass.const_expr(WARP_SPECIALIZED):
+                            if tidx == DMA_WARP_GROUPS * 128:
+                                cute.arch.mbarrier_arrive(empty_barriers + stage)
+                        if cutlass.const_expr(
+                            OVERLAPPED_MAINLOOP and not WARP_SPECIALIZED
+                        ):
+                            future_tile = k_tile + MAINLOOP_STAGES
+                            if future_tile < FULL_K_TILE_COUNT:
+                                if tidx == 0:
+                                    cute.arch.mbarrier_expect_tx(
+                                        stage_barrier, transaction_bytes
+                                    )
+                                if warp_idx == 0:
+                                    cute.copy(
+                                        tma_a,
+                                        tAgA[(None, bidx, future_tile)],
+                                        tAsA[(None, stage)],
+                                        tma_bar_ptr=stage_barrier,
+                                    )
+                                    cute.copy(
+                                        tma_b,
+                                        tBgB[(None, bidy, future_tile)],
+                                        tBsB[(None, stage)],
+                                        tma_bar_ptr=stage_barrier,
+                                        mcast_mask=b_mcast_mask,
+                                    )
+                                    with cute.arch.elect_one():
+                                        cute.arch.mbarrier_arrive(stage_barrier)
+                else:
+                    cute.nvgpu.warpgroup.fence()
+                    for k_block in cutlass.range(
+                        cute.size(tCrA, mode=[2]), unroll_full=True
+                    ):
+                        cute.gemm(
+                            tiled_mma,
+                            accumulators,
+                            tCrA[(None, None, k_block, 0)],
+                            tCrB[(None, None, k_block, 0)],
+                            accumulators,
+                        )
+                        tiled_mma.set(
+                            cute.nvgpu.warpgroup.Field.ACCUMULATE, True
+                        )
+                    cute.nvgpu.warpgroup.commit_group()
+                    cute.nvgpu.warpgroup.wait_group(0)
+                if cutlass.const_expr(not WGMMA_ISSUE_ONLY):
+                    consumer_barrier = pipeline.NamedBarrier(
+                        barrier_id=1, num_threads=CONSUMER_THREADS
                     )
-                    tiled_mma.set(
-                        cute.nvgpu.warpgroup.Field.ACCUMULATE, True
+                    if cutlass.const_expr(WARP_SPECIALIZED):
+                        consumer_barrier.arrive_and_wait()
+                    else:
+                        cute.arch.sync_threads()
+                    copy_atom_r2s = sm90_utils.sm90_get_smem_store_op(
+                        self.c_layout,
+                        elem_ty_d=self.c_dtype,
+                        elem_ty_acc=self.acc_dtype,
                     )
-                cute.nvgpu.warpgroup.commit_group()
-                cute.nvgpu.warpgroup.wait_group(0)
-            if cutlass.const_expr(WGMMA_ISSUE_ONLY):
-                return
-            cute.arch.sync_threads()
-            copy_atom_r2s = sm90_utils.sm90_get_smem_store_op(
-                self.c_layout,
-                elem_ty_d=self.c_dtype,
-                elem_ty_acc=self.acc_dtype,
-            )
-            copy_atom_c = cute.make_copy_atom(
-                cute.nvgpu.warp.StMatrix8x8x16bOp(
-                    self.c_layout.is_m_major_c(), 4
-                ),
-                self.c_dtype,
-            )
-            tiled_copy_c_atom = cute.make_tiled_copy_C_atom(
-                copy_atom_c, tiled_mma
-            )
-            tiled_copy_r2s = cute.make_tiled_copy_S(
-                copy_atom_r2s, tiled_copy_c_atom
-            )
-            epilogue_thread_idx = tidx
-            if cutlass.const_expr(COOPERATIVE_EPILOGUE):
-                epilogue_thread_idx = tidx % 128
-            thr_copy_r2s = tiled_copy_r2s.get_slice(epilogue_thread_idx)
-            tRS_sC = thr_copy_r2s.partition_D(sC)
-            tRS_rAcc = tiled_copy_r2s.retile(accumulators)
-            rC_shape = cute.shape(thr_copy_r2s.partition_S(sC))
-            rC_layout = cute.make_layout(rC_shape[:3])
-            rC = cute.make_rmem_tensor_like(rC_layout, self.acc_dtype)
-            rC_out = cute.make_rmem_tensor_like(rC_layout, self.c_dtype)
-            rC_size = cute.size(rC)
+                    copy_atom_c = cute.make_copy_atom(
+                        cute.nvgpu.warp.StMatrix8x8x16bOp(
+                            self.c_layout.is_m_major_c(), 4
+                        ),
+                        self.c_dtype,
+                    )
+                    tiled_copy_c_atom = cute.make_tiled_copy_C_atom(
+                        copy_atom_c, tiled_mma
+                    )
+                    tiled_copy_r2s = cute.make_tiled_copy_S(
+                        copy_atom_r2s, tiled_copy_c_atom
+                    )
+                    epilogue_thread_idx = tidx
+                    if cutlass.const_expr(WARP_SPECIALIZED):
+                        epilogue_thread_idx = tidx - DMA_WARP_GROUPS * 128
+                    if cutlass.const_expr(COOPERATIVE_EPILOGUE):
+                        epilogue_thread_idx = tidx % 128
+                    thr_copy_r2s = tiled_copy_r2s.get_slice(epilogue_thread_idx)
+                    tRS_sC = thr_copy_r2s.partition_D(sC)
+                    tRS_rAcc = tiled_copy_r2s.retile(accumulators)
+                    rC_shape = cute.shape(thr_copy_r2s.partition_S(sC))
+                    rC_layout = cute.make_layout(rC_shape[:3])
+                    rC = cute.make_rmem_tensor_like(rC_layout, self.acc_dtype)
+                    rC_out = cute.make_rmem_tensor_like(rC_layout, self.c_dtype)
+                    rC_size = cute.size(rC)
 
-            sC_for_tma = cute.group_modes(sC, 0, 2)
-            gC_for_tma = cute.zipped_divide(gC, self.epi_tile)
-            tma_sC, tma_gC = cute.nvgpu.cpasync.tma_partition(
-                tma_c,
-                0,
-                cute.make_layout(1),
-                sC_for_tma,
-                gC_for_tma,
-            )
-            epi_tile_count = cute.size(gC_for_tma, mode=[1])
-            if cutlass.const_expr(WGMMA_R2S_FIRST_TILE):
-                epi_tile_count = 1
-            if cutlass.const_expr(WGMMA_R2S_TWO_TILES):
-                epi_tile_count = 2
-            if cutlass.const_expr(WGMMA_R2S_THREE_TILES):
-                epi_tile_count = 3
-            if cutlass.const_expr(WGMMA_R2S_FOUR_REUSE_ZERO):
-                epi_tile_count = 4
-            if cutlass.const_expr(WGMMA_R2S_FOUR_PADDED):
-                epi_tile_count = 4
-            if cutlass.const_expr(WGMMA_R2S_FOUR_TILES):
-                epi_tile_count = 4
-            epi_tile_shape = gC_for_tma.shape[1]
-            epi_tile_layout = cute.make_layout(
-                epi_tile_shape, stride=(epi_tile_shape[1], 1)
-            )
-            c_pipeline = pipeline.PipelineTmaStore.create(
-                num_stages=self.epi_stage,
-                producer_group=pipeline.CooperativeGroup(
-                    pipeline.Agent.Thread, THREADS_PER_CTA
-                ),
-            )
-            if cutlass.const_expr(COOPERATIVE_EPILOGUE):
-                # Each warp group owns one 64-row accumulator partition. Stage its
-                # four N tiles into disjoint shared-memory buffers before one elected
-                # warp issues all CTA-level TMA stores. This avoids treating the
-                # second warp group's local accumulator as a continuation of the
-                # first group's register fragment.
-                for local_epi_index in cutlass.range_constexpr(
-                    EPILOGUE_TILES_PER_WARP_GROUP
-                ):
-                    for value_index in cutlass.range_constexpr(rC_size):
-                        rC[value_index] = tRS_rAcc[
-                            local_epi_index * rC_size + value_index
-                        ]
-                    rC_out.store(rC.load().to(self.c_dtype))
-                    epi_buffer = (
-                        warp_group_idx * EPILOGUE_TILES_PER_WARP_GROUP
-                        + local_epi_index
+                    sC_for_tma = cute.group_modes(sC, 0, 2)
+                    gC_for_tma = cute.zipped_divide(gC, self.epi_tile)
+                    tma_sC, tma_gC = cute.nvgpu.cpasync.tma_partition(
+                        tma_c,
+                        0,
+                        cute.make_layout(1),
+                        sC_for_tma,
+                        gC_for_tma,
                     )
-                    cute.copy(
-                        tiled_copy_r2s,
-                        rC_out,
-                        tRS_sC[(None, None, None, epi_buffer)],
-                    )
-                cute.arch.fence_proxy("async.shared", space="cta")
-                pipeline.sync(barrier_id=1)
-                if cutlass.const_expr(not WGMMA_R2S_ONLY):
-                    if warp_idx == 0:
-                        for epi_index in cutlass.range_constexpr(epi_tile_count):
-                            global_coord = epi_tile_layout.get_hier_coord(epi_index)
-                            cute.copy(
-                                tma_c,
-                                tma_sC[(None, epi_index)],
-                                tma_gC[(None, global_coord)],
-                            )
-                            c_pipeline.producer_commit()
-                            c_pipeline.producer_acquire()
-                pipeline.sync(barrier_id=1)
-                if cutlass.const_expr(not WGMMA_R2S_ONLY) and warp_idx == 0:
-                    c_pipeline.producer_tail()
-            else:
-                for epi_index in cutlass.range_constexpr(epi_tile_count):
-                    for value_index in cutlass.range_constexpr(rC_size):
-                        rC[value_index] = tRS_rAcc[
-                            epi_index * rC_size + value_index
-                        ]
-                    rC_out.store(rC.load().to(self.c_dtype))
-                    epi_buffer = epi_index % cute.size(tRS_sC, mode=[3])
+                    epi_tile_count = cute.size(gC_for_tma, mode=[1])
+                    if cutlass.const_expr(WGMMA_R2S_FIRST_TILE):
+                        epi_tile_count = 1
+                    if cutlass.const_expr(WGMMA_R2S_TWO_TILES):
+                        epi_tile_count = 2
+                    if cutlass.const_expr(WGMMA_R2S_THREE_TILES):
+                        epi_tile_count = 3
                     if cutlass.const_expr(WGMMA_R2S_FOUR_REUSE_ZERO):
-                        epi_buffer = 0
-                    cute.copy(
-                        tiled_copy_r2s,
-                        rC_out,
-                        tRS_sC[(None, None, None, epi_buffer)],
+                        epi_tile_count = 4
+                    if cutlass.const_expr(WGMMA_R2S_FOUR_PADDED):
+                        epi_tile_count = 4
+                    if cutlass.const_expr(WGMMA_R2S_FOUR_TILES):
+                        epi_tile_count = 4
+                    epi_tile_shape = gC_for_tma.shape[1]
+                    epi_tile_layout = cute.make_layout(
+                        epi_tile_shape, stride=(epi_tile_shape[1], 1)
                     )
-                    cute.arch.fence_proxy("async.shared", space="cta")
-                    pipeline.sync(barrier_id=1)
-                    if cutlass.const_expr(not WGMMA_R2S_ONLY):
-                        global_coord = epi_tile_layout.get_hier_coord(epi_index)
-                        if warp_idx == 0:
-                            cute.copy(
-                                tma_c,
-                                tma_sC[(None, epi_buffer)],
-                                tma_gC[(None, global_coord)],
+                    c_pipeline = pipeline.PipelineTmaStore.create(
+                        num_stages=self.epi_stage,
+                        producer_group=pipeline.CooperativeGroup(
+                            pipeline.Agent.Thread, CONSUMER_THREADS
+                        ),
+                    )
+                    if cutlass.const_expr(COOPERATIVE_EPILOGUE):
+                        # Each warp group owns one 64-row accumulator partition. Stage its
+                        # four N tiles into disjoint shared-memory buffers before one elected
+                        # warp issues all CTA-level TMA stores. This avoids treating the
+                        # second warp group's local accumulator as a continuation of the
+                        # first group's register fragment.
+                        for local_epi_index in cutlass.range_constexpr(
+                            EPILOGUE_TILES_PER_WARP_GROUP
+                        ):
+                            for value_index in cutlass.range_constexpr(rC_size):
+                                rC[value_index] = tRS_rAcc[
+                                    local_epi_index * rC_size + value_index
+                                ]
+                            rC_out.store(rC.load().to(self.c_dtype))
+                            epi_buffer = (
+                                warp_group_idx * EPILOGUE_TILES_PER_WARP_GROUP
+                                + local_epi_index
                             )
-                            c_pipeline.producer_commit()
-                            c_pipeline.producer_acquire()
-                    pipeline.sync(barrier_id=1)
-                if cutlass.const_expr(not WGMMA_R2S_ONLY) and warp_idx == 0:
-                    c_pipeline.producer_tail()
+                            cute.copy(
+                                tiled_copy_r2s,
+                                rC_out,
+                                tRS_sC[(None, None, None, epi_buffer)],
+                            )
+                        cute.arch.fence_proxy("async.shared", space="cta")
+                        if cutlass.const_expr(WARP_SPECIALIZED):
+                            consumer_barrier.arrive_and_wait()
+                        else:
+                            pipeline.sync(barrier_id=1)
+                        if cutlass.const_expr(not WGMMA_R2S_ONLY):
+                            if warp_idx == DMA_WARP_GROUPS * 4:
+                                for epi_index in cutlass.range_constexpr(epi_tile_count):
+                                    global_coord = epi_tile_layout.get_hier_coord(epi_index)
+                                    cute.copy(
+                                        tma_c,
+                                        tma_sC[(None, epi_index)],
+                                        tma_gC[(None, global_coord)],
+                                    )
+                                    c_pipeline.producer_commit()
+                                    c_pipeline.producer_acquire()
+                        if cutlass.const_expr(WARP_SPECIALIZED):
+                            consumer_barrier.arrive_and_wait()
+                        else:
+                            pipeline.sync(barrier_id=1)
+                        if (
+                            cutlass.const_expr(not WGMMA_R2S_ONLY)
+                            and warp_idx == DMA_WARP_GROUPS * 4
+                        ):
+                            c_pipeline.producer_tail()
+                    else:
+                        for epi_index in cutlass.range_constexpr(epi_tile_count):
+                            for value_index in cutlass.range_constexpr(rC_size):
+                                rC[value_index] = tRS_rAcc[
+                                    epi_index * rC_size + value_index
+                                ]
+                            rC_out.store(rC.load().to(self.c_dtype))
+                            epi_buffer = epi_index % cute.size(tRS_sC, mode=[3])
+                            if cutlass.const_expr(WGMMA_R2S_FOUR_REUSE_ZERO):
+                                epi_buffer = 0
+                            cute.copy(
+                                tiled_copy_r2s,
+                                rC_out,
+                                tRS_sC[(None, None, None, epi_buffer)],
+                            )
+                            cute.arch.fence_proxy("async.shared", space="cta")
+                            if cutlass.const_expr(WARP_SPECIALIZED):
+                                consumer_barrier.arrive_and_wait()
+                            else:
+                                pipeline.sync(barrier_id=1)
+                            if cutlass.const_expr(not WGMMA_R2S_ONLY):
+                                global_coord = epi_tile_layout.get_hier_coord(epi_index)
+                                if warp_idx == DMA_WARP_GROUPS * 4:
+                                    cute.copy(
+                                        tma_c,
+                                        tma_sC[(None, epi_buffer)],
+                                        tma_gC[(None, global_coord)],
+                                    )
+                                    c_pipeline.producer_commit()
+                                    c_pipeline.producer_acquire()
+                            if cutlass.const_expr(WARP_SPECIALIZED):
+                                consumer_barrier.arrive_and_wait()
+                            else:
+                                pipeline.sync(barrier_id=1)
+                        if (
+                            cutlass.const_expr(not WGMMA_R2S_ONLY)
+                            and warp_idx == DMA_WARP_GROUPS * 4
+                        ):
+                            c_pipeline.producer_tail()
             return
         cute.arch.fence_proxy("async.shared", space="cta")
         pipeline.sync(barrier_id=1)

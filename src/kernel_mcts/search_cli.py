@@ -223,6 +223,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cute-root-cluster-m", type=int)
     parser.add_argument("--cute-root-cluster-n", type=int)
     parser.add_argument(
+        "--cute-independent-root-mainloop-schedule",
+        choices=("serial", "prefetch"),
+        default="serial",
+        help="choose the typed independent root schedule",
+    )
+    parser.add_argument(
         "--cute-strategy",
         action="append",
         choices=CUTE_MUTATION_STRATEGY_IDS,
@@ -509,7 +515,17 @@ def _root_program(
     if arguments.cute_root_kind == "independent":
         if any(value is not None for value in values):
             parser.error("--cute-root-* schedule arguments require the pinned root")
-        return IndependentCuteGemmRenderer().render(make_independent_cute_gemm())
+        return IndependentCuteGemmRenderer().render(
+            make_independent_cute_gemm(
+                mainloop_schedule=(
+                    arguments.cute_independent_root_mainloop_schedule
+                )
+            )
+        )
+    if arguments.cute_independent_root_mainloop_schedule != "serial":
+        parser.error(
+            "--cute-independent-root-mainloop-schedule requires the independent root"
+        )
     if any(value is not None for value in values):
         if arguments.backend != "cute_dsl":
             parser.error("CuTe root schedule arguments require --backend=cute_dsl")
@@ -650,13 +666,14 @@ def _selected_cute_strategies(
             "change_cluster_shape",
             "change_pipeline_stages",
             "change_mainloop_schedule",
+            "change_producer_consumer_specialization",
             "change_shared_memory_swizzle",
         }
         if selected and not set(selected) <= supported:
             parser.error(
                 "the independent CuTe root currently supports only CTA-tile, "
-                "cluster-shape, pipeline-stage, mainloop-schedule, and "
-                "shared-memory-swizzle changes"
+                "cluster-shape, pipeline-stage, mainloop-schedule, producer/consumer "
+                "specialization, and shared-memory-swizzle changes"
             )
         selected = selected or tuple(supported)
     if not selected:
