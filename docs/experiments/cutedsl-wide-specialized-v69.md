@@ -63,3 +63,19 @@ Across the typed CuTe path, steps 1 through 4 improve latency by approximately
 MCTS measurements, so it is a documented optimization sequence rather than a claim
 that every number came from one uninterrupted run. The final 184.112 us kernel was
 approximately 4.55% slower than the separately measured 176.096 us cuBLAS result.
+
+## Profile-guided next step
+
+The v70 cached lightweight NCU profile for the final node reported 92.22% tensor-pipe
+activity, 87.32% SM throughput, 28.62% DRAM throughput, 52.23% L2 throughput, and
+18.03% achieved occupancy. The kernel is therefore compute-bound rather than
+DRAM-bandwidth-bound. The low occupancy is expected from the large shared-memory
+footprint and one-CTA-per-SM design; reducing pipeline stages and changing to SW64
+both regressed in follow-up experiments.
+
+The next bounded structural question is persistent CTA tile scheduling. The current
+fixed 32x16 grid contains 512 CTAs, which execute in roughly four waves on the H100.
+A persistent one-CTA-per-SM scheduler could pull multiple output tiles and reduce
+wave-tail and repeated scheduling overhead. This requires a new diagnostic with
+correct barrier-phase carry, accumulator reset, output-tile ownership, and bounded
+termination. It is not yet typed state or an MCTS mutation.

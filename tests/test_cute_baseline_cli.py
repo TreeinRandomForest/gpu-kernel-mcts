@@ -487,8 +487,8 @@ def test_cli_forwards_independent_pipeline_stage(monkeypatch, capsys) -> None:
     calls = []
     monkeypatch.setattr(
         "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
-        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, mainloop_schedule, repository_contract: calls.append(
-            (stage, pipeline_stages, tile_m, tile_n, cluster_m, mainloop_schedule, repository_contract)
+        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, swizzle_bytes, mainloop_schedule, repository_contract: calls.append(
+            (stage, pipeline_stages, tile_m, tile_n, cluster_m, swizzle_bytes, mainloop_schedule, repository_contract)
         )
         or {"status": "ok"},
     )
@@ -505,7 +505,7 @@ def test_cli_forwards_independent_pipeline_stage(monkeypatch, capsys) -> None:
         ]
     ) == 0
 
-    assert calls == [("wgmma_full_workload", 2, 64, 256, 1, "serial", True)]
+    assert calls == [("wgmma_full_workload", 2, 64, 256, 1, 128, "serial", True)]
     assert '"status": "ok"' in capsys.readouterr().out
 
 
@@ -513,8 +513,8 @@ def test_cli_forwards_independent_cooperative_tile(monkeypatch, capsys) -> None:
     calls = []
     monkeypatch.setattr(
         "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
-        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, mainloop_schedule, repository_contract: calls.append(
-            (stage, pipeline_stages, tile_m, tile_n, cluster_m, mainloop_schedule, repository_contract)
+        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, swizzle_bytes, mainloop_schedule, repository_contract: calls.append(
+            (stage, pipeline_stages, tile_m, tile_n, cluster_m, swizzle_bytes, mainloop_schedule, repository_contract)
         )
         or {"status": "ok"},
     )
@@ -531,7 +531,7 @@ def test_cli_forwards_independent_cooperative_tile(monkeypatch, capsys) -> None:
         ]
     ) == 0
 
-    assert calls == [("wgmma_full_workload", 3, 128, 256, 1, "serial", True)]
+    assert calls == [("wgmma_full_workload", 3, 128, 256, 1, 128, "serial", True)]
     assert '"status": "ok"' in capsys.readouterr().out
 
 
@@ -539,8 +539,8 @@ def test_cli_forwards_independent_narrow_n_tile(monkeypatch, capsys) -> None:
     calls = []
     monkeypatch.setattr(
         "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
-        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, mainloop_schedule, repository_contract: calls.append(
-            (stage, pipeline_stages, tile_m, tile_n, cluster_m, mainloop_schedule, repository_contract)
+        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, swizzle_bytes, mainloop_schedule, repository_contract: calls.append(
+            (stage, pipeline_stages, tile_m, tile_n, cluster_m, swizzle_bytes, mainloop_schedule, repository_contract)
         )
         or {"status": "ok"},
     )
@@ -557,7 +557,7 @@ def test_cli_forwards_independent_narrow_n_tile(monkeypatch, capsys) -> None:
         ]
     ) == 0
 
-    assert calls == [("wgmma_full_workload", 3, 64, 128, 1, "serial", True)]
+    assert calls == [("wgmma_full_workload", 3, 64, 128, 1, 128, "serial", True)]
     assert '"status": "ok"' in capsys.readouterr().out
 
 
@@ -565,8 +565,8 @@ def test_cli_forwards_combined_independent_cta_tile(monkeypatch, capsys) -> None
     calls = []
     monkeypatch.setattr(
         "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
-        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, mainloop_schedule, repository_contract: calls.append(
-            (stage, pipeline_stages, tile_m, tile_n, cluster_m, mainloop_schedule, repository_contract)
+        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, swizzle_bytes, mainloop_schedule, repository_contract: calls.append(
+            (stage, pipeline_stages, tile_m, tile_n, cluster_m, swizzle_bytes, mainloop_schedule, repository_contract)
         )
         or {"status": "ok"},
     )
@@ -585,7 +585,7 @@ def test_cli_forwards_combined_independent_cta_tile(monkeypatch, capsys) -> None
         ]
     ) == 0
 
-    assert calls == [("wgmma_full_workload", 3, 128, 128, 1, "serial", True)]
+    assert calls == [("wgmma_full_workload", 3, 128, 128, 1, 128, "serial", True)]
     assert '"status": "ok"' in capsys.readouterr().out
 
 
@@ -616,6 +616,7 @@ def test_cli_forwards_independent_cluster_multicast(monkeypatch, capsys) -> None
                 "tile_m": 64,
                 "tile_n": 256,
                 "cluster_m": 2,
+                "swizzle_bytes": 128,
                 "mainloop_schedule": "serial",
                 "repository_contract": True,
             },
@@ -644,6 +645,28 @@ def test_cli_forwards_independent_prefetch_schedule(monkeypatch, capsys) -> None
     ) == 0
 
     assert calls[0][1]["mainloop_schedule"] == "prefetch"
+    assert '"status": "ok"' in capsys.readouterr().out
+
+
+def test_cli_forwards_independent_swizzle_bytes(monkeypatch, capsys) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
+        lambda stage, **kwargs: calls.append((stage, kwargs)) or {"status": "ok"},
+    )
+
+    assert main(
+        [
+            "--mode",
+            "independent-tma-copy",
+            "--independent-tma-stage",
+            "wgmma_full_workload_specialized",
+            "--independent-swizzle-bytes",
+            "64",
+        ]
+    ) == 0
+
+    assert calls[0][1]["swizzle_bytes"] == 64
     assert '"status": "ok"' in capsys.readouterr().out
 
 

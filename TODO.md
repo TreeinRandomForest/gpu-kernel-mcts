@@ -417,6 +417,27 @@ completed hardware validation is identified explicitly.
   narrow specialization, and wide specialization measured 274.160, 266.032, and
   184.112 us, respectively. It created three distinct schema-v5 nodes, made three
   profile calls, performed two valid-only backups, and reached reward `0.398168`.
+- [x] Test cluster-M multicast on the wide specialized kernel as an evidence-only
+  interaction. The cluster `(1,1)` v70 control passed exactly at 185.264 us. Cluster
+  `(2,1)` compiled and launched but deadlocked at device synchronization, so the
+  existing specialized full/empty barrier protocol is not cluster-safe. Keep this
+  composition outside typed MCTS state.
+- [x] Test two mainloop stages on the wide specialized kernel. The candidate passed
+  exact H100 correctness at 210.272 us versus 185.264 us for the same-image
+  three-stage control, a 13.50% regression (`reward=-0.126620`). Retain the result
+  as valid negative evidence without admitting the composition to typed MCTS.
+- [x] Test SW64 on the wide specialized kernel. The v71 candidate passed exact H100
+  correctness and produced a distinct artifact, but measured 224.192 us versus
+  185.424 us for same-image SW128: a 20.91% regression (`reward=-0.189858`). Keep
+  SW64 available as a reproducible diagnostic, but outside the admitted specialized
+  MCTS neighborhood.
+- [ ] Build an evidence-only persistent CTA tile-scheduler diagnostic for the final
+  wide specialized kernel. The v70 profile is compute-bound (92.22% tensor-pipe,
+  87.32% SM, 28.62% DRAM) and the 512-CTA grid executes in roughly four waves on
+  H100. Test whether one persistent CTA per SM pulling multiple output tiles reduces
+  wave-tail and scheduling overhead. Preserve barrier phases across work items,
+  reset accumulators, prove exact output ownership, and do not promote the scheduler
+  to typed state before H100 correctness and distinct-artifact validation.
 - [x] Exercise both validated independent mutations in one bounded search. The v50
   `B_mut=2`, `B_gen=0`, `max_depth=1` run created separate SW64 and two-stage children
   directly beneath the SW128 three-stage root, performed two valid-only backups, and

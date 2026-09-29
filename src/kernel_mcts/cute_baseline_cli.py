@@ -107,6 +107,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tile-n", type=int)
     parser.add_argument("--independent-cluster-m", type=int, choices=(1, 2), default=1)
     parser.add_argument(
+        "--independent-swizzle-bytes", type=int, choices=(64, 128), default=128
+    )
+    parser.add_argument(
         "--independent-mainloop-schedule",
         choices=("serial", "prefetch"),
         default="serial",
@@ -154,6 +157,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.mode != "independent-tma-copy" and arguments.independent_cluster_m != 1:
         raise ValueError(
             "--independent-cluster-m is available only in independent-tma-copy mode"
+        )
+    if (
+        arguments.mode != "independent-tma-copy"
+        and arguments.independent_swizzle_bytes != 128
+    ):
+        raise ValueError(
+            "--independent-swizzle-bytes is available only in "
+            "independent-tma-copy mode"
         )
     if (
         arguments.mode != "independent-tma-copy"
@@ -297,6 +308,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             tile_m=arguments.tile_m or 64,
             tile_n=arguments.tile_n or 256,
             cluster_m=arguments.independent_cluster_m,
+            swizzle_bytes=arguments.independent_swizzle_bytes,
             mainloop_schedule=arguments.independent_mainloop_schedule,
             repository_contract=arguments.independent_repository_contract,
         )
@@ -354,6 +366,7 @@ def _run_independent_tma_copy(
     tile_m: int = 64,
     tile_n: int = 256,
     cluster_m: int = 1,
+    swizzle_bytes: int = 128,
     mainloop_schedule: str = "serial",
     repository_contract: bool = False,
 ) -> Mapping[str, object]:
@@ -366,6 +379,7 @@ def _run_independent_tma_copy(
             tile_m=tile_m,
             tile_n=tile_n,
             cluster_m=cluster_m,
+            swizzle_bytes=swizzle_bytes,
             mainloop_schedule=mainloop_schedule,
         ),
         debug_stage=debug_stage,
