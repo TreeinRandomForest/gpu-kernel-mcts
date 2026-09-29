@@ -188,6 +188,26 @@ def test_wgmma_two_group_diagnostic_preserves_experimental_path() -> None:
     assert "EPILOGUE_STORAGE_ELEMENTS = 36864" in source
 
 
+def test_combined_cta_tile_renders_complete_workload() -> None:
+    kernel = make_independent_cute_gemm(tile_m=128, tile_n=128)
+
+    source = render_independent_tma_copy_diagnostic(
+        kernel,
+        debug_stage="wgmma_full_workload",
+        repository_contract=True,
+    ).source
+
+    assert "TILE_SHAPE_MNK = (128, 128, 64)" in source
+    assert "GRID_M = 32" in source
+    assert "GRID_N = 32" in source
+    assert "THREADS_PER_CTA = 256" in source
+    assert "MMA_WARP_GROUPS = 2" in source
+    assert "EPILOGUE_TILES_PER_WARP_GROUP = 2" in source
+    assert "EPILOGUE_STAGES = 4" in source
+    assert "EPILOGUE_STORAGE_ELEMENTS = 20480" in source
+    compile(source, "independent_tma_combined_cta.py", "exec")
+
+
 def test_cooperative_typed_diagnostic_stages_each_warp_group_separately() -> None:
     source = render_independent_tma_copy_diagnostic(
         make_independent_cute_gemm(tile_m=128),

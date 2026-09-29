@@ -273,10 +273,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError(
                 "independent-tma-copy supports tile N values 128 or 256"
             )
-        if arguments.tile_m == 128 and arguments.tile_n == 128:
-            raise ValueError(
-                "independent-tma-copy has not validated tile (128,128,64)"
-            )
         result = _run_independent_tma_copy(
             arguments.independent_tma_stage,
             pipeline_stages=arguments.pipeline_stages or 3,

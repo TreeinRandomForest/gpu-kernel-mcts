@@ -78,6 +78,23 @@ def test_narrow_n_kernel_coordinates_wgmma_b_tile_epilogue_and_storage() -> None
     assert validate_independent_cute_gemm(narrow).valid
 
 
+def test_combined_cta_tile_coordinates_wgmma_epilogue_and_storage() -> None:
+    combined = make_independent_cute_gemm(tile_m=128, tile_n=128)
+
+    assert (combined.mainloop.tile_m, combined.mainloop.tile_n) == (128, 128)
+    assert combined.consumer.instruction_n == 128
+    assert combined.consumer.warp_groups_m == 2
+    assert combined.consumer.warp_groups_n == 1
+    assert combined.epilogue.pipeline_stages == 4
+    assert combined.epilogue.barrier_slots == 4
+    assert combined.execution.agents[1].count == 2
+    assert combined.execution.agents[2].count == 256
+    assert combined.execution.buffers[2].stages == 4
+    assert combined.mainloop.shared_memory_bytes == 98_304
+    assert combined.shared_memory_bytes == 139_264
+    assert validate_independent_cute_gemm(combined).valid is True
+
+
 def test_cooperative_kernel_rejects_incomplete_execution_ownership() -> None:
     cooperative = make_independent_cute_gemm(tile_m=128)
     agents = list(cooperative.execution.agents)

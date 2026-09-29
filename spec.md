@@ -2953,6 +2953,17 @@ MLIR and fatbin fingerprints were distinct from the wide root. A sequential
 same-VM/image root measurement was 673.440 us median, making the narrow-N state
 1.30836x faster in that bounded comparison.
 
+The combined `(128,128,64)` lowering is also an admitted typed state. It combines
+two M-axis consumer warp groups with the `64x128x16` WGMMA instruction, a narrowed B
+TMA tile, four disjoint 64x64 epilogue buffers, and a 32x32 fixed-workload grid. On
+2026-09-29, the v56 H100 repository-contract validation produced exact output with
+zero maximum and mean error and measured 619.024 us median over 30 CUDA-event
+samples. Same-image sequential controls measured the `(64,256,64)` root at 671.536
+us and the `(128,256,64)` cooperative state at 453.696 us. The combined state was
+therefore 1.08483x faster than the root but slower than the cooperative state; it is
+retained because valid states are not pruned solely for being locally slower than
+another realization.
+
 The paired transition between the `(64,256,64)` one-group state and the
 `(128,256,64)` two-group state is an allowed deterministic realization of
 `change_cta_tile` and consumes one `B_mut`. The mutation must atomically rebuild the
@@ -2971,6 +2982,16 @@ identity, and rendered source. The narrow-N state may transition back to the roo
 but its combinations with the cooperative M decomposition, SW64, a two-stage
 mainloop, cluster changes, or another epilogue organization remain outside the
 validated space.
+
+The paired transition between the `(64,256,64)` root and `(128,128,64)` combined
+state is a third deterministic realization of `change_cta_tile` and consumes one
+`B_mut`. It atomically rebuilds both operand TMA tiles and storage, the M-axis
+warp-group ownership, WGMMA N instruction, epilogue stage and barrier count,
+shared-memory allocation, launch grid, canonical identity, and rendered source.
+The combined state may transition back to the root, but its direct transitions to
+the other alternate CTA tiles and its combinations with SW64, a two-stage mainloop,
+cluster changes, or another epilogue organization remain outside the validated
+space.
 
 Static validation should reject only proven violations, including incompatible
 shapes/layouts, unsupported MMA partitions, invalid cluster geometry, insufficient

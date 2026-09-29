@@ -458,11 +458,13 @@ def validate_independent_tma_smem_mainloop(
             f"schema version must be {INDEPENDENT_TMA_SMEM_SCHEMA_VERSION}",
             "schema_version",
         )
-    if (plan.tile_m, plan.tile_n, plan.tile_k) not in (
+    supported_tiles = {
         (64, 128, 64),
         (64, 256, 64),
+        (128, 128, 64),
         (128, 256, 64),
-    ):
+    }
+    if (plan.tile_m, plan.tile_n, plan.tile_k) not in supported_tiles:
         reject(
             "unsupported_tile",
             "the independent search space supports tiles (64,128,64), "

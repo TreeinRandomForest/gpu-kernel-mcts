@@ -53,7 +53,7 @@ CUTE_MUTATION_STRATEGIES = (
                 "Change the complete typed CTA decomposition atomically. For the "
                 "pinned representation choose (64,128), (128,128), or (128,256). "
                 "For the independent representation choose only an admitted paired "
-                "transition among (64,128), (64,256), and (128,256)."
+                "transition from (64,256) to (64,128), (128,128), or (128,256)."
             )
         },
     ),
@@ -187,57 +187,36 @@ def enumerate_independent_cute_mutations(
     proposals = []
     current_swizzle = parent.mainloop.a_copy.swizzle_bytes
     current_stages = parent.mainloop.pipeline_stages
-    if (
-        current_swizzle == 128
-        and current_stages == 3
-        and parent.mainloop.tile_n == 256
-        and parent.mainloop.tile_m in (64, 128)
-    ):
-        tile_m = 128 if parent.mainloop.tile_m == 64 else 64
-        candidate = make_independent_cute_gemm(
-            swizzle_bytes=current_swizzle,
-            pipeline_stages=current_stages,
-            tile_m=tile_m,
+    current_tile = (parent.mainloop.tile_m, parent.mainloop.tile_n)
+    root_tile = (64, 256)
+    alternate_tiles = ((128, 256), (64, 128), (128, 128))
+    if current_swizzle == 128 and current_stages == 3:
+        target_tiles = alternate_tiles if current_tile == root_tile else (
+            (root_tile,) if current_tile in alternate_tiles else ()
         )
-        proposals.append(
-            IndependentCuteMutationProposal(
-                parent=parent,
-                candidate=candidate,
-                strategy_id=CHANGE_CTA_TILE,
-                parameters={
-                    "tile_m": tile_m,
-                    "warp_groups_m": tile_m // 64,
-                    "epilogue_stages": (tile_m // 64) * 4,
-                },
-                validation=validate_independent_cute_gemm(candidate),
+        for tile_m, tile_n in target_tiles:
+            candidate = make_independent_cute_gemm(
+                swizzle_bytes=current_swizzle,
+                pipeline_stages=current_stages,
+                tile_m=tile_m,
+                tile_n=tile_n,
             )
-        )
-    if (
-        current_swizzle == 128
-        and current_stages == 3
-        and parent.mainloop.tile_m == 64
-        and parent.mainloop.tile_n in (128, 256)
-    ):
-        tile_n = 128 if parent.mainloop.tile_n == 256 else 256
-        candidate = make_independent_cute_gemm(
-            swizzle_bytes=current_swizzle,
-            pipeline_stages=current_stages,
-            tile_m=parent.mainloop.tile_m,
-            tile_n=tile_n,
-        )
-        proposals.append(
-            IndependentCuteMutationProposal(
-                parent=parent,
-                candidate=candidate,
-                strategy_id=CHANGE_CTA_TILE,
-                parameters={
-                    "tile_n": tile_n,
-                    "instruction_n": tile_n,
-                    "epilogue_stages": tile_n // 64,
-                },
-                validation=validate_independent_cute_gemm(candidate),
+            epilogue_stages = (tile_m // 64) * (tile_n // 64)
+            proposals.append(
+                IndependentCuteMutationProposal(
+                    parent=parent,
+                    candidate=candidate,
+                    strategy_id=CHANGE_CTA_TILE,
+                    parameters={
+                        "tile_m": tile_m,
+                        "tile_n": tile_n,
+                        "warp_groups_m": tile_m // 64,
+                        "instruction_n": tile_n,
+                        "epilogue_stages": epilogue_stages,
+                    },
+                    validation=validate_independent_cute_gemm(candidate),
+                )
             )
-        )
     if parent.mainloop.tile_m != 64 or parent.mainloop.tile_n != 256:
         # Only paired return transitions are admitted from alternate CTA tiles;
         # their SW64 and two-stage combinations remain unvalidated.

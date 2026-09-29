@@ -561,6 +561,34 @@ def test_cli_forwards_independent_narrow_n_tile(monkeypatch, capsys) -> None:
     assert '"status": "ok"' in capsys.readouterr().out
 
 
+def test_cli_forwards_combined_independent_cta_tile(monkeypatch, capsys) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
+        lambda stage, *, pipeline_stages, tile_m, tile_n, repository_contract: calls.append(
+            (stage, pipeline_stages, tile_m, tile_n, repository_contract)
+        )
+        or {"status": "ok"},
+    )
+
+    assert main(
+        [
+            "--mode",
+            "independent-tma-copy",
+            "--independent-tma-stage",
+            "wgmma_full_workload",
+            "--tile-m",
+            "128",
+            "--tile-n",
+            "128",
+            "--independent-repository-contract",
+        ]
+    ) == 0
+
+    assert calls == [("wgmma_full_workload", 3, 128, 128, True)]
+    assert '"status": "ok"' in capsys.readouterr().out
+
+
 def test_generated_module_loader_materializes_inspectable_source(
     tmp_path: Path,
 ) -> None:

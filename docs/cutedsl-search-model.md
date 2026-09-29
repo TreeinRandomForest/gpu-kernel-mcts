@@ -229,10 +229,11 @@ trace analysis is recorded in
 `--cute-root-kind independent` selects the independently lowered
 `(64,256,64)` single-warp-group root on both the client and worker. Worker
 calibration therefore measures the same program used as the search root. The root
-neighborhood now contains four H100-validated realizations: atomically changing both
+neighborhood now contains five H100-validated realizations: atomically changing both
 A and B shared-memory swizzles from 128 bytes to 64 bytes; changing the mainloop from
 three stages to two; changing CTA M from 64 to 128 with a second M-axis consumer
-warp group; or changing CTA/WGMMA N from 256 to 128. Each consumes `B_mut`; no
+warp group; changing CTA/WGMMA N from 256 to 128; or combining both CTA changes as
+`(128,128,64)`. Each consumes `B_mut`; no
 independent LLM proposal path is enabled yet. The router excludes all unvalidated
 combinations among these controls.
 
@@ -271,6 +272,23 @@ cooperative-M and narrow-N children, performed two valid-only backups, and persi
 three distinct state keys and binary hashes. Root, cooperative-M, and narrow-N
 medians were 675.712 us, 450.000 us, and 514.816 us respectively. See
 [independent CTA-tile MCTS smoke v55](experiments/cutedsl-cta-tiles-mcts-v55.md).
+
+The v56 combined CTA diagnostic validated `(128,128,64)` with two M-axis consumer
+warp groups, `64x128x16` WGMMA, four 64x64 epilogue buffers, and a 32x32 grid. It
+passed the repository contract exactly and measured 619.024 us median. Same-image
+root and cooperative controls measured 671.536 us and 453.696 us respectively. The
+combined state is admitted as a third deterministic `change_cta_tile` realization
+because it is correct, distinct, and faster than the root; its being slower than the
+cooperative child is not a pruning criterion. See
+[combined CTA-M/N validation v56](experiments/cutedsl-cta-mn-v56.md).
+
+The v57 bounded MCTS smoke widened the root's `change_cta_tile` edge three times
+with `B_mut=3`, `B_gen=0`, `k_max=3`, and `max_depth=1`. All three proposals were
+valid and created distinct cooperative-M, narrow-N, and combined-M/N nodes. The
+trace contains four distinct configuration and binary identities with no reused
+node. Two subsequent iterations selected cached realizations and performed backups
+without GPU reevaluation. See
+[three-realization CTA-tile MCTS smoke v57](experiments/cutedsl-cta-tiles-mcts-v57.md).
 
 ```bash
 python -m kernel_mcts.search_cli \

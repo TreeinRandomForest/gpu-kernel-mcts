@@ -95,7 +95,7 @@ def render_independent_tma_copy_diagnostic(
     )
     diagnostic_epilogue_stages = (
         8
-        if debug_stage == "wgmma_one_k_no_reuse" or diagnostic_warp_groups == 2
+        if debug_stage in ("wgmma_one_k_no_reuse", "wgmma_two_group")
         else epilogue.pipeline_stages
     )
     full_workload = debug_stage == "wgmma_full_workload"
