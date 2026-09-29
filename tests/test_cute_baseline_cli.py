@@ -670,6 +670,19 @@ def test_cli_forwards_independent_swizzle_bytes(monkeypatch, capsys) -> None:
     assert '"status": "ok"' in capsys.readouterr().out
 
 
+def test_cli_runs_persistent_scheduler_ownership(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_persistent_scheduler_ownership",
+        lambda: {"status": "ok", "exactly_once": True},
+    )
+
+    assert main(["--mode", "persistent-scheduler-ownership"]) == 0
+
+    output = capsys.readouterr().out
+    assert '"exactly_once": true' in output
+    assert '"status": "ok"' in output
+
+
 def test_generated_module_loader_materializes_inspectable_source(
     tmp_path: Path,
 ) -> None:

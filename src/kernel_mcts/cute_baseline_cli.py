@@ -74,6 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
             "smem-swizzle-diagnostic",
             "independent-lowering-bindings",
             "independent-tma-copy",
+            "persistent-scheduler-ownership",
         ),
         default="comparison",
     )
@@ -312,6 +313,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             mainloop_schedule=arguments.independent_mainloop_schedule,
             repository_contract=arguments.independent_repository_contract,
         )
+    elif arguments.mode == "persistent-scheduler-ownership":
+        result = _run_persistent_scheduler_ownership()
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -402,6 +405,30 @@ def _run_independent_tma_copy(
             sys.modules.pop(module.__name__, None)
     if not isinstance(result, Mapping):
         raise TypeError("generated TMA diagnostic must return a mapping")
+    return {**result, "source_hash": rendered.source_hash}
+
+
+def _run_persistent_scheduler_ownership() -> Mapping[str, object]:
+    from .cute_persistent import render_persistent_ownership_diagnostic
+
+    rendered = render_persistent_ownership_diagnostic()
+    with tempfile.TemporaryDirectory(
+        prefix="kernel-mcts-persistent-ownership-"
+    ) as directory:
+        module = _load_generated_module(
+            rendered.source,
+            module_name=f"kernel_mcts_persistent_{rendered.source_hash[:16]}",
+            path=Path(directory) / "persistent_ownership.py",
+        )
+        try:
+            run_diagnostic = getattr(module, "run_diagnostic", None)
+            if not callable(run_diagnostic):
+                raise TypeError("generated run_diagnostic must be callable")
+            result = run_diagnostic()
+        finally:
+            sys.modules.pop(module.__name__, None)
+    if not isinstance(result, Mapping):
+        raise TypeError("persistent ownership diagnostic must return a mapping")
     return {**result, "source_hash": rendered.source_hash}
 
 

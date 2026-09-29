@@ -431,13 +431,21 @@ completed hardware validation is identified explicitly.
   185.424 us for same-image SW128: a 20.91% regression (`reward=-0.189858`). Keep
   SW64 available as a reproducible diagnostic, but outside the admitted specialized
   MCTS neighborhood.
-- [ ] Build an evidence-only persistent CTA tile-scheduler diagnostic for the final
-  wide specialized kernel. The v70 profile is compute-bound (92.22% tensor-pipe,
-  87.32% SM, 28.62% DRAM) and the 512-CTA grid executes in roughly four waves on
-  H100. Test whether one persistent CTA per SM pulling multiple output tiles reduces
-  wave-tail and scheduling overhead. Preserve barrier phases across work items,
-  reset accumulators, prove exact output ownership, and do not promote the scheduler
-  to typed state before H100 correctness and distinct-artifact validation.
+- [x] Build an evidence-only persistent CTA tile-scheduler ownership diagnostic for
+  the final wide specialized kernel. Image v72 launched 132 persistent CTAs on the
+  H100 and assigned the complete 32x16 logical grid exactly once: 512 assignments,
+  512 unique tiles, and zero missing, duplicate, or unexpected tiles. Of the 132
+  workers, 116 received four tiles and 16 received three. This validates bounded
+  scheduling and ownership only; it does not yet validate reused GEMM barriers.
+- [ ] Integrate the validated persistent scheduler into an evidence-only copy of the
+  final wide specialized GEMM. The v70 profile is compute-bound (92.22% tensor-pipe,
+  87.32% SM, 28.62% DRAM) and the static 512-CTA grid executes in roughly four waves
+  on H100. Test whether one persistent CTA per SM pulling multiple output tiles
+  reduces wave-tail and scheduling overhead. Producer and consumer must instantiate
+  identical schedules, reset per-work pipeline counts and accumulators, advance in
+  lockstep, preserve full/empty barrier phases across work items, and retain exact
+  output ownership. Do not promote the scheduler to typed state before H100
+  correctness and distinct-artifact validation.
 - [x] Exercise both validated independent mutations in one bounded search. The v50
   `B_mut=2`, `B_gen=0`, `max_depth=1` run created separate SW64 and two-stage children
   directly beneath the SW128 three-stage root, performed two valid-only backups, and
