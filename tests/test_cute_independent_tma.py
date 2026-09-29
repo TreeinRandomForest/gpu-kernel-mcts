@@ -105,6 +105,20 @@ def test_warp_specialization_diagnostic_separates_dma_and_mma_groups() -> None:
     compile(source, "independent_tma_warp_specialized.py", "exec")
 
 
+def test_warp_specialization_register_diagnostic_repartitions_registers() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(mainloop_schedule="prefetch"),
+        debug_stage="wgmma_full_workload_specialized_registers",
+        repository_contract=True,
+    ).source
+
+    assert "WARP_SPECIALIZED = True" in source
+    assert "REGISTER_REPARTITION = True" in source
+    assert "cute.arch.setmaxregister_decrease(40)" in source
+    assert "cute.arch.setmaxregister_increase(232)" in source
+    compile(source, "independent_tma_warp_specialized_registers.py", "exec")
+
+
 @pytest.mark.parametrize(
     ("stage", "cluster", "enable_b", "enable_multicast", "launch"),
     (
@@ -128,6 +142,13 @@ def test_warp_specialization_diagnostic_separates_dma_and_mma_groups() -> None:
         ("wgmma_two_group", "(1, 1)", True, False, True),
         ("wgmma_full_k", "(1, 1)", True, False, True),
         ("wgmma_full_workload", "(1, 1)", True, False, True),
+        (
+            "wgmma_full_workload_specialized_registers",
+            "(1, 1)",
+            True,
+            False,
+            True,
+        ),
         ("wgmma_one_k_no_reuse", "(1, 1)", True, False, True),
         ("wgmma_one_k", "(1, 1)", True, False, True),
     ),

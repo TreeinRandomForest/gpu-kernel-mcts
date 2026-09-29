@@ -33,6 +33,7 @@ IndependentTmaDebugStage = Literal[
     "wgmma_full_workload",
     "wgmma_full_workload_prefetch",
     "wgmma_full_workload_specialized",
+    "wgmma_full_workload_specialized_registers",
     "wgmma_one_k_no_reuse",
     "wgmma_one_k",
 ]
@@ -59,6 +60,7 @@ INDEPENDENT_TMA_DEBUG_STAGES = (
     "wgmma_full_workload",
     "wgmma_full_workload_prefetch",
     "wgmma_full_workload_specialized",
+    "wgmma_full_workload_specialized_registers",
     "wgmma_one_k_no_reuse",
     "wgmma_one_k",
 )
@@ -106,9 +108,16 @@ def render_independent_tma_copy_diagnostic(
         "wgmma_full_workload",
         "wgmma_full_workload_prefetch",
         "wgmma_full_workload_specialized",
+        "wgmma_full_workload_specialized_registers",
+    )
+    register_repartition = (
+        debug_stage == "wgmma_full_workload_specialized_registers"
     )
     warp_specialized = (
-        debug_stage == "wgmma_full_workload_specialized"
+        debug_stage in (
+            "wgmma_full_workload_specialized",
+            "wgmma_full_workload_specialized_registers",
+        )
         or mainloop.producer_consumer_mode == "warp_specialized"
     )
     overlapped_mainloop = (
@@ -121,6 +130,7 @@ def render_independent_tma_copy_diagnostic(
         "wgmma_full_workload",
         "wgmma_full_workload_prefetch",
         "wgmma_full_workload_specialized",
+        "wgmma_full_workload_specialized_registers",
     )
     problem_k = 4096 if full_k else mainloop.tile_k
     diagnostic_epilogue_storage_elements = (
@@ -182,6 +192,7 @@ def render_independent_tma_copy_diagnostic(
         "wgmma_full_workload",
         "wgmma_full_workload_prefetch",
         "wgmma_full_workload_specialized",
+        "wgmma_full_workload_specialized_registers",
         "wgmma_one_k_no_reuse",
         "wgmma_one_k",
     )
@@ -239,6 +250,7 @@ THREADS_PER_CTA = {threads_per_cta}
 CONSUMER_THREADS = {consumer_threads}
 DMA_WARP_GROUPS = {1 if warp_specialized else 0}
 WARP_SPECIALIZED = {warp_specialized!r}
+REGISTER_REPARTITION = {register_repartition!r}
 MMA_WARP_GROUPS = {diagnostic_warp_groups}
 COOPERATIVE_EPILOGUE = {cooperative_epilogue!r}
 EPILOGUE_TILES_PER_WARP_GROUP = {epilogue_tiles_per_warp_group}
@@ -562,6 +574,8 @@ class IndependentTmaCopyKernel:
                         with cute.arch.elect_one():
                             cute.arch.mbarrier_arrive(producer_full)
             if not WARP_SPECIALIZED or warp_group_idx >= DMA_WARP_GROUPS:
+                if cutlass.const_expr(WARP_SPECIALIZED and REGISTER_REPARTITION):
+                    cute.arch.setmaxregister_increase(232)
                 gC = cute.local_tile(
                     tensor_c,
                     (TILE_SHAPE_MNK[0], TILE_SHAPE_MNK[1]),

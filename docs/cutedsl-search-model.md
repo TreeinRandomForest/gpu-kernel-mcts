@@ -21,7 +21,8 @@ state may eventually include:
 
 Only fields that the typed schema, deterministic renderer, and static validator
 actually support belong to the active search space. The current search supports CTA
-tile, cluster shape, mainloop pipeline depth, and epilogue pipeline depth.
+tile, cluster shape, mainloop pipeline depth, mainloop schedule, producer/consumer
+warp specialization, shared-memory swizzle, and epilogue pipeline depth.
 
 ## Expert template versus structural search
 
@@ -487,3 +488,11 @@ Cooperative prefetch measured 273.776 us median and warp specialization measured
 `change_producer_consumer_specialization` transition consumes `B_mut`, and is
 available only from the validated `(64,256,64)`, cluster `(1,1)`, three-stage SW128
 prefetch state. Other compositions remain excluded pending validation.
+
+The specialized lowering already reduces the dedicated TMA producer to 40 maximum
+registers per thread. A v69 evidence-only diagnostic added the matching CUTLASS-style
+increase to 232 registers for the WGMMA consumer. Both variants were exactly correct
+and produced distinct source and runtime artifacts, but their medians were 266.016
+and 265.840 us (`reward=0.000662`) and the repartitioned mean was slightly slower.
+This is within measurement noise, so consumer register allocation is not promoted to
+typed MCTS state from this evidence.

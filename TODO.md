@@ -396,6 +396,16 @@ completed hardware validation is identified explicitly.
   (`reward=0.032913`). Schema v5 records distinct ownership and identity; the paired
   `change_producer_consumer_specialization` realization consumes one `B_mut` and is
   exposed only from the validated prefetch state.
+- [x] Validate typed warp specialization through MCTS. The v68 H100 smoke used
+  `B_mut=1`, `B_gen=0`, `k_max=1`, and `max_depth=1`; it measured 273.648 us for
+  cooperative prefetch and 266.304 us for the specialized child, backed up reward
+  `0.0272041`, and persisted two distinct schema-v5 nodes and two profiles.
+- [x] Test complete producer/consumer register repartition as an evidence-only
+  specialization diagnostic. The producer already used a 40-register decrease; v69
+  added the matching 232-register consumer increase. Both variants were exactly
+  correct and distinct, but medians of 266.016 and 265.840 us differed by only
+  0.066%, while the repartitioned mean was slightly slower. Do not promote this
+  control to typed MCTS state without stronger evidence.
 - [x] Exercise both validated independent mutations in one bounded search. The v50
   `B_mut=2`, `B_gen=0`, `max_depth=1` run created separate SW64 and two-stage children
   directly beneath the SW128 three-stage root, performed two valid-only backups, and
