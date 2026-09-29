@@ -25,6 +25,16 @@ the [schedule-tuning report](docs/experiments/cutedsl-schedule-tuning-v1.md) and
 [same-worker baseline report](docs/experiments/cutedsl-bf16-same-worker-baselines.md)
 for the full contracts and interpretation limits.
 
+The newer independently lowered CuTe DSL kernel follows an explicit typed
+optimization path: serial mainloop (`675.408 us`), software prefetch (`274.256 us`),
+dedicated producer/consumer warp groups (`266.032 us`), and a two-consumer-group
+`(128,256,64)` CTA (`184.112 us`). This is a 3.67x improvement over the independent
+serial CuTe root. The final v70 MCTS state was approximately 4.55% slower than the
+separately measured `176.096 us` cuBLAS result. The project originally began with a
+naive CUDA C++ root at `28,245.9 us`; that is historical context rather than the
+parent of the typed CuTe path. See the
+[wide-specialization report](docs/experiments/cutedsl-wide-specialized-v69.md).
+
 Separately, a profiled CUDA C++ MCTS run with `B_gen=50` improved its naive root from
 `28,245.9 us` to `1,172.8 us`, a 24.09x root-relative speedup. A later generated
 CUDA kernel followed by an 18-trial standalone grid autotune reached `726.384 us`.

@@ -496,3 +496,12 @@ and produced distinct source and runtime artifacts, but their medians were 266.0
 and 265.840 us (`reward=0.000662`) and the repartitioned mean was slightly slower.
 This is within measurement noise, so consumer register allocation is not promoted to
 typed MCTS state from this evidence.
+
+The v69 interaction experiment combined the validated specialized schedule with the
+existing `(128,256,64)` two-consumer-group CTA. It passed exact correctness and
+measured 185.568 us median, versus 266.016 us for the same-image specialized
+`(64,256,64)` control: a 1.43352x speedup (`reward=0.360135`). A subsequent same-VM
+cuBLAS comparison measured 176.096 us, so the independent kernel was only 5.38%
+slower. Schema v5 already represents the composition without a new field.
+`change_cta_tile` therefore admits this one paired specialized transition while all
+other specialized cross-control combinations remain excluded.

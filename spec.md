@@ -3012,8 +3012,22 @@ cooperative prefetch control measured 273.776 us median and the specialized stat
 measured 264.912 us, a 1.03346x speedup (`reward=0.032913`). The paired transition
 is a deterministic realization of `change_producer_consumer_specialization` and
 consumes one `B_mut`. Specialization requires the prefetch schedule; combinations
-with other independent controls remain outside the admitted space until separately
-validated.
+with other independent controls remain outside the admitted space except for the
+separately validated wide-CTA transition below.
+
+The specialized `(64,256,64)` state admits one paired CTA transition to a
+specialized `(128,256,64)` state. The mutation preserves cluster `(1,1)`, three
+mainloop stages, SW128, prefetch scheduling, and dedicated producer/consumer
+ownership while atomically rebuilding the A tile and storage, consumer warp-group
+count, CTA thread count, epilogue stages and barriers, launch grid, canonical
+identity, and rendered source. On 2026-09-29, the v69 H100 repository-contract run
+passed exact correctness with zero maximum and mean error and measured 185.568 us
+median, versus 266.016 us for the same-image specialized `(64,256,64)` control. This
+is a 1.43352x speedup (`reward=0.360135`). A subsequent same-VM cuBLAS comparison
+measured 176.096 us, leaving the independent kernel 5.38% slower. The paired
+transition is a realization of `change_cta_tile`, consumes one `B_mut`, and may
+return to the narrow specialized state. Other specialized combinations remain
+outside the admitted space.
 
 The paired transition between the `(64,256,64)` one-group state and the
 `(128,256,64)` two-group state is an allowed deterministic realization of

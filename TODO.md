@@ -406,6 +406,17 @@ completed hardware validation is identified explicitly.
   correct and distinct, but medians of 266.016 and 265.840 us differed by only
   0.066%, while the repartitioned mean was slightly slower. Do not promote this
   control to typed MCTS state without stronger evidence.
+- [x] Validate the wide-CTA plus warp-specialization interaction. The v69
+  `(128,256,64)` specialized kernel passed exact H100 correctness and measured
+  185.568 us versus 266.016 us for the same-image `(64,256,64)` specialized control,
+  a 1.43352x speedup (`reward=0.360135`). Same-VM cuBLAS measured 176.096 us, leaving
+  a 5.38% gap. Admit only this paired `change_cta_tile` transition under `B_mut`;
+  keep all other specialized combinations excluded.
+- [x] Validate the admitted specialized composition through MCTS. The v70 H100 run
+  used `B_mut=2`, `B_gen=0`, `k_max=1`, and `max_depth=2`; cooperative prefetch,
+  narrow specialization, and wide specialization measured 274.160, 266.032, and
+  184.112 us, respectively. It created three distinct schema-v5 nodes, made three
+  profile calls, performed two valid-only backups, and reached reward `0.398168`.
 - [x] Exercise both validated independent mutations in one bounded search. The v50
   `B_mut=2`, `B_gen=0`, `max_depth=1` run created separate SW64 and two-stage children
   directly beneath the SW128 three-stage root, performed two valid-only backups, and

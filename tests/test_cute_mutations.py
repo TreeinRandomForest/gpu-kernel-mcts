@@ -683,6 +683,21 @@ def test_prefetch_exposes_validated_warp_specialization_pair() -> None:
     assert specialized.candidate.configuration_hash != prefetch.configuration_hash
     returns = enumerate_independent_cute_mutations(specialized.candidate)
     assert [proposal.strategy_id for proposal in returns] == [
-        CHANGE_PRODUCER_CONSUMER_SPECIALIZATION
+        CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
+        CHANGE_CTA_TILE,
     ]
     assert returns[0].candidate == prefetch
+    wide = returns[1]
+    assert wide.parameters == {
+        "tile_m": 128,
+        "tile_n": 256,
+        "warp_groups_m": 2,
+        "instruction_n": 256,
+        "epilogue_stages": 8,
+    }
+    assert wide.candidate.mainloop.producer_consumer_mode == "warp_specialized"
+    assert wide.candidate.mainloop.schedule == "prefetch"
+    assert wide.validation.valid is True
+    wide_returns = enumerate_independent_cute_mutations(wide.candidate)
+    assert [proposal.strategy_id for proposal in wide_returns] == [CHANGE_CTA_TILE]
+    assert wide_returns[0].candidate == specialized.candidate

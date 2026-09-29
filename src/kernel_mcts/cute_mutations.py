@@ -57,7 +57,8 @@ CUTE_MUTATION_STRATEGIES = (
                 "Change the complete typed CTA decomposition atomically. For the "
                 "pinned representation choose (64,128), (128,128), or (128,256). "
                 "For the independent representation choose only an admitted paired "
-                "transition from (64,256) to (64,128), (128,128), or (128,256)."
+                "transition from (64,256) to (64,128), (128,128), or (128,256), "
+                "or the validated specialized (64,256) to (128,256) transition."
             )
         },
     ),
@@ -222,22 +223,67 @@ def enumerate_independent_cute_mutations(
     current_schedule = parent.mainloop.schedule
     current_mode = parent.mainloop.producer_consumer_mode
     root_tile = (64, 256)
+    specialized_wide_tile = (128, 256)
     alternate_tiles = ((128, 256), (64, 128), (128, 128))
     if current_schedule == "prefetch":
         if current_mode == "warp_specialized":
-            candidate = make_independent_cute_gemm(
-                mainloop_schedule="prefetch",
-                producer_consumer_mode="cooperative",
-            )
-            return (
-                IndependentCuteMutationProposal(
-                    parent=parent,
-                    candidate=candidate,
-                    strategy_id=CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
-                    parameters={"producer_consumer_mode": "cooperative"},
-                    validation=validate_independent_cute_gemm(candidate),
-                ),
-            )
+            proposals = []
+            if current_tile == root_tile:
+                cooperative = make_independent_cute_gemm(
+                    mainloop_schedule="prefetch",
+                    producer_consumer_mode="cooperative",
+                )
+                proposals.append(
+                    IndependentCuteMutationProposal(
+                        parent=parent,
+                        candidate=cooperative,
+                        strategy_id=CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
+                        parameters={"producer_consumer_mode": "cooperative"},
+                        validation=validate_independent_cute_gemm(cooperative),
+                    )
+                )
+                wide = make_independent_cute_gemm(
+                    tile_m=specialized_wide_tile[0],
+                    tile_n=specialized_wide_tile[1],
+                    mainloop_schedule="prefetch",
+                    producer_consumer_mode="warp_specialized",
+                )
+                proposals.append(
+                    IndependentCuteMutationProposal(
+                        parent=parent,
+                        candidate=wide,
+                        strategy_id=CHANGE_CTA_TILE,
+                        parameters={
+                            "tile_m": specialized_wide_tile[0],
+                            "tile_n": specialized_wide_tile[1],
+                            "warp_groups_m": 2,
+                            "instruction_n": 256,
+                            "epilogue_stages": 8,
+                        },
+                        validation=validate_independent_cute_gemm(wide),
+                    )
+                )
+            elif current_tile == specialized_wide_tile:
+                narrow = make_independent_cute_gemm(
+                    mainloop_schedule="prefetch",
+                    producer_consumer_mode="warp_specialized",
+                )
+                proposals.append(
+                    IndependentCuteMutationProposal(
+                        parent=parent,
+                        candidate=narrow,
+                        strategy_id=CHANGE_CTA_TILE,
+                        parameters={
+                            "tile_m": root_tile[0],
+                            "tile_n": root_tile[1],
+                            "warp_groups_m": 1,
+                            "instruction_n": 256,
+                            "epilogue_stages": 4,
+                        },
+                        validation=validate_independent_cute_gemm(narrow),
+                    )
+                )
+            return tuple(proposals)
         serial = make_independent_cute_gemm(mainloop_schedule="serial")
         specialized = make_independent_cute_gemm(
             mainloop_schedule="prefetch",

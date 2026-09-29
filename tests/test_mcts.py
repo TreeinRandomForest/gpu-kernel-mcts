@@ -415,6 +415,59 @@ def test_mcts_creates_warp_specialized_node_under_mutation_budget() -> None:
     assert representation.mainloop.producer_consumer_mode == "warp_specialized"
 
 
+def test_mcts_reaches_wide_specialized_state_with_two_mutations() -> None:
+    class IndependentEvaluator:
+        def evaluate(self, program, workload):
+            representation = independent_cute_gemm_from_source(program.source)
+            mode = representation.mainloop.producer_consumer_mode
+            tile_m = representation.mainloop.tile_m
+            reward = 0.36 if mode == "warp_specialized" and tile_m == 128 else (
+                0.03 if mode == "warp_specialized" else 0.0
+            )
+            return EvaluationResult(
+                ProposalStatus.VALID,
+                program,
+                representation.configuration_hash,
+                reward,
+                BenchmarkResult((1.0,), 1.0, {"n=1": 1.0}),
+                metadata={"representation": representation.as_dict()},
+            )
+
+    evaluator = IndependentEvaluator()
+    root = evaluator.evaluate(
+        IndependentCuteGemmRenderer().render(
+            make_independent_cute_gemm(mainloop_schedule="prefetch")
+        ),
+        WORKLOAD,
+    )
+    selected_ids = {
+        CHANGE_PRODUCER_CONSUMER_SPECIALIZATION,
+        CHANGE_CTA_TILE,
+    }
+    strategies = tuple(
+        item for item in CUTE_MUTATION_STRATEGIES if item.id in selected_ids
+    )
+
+    result = MCTS(
+        strategies=strategies,
+        workload=WORKLOAD,
+        generator=CuteMutationGenerator(),
+        evaluator=evaluator,
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(0),
+        mutation_budget=MutationBudget(2),
+        config=MCTSConfig(max_depth=2, k_max=1),
+    ).run(root)
+
+    assert result.generations == 0
+    assert result.mutations == 2
+    assert len(result.nodes) == 3
+    assert result.best.reward == 0.36
+    representation = independent_cute_gemm_from_source(result.best.program.source)
+    assert representation.mainloop.tile_m == 128
+    assert representation.mainloop.producer_consumer_mode == "warp_specialized"
+
+
 def test_mcts_creates_cooperative_independent_node_under_mutation_budget() -> None:
     class IndependentEvaluator:
         def evaluate(self, program, workload):
