@@ -382,10 +382,13 @@ completed hardware validation is identified explicitly.
   `change_cta_tile` with one `B_mut` charge while excluding unvalidated combinations.
   A sequential same-VM/image root measurement was 673.440 us, a bounded 1.30836x
   speedup (`reward=0.268776`) before the MCTS smoke.
-- [ ] Run a bounded remote MCTS smoke that widens `change_cta_tile` twice from the
+- [x] Run a bounded remote MCTS smoke that widens `change_cta_tile` twice from the
   independent root and confirms that the cooperative-M and narrow-N realizations
   become distinct valid nodes with `B_mut=2`, `B_gen=0`, cached evaluations, and
-  valid-only backups.
+  valid-only backups. The v55 run completed in two iterations with three distinct
+  state keys and binary hashes, two valid-only backups, and no generation calls.
+  The 675.712 us root widened to the 450.000 us cooperative-M child
+  (`reward=0.406519`) and the 514.816 us narrow-N child (`reward=0.271957`).
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms

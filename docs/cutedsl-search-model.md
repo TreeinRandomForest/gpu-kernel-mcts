@@ -265,6 +265,13 @@ realization of `change_cta_tile`; narrow-N combinations with the other structura
 controls remain ineligible pending separate validation. See
 [CTA-N/WGMMA-N validation v54](experiments/cutedsl-cta-n-v54.md).
 
+The v55 bounded MCTS smoke widened the root's `change_cta_tile` edge twice with
+`B_mut=2`, `B_gen=0`, `k_max=2`, and `max_depth=1`. It created distinct valid
+cooperative-M and narrow-N children, performed two valid-only backups, and persisted
+three distinct state keys and binary hashes. Root, cooperative-M, and narrow-N
+medians were 675.712 us, 450.000 us, and 514.816 us respectively. See
+[independent CTA-tile MCTS smoke v55](experiments/cutedsl-cta-tiles-mcts-v55.md).
+
 ```bash
 python -m kernel_mcts.search_cli \
   --provider nebius \
