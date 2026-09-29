@@ -445,3 +445,15 @@ Autotuning is not required at every MCTS node. Initially, MCTS should evaluate e
 new complete configuration once and reuse its cached result. Standalone or post-search
 autotuning remains separately budgeted. Any future leaf-local tuner should be an
 explicit ablation rather than hidden work performed at every expansion.
+
+## Independent pipeline-depth realizations
+
+For the independent `(64,256,64)`, cluster `(1,1)`, SW128 root,
+`change_pipeline_stages` has two deterministic realizations: two and four mainloop
+stages. Each rebuilds the complete typed storage and barrier rings rather than
+patching a source constant. The four-stage v60 H100 validation passed the repository
+correctness contract exactly and measured 675.440 us median, versus 669.760 us for
+the same-image three-stage root. Its negative reward (`-0.008445`) is preserved as
+valid search evidence. Alternate pipeline depths return to stage three; direct
+two-to-four and cross-control compositions remain excluded until separately
+validated.

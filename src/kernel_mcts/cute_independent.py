@@ -481,10 +481,10 @@ def validate_independent_tma_smem_mainloop(
             "the initial independent mainloop supports only cluster (1,1)",
             "cluster",
         )
-    if plan.pipeline_stages not in (2, 3):
+    if plan.pipeline_stages not in (2, 3, 4):
         reject(
             "unsupported_pipeline_depth",
-            "the independent mainloop supports two or three pipeline stages",
+            "the independent mainloop supports two, three, or four pipeline stages",
             "pipeline_stages",
         )
     if plan.barrier_slots != plan.pipeline_stages:

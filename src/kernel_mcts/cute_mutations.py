@@ -74,8 +74,9 @@ CUTE_MUTATION_STRATEGIES = (
         "Change the A/B mainloop pipeline depth while preserving epilogue staging.",
         {
             "cute_dsl": (
-                "Change only pipeline_stages. Choose one supported explicit value: "
-                "2 or 3. None preserves the pinned heuristic and is not a proposal."
+                "Change only pipeline_stages. Choose 2 or 3 for the pinned "
+                "representation, or 2, 3, or 4 for the independent representation. "
+                "None preserves the pinned heuristic and is not a proposal."
             )
         },
     ),
@@ -275,20 +276,21 @@ def enumerate_independent_cute_mutations(
             )
         )
     if current_swizzle == 128:
-        pipeline_stages = 2 if current_stages == 3 else 3
-        candidate = make_independent_cute_gemm(
-            swizzle_bytes=current_swizzle,
-            pipeline_stages=pipeline_stages,
-        )
-        proposals.append(
-            IndependentCuteMutationProposal(
-                parent=parent,
-                candidate=candidate,
-                strategy_id=CHANGE_PIPELINE_STAGES,
-                parameters={"pipeline_stages": pipeline_stages},
-                validation=validate_independent_cute_gemm(candidate),
+        target_stages = (2, 4) if current_stages == 3 else (3,)
+        for pipeline_stages in target_stages:
+            candidate = make_independent_cute_gemm(
+                swizzle_bytes=current_swizzle,
+                pipeline_stages=pipeline_stages,
             )
-        )
+            proposals.append(
+                IndependentCuteMutationProposal(
+                    parent=parent,
+                    candidate=candidate,
+                    strategy_id=CHANGE_PIPELINE_STAGES,
+                    parameters={"pipeline_stages": pipeline_stages},
+                    validation=validate_independent_cute_gemm(candidate),
+                )
+            )
     return tuple(proposals)
 
 def mutate_cute_program(

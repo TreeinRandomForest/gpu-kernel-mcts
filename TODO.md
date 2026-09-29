@@ -366,6 +366,19 @@ completed hardware validation is identified explicitly.
   nodes, two profile calls, and no generation calls. The three-stage root measured
   673.728 us median and the two-stage child measured 668.784 us (`reward=0.007365`),
   a near-noise difference consistent with the standalone validation.
+- [x] Validate and promote the independent four-stage mainloop as a second
+  `change_pipeline_stages` realization. The typed A/B storage rings, barrier ring,
+  epilogue offset, execution buffers, canonical identity, and rendered source all
+  change atomically. The v60 H100 repository-contract run passed exact correctness
+  and measured 675.440 us median versus 669.760 us for the same-image three-stage
+  root (`reward=-0.008445`). It remains searchable because valid slower states are
+  not pruned. Stage two and stage four each return only to the stage-three root;
+  unvalidated cross-control combinations remain excluded.
+- [x] Exercise both pipeline-depth realizations in one bounded H100 search. The v61
+  run used `B_mut=2`, `B_gen=0`, `k_max=2`, and `max_depth=1`; it created distinct
+  stage-two and stage-four nodes and backed up both valid measurements. The root,
+  stage-two, and stage-four medians were 669.664, 670.048, and 675.808 us,
+  respectively. No LLM calls or hidden reevaluations were used.
 - [x] Exercise both validated independent mutations in one bounded search. The v50
   `B_mut=2`, `B_gen=0`, `max_depth=1` run created separate SW64 and two-stage children
   directly beneath the SW128 three-stage root, performed two valid-only backups, and

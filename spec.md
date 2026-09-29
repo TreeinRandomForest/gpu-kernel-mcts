@@ -2974,6 +2974,18 @@ median over 30 CUDA-event samples. A same-image sequential `(1,1)` root control
 measured 673.776 us median, making the clustered state 1.02248x faster in that
 bounded comparison.
 
+The four-stage `(64,256,64)`, cluster `(1,1)`, SW128 mainloop is also an admitted
+typed state. It atomically extends the A/B storage rings and barrier ring to four,
+moves the epilogue storage offset, and raises combined shared-memory use to 204,800
+bytes, below the typed H100 per-CTA limit. On 2026-09-29, the v60 H100
+repository-contract validation produced exact output with zero maximum and mean
+error and measured 675.440 us median over 30 CUDA-event samples. A same-image
+three-stage root measured 669.760 us, giving reward -0.008445. The state is retained
+despite being locally slower. From the three-stage root, stages two and four are two
+deterministic realizations of `change_pipeline_stages`; either alternate state may
+transition back to stage three, but the stage-two to stage-four transition and
+combinations with other independent controls remain outside the admitted space.
+
 The paired transition between the `(64,256,64)` one-group state and the
 `(128,256,64)` two-group state is an allowed deterministic realization of
 `change_cta_tile` and consumes one `B_mut`. The mutation must atomically rebuild the

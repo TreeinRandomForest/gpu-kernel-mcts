@@ -41,6 +41,18 @@ def test_two_stage_mainloop_has_distinct_identity_and_compact_storage() -> None:
     assert [buffer.stages for buffer in stage_two.execution.buffers] == [2, 2, 4]
 
 
+def test_four_stage_mainloop_is_structurally_complete_and_valid() -> None:
+    stage_four = make_independent_cute_gemm(pipeline_stages=4)
+
+    assert stage_four.mainloop.pipeline_stages == 4
+    assert stage_four.mainloop.barrier_slots == 4
+    assert stage_four.mainloop.shared_memory_bytes == 163_840
+    assert stage_four.epilogue.storage_offset_bytes == 163_840
+    assert stage_four.shared_memory_bytes == 204_800
+    assert [buffer.stages for buffer in stage_four.execution.buffers] == [4, 4, 4]
+    assert validate_independent_cute_gemm(stage_four).valid is True
+
+
 def test_cooperative_kernel_owns_two_accumulator_rows_and_eight_output_tiles() -> None:
     single = make_independent_cute_gemm()
     cooperative = make_independent_cute_gemm(tile_m=128)

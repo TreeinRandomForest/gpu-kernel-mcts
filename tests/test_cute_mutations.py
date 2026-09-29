@@ -315,8 +315,9 @@ def test_independent_neighborhood_contains_only_validated_root_transitions() -> 
         CHANGE_CLUSTER_SHAPE,
         CHANGE_SHARED_MEMORY_SWIZZLE,
         CHANGE_PIPELINE_STAGES,
+        CHANGE_PIPELINE_STAGES,
     ]
-    cooperative, narrow_n, combined, cluster, swizzle, pipeline = proposals
+    cooperative, narrow_n, combined, cluster, swizzle, stage_two, stage_four = proposals
     assert cooperative.parameters == {
         "tile_m": 128,
         "tile_n": 256,
@@ -360,22 +361,31 @@ def test_independent_neighborhood_contains_only_validated_root_transitions() -> 
     assert swizzle.parameters == {"swizzle_bytes": 64}
     assert swizzle.candidate.mainloop.a_copy.swizzle_bytes == 64
     assert swizzle.candidate.mainloop.b_copy.swizzle_bytes == 64
-    assert pipeline.parameters == {"pipeline_stages": 2}
-    assert pipeline.candidate.mainloop.pipeline_stages == 2
-    assert pipeline.candidate.mainloop.barrier_slots == 2
+    assert stage_two.parameters == {"pipeline_stages": 2}
+    assert stage_two.candidate.mainloop.pipeline_stages == 2
+    assert stage_two.candidate.mainloop.barrier_slots == 2
+    assert stage_four.parameters == {"pipeline_stages": 4}
+    assert stage_four.candidate.mainloop.pipeline_stages == 4
+    assert stage_four.candidate.mainloop.barrier_slots == 4
     assert all(proposal.validation.valid for proposal in proposals)
 
 
 def test_independent_neighborhood_excludes_unvalidated_stage_swizzle_combination() -> None:
     stage_two = make_independent_cute_gemm(pipeline_stages=2)
+    stage_four = make_independent_cute_gemm(pipeline_stages=4)
     sw64 = make_independent_cute_gemm(swizzle_bytes=64)
 
     stage_two_proposals = enumerate_independent_cute_mutations(stage_two)
+    stage_four_proposals = enumerate_independent_cute_mutations(stage_four)
     sw64_proposals = enumerate_independent_cute_mutations(sw64)
 
     assert [proposal.strategy_id for proposal in stage_two_proposals] == [
         CHANGE_PIPELINE_STAGES
     ]
+    assert [proposal.strategy_id for proposal in stage_four_proposals] == [
+        CHANGE_PIPELINE_STAGES
+    ]
+    assert stage_four_proposals[0].candidate == make_independent_cute_gemm()
     assert [proposal.strategy_id for proposal in sw64_proposals] == [
         CHANGE_SHARED_MEMORY_SWIZZLE
     ]
@@ -384,7 +394,7 @@ def test_independent_neighborhood_excludes_unvalidated_stage_swizzle_combination
             proposal.candidate.mainloop.pipeline_stages == 2
             and proposal.candidate.mainloop.a_copy.swizzle_bytes == 64
         )
-        for proposal in (*stage_two_proposals, *sw64_proposals)
+        for proposal in (*stage_two_proposals, *stage_four_proposals, *sw64_proposals)
     )
 
 
@@ -569,7 +579,7 @@ def test_generator_emits_independent_swizzle_and_exhausts_parent_strategy() -> N
     assert generator.can_generate(request) is False
 
 
-def test_generator_emits_independent_two_stage_candidate() -> None:
+def test_generator_emits_both_independent_pipeline_candidates() -> None:
     generator = CuteMutationGenerator()
     strategy = next(
         item
@@ -585,11 +595,18 @@ def test_generator_emits_independent_two_stage_candidate() -> None:
     )
 
     result = generator.generate(request)
+    stage_four_result = generator.generate(request)
 
     assert result.program is not None
     candidate = independent_cute_gemm_from_source(result.program.source)
     assert candidate.mainloop.pipeline_stages == 2
     assert result.metadata["transformation"]["parameters"] == {
         "pipeline_stages": 2
+    }
+    assert stage_four_result.program is not None
+    stage_four = independent_cute_gemm_from_source(stage_four_result.program.source)
+    assert stage_four.mainloop.pipeline_stages == 4
+    assert stage_four_result.metadata["transformation"]["parameters"] == {
+        "pipeline_stages": 4
     }
     assert generator.can_generate(request) is False

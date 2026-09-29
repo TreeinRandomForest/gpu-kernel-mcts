@@ -266,9 +266,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif arguments.mode == "independent-lowering-bindings":
         result = _run_independent_lowering_bindings()
     elif arguments.mode == "independent-tma-copy":
-        if arguments.pipeline_stages not in (None, 2, 3):
+        if arguments.pipeline_stages not in (None, 2, 3, 4):
             raise ValueError(
-                "independent-tma-copy supports pipeline stages 2 or 3"
+                "independent-tma-copy supports pipeline stages 2, 3, or 4"
             )
         if arguments.tile_m not in (None, 64, 128):
             raise ValueError(

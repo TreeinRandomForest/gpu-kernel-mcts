@@ -57,6 +57,20 @@ def test_typed_cluster_multicast_renders_complete_workload() -> None:
     compile(source, "independent_tma_cluster_multicast.py", "exec")
 
 
+def test_four_stage_mainloop_is_admitted() -> None:
+    kernel = make_independent_cute_gemm(pipeline_stages=4)
+
+    source = render_independent_tma_copy_diagnostic(
+        kernel,
+        debug_stage="wgmma_full_workload",
+        repository_contract=True,
+    ).source
+
+    assert "MAINLOOP_STAGES = 4" in source
+    assert "EPILOGUE_STAGES = 4" in source
+    compile(source, "independent_tma_pipeline_four.py", "exec")
+
+
 @pytest.mark.parametrize(
     ("stage", "cluster", "enable_b", "enable_multicast", "launch"),
     (
