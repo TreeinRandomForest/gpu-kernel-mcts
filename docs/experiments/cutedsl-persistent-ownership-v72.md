@@ -95,3 +95,27 @@ coverage and A/B TMA payload samples also remained exact. This validates the ent
 persistent path for one K tile. It is not yet the repository workload because the
 real GEMM accumulates 64 K tiles per output; that full-K carry is the final
 correctness gate before latency measurement or typed-state promotion.
+
+## Full-K follow-up (v78 and v81)
+
+Image v78 extended each persistent output work item from one K tile to all 64 K
+tiles. Accumulators are reset once per output tile, while the full/empty stage and
+phase are derived from a global K-tile ordinal so the three-stage ring remains
+continuous across scheduler work items. The synthetic full-size diagnostic covered
+all 512 output tiles exactly once and matched its full-K reference with zero maximum
+and mean error. That established internal full-K correctness, but did not yet use the
+repository's canonical inputs or cuBLAS reference.
+
+Image v81 closed that comparability gap. It used the repository's deterministic
+4096x4096x4096 BF16 inputs, seed 0, cuBLAS FP32-accumulation reference, ten warmups,
+and thirty CUDA-event measurements. All ownership and sampled TMA checks remained
+exact, and the complete output matched the reference with zero maximum and mean
+error. Median latency was 239.312 us (mean 240.363 us, minimum 235.552 us, maximum
+261.056 us).
+
+The persistent result is 30.0% slower than the 184.112 us static specialized CuTe
+kernel and 35.9% slower than the same-VM 176.096 us cuBLAS result. Persistent
+scheduling is therefore a correct, distinct implementation but negative performance
+evidence for this workload. It remains outside typed MCTS state because the current
+Milestone B design space does not include this scheduler; admitting it requires an
+explicit spec amendment rather than a silent semantic expansion.

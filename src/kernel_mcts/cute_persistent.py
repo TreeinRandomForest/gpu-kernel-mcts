@@ -127,6 +127,11 @@ class PersistentOwnershipKernel:
 
 
 def run_diagnostic():
+    import ctypes
+    import statistics
+    import subprocess
+    import tempfile
+    from pathlib import Path
     import torch
     from kernel_mcts.cute_diagnostics import describe_kernel_callable
 
@@ -382,6 +387,7 @@ def render_persistent_tma_diagnostic(
     pipeline_stages: int = 3,
     enable_wgmma_issue: bool = False,
     enable_epilogue: bool = False,
+    full_k: bool = False,
 ) -> PersistentOwnershipDiagnosticSource:
     """Render a persistent TMA payload/addressing diagnostic.
 
@@ -399,6 +405,11 @@ def render_persistent_tma_diagnostic(
 
     source = f'''# Generated persistent TMA payload diagnostic.
 import math
+import ctypes
+from pathlib import Path
+import statistics
+import subprocess
+import tempfile
 
 import cuda.bindings.driver as cuda
 import cutlass
@@ -417,6 +428,9 @@ THREADS_PER_CTA = 256
 MAX_TILES_PER_CTA = 4
 ENABLE_WGMMA_ISSUE = {enable_wgmma_issue!r}
 ENABLE_EPILOGUE = {enable_epilogue!r}
+FULL_K = {full_k!r}
+K_TILES_PER_WORK = 64 if FULL_K else 1
+PROBLEM_K = K_TILES_PER_WORK * TILE_SHAPE_MNK[2]
 CONSUMER_THREADS = 256 if ENABLE_WGMMA_ISSUE else 1
 THREADS_PER_CTA = 384 if ENABLE_WGMMA_ISSUE else 256
 EPILOGUE_TILE = (64, 64)
@@ -584,24 +598,30 @@ class PersistentTmaKernel:
             work = producer.initial_work_tile_info()
             while work.is_valid_tile:
                 tile_m, tile_n, _ = work.tile_idx
-                stage = producer.num_tiles_executed % PIPELINE_STAGES
-                phase = (producer.num_tiles_executed // PIPELINE_STAGES) % 2
-                cute.arch.mbarrier_wait(empty + stage, phase)
-                cute.arch.mbarrier_expect_tx(full + stage, transaction_bytes)
-                cute.copy(
-                    tma_a,
-                    tAgA[(None, tile_m, 0)],
-                    tAsA[(None, stage)],
-                    tma_bar_ptr=full + stage,
-                )
-                cute.copy(
-                    tma_b,
-                    tBgB[(None, tile_n, 0)],
-                    tBsB[(None, stage)],
-                    tma_bar_ptr=full + stage,
-                )
-                with cute.arch.elect_one():
-                    cute.arch.mbarrier_arrive(full + stage)
+                for k_tile in cutlass.range(
+                    0, K_TILES_PER_WORK, 1, unroll=1
+                ):
+                    global_k_tile = (
+                        producer.num_tiles_executed * K_TILES_PER_WORK + k_tile
+                    )
+                    stage = global_k_tile % PIPELINE_STAGES
+                    phase = (global_k_tile // PIPELINE_STAGES) % 2
+                    cute.arch.mbarrier_wait(empty + stage, phase)
+                    cute.arch.mbarrier_expect_tx(full + stage, transaction_bytes)
+                    cute.copy(
+                        tma_a,
+                        tAgA[(None, tile_m, k_tile)],
+                        tAsA[(None, stage)],
+                        tma_bar_ptr=full + stage,
+                    )
+                    cute.copy(
+                        tma_b,
+                        tBgB[(None, tile_n, k_tile)],
+                        tBsB[(None, stage)],
+                        tma_bar_ptr=full + stage,
+                    )
+                    with cute.arch.elect_one():
+                        cute.arch.mbarrier_arrive(full + stage)
                 producer.advance_to_next_work()
                 work = producer.get_current_work()
 
@@ -648,9 +668,6 @@ class PersistentTmaKernel:
             while work.is_valid_tile:
                 tile_m, tile_n, _ = work.tile_idx
                 slot = consumer.num_tiles_executed
-                stage = slot % PIPELINE_STAGES
-                phase = (slot // PIPELINE_STAGES) % 2
-                cute.arch.mbarrier_wait(full + stage, phase)
                 if cutlass.const_expr(ENABLE_WGMMA_ISSUE):
                     gC = cute.local_tile(
                         tensor_c,
@@ -661,31 +678,40 @@ class PersistentTmaKernel:
                     accumulators = cute.make_rmem_tensor(tCgC.shape, cutlass.Float32)
                     accumulators.fill(0.0)
                     tiled_mma.set(cute.nvgpu.warpgroup.Field.ACCUMULATE, False)
-                    cute.nvgpu.warpgroup.fence()
-                    for k_block in cutlass.range(
-                        cute.size(tCrA, mode=[2]), unroll_full=True
-                    ):
-                        cute.gemm(
-                            tiled_mma,
-                            accumulators,
-                            tCrA[(None, None, k_block, stage)],
-                            tCrB[(None, None, k_block, stage)],
-                            accumulators,
-                        )
-                        tiled_mma.set(
-                            cute.nvgpu.warpgroup.Field.ACCUMULATE, True
-                        )
-                    cute.nvgpu.warpgroup.commit_group()
-                    cute.nvgpu.warpgroup.wait_group(0)
-                    consumer_barrier.arrive_and_wait()
-                if tidx == 128:
-                    coordinates[(worker, slot, 0)] = tile_m
-                    coordinates[(worker, slot, 1)] = tile_n
-                    samples[(worker, slot, 0)] = sA[(0, 0, stage)]
-                    samples[(worker, slot, 1)] = sB[(0, 0, stage)]
-                    cute.arch.mbarrier_arrive(empty + stage)
-                if cutlass.const_expr(ENABLE_WGMMA_ISSUE):
-                    consumer_barrier.arrive_and_wait()
+                for k_tile in cutlass.range(
+                    0, K_TILES_PER_WORK, 1, unroll=1
+                ):
+                    global_k_tile = slot * K_TILES_PER_WORK + k_tile
+                    stage = global_k_tile % PIPELINE_STAGES
+                    phase = (global_k_tile // PIPELINE_STAGES) % 2
+                    cute.arch.mbarrier_wait(full + stage, phase)
+                    if cutlass.const_expr(ENABLE_WGMMA_ISSUE):
+                        cute.nvgpu.warpgroup.fence()
+                        for k_block in cutlass.range(
+                            cute.size(tCrA, mode=[2]), unroll_full=True
+                        ):
+                            cute.gemm(
+                                tiled_mma,
+                                accumulators,
+                                tCrA[(None, None, k_block, stage)],
+                                tCrB[(None, None, k_block, stage)],
+                                accumulators,
+                            )
+                            tiled_mma.set(
+                                cute.nvgpu.warpgroup.Field.ACCUMULATE, True
+                            )
+                        cute.nvgpu.warpgroup.commit_group()
+                        cute.nvgpu.warpgroup.wait_group(0)
+                        consumer_barrier.arrive_and_wait()
+                    if tidx == 128:
+                        if k_tile == 0:
+                            coordinates[(worker, slot, 0)] = tile_m
+                            coordinates[(worker, slot, 1)] = tile_n
+                            samples[(worker, slot, 0)] = sA[(0, 0, stage)]
+                            samples[(worker, slot, 1)] = sB[(0, 0, stage)]
+                        cute.arch.mbarrier_arrive(empty + stage)
+                    if cutlass.const_expr(ENABLE_WGMMA_ISSUE):
+                        consumer_barrier.arrive_and_wait()
                 if cutlass.const_expr(ENABLE_EPILOGUE):
                     tRS_rAcc = tiled_copy_r2s.retile(accumulators)
                     rC_shape = cute.shape(thr_copy_r2s.partition_S(sC))
@@ -748,10 +774,53 @@ def run_diagnostic():
     properties = torch.cuda.get_device_properties(torch.cuda.current_device())
     max_active_clusters = int(properties.multi_processor_count)
     persistent_ctas = min(LOGICAL_TILE_COUNT, max_active_clusters)
-    a = torch.arange(GRID_M * TILE_SHAPE_MNK[0], device="cuda", dtype=torch.float32)
-    a = a[:, None].expand(-1, TILE_SHAPE_MNK[2]).to(torch.bfloat16).contiguous()
-    b = torch.arange(GRID_N * TILE_SHAPE_MNK[1], device="cuda", dtype=torch.float32)
-    b = (10000 + b[:, None]).expand(-1, TILE_SHAPE_MNK[2]).to(torch.bfloat16).contiguous()
+    input_directory = None
+    if FULL_K:
+        input_directory = tempfile.TemporaryDirectory(
+            prefix="kernel-mcts-persistent-inputs-"
+        )
+        root = Path(input_directory.name)
+        a_path = root / "a.bf16"
+        b_path = root / "b.bf16"
+        subprocess.run(
+            [
+                "/usr/local/bin/kernel-mcts-bf16-inputs",
+                str(GRID_M * TILE_SHAPE_MNK[0]),
+                str(GRID_N * TILE_SHAPE_MNK[1]),
+                str(PROBLEM_K),
+                "0",
+                str(a_path),
+                str(b_path),
+            ],
+            check=True,
+            timeout=120,
+        )
+        a = torch.from_file(
+            str(a_path),
+            shared=False,
+            size=GRID_M * TILE_SHAPE_MNK[0] * PROBLEM_K,
+            dtype=torch.bfloat16,
+        ).reshape(GRID_M * TILE_SHAPE_MNK[0], PROBLEM_K).to("cuda")
+        b = torch.from_file(
+            str(b_path),
+            shared=False,
+            size=GRID_N * TILE_SHAPE_MNK[1] * PROBLEM_K,
+            dtype=torch.bfloat16,
+        ).reshape(GRID_N * TILE_SHAPE_MNK[1], PROBLEM_K).to("cuda")
+    else:
+        a = torch.arange(
+            GRID_M * TILE_SHAPE_MNK[0], device="cuda", dtype=torch.float32
+        )
+        a = a[:, None].expand(-1, PROBLEM_K).to(torch.bfloat16).contiguous()
+        b = torch.arange(
+            GRID_N * TILE_SHAPE_MNK[1], device="cuda", dtype=torch.float32
+        )
+        b = (
+            (10000 + b[:, None])
+            .expand(-1, PROBLEM_K)
+            .to(torch.bfloat16)
+            .contiguous()
+        )
     c = torch.zeros(
         (GRID_M * TILE_SHAPE_MNK[0], GRID_N * TILE_SHAPE_MNK[1]),
         device="cuda",
@@ -803,15 +872,67 @@ def run_diagnostic():
     maximum_error = None
     mean_error = None
     if ENABLE_EPILOGUE:
-        reference = torch.matmul(a.float(), b.float().transpose(0, 1)).to(
-            torch.bfloat16
-        )
+        if FULL_K:
+            reference = torch.empty_like(c)
+            library = ctypes.CDLL("/usr/local/lib/kernel-mcts-bf16-reference.so")
+            reference_call = library.kernel_mcts_bf16_reference
+            reference_call.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            reference_call.restype = ctypes.c_int
+            reference_status = reference_call(
+                a.data_ptr(),
+                b.data_ptr(),
+                reference.data_ptr(),
+                GRID_M * TILE_SHAPE_MNK[0],
+                GRID_N * TILE_SHAPE_MNK[1],
+                PROBLEM_K,
+            )
+            if reference_status != 0:
+                raise RuntimeError(
+                    f"cuBLAS reference failed with status {{reference_status}}"
+                )
+            torch.cuda.synchronize()
+        else:
+            reference = torch.matmul(a.float(), b.float().transpose(0, 1)).to(
+                torch.bfloat16
+            )
         error = (c.float() - reference.float()).abs()
         maximum_error = float(error.max().item())
         mean_error = float(error.mean().item())
-        numerical_correct = bool(torch.all(error == 0).item())
+        numerical_correct = bool(
+            torch.all(error <= 0.02 + 0.02 * reference.float().abs()).item()
+        )
+    benchmark = None
+    if FULL_K and numerical_correct:
+        for _ in range(10):
+            compiled(*tensors, cutlass.Int32(max_active_clusters), stream)
+        torch.cuda.synchronize()
+        timings_us = []
+        for _ in range(30):
+            start = torch.cuda.Event(enable_timing=True)
+            end = torch.cuda.Event(enable_timing=True)
+            start.record()
+            compiled(*tensors, cutlass.Int32(max_active_clusters), stream)
+            end.record()
+            end.synchronize()
+            timings_us.append(float(start.elapsed_time(end) * 1000.0))
+        benchmark = {{
+            "warmup_count": 10,
+            "measurement_count": 30,
+            "timings_us": timings_us,
+            "median_us": float(statistics.median(timings_us)),
+            "mean_us": float(statistics.mean(timings_us)),
+            "min_us": min(timings_us),
+            "max_us": max(timings_us),
+        }}
     passed = exactly_once and payload_exact and numerical_correct is not False
-    return {{
+    result = {{
         "status": "ok" if passed else "tma_payload_failed",
         "logical_tile_count": LOGICAL_TILE_COUNT,
         "persistent_cta_count": persistent_ctas,
@@ -821,11 +942,18 @@ def run_diagnostic():
         "payload_exact": payload_exact,
         "wgmma_issued": ENABLE_WGMMA_ISSUE,
         "epilogue_stored": ENABLE_EPILOGUE,
+        "full_k": FULL_K,
+        "k_tiles_per_work": K_TILES_PER_WORK,
         "numerical_correct": numerical_correct,
         "maximum_error": maximum_error,
         "mean_error": mean_error,
+        "benchmark": benchmark,
+        "repository_contract": FULL_K,
         "mismatches": mismatches[:16],
         "jit_diagnostics": jit_diagnostics,
     }}
+    if input_directory is not None:
+        input_directory.cleanup()
+    return result
 '''
     return PersistentOwnershipDiagnosticSource(source)

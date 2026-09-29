@@ -465,15 +465,16 @@ completed hardware validation is identified explicitly.
   reuse. All 512 output tiles matched the one-K FP32 reference exactly, with zero
   maximum and mean error, while ownership and TMA payload checks remained exact.
   The remaining correctness gate is carrying all 64 K tiles per output item.
-- [ ] Integrate the validated persistent scheduler into an evidence-only copy of the
+- [x] Integrate the validated persistent scheduler into an evidence-only copy of the
   final wide specialized GEMM. The v70 profile is compute-bound (92.22% tensor-pipe,
   87.32% SM, 28.62% DRAM) and the static 512-CTA grid executes in roughly four waves
-  on H100. Test whether one persistent CTA per SM pulling multiple output tiles
-  reduces wave-tail and scheduling overhead. Producer and consumer must instantiate
-  identical schedules, reset per-work pipeline counts and accumulators, advance in
-  lockstep, preserve full/empty barrier phases across work items, and retain exact
-  output ownership. Do not promote the scheduler to typed state before H100
-  correctness and distinct-artifact validation.
+  on H100. Image v78 carried all 64 K tiles through the three-stage ring and matched
+  its synthetic full-K reference exactly. Image v81 then passed the repository
+  4096x4096x4096 BF16 contract against the cuBLAS FP32-accumulation reference with
+  zero maximum and mean error. Its 239.312 us median was 30.0% slower than the
+  184.112 us static specialized kernel and 35.9% slower than the 176.096 us cuBLAS
+  result. Retain persistent scheduling as valid negative evidence; do not promote it
+  to typed MCTS state without an explicit Milestone B spec amendment.
 - [x] Exercise both validated independent mutations in one bounded search. The v50
   `B_mut=2`, `B_gen=0`, `max_depth=1` run created separate SW64 and two-stage children
   directly beneath the SW128 three-stage root, performed two valid-only backups, and

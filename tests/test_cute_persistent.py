@@ -149,6 +149,29 @@ def test_persistent_epilogue_requires_wgmma() -> None:
         render_persistent_tma_diagnostic(enable_epilogue=True)
 
 
+def test_persistent_full_k_carries_global_stage_phase_and_accumulates() -> None:
+    rendered = render_persistent_tma_diagnostic(
+        enable_wgmma_issue=True, enable_epilogue=True, full_k=True
+    )
+
+    assert "FULL_K = True" in rendered.source
+    assert "K_TILES_PER_WORK = 64 if FULL_K else 1" in rendered.source
+    assert "producer.num_tiles_executed * K_TILES_PER_WORK" in rendered.source
+    assert "global_k_tile = slot * K_TILES_PER_WORK + k_tile" in rendered.source
+    assert "import tempfile" in rendered.source
+    assert "import ctypes" in rendered.source
+    assert "from pathlib import Path" in rendered.source
+    assert "import statistics" in rendered.source
+    assert "import subprocess" in rendered.source
+    assert '"/usr/local/bin/kernel-mcts-bf16-inputs"' in rendered.source
+    consumer_loop = rendered.source[rendered.source.index("accumulators.fill(0.0)") :]
+    assert consumer_loop.index("accumulators.fill(0.0)") < consumer_loop.index(
+        "for k_tile in cutlass.range("
+    )
+    assert '"full_k": FULL_K' in rendered.source
+    compile(rendered.source, "persistent_full_k.py", "exec")
+
+
 @pytest.mark.parametrize("kwargs", ({"grid_m": 0}, {"grid_n": 0}, {"pipeline_stages": 0}))
 def test_persistent_tma_diagnostic_rejects_invalid_extents(
     kwargs: dict[str, int]
