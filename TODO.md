@@ -177,17 +177,19 @@ completed hardware validation is identified explicitly.
   cluster shape, mainloop pipeline depth, and epilogue pipeline depth. A `B_mut=35`
   run recovered the same pinned-stage `(128,256)`, cluster `(2,1)` schedule as grid
   tuning; the additional staging fields produced no improvement beyond noise.
-- [ ] Build Milestone B's simpler independently controlled typed Hopper GEMM rather
+- [x] Build Milestone B's simpler independently controlled typed Hopper GEMM rather
   than describing current expert-template parameter search as new kernel synthesis.
   Introduce structural WGMMA, TMA, layout/swizzle, warp-specialization, and epilogue
   transformations one bounded diagnostic at a time, promoting only distinct,
-  correct H100-validated controls to MCTS state.
+  correct H100-validated controls to MCTS state. The independent root now lowers
+  without importing NVIDIA's dense-GEMM implementation, and its admitted mutation
+  graph reaches the validated 184.112 us wide warp-specialized endpoint.
 - [x] Define the first GPU-free independent TMA-to-shared-memory contract for the
   fixed BF16 Hopper target. It coordinates complete A/B CTA tiles, K-major global
   and shared layouts, cluster-aware B multicast, three non-overlapping pipeline
   buffers, arrival-barrier slots, alignment, and the paired SW128/SW64 choice. Its
   canonical renderer output is explicitly structural and cannot enter MCTS yet.
-- [ ] Combine the independent TMA/shared-memory contract with a minimal WGMMA
+- [x] Combine the independent TMA/shared-memory contract with a minimal WGMMA
   consumer and epilogue to render a complete executable CuTe DSL GEMM. Validate the
   two layout variants standalone on H100 before adding identity, backend, or search
   integration. The experimental `(128,256,64)` cooperative form now has a distinct
@@ -209,7 +211,7 @@ completed hardware validation is identified explicitly.
   accumulators, and a four-stage N-major BF16 TMA-store epilogue owns disjoint
   shared storage. Cross-component legality checks reject incomplete WGMMA coverage,
   incompatible ownership, unsafe epilogue tiling, overlap, and excess CTA storage.
-- [ ] Lower the complete independent contract into actual CUTLASS 4.5.1 CuTe DSL
+- [x] Lower the complete independent contract into actual CUTLASS 4.5.1 CuTe DSL
   calls. The lowering must implement—not merely annotate—TMA descriptors and
   multicast masks, producer/consumer barriers, WGMMA partitioning, accumulator
   ownership, and the output TMA store before it is called executable.
@@ -246,7 +248,7 @@ completed hardware validation is identified explicitly.
   tiles. The generated diagnostic constructs the typed `64x256x16` tiled MMA,
   partitions shared A/B across two consumer warp groups, allocates FP32 register
   accumulators, and emits fence/GEMM/commit/wait. It remains outside MCTS.
-- [ ] Validate `wgmma_compile_only`, `wgmma_issue_only`, and `wgmma_one_k` on H100
+- [x] Validate `wgmma_compile_only`, `wgmma_issue_only`, and `wgmma_one_k` on H100
   in that order. The final stage must match a PyTorch FP32-accumulation reference
   within the BF16 workload tolerances before implementing the production epilogue.
   The first compile-only attempt correctly exposed an invalid FP32-register to BF16-
