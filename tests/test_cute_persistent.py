@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from kernel_mcts.cute_persistent import render_persistent_ownership_diagnostic
+from kernel_mcts.cute_persistent import (
+    iter_persistent_stage_uses,
+    render_persistent_barrier_diagnostic,
+    render_persistent_tma_diagnostic,
+    render_persistent_ownership_diagnostic,
+    validate_persistent_stage_schedule,
+)
 
 
 def test_persistent_ownership_diagnostic_is_deterministic_and_inspectable() -> None:
@@ -33,3 +39,101 @@ def test_persistent_ownership_diagnostic_tracks_requested_grid() -> None:
     assert "GRID_M = 7" in rendered.source
     assert "GRID_N = 5" in rendered.source
     assert "LOGICAL_TILE_COUNT = GRID_M * GRID_N" in rendered.source
+
+
+def test_persistent_stage_schedule_carries_phase_across_work_items() -> None:
+    uses = list(
+        iter_persistent_stage_uses(
+            work_items=2,
+            k_tiles_per_work=64,
+            pipeline_stages=3,
+        )
+    )
+
+    assert uses[0].global_k_tile == 0
+    assert (uses[0].stage, uses[0].phase) == (0, 0)
+    assert uses[63].global_k_tile == 63
+    assert (uses[63].stage, uses[63].phase) == (0, 1)
+    assert uses[64].work_index == 1
+    assert uses[64].k_tile == 0
+    assert uses[64].global_k_tile == 64
+    assert (uses[64].stage, uses[64].phase) == (1, 1)
+    assert validate_persistent_stage_schedule(
+        work_items=4,
+        k_tiles_per_work=64,
+        pipeline_stages=3,
+    )
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    (
+        ({"work_items": -1, "k_tiles_per_work": 64, "pipeline_stages": 3}, "work-item"),
+        ({"work_items": 1, "k_tiles_per_work": 0, "pipeline_stages": 3}, "K-tile"),
+        ({"work_items": 1, "k_tiles_per_work": 64, "pipeline_stages": 0}, "pipeline-stage"),
+    ),
+)
+def test_persistent_stage_schedule_rejects_invalid_extents(
+    kwargs: dict[str, int], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        list(iter_persistent_stage_uses(**kwargs))
+
+
+def test_persistent_barrier_diagnostic_carries_global_phase_in_lockstep() -> None:
+    rendered = render_persistent_barrier_diagnostic()
+
+    assert "K_TILES_PER_WORK = 64" in rendered.source
+    assert "PIPELINE_STAGES = 3" in rendered.source
+    assert rendered.source.count("StaticPersistentTileScheduler.create(") == 2
+    assert "producer.num_tiles_executed * K_TILES_PER_WORK" in rendered.source
+    assert "consumer.num_tiles_executed * K_TILES_PER_WORK" in rendered.source
+    assert '"producer_consumer_lockstep": lockstep' in rendered.source
+    compile(rendered.source, "persistent_barriers.py", "exec")
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"grid_m": 0},
+        {"grid_n": 0},
+        {"k_tiles_per_work": 0},
+        {"pipeline_stages": 0},
+    ),
+)
+def test_persistent_barrier_diagnostic_rejects_invalid_extents(
+    kwargs: dict[str, int]
+) -> None:
+    with pytest.raises(ValueError):
+        render_persistent_barrier_diagnostic(**kwargs)
+
+
+def test_persistent_tma_diagnostic_verifies_coordinates_and_payloads() -> None:
+    rendered = render_persistent_tma_diagnostic()
+
+    assert "TILE_SHAPE_MNK = (128, 256, 64)" in rendered.source
+    assert "CopyBulkTensorTileG2SOp()" in rendered.source
+    assert "samples[(worker, slot, 0)] = sA[(0, 0, stage)]" in rendered.source
+    assert '"payload_exact": payload_exact' in rendered.source
+    compile(rendered.source, "persistent_tma.py", "exec")
+
+
+def test_persistent_wgmma_issue_resets_accumulators_per_work_item() -> None:
+    rendered = render_persistent_tma_diagnostic(enable_wgmma_issue=True)
+
+    assert "ENABLE_WGMMA_ISSUE = True" in rendered.source
+    assert "THREADS_PER_CTA = 384 if ENABLE_WGMMA_ISSUE else 256" in rendered.source
+    assert "accumulators.fill(0.0)" in rendered.source
+    assert "Field.ACCUMULATE, False" in rendered.source
+    assert "cute.nvgpu.warpgroup.wait_group(0)" in rendered.source
+    assert "consumer_barrier.arrive_and_wait()" in rendered.source
+    assert '"wgmma_issued": ENABLE_WGMMA_ISSUE' in rendered.source
+    compile(rendered.source, "persistent_wgmma_issue.py", "exec")
+
+
+@pytest.mark.parametrize("kwargs", ({"grid_m": 0}, {"grid_n": 0}, {"pipeline_stages": 0}))
+def test_persistent_tma_diagnostic_rejects_invalid_extents(
+    kwargs: dict[str, int]
+) -> None:
+    with pytest.raises(ValueError):
+        render_persistent_tma_diagnostic(**kwargs)

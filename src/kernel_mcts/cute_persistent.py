@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from typing import Iterator
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,6 +12,56 @@ class PersistentOwnershipDiagnosticSource:
     @property
     def source_hash(self) -> str:
         return hashlib.sha256(self.source.encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class PersistentStageUse:
+    work_index: int
+    k_tile: int
+    global_k_tile: int
+    stage: int
+    phase: int
+
+
+def iter_persistent_stage_uses(
+    *, work_items: int, k_tiles_per_work: int, pipeline_stages: int
+) -> Iterator[PersistentStageUse]:
+    """Yield the stage-ring state carried across persistent output tiles."""
+
+    if work_items < 0:
+        raise ValueError("persistent work-item count must be non-negative")
+    if k_tiles_per_work <= 0:
+        raise ValueError("K-tile count per work item must be positive")
+    if pipeline_stages <= 0:
+        raise ValueError("pipeline-stage count must be positive")
+    for work_index in range(work_items):
+        for k_tile in range(k_tiles_per_work):
+            global_k_tile = work_index * k_tiles_per_work + k_tile
+            yield PersistentStageUse(
+                work_index=work_index,
+                k_tile=k_tile,
+                global_k_tile=global_k_tile,
+                stage=global_k_tile % pipeline_stages,
+                phase=(global_k_tile // pipeline_stages) % 2,
+            )
+
+
+def validate_persistent_stage_schedule(
+    *, work_items: int, k_tiles_per_work: int, pipeline_stages: int
+) -> bool:
+    """Check producer/consumer stage reuse alternates phase without resetting."""
+
+    previous_phase_by_stage: dict[int, int] = {}
+    for use in iter_persistent_stage_uses(
+        work_items=work_items,
+        k_tiles_per_work=k_tiles_per_work,
+        pipeline_stages=pipeline_stages,
+    ):
+        previous_phase = previous_phase_by_stage.get(use.stage)
+        if previous_phase is not None and use.phase != 1 - previous_phase:
+            return False
+        previous_phase_by_stage[use.stage] = use.phase
+    return True
 
 
 def render_persistent_ownership_diagnostic(
@@ -147,6 +198,517 @@ def run_diagnostic():
         "missing_tiles": [list(item) for item in missing],
         "unexpected_tiles": [list(item) for item in unexpected],
         "exactly_once": exactly_once,
+        "jit_diagnostics": jit_diagnostics,
+    }}
+'''
+    return PersistentOwnershipDiagnosticSource(source)
+
+
+def render_persistent_barrier_diagnostic(
+    *,
+    grid_m: int = 32,
+    grid_n: int = 16,
+    k_tiles_per_work: int = 64,
+    pipeline_stages: int = 3,
+) -> PersistentOwnershipDiagnosticSource:
+    """Render a producer/consumer barrier-ring carry diagnostic.
+
+    This is the synchronization gate between ownership-only scheduling and the
+    complete persistent GEMM. It deliberately excludes TMA and WGMMA data movement.
+    """
+
+    if grid_m <= 0 or grid_n <= 0:
+        raise ValueError("persistent barrier grid extents must be positive")
+    if k_tiles_per_work <= 0:
+        raise ValueError("persistent barrier K-tile count must be positive")
+    if pipeline_stages <= 0:
+        raise ValueError("persistent barrier stage count must be positive")
+    if not validate_persistent_stage_schedule(
+        work_items=4,
+        k_tiles_per_work=k_tiles_per_work,
+        pipeline_stages=pipeline_stages,
+    ):
+        raise ValueError("persistent barrier phase schedule does not alternate")
+
+    source = f'''# Generated persistent producer/consumer barrier-ring diagnostic.
+import math
+
+import cuda.bindings.driver as cuda
+import cutlass
+import cutlass.cute as cute
+import cutlass.pipeline as pipeline
+import cutlass.utils as utils
+from cutlass.cute.runtime import from_dlpack
+
+GRID_M = {grid_m}
+GRID_N = {grid_n}
+LOGICAL_TILE_COUNT = GRID_M * GRID_N
+K_TILES_PER_WORK = {k_tiles_per_work}
+PIPELINE_STAGES = {pipeline_stages}
+THREADS_PER_CTA = 256
+
+
+class PersistentBarrierKernel:
+    @cute.jit
+    def __call__(self, completions, max_active_clusters: cutlass.Int32, stream: cuda.CUstream):
+        params = utils.PersistentTileSchedulerParams(
+            (GRID_M, GRID_N, 1), (1, 1, 1), 1, True
+        )
+        grid = utils.StaticPersistentTileScheduler.get_grid_shape(
+            params, max_active_clusters
+        )
+
+        @cute.struct
+        class SharedStorage:
+            full: cute.struct.MemRange[cutlass.Int64, PIPELINE_STAGES]
+            empty: cute.struct.MemRange[cutlass.Int64, PIPELINE_STAGES]
+
+        self.shared_storage = SharedStorage
+        self.kernel(params, completions).launch(
+            grid=grid,
+            block=(THREADS_PER_CTA, 1, 1),
+            stream=stream,
+        )
+
+    @cute.kernel
+    def kernel(self, params, completions):
+        tidx, _, _ = cute.arch.thread_idx()
+        smem = utils.SmemAllocator()
+        storage = smem.allocate(self.shared_storage)
+        full = storage.full.data_ptr()
+        empty = storage.empty.data_ptr()
+        if tidx == 0:
+            for stage in cutlass.range_constexpr(PIPELINE_STAGES):
+                cute.arch.mbarrier_init(full + stage, 1)
+                cute.arch.mbarrier_init(empty + stage, 1)
+        cute.arch.mbarrier_init_fence()
+        if tidx == 0:
+            for stage in cutlass.range_constexpr(PIPELINE_STAGES):
+                cute.arch.mbarrier_arrive(empty + stage)
+        pipeline.sync(barrier_id=1)
+
+        worker = cute.arch.block_idx()[2]
+        if tidx == 0:
+            producer = utils.StaticPersistentTileScheduler.create(
+                params, cute.arch.block_idx(), cute.arch.grid_dim()
+            )
+            producer_work = producer.initial_work_tile_info()
+            while producer_work.is_valid_tile:
+                for k_tile in cutlass.range(0, K_TILES_PER_WORK, 1, unroll=1):
+                    global_k_tile = producer.num_tiles_executed * K_TILES_PER_WORK + k_tile
+                    stage = global_k_tile % PIPELINE_STAGES
+                    phase = (global_k_tile // PIPELINE_STAGES) % 2
+                    cute.arch.mbarrier_wait(empty + stage, phase)
+                    cute.arch.mbarrier_arrive(full + stage)
+                producer.advance_to_next_work()
+                producer_work = producer.get_current_work()
+            completions[(worker, 0)] = producer.num_tiles_executed
+
+        if tidx == 128:
+            consumer = utils.StaticPersistentTileScheduler.create(
+                params, cute.arch.block_idx(), cute.arch.grid_dim()
+            )
+            consumer_work = consumer.initial_work_tile_info()
+            while consumer_work.is_valid_tile:
+                for k_tile in cutlass.range(0, K_TILES_PER_WORK, 1, unroll=1):
+                    global_k_tile = consumer.num_tiles_executed * K_TILES_PER_WORK + k_tile
+                    stage = global_k_tile % PIPELINE_STAGES
+                    phase = (global_k_tile // PIPELINE_STAGES) % 2
+                    cute.arch.mbarrier_wait(full + stage, phase)
+                    cute.arch.mbarrier_arrive(empty + stage)
+                consumer.advance_to_next_work()
+                consumer_work = consumer.get_current_work()
+            completions[(worker, 1)] = consumer.num_tiles_executed
+
+
+def run_diagnostic():
+    import torch
+    from kernel_mcts.cute_diagnostics import describe_kernel_callable
+
+    properties = torch.cuda.get_device_properties(torch.cuda.current_device())
+    max_active_clusters = int(properties.multi_processor_count)
+    persistent_ctas = min(LOGICAL_TILE_COUNT, max_active_clusters)
+    completions = torch.full(
+        (persistent_ctas, 2), -1, device="cuda", dtype=torch.int32
+    )
+    completions_cute = from_dlpack(
+        completions, assumed_align=16
+    ).mark_layout_dynamic(leading_dim=1)
+    stream = cuda.CUstream(torch.cuda.current_stream().cuda_stream)
+    diagnostic = PersistentBarrierKernel()
+    compiled = cute.compile(
+        diagnostic,
+        completions_cute,
+        cutlass.Int32(max_active_clusters),
+        stream,
+    )
+    jit_diagnostics = describe_kernel_callable(compiled, {{}})
+    compiled(
+        completions_cute,
+        cutlass.Int32(max_active_clusters),
+        stream,
+    )
+    torch.cuda.synchronize()
+
+    completion_rows = [[int(value) for value in row] for row in completions.cpu().tolist()]
+    producer_counts = [row[0] for row in completion_rows]
+    consumer_counts = [row[1] for row in completion_rows]
+    lockstep = producer_counts == consumer_counts
+    complete = sum(producer_counts) == LOGICAL_TILE_COUNT
+    bounded = all(count in (3, 4) for count in producer_counts)
+    passed = lockstep and complete and bounded
+    return {{
+        "status": "ok" if passed else "barrier_failed",
+        "logical_tile_count": LOGICAL_TILE_COUNT,
+        "persistent_cta_count": persistent_ctas,
+        "k_tiles_per_work": K_TILES_PER_WORK,
+        "pipeline_stages": PIPELINE_STAGES,
+        "producer_work_count": sum(producer_counts),
+        "consumer_work_count": sum(consumer_counts),
+        "worker_completion_counts": completion_rows,
+        "producer_consumer_lockstep": lockstep,
+        "complete": complete,
+        "bounded": bounded,
+        "jit_diagnostics": jit_diagnostics,
+    }}
+'''
+    return PersistentOwnershipDiagnosticSource(source)
+
+
+def render_persistent_tma_diagnostic(
+    *,
+    grid_m: int = 32,
+    grid_n: int = 16,
+    pipeline_stages: int = 3,
+    enable_wgmma_issue: bool = False,
+) -> PersistentOwnershipDiagnosticSource:
+    """Render a persistent TMA payload/addressing diagnostic.
+
+    Each scheduled output tile loads its first A and B K tile through TMA, then the
+    consumer records one value from each shared-memory tile for host verification.
+    WGMMA and the epilogue remain intentionally excluded.
+    """
+
+    if grid_m <= 0 or grid_n <= 0:
+        raise ValueError("persistent TMA grid extents must be positive")
+    if pipeline_stages <= 0:
+        raise ValueError("persistent TMA stage count must be positive")
+
+    source = f'''# Generated persistent TMA payload diagnostic.
+import math
+
+import cuda.bindings.driver as cuda
+import cutlass
+import cutlass.cute as cute
+import cutlass.pipeline as pipeline
+import cutlass.utils as utils
+import cutlass.utils.hopper_helpers as sm90_utils
+from cutlass.cute.runtime import from_dlpack
+
+GRID_M = {grid_m}
+GRID_N = {grid_n}
+LOGICAL_TILE_COUNT = GRID_M * GRID_N
+TILE_SHAPE_MNK = (128, 256, 64)
+PIPELINE_STAGES = {pipeline_stages}
+THREADS_PER_CTA = 256
+MAX_TILES_PER_CTA = 4
+ENABLE_WGMMA_ISSUE = {enable_wgmma_issue!r}
+CONSUMER_THREADS = 256 if ENABLE_WGMMA_ISSUE else 1
+THREADS_PER_CTA = 384 if ENABLE_WGMMA_ISSUE else 256
+
+
+class PersistentTmaKernel:
+    def __init__(self):
+        self.buffer_align_bytes = 1024
+
+    @cute.jit
+    def __call__(self, a, b, c, coordinates, samples, max_active_clusters: cutlass.Int32, stream: cuda.CUstream):
+        self.dtype = a.element_type
+        a_layout = utils.LayoutEnum.from_tensor(a)
+        b_layout = utils.LayoutEnum.from_tensor(b)
+        c_layout = utils.LayoutEnum.from_tensor(c)
+        tiled_mma = sm90_utils.make_trivial_tiled_mma(
+            self.dtype,
+            self.dtype,
+            a_layout.sm90_mma_major_mode(),
+            b_layout.sm90_mma_major_mode(),
+            cutlass.Float32,
+            (2, 1, 1),
+            tiler_mn=(64, TILE_SHAPE_MNK[1]),
+        )
+        a_smem_layout_staged = sm90_utils.make_smem_layout_a(
+            a_layout, TILE_SHAPE_MNK, self.dtype, PIPELINE_STAGES
+        )
+        b_smem_layout_staged = sm90_utils.make_smem_layout_b(
+            b_layout, TILE_SHAPE_MNK, self.dtype, PIPELINE_STAGES
+        )
+
+        @cute.struct
+        class SharedStorage:
+            full: cute.struct.MemRange[cutlass.Int64, PIPELINE_STAGES]
+            empty: cute.struct.MemRange[cutlass.Int64, PIPELINE_STAGES]
+            sA: cute.struct.Align[
+                cute.struct.MemRange[self.dtype, cute.cosize(a_smem_layout_staged)],
+                self.buffer_align_bytes,
+            ]
+            sB: cute.struct.Align[
+                cute.struct.MemRange[self.dtype, cute.cosize(b_smem_layout_staged)],
+                self.buffer_align_bytes,
+            ]
+
+        self.shared_storage = SharedStorage
+        a_smem_layout = cute.slice_(a_smem_layout_staged, (None, None, 0))
+        b_smem_layout = cute.slice_(b_smem_layout_staged, (None, None, 0))
+        tma_a, tensor_a = cute.nvgpu.cpasync.make_tiled_tma_atom(
+            cute.nvgpu.cpasync.CopyBulkTensorTileG2SOp(),
+            a,
+            a_smem_layout,
+            (TILE_SHAPE_MNK[0], TILE_SHAPE_MNK[2]),
+            num_multicast=1,
+        )
+        tma_b, tensor_b = cute.nvgpu.cpasync.make_tiled_tma_atom(
+            cute.nvgpu.cpasync.CopyBulkTensorTileG2SOp(),
+            b,
+            b_smem_layout,
+            (TILE_SHAPE_MNK[1], TILE_SHAPE_MNK[2]),
+            num_multicast=1,
+        )
+        params = utils.PersistentTileSchedulerParams(
+            (GRID_M, GRID_N, 1), (1, 1, 1), 1, True
+        )
+        grid = utils.StaticPersistentTileScheduler.get_grid_shape(
+            params, max_active_clusters
+        )
+        self.kernel(
+            params,
+            tma_a,
+            tensor_a,
+            tma_b,
+            tensor_b,
+            c,
+            tiled_mma,
+            coordinates,
+            samples,
+            a_smem_layout_staged,
+            b_smem_layout_staged,
+        ).launch(grid=grid, block=(THREADS_PER_CTA, 1, 1), stream=stream)
+
+    @cute.kernel
+    def kernel(
+        self,
+        params,
+        tma_a,
+        tensor_a,
+        tma_b,
+        tensor_b,
+        tensor_c,
+        tiled_mma,
+        coordinates,
+        samples,
+        a_smem_layout_staged,
+        b_smem_layout_staged,
+    ):
+        tidx, _, _ = cute.arch.thread_idx()
+        warp_idx = cute.arch.make_warp_uniform(cute.arch.warp_idx())
+        smem = utils.SmemAllocator()
+        storage = smem.allocate(self.shared_storage)
+        sA = storage.sA.get_tensor(
+            a_smem_layout_staged.outer, swizzle=a_smem_layout_staged.inner
+        )
+        sB = storage.sB.get_tensor(
+            b_smem_layout_staged.outer, swizzle=b_smem_layout_staged.inner
+        )
+        full = storage.full.data_ptr()
+        empty = storage.empty.data_ptr()
+        a_smem = cute.slice_(a_smem_layout_staged, (None, None, 0))
+        b_smem = cute.slice_(b_smem_layout_staged, (None, None, 0))
+        transaction_bytes = cute.size_in_bytes(self.dtype, a_smem)
+        transaction_bytes = transaction_bytes + cute.size_in_bytes(self.dtype, b_smem)
+        if tidx == 0:
+            for stage in cutlass.range_constexpr(PIPELINE_STAGES):
+                cute.arch.mbarrier_init(full + stage, 1)
+                cute.arch.mbarrier_init(empty + stage, 1)
+        cute.arch.mbarrier_init_fence()
+        if tidx == 0:
+            for stage in cutlass.range_constexpr(PIPELINE_STAGES):
+                cute.arch.mbarrier_arrive(empty + stage)
+        pipeline.sync(barrier_id=1)
+
+        gA = cute.local_tile(
+            tensor_a, (TILE_SHAPE_MNK[0], TILE_SHAPE_MNK[2]), (None, None)
+        )
+        gB = cute.local_tile(
+            tensor_b, (TILE_SHAPE_MNK[1], TILE_SHAPE_MNK[2]), (None, None)
+        )
+        tAsA, tAgA = cute.nvgpu.cpasync.tma_partition(
+            tma_a, 0, cute.make_layout(1), cute.group_modes(sA, 0, 2), cute.group_modes(gA, 0, 2)
+        )
+        tBsB, tBgB = cute.nvgpu.cpasync.tma_partition(
+            tma_b, 0, cute.make_layout(1), cute.group_modes(sB, 0, 2), cute.group_modes(gB, 0, 2)
+        )
+        worker = cute.arch.block_idx()[2]
+
+        if tidx == 0:
+            producer = utils.StaticPersistentTileScheduler.create(
+                params, cute.arch.block_idx(), cute.arch.grid_dim()
+            )
+            work = producer.initial_work_tile_info()
+            while work.is_valid_tile:
+                tile_m, tile_n, _ = work.tile_idx
+                stage = producer.num_tiles_executed % PIPELINE_STAGES
+                phase = (producer.num_tiles_executed // PIPELINE_STAGES) % 2
+                cute.arch.mbarrier_wait(empty + stage, phase)
+                cute.arch.mbarrier_expect_tx(full + stage, transaction_bytes)
+                cute.copy(
+                    tma_a,
+                    tAgA[(None, tile_m, 0)],
+                    tAsA[(None, stage)],
+                    tma_bar_ptr=full + stage,
+                )
+                cute.copy(
+                    tma_b,
+                    tBgB[(None, tile_n, 0)],
+                    tBsB[(None, stage)],
+                    tma_bar_ptr=full + stage,
+                )
+                with cute.arch.elect_one():
+                    cute.arch.mbarrier_arrive(full + stage)
+                producer.advance_to_next_work()
+                work = producer.get_current_work()
+
+        if (
+            (not ENABLE_WGMMA_ISSUE and tidx == 128)
+            or (ENABLE_WGMMA_ISSUE and tidx >= 128)
+        ):
+            if cutlass.const_expr(ENABLE_WGMMA_ISSUE):
+                warp_group_idx = cute.arch.make_warp_uniform((tidx - 128) // 128)
+                warp_group_layout = cute.make_layout(2, stride=128)
+                thr_mma = tiled_mma.get_slice(warp_group_layout(warp_group_idx))
+                tCsA = thr_mma.partition_A(sA)
+                tCsB = thr_mma.partition_B(sB)
+                tCrA = tiled_mma.make_fragment_A(tCsA)
+                tCrB = tiled_mma.make_fragment_B(tCsB)
+                consumer_barrier = pipeline.NamedBarrier(
+                    barrier_id=2, num_threads=CONSUMER_THREADS
+                )
+            consumer = utils.StaticPersistentTileScheduler.create(
+                params, cute.arch.block_idx(), cute.arch.grid_dim()
+            )
+            work = consumer.initial_work_tile_info()
+            while work.is_valid_tile:
+                tile_m, tile_n, _ = work.tile_idx
+                slot = consumer.num_tiles_executed
+                stage = slot % PIPELINE_STAGES
+                phase = (slot // PIPELINE_STAGES) % 2
+                cute.arch.mbarrier_wait(full + stage, phase)
+                if cutlass.const_expr(ENABLE_WGMMA_ISSUE):
+                    gC = cute.local_tile(
+                        tensor_c,
+                        (TILE_SHAPE_MNK[0], TILE_SHAPE_MNK[1]),
+                        (tile_m, tile_n),
+                    )
+                    tCgC = thr_mma.partition_C(gC)
+                    accumulators = cute.make_rmem_tensor(tCgC.shape, cutlass.Float32)
+                    accumulators.fill(0.0)
+                    tiled_mma.set(cute.nvgpu.warpgroup.Field.ACCUMULATE, False)
+                    cute.nvgpu.warpgroup.fence()
+                    for k_block in cutlass.range(
+                        cute.size(tCrA, mode=[2]), unroll_full=True
+                    ):
+                        cute.gemm(
+                            tiled_mma,
+                            accumulators,
+                            tCrA[(None, None, k_block, stage)],
+                            tCrB[(None, None, k_block, stage)],
+                            accumulators,
+                        )
+                        tiled_mma.set(
+                            cute.nvgpu.warpgroup.Field.ACCUMULATE, True
+                        )
+                    cute.nvgpu.warpgroup.commit_group()
+                    cute.nvgpu.warpgroup.wait_group(0)
+                    consumer_barrier.arrive_and_wait()
+                if tidx == 128:
+                    coordinates[(worker, slot, 0)] = tile_m
+                    coordinates[(worker, slot, 1)] = tile_n
+                    samples[(worker, slot, 0)] = sA[(0, 0, stage)]
+                    samples[(worker, slot, 1)] = sB[(0, 0, stage)]
+                    cute.arch.mbarrier_arrive(empty + stage)
+                if cutlass.const_expr(ENABLE_WGMMA_ISSUE):
+                    consumer_barrier.arrive_and_wait()
+                consumer.advance_to_next_work()
+                work = consumer.get_current_work()
+
+
+def run_diagnostic():
+    import torch
+    from kernel_mcts.cute_diagnostics import describe_kernel_callable
+
+    properties = torch.cuda.get_device_properties(torch.cuda.current_device())
+    max_active_clusters = int(properties.multi_processor_count)
+    persistent_ctas = min(LOGICAL_TILE_COUNT, max_active_clusters)
+    a = torch.arange(GRID_M * TILE_SHAPE_MNK[0], device="cuda", dtype=torch.float32)
+    a = a[:, None].expand(-1, TILE_SHAPE_MNK[2]).to(torch.bfloat16).contiguous()
+    b = torch.arange(GRID_N * TILE_SHAPE_MNK[1], device="cuda", dtype=torch.float32)
+    b = (10000 + b[:, None]).expand(-1, TILE_SHAPE_MNK[2]).to(torch.bfloat16).contiguous()
+    c = torch.zeros(
+        (GRID_M * TILE_SHAPE_MNK[0], GRID_N * TILE_SHAPE_MNK[1]),
+        device="cuda",
+        dtype=torch.bfloat16,
+    )
+    coordinates = torch.full(
+        (persistent_ctas, MAX_TILES_PER_CTA, 2), -1, device="cuda", dtype=torch.int32
+    )
+    samples = torch.zeros(
+        (persistent_ctas, MAX_TILES_PER_CTA, 2), device="cuda", dtype=torch.bfloat16
+    )
+    tensors = [
+        from_dlpack(value, assumed_align=16).mark_layout_dynamic(leading_dim=value.ndim - 1)
+        for value in (a, b, c, coordinates, samples)
+    ]
+    stream = cuda.CUstream(torch.cuda.current_stream().cuda_stream)
+    diagnostic = PersistentTmaKernel()
+    compiled = cute.compile(
+        diagnostic, *tensors, cutlass.Int32(max_active_clusters), stream
+    )
+    jit_diagnostics = describe_kernel_callable(compiled, {{}})
+    compiled(*tensors, cutlass.Int32(max_active_clusters), stream)
+    torch.cuda.synchronize()
+
+    host_coordinates = coordinates.cpu().tolist()
+    host_samples = samples.float().cpu().tolist()
+    assignments = []
+    mismatches = []
+    for worker, rows in enumerate(host_coordinates):
+        for slot, coordinate in enumerate(rows):
+            tile_m, tile_n = (int(coordinate[0]), int(coordinate[1]))
+            if tile_m < 0:
+                continue
+            assignments.append((tile_m, tile_n))
+            observed_a, observed_b = host_samples[worker][slot]
+            expected_a = float(a[tile_m * TILE_SHAPE_MNK[0], 0].float().item())
+            expected_b = float(b[tile_n * TILE_SHAPE_MNK[1], 0].float().item())
+            if observed_a != expected_a or observed_b != expected_b:
+                mismatches.append({{
+                    "tile": [tile_m, tile_n],
+                    "observed": [observed_a, observed_b],
+                    "expected": [expected_a, expected_b],
+                }})
+    expected_coordinates = {{(m, n) for m in range(GRID_M) for n in range(GRID_N)}}
+    observed_coordinates = set(assignments)
+    exactly_once = len(assignments) == LOGICAL_TILE_COUNT and observed_coordinates == expected_coordinates
+    payload_exact = not mismatches
+    passed = exactly_once and payload_exact
+    return {{
+        "status": "ok" if passed else "tma_payload_failed",
+        "logical_tile_count": LOGICAL_TILE_COUNT,
+        "persistent_cta_count": persistent_ctas,
+        "assignment_count": len(assignments),
+        "unique_assignment_count": len(observed_coordinates),
+        "exactly_once": exactly_once,
+        "payload_exact": payload_exact,
+        "wgmma_issued": ENABLE_WGMMA_ISSUE,
+        "mismatches": mismatches[:16],
         "jit_diagnostics": jit_diagnostics,
     }}
 '''

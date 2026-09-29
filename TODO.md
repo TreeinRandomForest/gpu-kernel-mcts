@@ -437,6 +437,28 @@ completed hardware validation is identified explicitly.
   512 unique tiles, and zero missing, duplicate, or unexpected tiles. Of the 132
   workers, 116 received four tiles and 16 received three. This validates bounded
   scheduling and ownership only; it does not yet validate reused GEMM barriers.
+- [x] Validate persistent producer/consumer barrier-ring carry independently of
+  GEMM data movement. Image v73 ran 132 persistent CTAs over all 512 output work
+  items, with 64 K tiles per item and a three-stage full/empty ring. Producer and
+  consumer independently scheduled and completed all 512 items in exact lockstep;
+  116 CTAs completed four items and 16 completed three. The stage/phase calculation
+  uses a global K-tile ordinal, so it does not incorrectly restart at each output
+  tile. TMA, WGMMA, accumulator reset, and epilogue correctness remain the next gate.
+- [x] Validate persistent TMA addressing and payload movement independently of
+  WGMMA. Image v74 scheduled all 512 `(m,n)` output tiles exactly once, loaded the
+  corresponding first A and B K tiles through the carried three-stage barrier ring,
+  and matched every sampled shared-memory value to its expected global-memory
+  address. There were zero missing, duplicate, unexpected, or payload-mismatched
+  records. Full-K WGMMA, per-work accumulator reset, and epilogue stores remain the
+  next gate.
+- [x] Validate persistent wide-CTA WGMMA issue and per-work accumulator reset before
+  adding the epilogue. The first v75 attempt was statically rejected because a
+  dynamic thread-ownership branch was incorrectly wrapped in `const_expr`; it never
+  launched and produced no candidate result. Corrected image v76 covered all 512
+  tiles exactly once, retained exact A/B TMA samples, reset FP32 accumulators for
+  every output work item, issued WGMMA from both consumer warp groups, waited for
+  completion, and released every stage without deadlock. Numerical output remains
+  untested until the persistent epilogue is added.
 - [ ] Integrate the validated persistent scheduler into an evidence-only copy of the
   final wide specialized GEMM. The v70 profile is compute-bound (92.22% tensor-pipe,
   87.32% SM, 28.62% DRAM) and the static 512-CTA grid executes in roughly four waves

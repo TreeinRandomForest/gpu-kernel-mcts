@@ -28,3 +28,55 @@ consumer warp groups instantiate identical schedules, reset their per-work pipel
 counts and accumulators, advance in lockstep, and preserve full/empty barrier phases
 between work items. Until that passes exact H100 correctness, persistent scheduling
 is neither typed state nor an MCTS mutation.
+
+## Barrier-ring follow-up (v73)
+
+The next evidence-only diagnostic added the final kernel's two-agent structure but
+still excluded TMA and WGMMA data movement. A producer thread and consumer thread
+independently instantiated the same scheduler and exchanged 64 logical K tiles per
+output work item through a three-stage full/empty barrier ring.
+
+The barrier stage and phase derive from a global K-tile ordinal carried across work
+items. This matters because 64 is not divisible by three: after the first work item,
+the next item begins at stage 1/phase 1 rather than incorrectly restarting at stage
+0/phase 0.
+
+On H100, all 132 persistent CTAs terminated within the bounded run. Producer and
+consumer each completed all 512 output items, their per-CTA completion counts were
+identical, and the distribution remained 116 CTAs with four items plus 16 CTAs with
+three. The result validates scheduler lockstep and barrier-phase carry. It still
+does not validate TMA payload movement, accumulator reset, WGMMA, or the epilogue;
+those remain required before performance measurement or typed-state promotion.
+
+## TMA payload follow-up (v74)
+
+The third diagnostic retained the validated persistent scheduler and full/empty
+barrier carry, then added real TMA loads for the first A and B K tile belonging to
+each scheduled `(m,n)` output tile. The consumer sampled both shared-memory tiles,
+and the host checked each sample against the exact expected global-memory address.
+
+The H100 run again covered all 512 coordinates exactly once. Every A and B sample
+matched, with no missing, duplicate, unexpected, or payload-mismatched records.
+This establishes persistent scheduler ownership, barrier carry, and TMA coordinate
+selection independently of tensor-core computation. The remaining correctness gate
+is the full 64-K-tile WGMMA loop with accumulator reset and complete epilogue stores.
+
+## WGMMA issue/reset follow-up (v75-v76)
+
+The next gate added the wide CTA's two WGMMA consumer warp groups while retaining
+the exact TMA sample checks. Each scheduled work item creates a fresh FP32
+accumulator fragment, explicitly fills it with zero, starts WGMMA with accumulation
+disabled, waits for completion, synchronizes both consumer groups, and only then
+releases the shared-memory stage.
+
+The first v75 attempt failed during DSL lowering because a dynamic thread-index
+branch was incorrectly passed to `const_expr`. It never launched on the GPU and is
+recorded as a renderer failure, not as a candidate or performance measurement.
+
+After correcting that ownership branch, v76 completed all 512 scheduled tiles on
+H100 without deadlock. Coordinate coverage and sampled A/B payloads remained exact,
+and the compiled artifact is distinct from the TMA-only diagnostic. This proves
+safe WGMMA issue, accumulator reset, consumer synchronization, and stage release for
+one K tile per output work item. Because no accumulator data is stored yet, it is
+not a numerical correctness result. The next gate is the persistent epilogue,
+followed by extension from one K tile to all 64 K tiles.

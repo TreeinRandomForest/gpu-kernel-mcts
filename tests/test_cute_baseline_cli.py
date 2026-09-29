@@ -683,6 +683,45 @@ def test_cli_runs_persistent_scheduler_ownership(monkeypatch, capsys) -> None:
     assert '"status": "ok"' in output
 
 
+def test_cli_runs_persistent_scheduler_barriers(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_persistent_scheduler_barriers",
+        lambda: {"status": "ok", "producer_consumer_lockstep": True},
+    )
+
+    assert main(["--mode", "persistent-scheduler-barriers"]) == 0
+
+    output = capsys.readouterr().out
+    assert '"producer_consumer_lockstep": true' in output
+    assert '"status": "ok"' in output
+
+
+def test_cli_runs_persistent_scheduler_tma(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_persistent_scheduler_tma",
+        lambda: {"status": "ok", "payload_exact": True},
+    )
+
+    assert main(["--mode", "persistent-scheduler-tma"]) == 0
+
+    output = capsys.readouterr().out
+    assert '"payload_exact": true' in output
+    assert '"status": "ok"' in output
+
+
+def test_cli_runs_persistent_scheduler_wgmma_issue(monkeypatch, capsys) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_persistent_scheduler_tma",
+        lambda **kwargs: calls.append(kwargs) or {"status": "ok"},
+    )
+
+    assert main(["--mode", "persistent-scheduler-wgmma-issue"]) == 0
+
+    assert calls == [{"enable_wgmma_issue": True}]
+    assert '"status": "ok"' in capsys.readouterr().out
+
+
 def test_generated_module_loader_materializes_inspectable_source(
     tmp_path: Path,
 ) -> None:

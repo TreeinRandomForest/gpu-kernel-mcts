@@ -75,6 +75,9 @@ def build_parser() -> argparse.ArgumentParser:
             "independent-lowering-bindings",
             "independent-tma-copy",
             "persistent-scheduler-ownership",
+            "persistent-scheduler-barriers",
+            "persistent-scheduler-tma",
+            "persistent-scheduler-wgmma-issue",
         ),
         default="comparison",
     )
@@ -315,6 +318,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     elif arguments.mode == "persistent-scheduler-ownership":
         result = _run_persistent_scheduler_ownership()
+    elif arguments.mode == "persistent-scheduler-barriers":
+        result = _run_persistent_scheduler_barriers()
+    elif arguments.mode == "persistent-scheduler-tma":
+        result = _run_persistent_scheduler_tma()
+    elif arguments.mode == "persistent-scheduler-wgmma-issue":
+        result = _run_persistent_scheduler_tma(enable_wgmma_issue=True)
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -429,6 +438,56 @@ def _run_persistent_scheduler_ownership() -> Mapping[str, object]:
             sys.modules.pop(module.__name__, None)
     if not isinstance(result, Mapping):
         raise TypeError("persistent ownership diagnostic must return a mapping")
+    return {**result, "source_hash": rendered.source_hash}
+
+
+def _run_persistent_scheduler_barriers() -> Mapping[str, object]:
+    from .cute_persistent import render_persistent_barrier_diagnostic
+
+    rendered = render_persistent_barrier_diagnostic()
+    with tempfile.TemporaryDirectory(
+        prefix="kernel-mcts-persistent-barriers-"
+    ) as directory:
+        module = _load_generated_module(
+            rendered.source,
+            module_name=f"kernel_mcts_persistent_barriers_{rendered.source_hash[:16]}",
+            path=Path(directory) / "persistent_barriers.py",
+        )
+        try:
+            run_diagnostic = getattr(module, "run_diagnostic", None)
+            if not callable(run_diagnostic):
+                raise TypeError("generated run_diagnostic must be callable")
+            result = run_diagnostic()
+        finally:
+            sys.modules.pop(module.__name__, None)
+    if not isinstance(result, Mapping):
+        raise TypeError("persistent barrier diagnostic must return a mapping")
+    return {**result, "source_hash": rendered.source_hash}
+
+
+def _run_persistent_scheduler_tma(
+    *, enable_wgmma_issue: bool = False
+) -> Mapping[str, object]:
+    from .cute_persistent import render_persistent_tma_diagnostic
+
+    rendered = render_persistent_tma_diagnostic(
+        enable_wgmma_issue=enable_wgmma_issue
+    )
+    with tempfile.TemporaryDirectory(prefix="kernel-mcts-persistent-tma-") as directory:
+        module = _load_generated_module(
+            rendered.source,
+            module_name=f"kernel_mcts_persistent_tma_{rendered.source_hash[:16]}",
+            path=Path(directory) / "persistent_tma.py",
+        )
+        try:
+            run_diagnostic = getattr(module, "run_diagnostic", None)
+            if not callable(run_diagnostic):
+                raise TypeError("generated run_diagnostic must be callable")
+            result = run_diagnostic()
+        finally:
+            sys.modules.pop(module.__name__, None)
+    if not isinstance(result, Mapping):
+        raise TypeError("persistent TMA diagnostic must return a mapping")
     return {**result, "source_hash": rendered.source_hash}
 
 
