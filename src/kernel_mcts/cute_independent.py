@@ -214,10 +214,11 @@ def make_independent_tma_smem_mainloop(
     swizzle_bytes: int = 128,
     pipeline_stages: int = 3,
     tile_m: int = 64,
+    tile_n: int = 256,
 ) -> IndependentTmaSmemMainloop:
-    """Build one of the two initial coordinated BF16 copy/layout variants."""
+    """Build one coordinated BF16 copy/layout variant."""
 
-    tile_n, tile_k = 256, 64
+    tile_k = 64
     stages = pipeline_stages
     a_tile_bytes = tile_m * tile_k * BF16_BYTES
     b_tile_bytes = tile_k * tile_n * BF16_BYTES
@@ -264,6 +265,7 @@ def make_independent_cute_gemm(
     swizzle_bytes: int = 128,
     pipeline_stages: int = 3,
     tile_m: int = 64,
+    tile_n: int = 256,
 ) -> IndependentCuteGemmKernel:
     """Build the first complete structural GEMM contract.
 
@@ -275,14 +277,15 @@ def make_independent_cute_gemm(
         swizzle_bytes=swizzle_bytes,
         pipeline_stages=pipeline_stages,
         tile_m=tile_m,
+        tile_n=tile_n,
     )
     consumer_warp_groups = tile_m // 64
-    epilogue_stages = consumer_warp_groups * 4
+    epilogue_stages = consumer_warp_groups * (tile_n // 64)
     return IndependentCuteGemmKernel(
         mainloop=mainloop,
         consumer=IndependentWgmmaConsumer(
             instruction_m=64,
-            instruction_n=256,
+            instruction_n=tile_n,
             instruction_k=16,
             warp_groups_m=consumer_warp_groups,
             warp_groups_n=1,
@@ -456,12 +459,14 @@ def validate_independent_tma_smem_mainloop(
             "schema_version",
         )
     if (plan.tile_m, plan.tile_n, plan.tile_k) not in (
+        (64, 128, 64),
         (64, 256, 64),
         (128, 256, 64),
     ):
         reject(
             "unsupported_tile",
-            "the independent mainloop supports tiles (64,256,64) and (128,256,64)",
+            "the independent search space supports tiles (64,128,64), "
+            "(64,256,64), and (128,256,64)",
             "tile",
         )
     if (plan.cluster_m, plan.cluster_n) != (1, 1):
@@ -595,14 +600,14 @@ def validate_independent_cute_gemm(
 
     consumer = kernel.consumer
     mainloop = kernel.mainloop
-    if (consumer.instruction_m, consumer.instruction_n, consumer.instruction_k) != (
-        64,
-        256,
-        16,
+    if (consumer.instruction_m, consumer.instruction_n, consumer.instruction_k) not in (
+        (64, 128, 16),
+        (64, 256, 16),
     ):
         reject(
             "unsupported_wgmma_instruction",
-            "the first consumer uses a 64x256x16 Hopper WGMMA instruction shape",
+            "the independent consumers use 64x128x16 or 64x256x16 "
+            "Hopper WGMMA instruction shapes",
             "consumer",
         )
     if (

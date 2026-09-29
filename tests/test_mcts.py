@@ -366,6 +366,54 @@ def test_mcts_creates_cooperative_independent_node_under_mutation_budget() -> No
     assert representation.execution.agents[2].count == 256
 
 
+def test_mcts_creates_both_validated_independent_cta_tile_realizations() -> None:
+    class IndependentEvaluator:
+        def evaluate(self, program, workload):
+            representation = independent_cute_gemm_from_source(program.source)
+            reward = 1.0 if representation.mainloop.tile_n == 128 else 0.0
+            return EvaluationResult(
+                ProposalStatus.VALID,
+                program,
+                representation.configuration_hash,
+                reward,
+                BenchmarkResult((1.0,), 1.0, {"n=1": 1.0}),
+                metadata={"representation": representation.as_dict()},
+            )
+
+    evaluator = IndependentEvaluator()
+    root = evaluator.evaluate(
+        IndependentCuteGemmRenderer().render(make_independent_cute_gemm()),
+        WORKLOAD,
+    )
+    strategy = next(
+        item for item in CUTE_MUTATION_STRATEGIES if item.id == CHANGE_CTA_TILE
+    )
+
+    result = MCTS(
+        strategies=(strategy,),
+        workload=WORKLOAD,
+        generator=CuteMutationGenerator(),
+        evaluator=evaluator,
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(0),
+        mutation_budget=MutationBudget(2),
+        config=MCTSConfig(max_depth=1, k_max=2),
+    ).run(root)
+
+    assert result.generations == 0
+    assert result.mutations == 2
+    assert len(result.nodes) == 3
+    shapes = {
+        (
+            independent_cute_gemm_from_source(node.program.source).mainloop.tile_m,
+            independent_cute_gemm_from_source(node.program.source).mainloop.tile_n,
+        )
+        for node in result.nodes
+    }
+    assert shapes == {(64, 128), (64, 256), (128, 256)}
+    assert result.best.reward == 1.0
+
+
 def test_mcts_routes_mutation_before_generation_with_separate_budgets() -> None:
     class OneMutation:
         def __init__(self):

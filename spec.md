@@ -2943,6 +2943,16 @@ H100 validation passed both the bounded one-K diagnostic with identity tile mapp
 and the complete fixed `bf16_gemm_4096_h100` repository contract with zero error. It
 measured 448.384 us median over 30 CUDA-event samples.
 
+The narrower `(64,128,64)` lowering is also an admitted typed state. It retains one
+consumer warp group but changes the WGMMA instruction to `64x128x16`, narrows the B
+TMA tile to `64x128`, uses two disjoint 64x64 epilogue buffers, and doubles the
+fixed workload's N-grid extent from 16 to 32 CTAs. On 2026-09-29, the v54 H100
+repository-contract validation produced exact output with zero maximum and mean
+error and measured 514.720 us median over 30 CUDA-event samples. Its normalized
+MLIR and fatbin fingerprints were distinct from the wide root. A sequential
+same-VM/image root measurement was 673.440 us median, making the narrow-N state
+1.30836x faster in that bounded comparison.
+
 The paired transition between the `(64,256,64)` one-group state and the
 `(128,256,64)` two-group state is an allowed deterministic realization of
 `change_cta_tile` and consumes one `B_mut`. The mutation must atomically rebuild the
@@ -2952,6 +2962,15 @@ and rendered source. It must not independently mutate only the CTA M extent or o
 the warp-group count. Cooperative combinations with SW64, a two-stage mainloop,
 another cluster geometry, or another epilogue organization remain outside the
 validated initial space until separately admitted by a later amendment.
+
+The paired transition between the `(64,256,64)` root and `(64,128,64)` narrow-N
+state is a second deterministic realization of `change_cta_tile` and consumes one
+`B_mut`. It must atomically rebuild the B TMA tile and storage, WGMMA N instruction,
+epilogue stage and barrier count, shared-memory allocation, launch grid, canonical
+identity, and rendered source. The narrow-N state may transition back to the root,
+but its combinations with the cooperative M decomposition, SW64, a two-stage
+mainloop, cluster changes, or another epilogue organization remain outside the
+validated space.
 
 Static validation should reject only proven violations, including incompatible
 shapes/layouts, unsupported MMA partitions, invalid cluster geometry, insufficient

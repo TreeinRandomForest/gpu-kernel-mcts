@@ -372,6 +372,20 @@ completed hardware validation is identified explicitly.
   terminated with three unique nodes. The prohibited stage-two plus SW64 composition
   was never proposed. The trace records the second-step PUCT scores (`0.75` for the
   unvisited pipeline action versus `0.311221` for the visited swizzle action).
+- [x] Validate CTA N extent / WGMMA N decomposition as the next independent
+  structural control. The `(64,128,64)` variant atomically narrows
+  the B tile and WGMMA instruction, uses two 64x64 epilogue tiles, recalculates
+  shared storage, and launches a 64x32 CTA grid for the fixed workload. It passed
+  the H100 repository contract exactly and measured 514.720 us median over 30
+  samples with distinct normalized MLIR and fatbin fingerprints. `spec.md` now
+  admits the paired transition, and mutation enumeration exposes it under
+  `change_cta_tile` with one `B_mut` charge while excluding unvalidated combinations.
+  A sequential same-VM/image root measurement was 673.440 us, a bounded 1.30836x
+  speedup (`reward=0.268776`) before the MCTS smoke.
+- [ ] Run a bounded remote MCTS smoke that widens `change_cta_tile` twice from the
+  independent root and confirms that the cooperative-M and narrow-N realizations
+  become distinct valid nodes with `B_mut=2`, `B_gen=0`, cached evaluations, and
+  valid-only backups.
 - [ ] Research a separate calibrated GPU resource/interconnect graph and map typed
   computation/schedule values onto it. Start with bytes, operations, reuse, storage,
   ownership, and pipeline overlap; later calibrate uncertain latency/bandwidth terms

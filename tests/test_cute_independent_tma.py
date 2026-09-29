@@ -241,6 +241,24 @@ def test_wgmma_full_workload_launches_complete_mn_grid() -> None:
     assert '"median_us": float(statistics.median(timings_us))' in source
 
 
+def test_narrow_n_full_workload_renders_wgmma_and_grid_decomposition() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(tile_n=128),
+        debug_stage="wgmma_full_workload",
+        repository_contract=True,
+    ).source
+
+    assert "TILE_SHAPE_MNK = (64, 128, 64)" in source
+    assert "GRID_M = 64" in source
+    assert "GRID_N = 32" in source
+    assert "MMA_WARP_GROUPS = 1" in source
+    assert "EPILOGUE_TILES_PER_WARP_GROUP = 2" in source
+    assert "EPILOGUE_STAGES = 2" in source
+    assert "EPILOGUE_STORAGE_ELEMENTS = 12288" in source
+    assert "tiler_mn=(64, TILE_SHAPE_MNK[1])" in source
+    compile(source, "independent_narrow_n_gemm.py", "exec")
+
+
 def test_two_stage_full_workload_renders_two_stage_barrier_ring() -> None:
     source = render_independent_tma_copy_diagnostic(
         make_independent_cute_gemm(pipeline_stages=2),

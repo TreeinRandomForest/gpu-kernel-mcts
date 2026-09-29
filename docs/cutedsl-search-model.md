@@ -228,20 +228,19 @@ trace analysis is recorded in
 
 `--cute-root-kind independent` selects the independently lowered
 `(64,256,64)` single-warp-group root on both the client and worker. Worker
-calibration therefore measures the same program used as the search root. The
-initial independent neighborhood contains two H100-validated transitions:
-atomically changing both A and B shared-memory swizzles from 128 bytes to 64 bytes,
-or changing the mainloop from three stages to two while coherently rebuilding its
-barrier ring and storage offsets. Each consumes `B_mut`; no independent LLM proposal
-path is enabled yet. The router excludes the unvalidated two-stage-plus-SW64
-combination.
+calibration therefore measures the same program used as the search root. The root
+neighborhood now contains four H100-validated realizations: atomically changing both
+A and B shared-memory swizzles from 128 bytes to 64 bytes; changing the mainloop from
+three stages to two; changing CTA M from 64 to 128 with a second M-axis consumer
+warp group; or changing CTA/WGMMA N from 256 to 128. Each consumes `B_mut`; no
+independent LLM proposal path is enabled yet. The router excludes all unvalidated
+combinations among these controls.
 
-An experimental cooperative diagnostic represents a `(128,256,64)` CTA tile with
+The cooperative `(128,256,64)` CTA tile uses
 two M-axis consumer warp groups. Its epilogue gives each group four local 64x64
 accumulator tiles and uses eight distinct shared-memory buffers across the CTA.
 After both groups stage their local fragments, one elected warp issues all eight TMA
-stores. This shape is accepted by static validation and has a guarded CLI path, but
-it remains deliberately excluded from mutation enumeration. The v52 H100 run passed
+stores. The v52 H100 run passed
 the bounded one-K diagnostic with identity tile mapping and passed the complete
 4096x4096x4096 repository contract exactly. It measured 448.384 us median over 30
 samples. See [cooperative independent GEMM v52](experiments/cutedsl-cooperative-v52.md).
@@ -257,6 +256,14 @@ The v53 remote MCTS smoke exercised only this strategy with `B_mut=1`, `B_gen=0`
 the cooperative child at 448.608 us, for reward `0.399383`. The trace contains one
 valid typed proposal, one valid-only backup, two distinct canonical states and
 binaries, and two profile calls.
+
+The v54 CTA-N diagnostic validated `(64,128,64)` with one `64x128x16` WGMMA
+consumer, a narrowed B TMA tile, two 64x64 epilogue buffers, and a 64x32
+fixed-workload grid. Repository-contract correctness was exact, and the median was
+514.720 us over 30 samples. The paired root/narrow transition is now a second
+realization of `change_cta_tile`; narrow-N combinations with the other structural
+controls remain ineligible pending separate validation. See
+[CTA-N/WGMMA-N validation v54](experiments/cutedsl-cta-n-v54.md).
 
 ```bash
 python -m kernel_mcts.search_cli \

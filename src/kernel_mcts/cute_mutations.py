@@ -50,8 +50,10 @@ CUTE_MUTATION_STRATEGIES = (
         "Change the CTA output-tile decomposition.",
         {
             "cute_dsl": (
-                "Change only tile_m and tile_n. Choose one supported pair: "
-                "(64,128), (128,128), or (128,256)."
+                "Change the complete typed CTA decomposition atomically. For the "
+                "pinned representation choose (64,128), (128,128), or (128,256). "
+                "For the independent representation choose only an admitted paired "
+                "transition among (64,128), (64,256), and (128,256)."
             )
         },
     ),
@@ -188,6 +190,7 @@ def enumerate_independent_cute_mutations(
     if (
         current_swizzle == 128
         and current_stages == 3
+        and parent.mainloop.tile_n == 256
         and parent.mainloop.tile_m in (64, 128)
     ):
         tile_m = 128 if parent.mainloop.tile_m == 64 else 64
@@ -209,9 +212,35 @@ def enumerate_independent_cute_mutations(
                 validation=validate_independent_cute_gemm(candidate),
             )
         )
-    if parent.mainloop.tile_m != 64:
-        # Only the paired return transition is admitted from the cooperative
-        # state; its SW64 and two-stage combinations remain unvalidated.
+    if (
+        current_swizzle == 128
+        and current_stages == 3
+        and parent.mainloop.tile_m == 64
+        and parent.mainloop.tile_n in (128, 256)
+    ):
+        tile_n = 128 if parent.mainloop.tile_n == 256 else 256
+        candidate = make_independent_cute_gemm(
+            swizzle_bytes=current_swizzle,
+            pipeline_stages=current_stages,
+            tile_m=parent.mainloop.tile_m,
+            tile_n=tile_n,
+        )
+        proposals.append(
+            IndependentCuteMutationProposal(
+                parent=parent,
+                candidate=candidate,
+                strategy_id=CHANGE_CTA_TILE,
+                parameters={
+                    "tile_n": tile_n,
+                    "instruction_n": tile_n,
+                    "epilogue_stages": tile_n // 64,
+                },
+                validation=validate_independent_cute_gemm(candidate),
+            )
+        )
+    if parent.mainloop.tile_m != 64 or parent.mainloop.tile_n != 256:
+        # Only paired return transitions are admitted from alternate CTA tiles;
+        # their SW64 and two-stage combinations remain unvalidated.
         return tuple(proposals)
     if current_stages == 3:
         swizzle_bytes = 64 if current_swizzle == 128 else 128

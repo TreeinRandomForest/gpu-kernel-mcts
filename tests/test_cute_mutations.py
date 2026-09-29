@@ -310,10 +310,11 @@ def test_independent_neighborhood_contains_only_validated_root_transitions() -> 
 
     assert [proposal.strategy_id for proposal in proposals] == [
         CHANGE_CTA_TILE,
+        CHANGE_CTA_TILE,
         CHANGE_SHARED_MEMORY_SWIZZLE,
         CHANGE_PIPELINE_STAGES,
     ]
-    cooperative, swizzle, pipeline = proposals
+    cooperative, narrow_n, swizzle, pipeline = proposals
     assert cooperative.parameters == {
         "tile_m": 128,
         "warp_groups_m": 2,
@@ -322,6 +323,15 @@ def test_independent_neighborhood_contains_only_validated_root_transitions() -> 
     assert cooperative.candidate.mainloop.tile_m == 128
     assert cooperative.candidate.consumer.warp_groups_m == 2
     assert cooperative.candidate.epilogue.pipeline_stages == 8
+    assert narrow_n.parameters == {
+        "tile_n": 128,
+        "instruction_n": 128,
+        "epilogue_stages": 2,
+    }
+    assert narrow_n.candidate.mainloop.tile_n == 128
+    assert narrow_n.candidate.mainloop.b_copy.tile_columns == 128
+    assert narrow_n.candidate.consumer.instruction_n == 128
+    assert narrow_n.candidate.epilogue.pipeline_stages == 2
     assert swizzle.parameters == {"swizzle_bytes": 64}
     assert swizzle.candidate.mainloop.a_copy.swizzle_bytes == 64
     assert swizzle.candidate.mainloop.b_copy.swizzle_bytes == 64
@@ -381,6 +391,20 @@ def test_cooperative_mutation_is_excluded_from_unvalidated_combinations() -> Non
     }
 
 
+def test_narrow_n_kernel_has_only_validated_return_mutation() -> None:
+    narrow = make_independent_cute_gemm(tile_n=128)
+
+    proposals = enumerate_independent_cute_mutations(narrow)
+
+    assert [proposal.strategy_id for proposal in proposals] == [CHANGE_CTA_TILE]
+    assert proposals[0].parameters == {
+        "tile_n": 256,
+        "instruction_n": 256,
+        "epilogue_stages": 4,
+    }
+    assert proposals[0].candidate == make_independent_cute_gemm()
+
+
 def test_generator_emits_atomic_independent_cooperative_candidate() -> None:
     generator = CuteMutationGenerator()
     strategy = next(
@@ -395,6 +419,7 @@ def test_generator_emits_atomic_independent_cooperative_candidate() -> None:
     )
 
     result = generator.generate(request)
+    narrow_result = generator.generate(request)
 
     assert result.program is not None
     candidate = independent_cute_gemm_from_source(result.program.source)
@@ -412,6 +437,15 @@ def test_generator_emits_atomic_independent_cooperative_candidate() -> None:
         "consumer",
         "epilogue",
         "execution",
+    }
+    narrow = independent_cute_gemm_from_source(narrow_result.program.source)
+    assert narrow.mainloop.tile_n == 128
+    assert narrow.consumer.instruction_n == 128
+    assert narrow.epilogue.pipeline_stages == 2
+    assert narrow_result.metadata["transformation"]["parameters"] == {
+        "tile_n": 128,
+        "instruction_n": 128,
+        "epilogue_stages": 2,
     }
     assert generator.can_generate(request) is False
 

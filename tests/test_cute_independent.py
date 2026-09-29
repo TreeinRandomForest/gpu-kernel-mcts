@@ -58,6 +58,26 @@ def test_cooperative_kernel_owns_two_accumulator_rows_and_eight_output_tiles() -
     assert validate_independent_cute_gemm(cooperative).valid
 
 
+def test_narrow_n_kernel_coordinates_wgmma_b_tile_epilogue_and_storage() -> None:
+    wide = make_independent_cute_gemm()
+    narrow = make_independent_cute_gemm(tile_n=128)
+
+    assert (narrow.mainloop.tile_m, narrow.mainloop.tile_n) == (64, 128)
+    assert (narrow.mainloop.b_copy.tile_rows, narrow.mainloop.b_copy.tile_columns) == (
+        64,
+        128,
+    )
+    assert narrow.consumer.instruction_n == 128
+    assert narrow.consumer.warp_groups_n == 1
+    assert narrow.epilogue.pipeline_stages == 2
+    assert narrow.epilogue.barrier_slots == 2
+    assert narrow.execution.buffers[2].stages == 2
+    assert narrow.mainloop.shared_memory_bytes == 73_728
+    assert narrow.shared_memory_bytes == 98_304
+    assert narrow.configuration_hash != wide.configuration_hash
+    assert validate_independent_cute_gemm(narrow).valid
+
+
 def test_cooperative_kernel_rejects_incomplete_execution_ownership() -> None:
     cooperative = make_independent_cute_gemm(tile_m=128)
     agents = list(cooperative.execution.agents)
