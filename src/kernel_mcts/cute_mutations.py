@@ -35,12 +35,14 @@ from .generation import (
 CHANGE_CTA_TILE = "change_cta_tile"
 CHANGE_CLUSTER_SHAPE = "change_cluster_shape"
 CHANGE_PIPELINE_STAGES = "change_pipeline_stages"
+CHANGE_MAINLOOP_SCHEDULE = "change_mainloop_schedule"
 CHANGE_EPILOGUE_STAGES = "change_epilogue_stages"
 CHANGE_SHARED_MEMORY_SWIZZLE = "change_shared_memory_swizzle"
 CUTE_MUTATION_STRATEGY_IDS = (
     CHANGE_CTA_TILE,
     CHANGE_CLUSTER_SHAPE,
     CHANGE_PIPELINE_STAGES,
+    CHANGE_MAINLOOP_SCHEDULE,
     CHANGE_EPILOGUE_STAGES,
     CHANGE_SHARED_MEMORY_SWIZZLE,
 )
@@ -77,6 +79,17 @@ CUTE_MUTATION_STRATEGIES = (
                 "Change only pipeline_stages. Choose 2 or 3 for the pinned "
                 "representation, or 2, 3, or 4 for the independent representation. "
                 "None preserves the pinned heuristic and is not a proposal."
+            )
+        },
+    ),
+    Strategy(
+        CHANGE_MAINLOOP_SCHEDULE,
+        "Change whether TMA prefetch overlaps WGMMA mainloop consumption.",
+        {
+            "cute_dsl": (
+                "Change only the complete typed mainloop schedule between serial "
+                "and prefetch. The prefetch schedule fills the stage ring and "
+                "refills each stage only after its prior WGMMA use completes."
             )
         },
     ),
@@ -192,8 +205,20 @@ def enumerate_independent_cute_mutations(
     current_stages = parent.mainloop.pipeline_stages
     current_tile = (parent.mainloop.tile_m, parent.mainloop.tile_n)
     current_cluster = (parent.mainloop.cluster_m, parent.mainloop.cluster_n)
+    current_schedule = parent.mainloop.schedule
     root_tile = (64, 256)
     alternate_tiles = ((128, 256), (64, 128), (128, 128))
+    if current_schedule == "prefetch":
+        candidate = make_independent_cute_gemm(mainloop_schedule="serial")
+        return (
+            IndependentCuteMutationProposal(
+                parent=parent,
+                candidate=candidate,
+                strategy_id=CHANGE_MAINLOOP_SCHEDULE,
+                parameters={"mainloop_schedule": "serial"},
+                validation=validate_independent_cute_gemm(candidate),
+            ),
+        )
     if (
         current_swizzle == 128
         and current_stages == 3
@@ -291,6 +316,22 @@ def enumerate_independent_cute_mutations(
                     validation=validate_independent_cute_gemm(candidate),
                 )
             )
+    if (
+        current_tile == root_tile
+        and current_cluster == (1, 1)
+        and current_swizzle == 128
+        and current_stages == 3
+    ):
+        candidate = make_independent_cute_gemm(mainloop_schedule="prefetch")
+        proposals.append(
+            IndependentCuteMutationProposal(
+                parent=parent,
+                candidate=candidate,
+                strategy_id=CHANGE_MAINLOOP_SCHEDULE,
+                parameters={"mainloop_schedule": "prefetch"},
+                validation=validate_independent_cute_gemm(candidate),
+            )
+        )
     return tuple(proposals)
 
 def mutate_cute_program(

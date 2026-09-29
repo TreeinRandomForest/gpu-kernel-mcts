@@ -647,13 +647,16 @@ def _selected_cute_strategies(
     if arguments.cute_root_kind == "independent":
         supported = {
             "change_cta_tile",
+            "change_cluster_shape",
             "change_pipeline_stages",
+            "change_mainloop_schedule",
             "change_shared_memory_swizzle",
         }
         if selected and not set(selected) <= supported:
             parser.error(
                 "the independent CuTe root currently supports only CTA-tile, "
-                "pipeline-stage, and shared-memory-swizzle changes"
+                "cluster-shape, pipeline-stage, mainloop-schedule, and "
+                "shared-memory-swizzle changes"
             )
         selected = selected or tuple(supported)
     if not selected:

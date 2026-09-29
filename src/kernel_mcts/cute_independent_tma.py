@@ -31,6 +31,7 @@ IndependentTmaDebugStage = Literal[
     "wgmma_two_group",
     "wgmma_full_k",
     "wgmma_full_workload",
+    "wgmma_full_workload_prefetch",
     "wgmma_one_k_no_reuse",
     "wgmma_one_k",
 ]
@@ -55,6 +56,7 @@ INDEPENDENT_TMA_DEBUG_STAGES = (
     "wgmma_two_group",
     "wgmma_full_k",
     "wgmma_full_workload",
+    "wgmma_full_workload_prefetch",
     "wgmma_one_k_no_reuse",
     "wgmma_one_k",
 )
@@ -98,8 +100,19 @@ def render_independent_tma_copy_diagnostic(
         if debug_stage in ("wgmma_one_k_no_reuse", "wgmma_two_group")
         else epilogue.pipeline_stages
     )
-    full_workload = debug_stage == "wgmma_full_workload"
-    full_k = debug_stage in ("wgmma_full_k", "wgmma_full_workload")
+    full_workload = debug_stage in (
+        "wgmma_full_workload",
+        "wgmma_full_workload_prefetch",
+    )
+    overlapped_mainloop = (
+        mainloop.schedule == "prefetch"
+        or debug_stage == "wgmma_full_workload_prefetch"
+    )
+    full_k = debug_stage in (
+        "wgmma_full_k",
+        "wgmma_full_workload",
+        "wgmma_full_workload_prefetch",
+    )
     problem_k = 4096 if full_k else mainloop.tile_k
     diagnostic_epilogue_storage_elements = (
         (diagnostic_epilogue_stages + 1) * epilogue.tile_m * epilogue.tile_n
@@ -158,6 +171,7 @@ def render_independent_tma_copy_diagnostic(
         "wgmma_two_group",
         "wgmma_full_k",
         "wgmma_full_workload",
+        "wgmma_full_workload_prefetch",
         "wgmma_one_k_no_reuse",
         "wgmma_one_k",
     )
@@ -201,6 +215,7 @@ PROBLEM_M = {problem_m}
 PROBLEM_N = {problem_n}
 FULL_K = {full_k!r}
 FULL_WORKLOAD = {full_workload!r}
+OVERLAPPED_MAINLOOP = {overlapped_mainloop!r}
 REPOSITORY_CONTRACT = {repository_contract!r}
 PROFILE_SINGLE_LAUNCH = {profile_single_launch!r}
 FULL_K_TILE_COUNT = PROBLEM_K // TILE_SHAPE_MNK[2]
@@ -515,30 +530,58 @@ class IndependentTmaCopyKernel:
             accumulators = cute.make_rmem_tensor(tCgC.shape, self.acc_dtype)
             tiled_mma.set(cute.nvgpu.warpgroup.Field.ACCUMULATE, False)
             if cutlass.const_expr(FULL_K):
+                if cutlass.const_expr(OVERLAPPED_MAINLOOP):
+                    # Fill the complete stage ring before consuming stage zero.
+                    # Later iterations refill a stage only after WGMMA has finished
+                    # reading it, so TMA for tile k+stages can overlap consumption
+                    # of the already-full intervening stages.
+                    for prefetch_tile in cutlass.range_constexpr(MAINLOOP_STAGES):
+                        prefetch_barrier = load_barriers + prefetch_tile
+                        if tidx == 0:
+                            cute.arch.mbarrier_expect_tx(
+                                prefetch_barrier, transaction_bytes
+                            )
+                        if warp_idx == 0:
+                            cute.copy(
+                                tma_a,
+                                tAgA[(None, bidx, prefetch_tile)],
+                                tAsA[(None, prefetch_tile)],
+                                tma_bar_ptr=prefetch_barrier,
+                            )
+                            cute.copy(
+                                tma_b,
+                                tBgB[(None, bidy, prefetch_tile)],
+                                tBsB[(None, prefetch_tile)],
+                                tma_bar_ptr=prefetch_barrier,
+                                mcast_mask=b_mcast_mask,
+                            )
+                            with cute.arch.elect_one():
+                                cute.arch.mbarrier_arrive(prefetch_barrier)
                 for k_tile in cutlass.range(0, FULL_K_TILE_COUNT, 1, unroll=1):
                     stage = k_tile % MAINLOOP_STAGES
                     phase = (k_tile // MAINLOOP_STAGES) % 2
                     stage_barrier = load_barriers + stage
-                    if tidx == 0:
-                        cute.arch.mbarrier_expect_tx(
-                            stage_barrier, transaction_bytes
-                        )
-                    if warp_idx == 0:
-                        cute.copy(
-                            tma_a,
-                            tAgA[(None, bidx, k_tile)],
-                            tAsA[(None, stage)],
-                            tma_bar_ptr=stage_barrier,
-                        )
-                        cute.copy(
-                            tma_b,
-                            tBgB[(None, bidy, k_tile)],
-                            tBsB[(None, stage)],
-                            tma_bar_ptr=stage_barrier,
-                            mcast_mask=b_mcast_mask,
-                        )
-                        with cute.arch.elect_one():
-                            cute.arch.mbarrier_arrive(stage_barrier)
+                    if cutlass.const_expr(not OVERLAPPED_MAINLOOP):
+                        if tidx == 0:
+                            cute.arch.mbarrier_expect_tx(
+                                stage_barrier, transaction_bytes
+                            )
+                        if warp_idx == 0:
+                            cute.copy(
+                                tma_a,
+                                tAgA[(None, bidx, k_tile)],
+                                tAsA[(None, stage)],
+                                tma_bar_ptr=stage_barrier,
+                            )
+                            cute.copy(
+                                tma_b,
+                                tBgB[(None, bidy, k_tile)],
+                                tBsB[(None, stage)],
+                                tma_bar_ptr=stage_barrier,
+                                mcast_mask=b_mcast_mask,
+                            )
+                            with cute.arch.elect_one():
+                                cute.arch.mbarrier_arrive(stage_barrier)
                     cute.arch.mbarrier_wait(stage_barrier, phase)
                     cute.nvgpu.warpgroup.fence()
                     for k_block in cutlass.range(
@@ -556,6 +599,29 @@ class IndependentTmaCopyKernel:
                         )
                     cute.nvgpu.warpgroup.commit_group()
                     cute.nvgpu.warpgroup.wait_group(0)
+                    if cutlass.const_expr(OVERLAPPED_MAINLOOP):
+                        future_tile = k_tile + MAINLOOP_STAGES
+                        if future_tile < FULL_K_TILE_COUNT:
+                            if tidx == 0:
+                                cute.arch.mbarrier_expect_tx(
+                                    stage_barrier, transaction_bytes
+                                )
+                            if warp_idx == 0:
+                                cute.copy(
+                                    tma_a,
+                                    tAgA[(None, bidx, future_tile)],
+                                    tAsA[(None, stage)],
+                                    tma_bar_ptr=stage_barrier,
+                                )
+                                cute.copy(
+                                    tma_b,
+                                    tBgB[(None, bidy, future_tile)],
+                                    tBsB[(None, stage)],
+                                    tma_bar_ptr=stage_barrier,
+                                    mcast_mask=b_mcast_mask,
+                                )
+                                with cute.arch.elect_one():
+                                    cute.arch.mbarrier_arrive(stage_barrier)
             else:
                 cute.nvgpu.warpgroup.fence()
                 for k_block in cutlass.range(

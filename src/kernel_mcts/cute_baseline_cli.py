@@ -106,6 +106,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tile-m", type=int)
     parser.add_argument("--tile-n", type=int)
     parser.add_argument("--independent-cluster-m", type=int, choices=(1, 2), default=1)
+    parser.add_argument(
+        "--independent-mainloop-schedule",
+        choices=("serial", "prefetch"),
+        default="serial",
+    )
     parser.add_argument("--cluster-m", type=int)
     parser.add_argument("--cluster-n", type=int)
     parser.add_argument(
@@ -149,6 +154,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.mode != "independent-tma-copy" and arguments.independent_cluster_m != 1:
         raise ValueError(
             "--independent-cluster-m is available only in independent-tma-copy mode"
+        )
+    if (
+        arguments.mode != "independent-tma-copy"
+        and arguments.independent_mainloop_schedule != "serial"
+    ):
+        raise ValueError(
+            "--independent-mainloop-schedule is available only in "
+            "independent-tma-copy mode"
         )
     if (
         arguments.mode != "tma-copy-diagnostic"
@@ -284,6 +297,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             tile_m=arguments.tile_m or 64,
             tile_n=arguments.tile_n or 256,
             cluster_m=arguments.independent_cluster_m,
+            mainloop_schedule=arguments.independent_mainloop_schedule,
             repository_contract=arguments.independent_repository_contract,
         )
     elif arguments.mode == "comparable":
@@ -340,6 +354,7 @@ def _run_independent_tma_copy(
     tile_m: int = 64,
     tile_n: int = 256,
     cluster_m: int = 1,
+    mainloop_schedule: str = "serial",
     repository_contract: bool = False,
 ) -> Mapping[str, object]:
     from .cute_independent import make_independent_cute_gemm
@@ -351,6 +366,7 @@ def _run_independent_tma_copy(
             tile_m=tile_m,
             tile_n=tile_n,
             cluster_m=cluster_m,
+            mainloop_schedule=mainloop_schedule,
         ),
         debug_stage=debug_stage,
         repository_contract=repository_contract,

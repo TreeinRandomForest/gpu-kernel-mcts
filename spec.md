@@ -2986,6 +2986,20 @@ deterministic realizations of `change_pipeline_stages`; either alternate state m
 transition back to stage three, but the stage-two to stage-four transition and
 combinations with other independent controls remain outside the admitted space.
 
+The prefetched `(64,256,64)`, cluster `(1,1)`, three-stage SW128 mainloop schedule
+is also an admitted typed state. Unlike the original serial schedule, it fills the
+complete TMA stage ring before consuming stage zero and refills a released stage
+with tile `k + stages` only after WGMMA has completed its prior use. Warp zero still
+cooperatively issues TMA and participates in the WGMMA consumer group; this is
+software-pipelined overlap, not dedicated producer/consumer warp specialization.
+On 2026-09-29, the v63 H100 repository-contract validation produced exact output
+with zero maximum and mean error and measured 274.256 us median over 30 CUDA-event
+samples. A same-image serial control measured 675.408 us, making prefetch 2.46269x
+faster (`reward=0.901255`). Serial and prefetch schedules have distinct schema-v4
+canonical identities. Their paired transition is a deterministic realization of
+`change_mainloop_schedule` and consumes one `B_mut`; combinations with other
+independent controls remain outside the admitted space until separately validated.
+
 The paired transition between the `(64,256,64)` one-group state and the
 `(128,256,64)` two-group state is an allowed deterministic realization of
 `change_cta_tile` and consumes one `B_mut`. The mutation must atomically rebuild the

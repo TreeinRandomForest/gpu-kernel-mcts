@@ -71,6 +71,23 @@ def test_four_stage_mainloop_is_admitted() -> None:
     compile(source, "independent_tma_pipeline_four.py", "exec")
 
 
+def test_prefetch_diagnostic_renders_tracked_stage_ring_schedule() -> None:
+    source = render_independent_tma_copy_diagnostic(
+        make_independent_cute_gemm(),
+        debug_stage="wgmma_full_workload_prefetch",
+        repository_contract=True,
+    ).source
+
+    assert "FULL_K = True" in source
+    assert "FULL_WORKLOAD = True" in source
+    assert "ENABLE_WGMMA = True" in source
+    assert "OVERLAPPED_MAINLOOP = True" in source
+    assert "for prefetch_tile in cutlass.range_constexpr(MAINLOOP_STAGES)" in source
+    assert "future_tile = k_tile + MAINLOOP_STAGES" in source
+    assert "if future_tile < FULL_K_TILE_COUNT" in source
+    compile(source, "independent_tma_prefetch.py", "exec")
+
+
 @pytest.mark.parametrize(
     ("stage", "cluster", "enable_b", "enable_multicast", "launch"),
     (

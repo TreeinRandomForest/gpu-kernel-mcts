@@ -7,6 +7,7 @@ from kernel_mcts.cute_mutations import (
     CHANGE_CLUSTER_SHAPE,
     CHANGE_CTA_TILE,
     CHANGE_EPILOGUE_STAGES,
+    CHANGE_MAINLOOP_SCHEDULE,
     CHANGE_PIPELINE_STAGES,
     CHANGE_SHARED_MEMORY_SWIZZLE,
     CuteMutationGenerator,
@@ -316,8 +317,18 @@ def test_independent_neighborhood_contains_only_validated_root_transitions() -> 
         CHANGE_SHARED_MEMORY_SWIZZLE,
         CHANGE_PIPELINE_STAGES,
         CHANGE_PIPELINE_STAGES,
+        CHANGE_MAINLOOP_SCHEDULE,
     ]
-    cooperative, narrow_n, combined, cluster, swizzle, stage_two, stage_four = proposals
+    (
+        cooperative,
+        narrow_n,
+        combined,
+        cluster,
+        swizzle,
+        stage_two,
+        stage_four,
+        prefetch,
+    ) = proposals
     assert cooperative.parameters == {
         "tile_m": 128,
         "tile_n": 256,
@@ -367,6 +378,9 @@ def test_independent_neighborhood_contains_only_validated_root_transitions() -> 
     assert stage_four.parameters == {"pipeline_stages": 4}
     assert stage_four.candidate.mainloop.pipeline_stages == 4
     assert stage_four.candidate.mainloop.barrier_slots == 4
+    assert prefetch.parameters == {"mainloop_schedule": "prefetch"}
+    assert prefetch.candidate.mainloop.schedule == "prefetch"
+    assert prefetch.candidate.configuration_hash != root.configuration_hash
     assert all(proposal.validation.valid for proposal in proposals)
 
 
@@ -610,3 +624,35 @@ def test_generator_emits_both_independent_pipeline_candidates() -> None:
         "pipeline_stages": 4
     }
     assert generator.can_generate(request) is False
+
+
+def test_generator_emits_prefetch_schedule_and_return_transition() -> None:
+    generator = CuteMutationGenerator()
+    strategy = next(
+        item
+        for item in CUTE_MUTATION_STRATEGIES
+        if item.id == CHANGE_MAINLOOP_SCHEDULE
+    )
+    root = make_independent_cute_gemm()
+    request = GenerationRequest(
+        IndependentCuteGemmRenderer().render(root),
+        strategy,
+        BF16_GEMM_WORKLOAD,
+        {},
+        None,
+    )
+
+    result = generator.generate(request)
+
+    assert result.program is not None
+    candidate = independent_cute_gemm_from_source(result.program.source)
+    assert candidate.mainloop.schedule == "prefetch"
+    assert result.metadata["transformation"]["parameters"] == {
+        "mainloop_schedule": "prefetch"
+    }
+    assert generator.can_generate(request) is False
+    return_proposals = enumerate_independent_cute_mutations(candidate)
+    assert [proposal.strategy_id for proposal in return_proposals] == [
+        CHANGE_MAINLOOP_SCHEDULE
+    ]
+    assert return_proposals[0].candidate == root

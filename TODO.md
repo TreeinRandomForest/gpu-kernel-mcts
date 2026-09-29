@@ -379,6 +379,17 @@ completed hardware validation is identified explicitly.
   stage-two and stage-four nodes and backed up both valid measurements. The root,
   stage-two, and stage-four medians were 669.664, 670.048, and 675.808 us,
   respectively. No LLM calls or hidden reevaluations were used.
+- [x] Add and validate an independently lowered software-prefetch mainloop schedule.
+  It prefills the three-stage TMA ring and refills each released stage while later
+  full stages are consumed, without introducing a dedicated producer warp. The v63
+  H100 repository-contract comparison passed exact correctness and measured 274.256
+  us versus 675.408 us for the same-image serial schedule: a 2.46269x speedup and
+  `reward=0.901255`. Promote it as schema-v4 typed state and the paired deterministic
+  `change_mainloop_schedule` mutation; cross-control compositions remain excluded.
+- [x] Validate the typed prefetch state through the CLI and MCTS paths. The v64 typed
+  CLI run passed exact correctness at 274.608 us median. A one-iteration H100 search
+  consumed `B_mut=1`, `B_gen=0`, created one distinct node, and backed up reward
+  `0.892142` from 670.960 us serial and 274.944 us prefetch medians.
 - [x] Exercise both validated independent mutations in one bounded search. The v50
   `B_mut=2`, `B_gen=0`, `max_depth=1` run created separate SW64 and two-stage children
   directly beneath the SW128 three-stage root, performed two valid-only backups, and

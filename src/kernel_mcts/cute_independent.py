@@ -6,12 +6,13 @@ from dataclasses import asdict, dataclass
 from typing import Literal
 
 
-INDEPENDENT_TMA_SMEM_SCHEMA_VERSION = 3
+INDEPENDENT_TMA_SMEM_SCHEMA_VERSION = 4
 H100_MAX_SHARED_MEMORY_BYTES = 227_328
 BF16_BYTES = 2
 
 Operand = Literal["a", "b"]
 MulticastAxis = Literal["none", "cluster_m"]
+MainloopSchedule = Literal["serial", "prefetch"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +53,7 @@ class IndependentTmaSmemMainloop:
     pipeline_stages: int
     barrier_slots: int
     producer_warp_groups: int
+    schedule: MainloopSchedule
     a_copy: IndependentTmaOperandCopy
     b_copy: IndependentTmaOperandCopy
     schema_version: int = INDEPENDENT_TMA_SMEM_SCHEMA_VERSION
@@ -216,6 +218,7 @@ def make_independent_tma_smem_mainloop(
     tile_m: int = 64,
     tile_n: int = 256,
     cluster_m: int = 1,
+    mainloop_schedule: MainloopSchedule = "serial",
 ) -> IndependentTmaSmemMainloop:
     """Build one coordinated BF16 copy/layout variant."""
 
@@ -232,6 +235,7 @@ def make_independent_tma_smem_mainloop(
         pipeline_stages=stages,
         barrier_slots=stages,
         producer_warp_groups=1,
+        schedule=mainloop_schedule,
         a_copy=IndependentTmaOperandCopy(
             operand="a",
             global_major="k",
@@ -268,6 +272,7 @@ def make_independent_cute_gemm(
     tile_m: int = 64,
     tile_n: int = 256,
     cluster_m: int = 1,
+    mainloop_schedule: MainloopSchedule = "serial",
 ) -> IndependentCuteGemmKernel:
     """Build the first complete structural GEMM contract.
 
@@ -281,6 +286,7 @@ def make_independent_cute_gemm(
         tile_m=tile_m,
         tile_n=tile_n,
         cluster_m=cluster_m,
+        mainloop_schedule=mainloop_schedule,
     )
     consumer_warp_groups = tile_m // 64
     epilogue_stages = consumer_warp_groups * (tile_n // 64)
@@ -498,6 +504,12 @@ def validate_independent_tma_smem_mainloop(
             "unsupported_producer_partition",
             "the initial contract has exactly one producer warp group",
             "producer_warp_groups",
+        )
+    if plan.schedule not in ("serial", "prefetch"):
+        reject(
+            "unsupported_mainloop_schedule",
+            "the independent mainloop schedule must be serial or prefetch",
+            "schedule",
         )
 
     expected_tiles = {

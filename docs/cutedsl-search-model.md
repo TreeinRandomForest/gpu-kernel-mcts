@@ -457,3 +457,18 @@ the same-image three-stage root. Its negative reward (`-0.008445`) is preserved 
 valid search evidence. Alternate pipeline depths return to stage three; direct
 two-to-four and cross-control compositions remain excluded until separately
 validated.
+
+## Software-prefetched mainloop schedule
+
+The independent schema-v4 mainloop records `schedule` as either `serial` or
+`prefetch`. Prefetch fills the complete TMA stage ring before WGMMA consumes stage
+zero, then refills a released stage with tile `k + stages`. This overlaps TMA with
+consumption of intervening full stages while preserving full/empty barrier phases.
+It does not yet dedicate a separate producer warp: warp zero issues TMA and remains
+part of the WGMMA consumer group.
+
+The v63 H100 paired comparison passed exact repository-contract correctness. The
+prefetched schedule measured 274.256 us median versus 675.408 us for serial, a
+2.46269x speedup (`reward=0.901255`). `change_mainloop_schedule` exposes only the
+paired serial/prefetch transition and charges `B_mut`; combinations with CTA,
+cluster, stage-depth, or swizzle changes remain excluded pending separate evidence.
