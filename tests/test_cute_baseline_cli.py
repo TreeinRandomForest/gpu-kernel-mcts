@@ -722,6 +722,19 @@ def test_cli_runs_persistent_scheduler_wgmma_issue(monkeypatch, capsys) -> None:
     assert '"status": "ok"' in capsys.readouterr().out
 
 
+def test_cli_runs_persistent_scheduler_epilogue(monkeypatch, capsys) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_persistent_scheduler_tma",
+        lambda **kwargs: calls.append(kwargs) or {"status": "ok"},
+    )
+
+    assert main(["--mode", "persistent-scheduler-epilogue"]) == 0
+
+    assert calls == [{"enable_wgmma_issue": True, "enable_epilogue": True}]
+    assert '"status": "ok"' in capsys.readouterr().out
+
+
 def test_generated_module_loader_materializes_inspectable_source(
     tmp_path: Path,
 ) -> None:

@@ -80,3 +80,18 @@ safe WGMMA issue, accumulator reset, consumer synchronization, and stage release
 one K tile per output work item. Because no accumulator data is stored yet, it is
 not a numerical correctness result. The next gate is the persistent epilogue,
 followed by extension from one K tile to all 64 K tiles.
+
+## One-K epilogue follow-up (v77)
+
+Image v77 added the complete wide-CTA epilogue to the persistent one-K diagnostic.
+The two consumer warp groups staged eight disjoint 64x64 accumulator tiles in shared
+memory. One elected CTA warp issued the eight TMA stores, waited for their completion,
+and synchronized both consumer groups before any subsequent work item could reuse
+the epilogue buffers.
+
+The H100 run stored all 512 output tiles and matched the BF16 result of the one-K
+FP32 reference exactly: maximum error and mean error were both zero. Scheduler
+coverage and A/B TMA payload samples also remained exact. This validates the entire
+persistent path for one K tile. It is not yet the repository workload because the
+real GEMM accumulates 64 K tiles per output; that full-K carry is the final
+correctness gate before latency measurement or typed-state promotion.

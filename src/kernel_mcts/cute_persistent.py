@@ -381,6 +381,7 @@ def render_persistent_tma_diagnostic(
     grid_n: int = 16,
     pipeline_stages: int = 3,
     enable_wgmma_issue: bool = False,
+    enable_epilogue: bool = False,
 ) -> PersistentOwnershipDiagnosticSource:
     """Render a persistent TMA payload/addressing diagnostic.
 
@@ -393,6 +394,8 @@ def render_persistent_tma_diagnostic(
         raise ValueError("persistent TMA grid extents must be positive")
     if pipeline_stages <= 0:
         raise ValueError("persistent TMA stage count must be positive")
+    if enable_epilogue and not enable_wgmma_issue:
+        raise ValueError("persistent epilogue requires WGMMA issue")
 
     source = f'''# Generated persistent TMA payload diagnostic.
 import math
@@ -413,8 +416,12 @@ PIPELINE_STAGES = {pipeline_stages}
 THREADS_PER_CTA = 256
 MAX_TILES_PER_CTA = 4
 ENABLE_WGMMA_ISSUE = {enable_wgmma_issue!r}
+ENABLE_EPILOGUE = {enable_epilogue!r}
 CONSUMER_THREADS = 256 if ENABLE_WGMMA_ISSUE else 1
 THREADS_PER_CTA = 384 if ENABLE_WGMMA_ISSUE else 256
+EPILOGUE_TILE = (64, 64)
+EPILOGUE_STAGES = 8
+EPILOGUE_STORAGE_ELEMENTS = 9 * EPILOGUE_TILE[0] * EPILOGUE_TILE[1]
 
 
 class PersistentTmaKernel:
@@ -427,6 +434,7 @@ class PersistentTmaKernel:
         a_layout = utils.LayoutEnum.from_tensor(a)
         b_layout = utils.LayoutEnum.from_tensor(b)
         c_layout = utils.LayoutEnum.from_tensor(c)
+        self.c_layout = c_layout
         tiled_mma = sm90_utils.make_trivial_tiled_mma(
             self.dtype,
             self.dtype,
@@ -442,6 +450,9 @@ class PersistentTmaKernel:
         b_smem_layout_staged = sm90_utils.make_smem_layout_b(
             b_layout, TILE_SHAPE_MNK, self.dtype, PIPELINE_STAGES
         )
+        epi_smem_layout_staged = sm90_utils.make_smem_layout_epi(
+            self.dtype, c_layout, EPILOGUE_TILE, EPILOGUE_STAGES
+        )
 
         @cute.struct
         class SharedStorage:
@@ -453,6 +464,10 @@ class PersistentTmaKernel:
             ]
             sB: cute.struct.Align[
                 cute.struct.MemRange[self.dtype, cute.cosize(b_smem_layout_staged)],
+                self.buffer_align_bytes,
+            ]
+            sC: cute.struct.Align[
+                cute.struct.MemRange[self.dtype, EPILOGUE_STORAGE_ELEMENTS],
                 self.buffer_align_bytes,
             ]
 
@@ -473,6 +488,13 @@ class PersistentTmaKernel:
             (TILE_SHAPE_MNK[1], TILE_SHAPE_MNK[2]),
             num_multicast=1,
         )
+        epi_smem_layout = cute.slice_(epi_smem_layout_staged, (None, None, 0))
+        tma_c, tensor_c = cute.nvgpu.cpasync.make_tiled_tma_atom(
+            cute.nvgpu.cpasync.CopyBulkTensorTileS2GOp(),
+            c,
+            epi_smem_layout,
+            EPILOGUE_TILE,
+        )
         params = utils.PersistentTileSchedulerParams(
             (GRID_M, GRID_N, 1), (1, 1, 1), 1, True
         )
@@ -485,12 +507,14 @@ class PersistentTmaKernel:
             tensor_a,
             tma_b,
             tensor_b,
-            c,
+            tma_c,
+            tensor_c,
             tiled_mma,
             coordinates,
             samples,
             a_smem_layout_staged,
             b_smem_layout_staged,
+            epi_smem_layout_staged,
         ).launch(grid=grid, block=(THREADS_PER_CTA, 1, 1), stream=stream)
 
     @cute.kernel
@@ -501,12 +525,14 @@ class PersistentTmaKernel:
         tensor_a,
         tma_b,
         tensor_b,
+        tma_c,
         tensor_c,
         tiled_mma,
         coordinates,
         samples,
         a_smem_layout_staged,
         b_smem_layout_staged,
+        epi_smem_layout_staged,
     ):
         tidx, _, _ = cute.arch.thread_idx()
         warp_idx = cute.arch.make_warp_uniform(cute.arch.warp_idx())
@@ -517,6 +543,9 @@ class PersistentTmaKernel:
         )
         sB = storage.sB.get_tensor(
             b_smem_layout_staged.outer, swizzle=b_smem_layout_staged.inner
+        )
+        sC = storage.sC.get_tensor(
+            epi_smem_layout_staged.outer, swizzle=epi_smem_layout_staged.inner
         )
         full = storage.full.data_ptr()
         empty = storage.empty.data_ptr()
@@ -591,6 +620,27 @@ class PersistentTmaKernel:
                 consumer_barrier = pipeline.NamedBarrier(
                     barrier_id=2, num_threads=CONSUMER_THREADS
                 )
+                if cutlass.const_expr(ENABLE_EPILOGUE):
+                    copy_atom_r2s = sm90_utils.sm90_get_smem_store_op(
+                        self.c_layout,
+                        elem_ty_d=self.dtype,
+                        elem_ty_acc=cutlass.Float32,
+                    )
+                    copy_atom_c = cute.make_copy_atom(
+                        cute.nvgpu.warp.StMatrix8x8x16bOp(
+                            self.c_layout.is_m_major_c(), 4
+                        ),
+                        self.dtype,
+                    )
+                    tiled_copy_c_atom = cute.make_tiled_copy_C_atom(
+                        copy_atom_c, tiled_mma
+                    )
+                    tiled_copy_r2s = cute.make_tiled_copy_S(
+                        copy_atom_r2s, tiled_copy_c_atom
+                    )
+                    epilogue_thread_idx = (tidx - 128) % 128
+                    thr_copy_r2s = tiled_copy_r2s.get_slice(epilogue_thread_idx)
+                    tRS_sC = thr_copy_r2s.partition_D(sC)
             consumer = utils.StaticPersistentTileScheduler.create(
                 params, cute.arch.block_idx(), cute.arch.grid_dim()
             )
@@ -635,6 +685,57 @@ class PersistentTmaKernel:
                     samples[(worker, slot, 1)] = sB[(0, 0, stage)]
                     cute.arch.mbarrier_arrive(empty + stage)
                 if cutlass.const_expr(ENABLE_WGMMA_ISSUE):
+                    consumer_barrier.arrive_and_wait()
+                if cutlass.const_expr(ENABLE_EPILOGUE):
+                    tRS_rAcc = tiled_copy_r2s.retile(accumulators)
+                    rC_shape = cute.shape(thr_copy_r2s.partition_S(sC))
+                    rC_layout = cute.make_layout(rC_shape[:3])
+                    rC = cute.make_rmem_tensor_like(rC_layout, cutlass.Float32)
+                    rC_out = cute.make_rmem_tensor_like(rC_layout, self.dtype)
+                    rC_size = cute.size(rC)
+                    gC_for_tma = cute.zipped_divide(gC, EPILOGUE_TILE)
+                    tma_sC, tma_gC = cute.nvgpu.cpasync.tma_partition(
+                        tma_c,
+                        0,
+                        cute.make_layout(1),
+                        cute.group_modes(sC, 0, 2),
+                        gC_for_tma,
+                    )
+                    epi_tile_shape = gC_for_tma.shape[1]
+                    epi_tile_layout = cute.make_layout(
+                        epi_tile_shape, stride=(epi_tile_shape[1], 1)
+                    )
+                    for local_epi_index in cutlass.range_constexpr(4):
+                        for value_index in cutlass.range_constexpr(rC_size):
+                            rC[value_index] = tRS_rAcc[
+                                local_epi_index * rC_size + value_index
+                            ]
+                        rC_out.store(rC.load().to(self.dtype))
+                        epi_buffer = warp_group_idx * 4 + local_epi_index
+                        cute.copy(
+                            tiled_copy_r2s,
+                            rC_out,
+                            tRS_sC[(None, None, None, epi_buffer)],
+                        )
+                    cute.arch.fence_proxy("async.shared", space="cta")
+                    consumer_barrier.arrive_and_wait()
+                    if warp_idx == 4:
+                        c_pipeline = pipeline.PipelineTmaStore.create(
+                            num_stages=EPILOGUE_STAGES,
+                            producer_group=pipeline.CooperativeGroup(
+                                pipeline.Agent.Thread, CONSUMER_THREADS
+                            ),
+                        )
+                        for epi_index in cutlass.range_constexpr(8):
+                            global_coord = epi_tile_layout.get_hier_coord(epi_index)
+                            cute.copy(
+                                tma_c,
+                                tma_sC[(None, epi_index)],
+                                tma_gC[(None, global_coord)],
+                            )
+                            c_pipeline.producer_commit()
+                            c_pipeline.producer_acquire()
+                        c_pipeline.producer_tail()
                     consumer_barrier.arrive_and_wait()
                 consumer.advance_to_next_work()
                 work = consumer.get_current_work()
@@ -698,7 +799,18 @@ def run_diagnostic():
     observed_coordinates = set(assignments)
     exactly_once = len(assignments) == LOGICAL_TILE_COUNT and observed_coordinates == expected_coordinates
     payload_exact = not mismatches
-    passed = exactly_once and payload_exact
+    numerical_correct = None
+    maximum_error = None
+    mean_error = None
+    if ENABLE_EPILOGUE:
+        reference = torch.matmul(a.float(), b.float().transpose(0, 1)).to(
+            torch.bfloat16
+        )
+        error = (c.float() - reference.float()).abs()
+        maximum_error = float(error.max().item())
+        mean_error = float(error.mean().item())
+        numerical_correct = bool(torch.all(error == 0).item())
+    passed = exactly_once and payload_exact and numerical_correct is not False
     return {{
         "status": "ok" if passed else "tma_payload_failed",
         "logical_tile_count": LOGICAL_TILE_COUNT,
@@ -708,6 +820,10 @@ def run_diagnostic():
         "exactly_once": exactly_once,
         "payload_exact": payload_exact,
         "wgmma_issued": ENABLE_WGMMA_ISSUE,
+        "epilogue_stored": ENABLE_EPILOGUE,
+        "numerical_correct": numerical_correct,
+        "maximum_error": maximum_error,
+        "mean_error": mean_error,
         "mismatches": mismatches[:16],
         "jit_diagnostics": jit_diagnostics,
     }}

@@ -459,6 +459,12 @@ completed hardware validation is identified explicitly.
   every output work item, issued WGMMA from both consumer warp groups, waited for
   completion, and released every stage without deadlock. Numerical output remains
   untested until the persistent epilogue is added.
+- [x] Validate the persistent wide-CTA epilogue for one K tile per output work item.
+  Image v77 staged the two consumer groups' eight disjoint 64x64 accumulator tiles,
+  issued the complete TMA-store epilogue, and synchronized before shared-buffer
+  reuse. All 512 output tiles matched the one-K FP32 reference exactly, with zero
+  maximum and mean error, while ownership and TMA payload checks remained exact.
+  The remaining correctness gate is carrying all 64 K tiles per output item.
 - [ ] Integrate the validated persistent scheduler into an evidence-only copy of the
   final wide specialized GEMM. The v70 profile is compute-bound (92.22% tensor-pipe,
   87.32% SM, 28.62% DRAM) and the static 512-CTA grid executes in roughly four waves

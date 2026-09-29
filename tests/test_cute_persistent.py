@@ -131,6 +131,24 @@ def test_persistent_wgmma_issue_resets_accumulators_per_work_item() -> None:
     compile(rendered.source, "persistent_wgmma_issue.py", "exec")
 
 
+def test_persistent_epilogue_stores_all_wide_cta_accumulator_tiles() -> None:
+    rendered = render_persistent_tma_diagnostic(
+        enable_wgmma_issue=True, enable_epilogue=True
+    )
+
+    assert "ENABLE_EPILOGUE = True" in rendered.source
+    assert "EPILOGUE_STAGES = 8" in rendered.source
+    assert "epi_buffer = warp_group_idx * 4 + local_epi_index" in rendered.source
+    assert "for epi_index in cutlass.range_constexpr(8)" in rendered.source
+    assert '"numerical_correct": numerical_correct' in rendered.source
+    compile(rendered.source, "persistent_epilogue.py", "exec")
+
+
+def test_persistent_epilogue_requires_wgmma() -> None:
+    with pytest.raises(ValueError, match="requires WGMMA"):
+        render_persistent_tma_diagnostic(enable_epilogue=True)
+
+
 @pytest.mark.parametrize("kwargs", ({"grid_m": 0}, {"grid_n": 0}, {"pipeline_stages": 0}))
 def test_persistent_tma_diagnostic_rejects_invalid_extents(
     kwargs: dict[str, int]

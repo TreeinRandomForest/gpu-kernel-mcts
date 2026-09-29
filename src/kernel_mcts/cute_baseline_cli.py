@@ -78,6 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
             "persistent-scheduler-barriers",
             "persistent-scheduler-tma",
             "persistent-scheduler-wgmma-issue",
+            "persistent-scheduler-epilogue",
         ),
         default="comparison",
     )
@@ -324,6 +325,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = _run_persistent_scheduler_tma()
     elif arguments.mode == "persistent-scheduler-wgmma-issue":
         result = _run_persistent_scheduler_tma(enable_wgmma_issue=True)
+    elif arguments.mode == "persistent-scheduler-epilogue":
+        result = _run_persistent_scheduler_tma(
+            enable_wgmma_issue=True, enable_epilogue=True
+        )
     elif arguments.mode == "comparable":
         result = run_hopper_bf16_comparable(arguments.example)
     else:
@@ -466,12 +471,13 @@ def _run_persistent_scheduler_barriers() -> Mapping[str, object]:
 
 
 def _run_persistent_scheduler_tma(
-    *, enable_wgmma_issue: bool = False
+    *, enable_wgmma_issue: bool = False, enable_epilogue: bool = False
 ) -> Mapping[str, object]:
     from .cute_persistent import render_persistent_tma_diagnostic
 
     rendered = render_persistent_tma_diagnostic(
-        enable_wgmma_issue=enable_wgmma_issue
+        enable_wgmma_issue=enable_wgmma_issue,
+        enable_epilogue=enable_epilogue,
     )
     with tempfile.TemporaryDirectory(prefix="kernel-mcts-persistent-tma-") as directory:
         module = _load_generated_module(
