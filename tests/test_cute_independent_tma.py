@@ -39,6 +39,24 @@ def test_tma_diagnostic_lowers_cluster_multicast_and_exact_round_trip() -> None:
     assert "HopperWgmmaGemmKernel" not in source
 
 
+def test_typed_cluster_multicast_renders_complete_workload() -> None:
+    kernel = make_independent_cute_gemm(cluster_m=2)
+
+    source = render_independent_tma_copy_diagnostic(
+        kernel,
+        debug_stage="wgmma_full_workload",
+        repository_contract=True,
+    ).source
+
+    assert "CLUSTER_SHAPE_MN = (2, 1)" in source
+    assert "ENABLE_MULTICAST = True" in source
+    assert "GRID_M = 64" in source
+    assert "GRID_N = 16" in source
+    assert "CopyBulkTensorTileG2SMulticastOp()" in source
+    assert "num_multicast=CLUSTER_SHAPE_MN[0] if ENABLE_MULTICAST else 1" in source
+    compile(source, "independent_tma_cluster_multicast.py", "exec")
+
+
 @pytest.mark.parametrize(
     ("stage", "cluster", "enable_b", "enable_multicast", "launch"),
     (

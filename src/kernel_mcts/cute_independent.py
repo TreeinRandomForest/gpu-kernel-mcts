@@ -215,6 +215,7 @@ def make_independent_tma_smem_mainloop(
     pipeline_stages: int = 3,
     tile_m: int = 64,
     tile_n: int = 256,
+    cluster_m: int = 1,
 ) -> IndependentTmaSmemMainloop:
     """Build one coordinated BF16 copy/layout variant."""
 
@@ -226,7 +227,7 @@ def make_independent_tma_smem_mainloop(
         tile_m=tile_m,
         tile_n=tile_n,
         tile_k=tile_k,
-        cluster_m=1,
+        cluster_m=cluster_m,
         cluster_n=1,
         pipeline_stages=stages,
         barrier_slots=stages,
@@ -253,7 +254,7 @@ def make_independent_tma_smem_mainloop(
             alignment_bytes=16,
             shared_major="k",
             swizzle_bytes=swizzle_bytes,
-            multicast_axis="none",
+            multicast_axis="cluster_m" if cluster_m > 1 else "none",
             stage_stride_bytes=b_tile_bytes,
             storage_offset_bytes=a_tile_bytes * stages,
         ),
@@ -266,6 +267,7 @@ def make_independent_cute_gemm(
     pipeline_stages: int = 3,
     tile_m: int = 64,
     tile_n: int = 256,
+    cluster_m: int = 1,
 ) -> IndependentCuteGemmKernel:
     """Build the first complete structural GEMM contract.
 
@@ -278,6 +280,7 @@ def make_independent_cute_gemm(
         pipeline_stages=pipeline_stages,
         tile_m=tile_m,
         tile_n=tile_n,
+        cluster_m=cluster_m,
     )
     consumer_warp_groups = tile_m // 64
     epilogue_stages = consumer_warp_groups * (tile_n // 64)
@@ -471,7 +474,8 @@ def validate_independent_tma_smem_mainloop(
             "(64,256,64), and (128,256,64)",
             "tile",
         )
-    if (plan.cluster_m, plan.cluster_n) != (1, 1):
+    supported_clusters = {(1, 1), (2, 1)}
+    if (plan.cluster_m, plan.cluster_n) not in supported_clusters:
         reject(
             "unsupported_cluster",
             "the initial independent mainloop supports only cluster (1,1)",
@@ -500,7 +504,10 @@ def validate_independent_tma_smem_mainloop(
         "a": (plan.tile_m, plan.tile_k),
         "b": (plan.tile_k, plan.tile_n),
     }
-    expected_multicast = {"a": "none", "b": "none"}
+    expected_multicast = {
+        "a": "none",
+        "b": "cluster_m" if plan.cluster_m > 1 else "none",
+    }
     copies = (plan.a_copy, plan.b_copy)
     if tuple(copy.operand for copy in copies) != ("a", "b"):
         reject(
@@ -541,7 +548,7 @@ def validate_independent_tma_smem_mainloop(
         if copy.multicast_axis != expected_multicast[copy.operand]:
             reject(
                 "incompatible_multicast_partition",
-                "the initial single-CTA contract does not multicast operands",
+                "operand multicast must match the typed cluster decomposition",
                 name,
             )
         if copy.stage_stride_bytes < copy.tile_bytes:

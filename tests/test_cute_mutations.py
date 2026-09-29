@@ -312,10 +312,11 @@ def test_independent_neighborhood_contains_only_validated_root_transitions() -> 
         CHANGE_CTA_TILE,
         CHANGE_CTA_TILE,
         CHANGE_CTA_TILE,
+        CHANGE_CLUSTER_SHAPE,
         CHANGE_SHARED_MEMORY_SWIZZLE,
         CHANGE_PIPELINE_STAGES,
     ]
-    cooperative, narrow_n, combined, swizzle, pipeline = proposals
+    cooperative, narrow_n, combined, cluster, swizzle, pipeline = proposals
     assert cooperative.parameters == {
         "tile_m": 128,
         "tile_n": 256,
@@ -349,6 +350,13 @@ def test_independent_neighborhood_contains_only_validated_root_transitions() -> 
     assert combined.candidate.consumer.warp_groups_m == 2
     assert combined.candidate.consumer.instruction_n == 128
     assert combined.candidate.epilogue.pipeline_stages == 4
+    assert cluster.parameters == {
+        "cluster_m": 2,
+        "cluster_n": 1,
+        "b_multicast_axis": "cluster_m",
+    }
+    assert cluster.candidate.mainloop.cluster_m == 2
+    assert cluster.candidate.mainloop.b_copy.multicast_axis == "cluster_m"
     assert swizzle.parameters == {"swizzle_bytes": 64}
     assert swizzle.candidate.mainloop.a_copy.swizzle_bytes == 64
     assert swizzle.candidate.mainloop.b_copy.swizzle_bytes == 64
@@ -434,6 +442,52 @@ def test_combined_cta_kernel_has_only_validated_return_mutation() -> None:
     assert [proposal.strategy_id for proposal in proposals] == [CHANGE_CTA_TILE]
     assert proposals[0].candidate == make_independent_cute_gemm()
     assert proposals[0].validation.valid
+
+
+def test_clustered_kernel_has_only_validated_return_mutation() -> None:
+    clustered = make_independent_cute_gemm(cluster_m=2)
+
+    proposals = enumerate_independent_cute_mutations(clustered)
+
+    assert [proposal.strategy_id for proposal in proposals] == [
+        CHANGE_CLUSTER_SHAPE
+    ]
+    assert proposals[0].parameters == {
+        "cluster_m": 1,
+        "cluster_n": 1,
+        "b_multicast_axis": "none",
+    }
+    assert proposals[0].candidate == make_independent_cute_gemm()
+    assert proposals[0].validation.valid
+
+
+def test_generator_emits_atomic_independent_cluster_candidate() -> None:
+    generator = CuteMutationGenerator()
+    strategy = next(
+        item for item in CUTE_MUTATION_STRATEGIES
+        if item.id == CHANGE_CLUSTER_SHAPE
+    )
+    request = GenerationRequest(
+        IndependentCuteGemmRenderer().render(make_independent_cute_gemm()),
+        strategy,
+        BF16_GEMM_WORKLOAD,
+        {},
+        None,
+    )
+
+    result = generator.generate(request)
+
+    assert result.program is not None
+    candidate = independent_cute_gemm_from_source(result.program.source)
+    assert (candidate.mainloop.cluster_m, candidate.mainloop.cluster_n) == (2, 1)
+    assert candidate.mainloop.a_copy.multicast_axis == "none"
+    assert candidate.mainloop.b_copy.multicast_axis == "cluster_m"
+    assert result.metadata["transformation"]["parameters"] == {
+        "cluster_m": 2,
+        "cluster_n": 1,
+        "b_multicast_axis": "cluster_m",
+    }
+    assert generator.can_generate(request) is False
 
 
 def test_generator_emits_atomic_independent_cooperative_candidate() -> None:

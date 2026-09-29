@@ -229,11 +229,12 @@ trace analysis is recorded in
 `--cute-root-kind independent` selects the independently lowered
 `(64,256,64)` single-warp-group root on both the client and worker. Worker
 calibration therefore measures the same program used as the search root. The root
-neighborhood now contains five H100-validated realizations: atomically changing both
+neighborhood now contains six H100-validated realizations: atomically changing both
 A and B shared-memory swizzles from 128 bytes to 64 bytes; changing the mainloop from
 three stages to two; changing CTA M from 64 to 128 with a second M-axis consumer
 warp group; changing CTA/WGMMA N from 256 to 128; or combining both CTA changes as
-`(128,128,64)`. Each consumes `B_mut`; no
+`(128,128,64)`; or changing cluster `(1,1)` to `(2,1)` while multicasting B across
+the M axis. Each consumes `B_mut`; no
 independent LLM proposal path is enabled yet. The router excludes all unvalidated
 combinations among these controls.
 
@@ -289,6 +290,19 @@ trace contains four distinct configuration and binary identities with no reused
 node. Two subsequent iterations selected cached realizations and performed backups
 without GPU reevaluation. See
 [three-realization CTA-tile MCTS smoke v57](experiments/cutedsl-cta-tiles-mcts-v57.md).
+
+The v58 cluster diagnostic validated the root tile with cluster `(2,1)`, keeping A
+CTA-private and multicasting B across the cluster M axis. It passed the repository
+contract exactly and measured 658.960 us median versus 673.776 us for a same-image
+cluster `(1,1)` control. The paired states are admitted under
+`change_cluster_shape`; the clustered state returns only to the root and cannot yet
+compose with the other structural controls. See
+[independent cluster multicast validation v58](experiments/cutedsl-cluster-v58.md).
+
+The v59 bounded MCTS smoke exercised only `change_cluster_shape` with `B_mut=1`,
+`B_gen=0`, `k_max=1`, and `max_depth=1`. It created one distinct valid clustered
+child, performed one valid-only backup, and measured reward `0.025873`. See
+[independent cluster mutation MCTS smoke v59](experiments/cutedsl-cluster-mcts-v59.md).
 
 ```bash
 python -m kernel_mcts.search_cli \

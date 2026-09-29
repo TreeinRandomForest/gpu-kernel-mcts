@@ -105,6 +105,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--tile-m", type=int)
     parser.add_argument("--tile-n", type=int)
+    parser.add_argument("--independent-cluster-m", type=int, choices=(1, 2), default=1)
     parser.add_argument("--cluster-m", type=int)
     parser.add_argument("--cluster-n", type=int)
     parser.add_argument(
@@ -144,6 +145,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError(
             "--independent-repository-contract is available only in "
             "independent-tma-copy mode"
+        )
+    if arguments.mode != "independent-tma-copy" and arguments.independent_cluster_m != 1:
+        raise ValueError(
+            "--independent-cluster-m is available only in independent-tma-copy mode"
         )
     if (
         arguments.mode != "tma-copy-diagnostic"
@@ -278,6 +283,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             pipeline_stages=arguments.pipeline_stages or 3,
             tile_m=arguments.tile_m or 64,
             tile_n=arguments.tile_n or 256,
+            cluster_m=arguments.independent_cluster_m,
             repository_contract=arguments.independent_repository_contract,
         )
     elif arguments.mode == "comparable":
@@ -333,6 +339,7 @@ def _run_independent_tma_copy(
     pipeline_stages: int = 3,
     tile_m: int = 64,
     tile_n: int = 256,
+    cluster_m: int = 1,
     repository_contract: bool = False,
 ) -> Mapping[str, object]:
     from .cute_independent import make_independent_cute_gemm
@@ -343,6 +350,7 @@ def _run_independent_tma_copy(
             pipeline_stages=pipeline_stages,
             tile_m=tile_m,
             tile_n=tile_n,
+            cluster_m=cluster_m,
         ),
         debug_stage=debug_stage,
         repository_contract=repository_contract,

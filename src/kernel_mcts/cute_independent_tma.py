@@ -125,7 +125,6 @@ def render_independent_tma_copy_diagnostic(
             "wgmma_one_group",
             "wgmma_two_group",
             "wgmma_full_k",
-            "wgmma_full_workload",
             "wgmma_one_k_no_reuse",
             "wgmma_one_k",
         )
@@ -136,7 +135,10 @@ def render_independent_tma_copy_diagnostic(
         "single_cta_a_load",
         "single_cta_a",
     )
-    enable_multicast = debug_stage == "cluster_ab_multicast"
+    enable_multicast = (
+        debug_stage == "cluster_ab_multicast"
+        or mainloop.b_copy.multicast_axis == "cluster_m"
+    )
     launch_kernel = debug_stage != "compile_only"
     if debug_stage == "wgmma_compile_only":
         launch_kernel = False

@@ -487,8 +487,8 @@ def test_cli_forwards_independent_pipeline_stage(monkeypatch, capsys) -> None:
     calls = []
     monkeypatch.setattr(
         "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
-        lambda stage, *, pipeline_stages, tile_m, tile_n, repository_contract: calls.append(
-            (stage, pipeline_stages, tile_m, tile_n, repository_contract)
+        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, repository_contract: calls.append(
+            (stage, pipeline_stages, tile_m, tile_n, cluster_m, repository_contract)
         )
         or {"status": "ok"},
     )
@@ -505,7 +505,7 @@ def test_cli_forwards_independent_pipeline_stage(monkeypatch, capsys) -> None:
         ]
     ) == 0
 
-    assert calls == [("wgmma_full_workload", 2, 64, 256, True)]
+    assert calls == [("wgmma_full_workload", 2, 64, 256, 1, True)]
     assert '"status": "ok"' in capsys.readouterr().out
 
 
@@ -513,8 +513,8 @@ def test_cli_forwards_independent_cooperative_tile(monkeypatch, capsys) -> None:
     calls = []
     monkeypatch.setattr(
         "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
-        lambda stage, *, pipeline_stages, tile_m, tile_n, repository_contract: calls.append(
-            (stage, pipeline_stages, tile_m, tile_n, repository_contract)
+        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, repository_contract: calls.append(
+            (stage, pipeline_stages, tile_m, tile_n, cluster_m, repository_contract)
         )
         or {"status": "ok"},
     )
@@ -531,7 +531,7 @@ def test_cli_forwards_independent_cooperative_tile(monkeypatch, capsys) -> None:
         ]
     ) == 0
 
-    assert calls == [("wgmma_full_workload", 3, 128, 256, True)]
+    assert calls == [("wgmma_full_workload", 3, 128, 256, 1, True)]
     assert '"status": "ok"' in capsys.readouterr().out
 
 
@@ -539,8 +539,8 @@ def test_cli_forwards_independent_narrow_n_tile(monkeypatch, capsys) -> None:
     calls = []
     monkeypatch.setattr(
         "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
-        lambda stage, *, pipeline_stages, tile_m, tile_n, repository_contract: calls.append(
-            (stage, pipeline_stages, tile_m, tile_n, repository_contract)
+        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, repository_contract: calls.append(
+            (stage, pipeline_stages, tile_m, tile_n, cluster_m, repository_contract)
         )
         or {"status": "ok"},
     )
@@ -557,7 +557,7 @@ def test_cli_forwards_independent_narrow_n_tile(monkeypatch, capsys) -> None:
         ]
     ) == 0
 
-    assert calls == [("wgmma_full_workload", 3, 64, 128, True)]
+    assert calls == [("wgmma_full_workload", 3, 64, 128, 1, True)]
     assert '"status": "ok"' in capsys.readouterr().out
 
 
@@ -565,8 +565,8 @@ def test_cli_forwards_combined_independent_cta_tile(monkeypatch, capsys) -> None
     calls = []
     monkeypatch.setattr(
         "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
-        lambda stage, *, pipeline_stages, tile_m, tile_n, repository_contract: calls.append(
-            (stage, pipeline_stages, tile_m, tile_n, repository_contract)
+        lambda stage, *, pipeline_stages, tile_m, tile_n, cluster_m, repository_contract: calls.append(
+            (stage, pipeline_stages, tile_m, tile_n, cluster_m, repository_contract)
         )
         or {"status": "ok"},
     )
@@ -585,7 +585,41 @@ def test_cli_forwards_combined_independent_cta_tile(monkeypatch, capsys) -> None
         ]
     ) == 0
 
-    assert calls == [("wgmma_full_workload", 3, 128, 128, True)]
+    assert calls == [("wgmma_full_workload", 3, 128, 128, 1, True)]
+    assert '"status": "ok"' in capsys.readouterr().out
+
+
+def test_cli_forwards_independent_cluster_multicast(monkeypatch, capsys) -> None:
+    calls = []
+    monkeypatch.setattr(
+        "kernel_mcts.cute_baseline_cli._run_independent_tma_copy",
+        lambda stage, **kwargs: calls.append((stage, kwargs)) or {"status": "ok"},
+    )
+
+    assert main(
+        [
+            "--mode",
+            "independent-tma-copy",
+            "--independent-tma-stage",
+            "wgmma_full_workload",
+            "--independent-cluster-m",
+            "2",
+            "--independent-repository-contract",
+        ]
+    ) == 0
+
+    assert calls == [
+        (
+            "wgmma_full_workload",
+            {
+                "pipeline_stages": 3,
+                "tile_m": 64,
+                "tile_n": 256,
+                "cluster_m": 2,
+                "repository_contract": True,
+            },
+        )
+    ]
     assert '"status": "ok"' in capsys.readouterr().out
 
 

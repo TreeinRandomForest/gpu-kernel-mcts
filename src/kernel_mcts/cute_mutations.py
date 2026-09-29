@@ -62,8 +62,10 @@ CUTE_MUTATION_STRATEGIES = (
         "Change the Hopper thread-block cluster geometry.",
         {
             "cute_dsl": (
-                "Change only cluster_m and cluster_n. Choose one supported pair: "
-                "(1,1), (1,2), or (2,1)."
+                "Change the complete typed cluster decomposition atomically. For "
+                "the pinned representation choose (1,1), (1,2), or (2,1). For "
+                "the independent representation use the admitted (1,1) to (2,1) "
+                "transition, including B multicast across cluster M."
             )
         },
     ),
@@ -188,9 +190,14 @@ def enumerate_independent_cute_mutations(
     current_swizzle = parent.mainloop.a_copy.swizzle_bytes
     current_stages = parent.mainloop.pipeline_stages
     current_tile = (parent.mainloop.tile_m, parent.mainloop.tile_n)
+    current_cluster = (parent.mainloop.cluster_m, parent.mainloop.cluster_n)
     root_tile = (64, 256)
     alternate_tiles = ((128, 256), (64, 128), (128, 128))
-    if current_swizzle == 128 and current_stages == 3:
+    if (
+        current_swizzle == 128
+        and current_stages == 3
+        and current_cluster == (1, 1)
+    ):
         target_tiles = alternate_tiles if current_tile == root_tile else (
             (root_tile,) if current_tile in alternate_tiles else ()
         )
@@ -217,6 +224,37 @@ def enumerate_independent_cute_mutations(
                     validation=validate_independent_cute_gemm(candidate),
                 )
             )
+    if (
+        current_swizzle == 128
+        and current_stages == 3
+        and current_tile == root_tile
+        and current_cluster in ((1, 1), (2, 1))
+    ):
+        cluster_m = 2 if current_cluster == (1, 1) else 1
+        candidate = make_independent_cute_gemm(
+            swizzle_bytes=current_swizzle,
+            pipeline_stages=current_stages,
+            cluster_m=cluster_m,
+        )
+        proposals.append(
+            IndependentCuteMutationProposal(
+                parent=parent,
+                candidate=candidate,
+                strategy_id=CHANGE_CLUSTER_SHAPE,
+                parameters={
+                    "cluster_m": cluster_m,
+                    "cluster_n": 1,
+                    "b_multicast_axis": (
+                        "cluster_m" if cluster_m == 2 else "none"
+                    ),
+                },
+                validation=validate_independent_cute_gemm(candidate),
+            )
+        )
+    if current_cluster != (1, 1):
+        # The validated cluster state returns only to the root. Its combinations
+        # with other independent controls remain outside the admitted space.
+        return tuple(proposals)
     if parent.mainloop.tile_m != 64 or parent.mainloop.tile_n != 256:
         # Only paired return transitions are admitted from alternate CTA tiles;
         # their SW64 and two-stage combinations remain unvalidated.

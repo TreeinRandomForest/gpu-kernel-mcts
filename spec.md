@@ -2964,6 +2964,16 @@ therefore 1.08483x faster than the root but slower than the cooperative state; i
 retained because valid states are not pruned solely for being locally slower than
 another realization.
 
+The `(64,256,64)` lowering with cluster `(2,1)` and B multicast across the cluster
+M axis is also an admitted typed state. A remains CTA-private while one typed B TMA
+tile is multicast to the two M-adjacent CTAs; cluster launch geometry, multicast
+ownership, masks, barrier initialization, canonical identity, and rendered source
+change together. On 2026-09-29, the v58 H100 repository-contract validation
+produced exact output with zero maximum and mean error and measured 658.960 us
+median over 30 CUDA-event samples. A same-image sequential `(1,1)` root control
+measured 673.776 us median, making the clustered state 1.02248x faster in that
+bounded comparison.
+
 The paired transition between the `(64,256,64)` one-group state and the
 `(128,256,64)` two-group state is an allowed deterministic realization of
 `change_cta_tile` and consumes one `B_mut`. The mutation must atomically rebuild the
@@ -2992,6 +3002,15 @@ The combined state may transition back to the root, but its direct transitions t
 the other alternate CTA tiles and its combinations with SW64, a two-stage mainloop,
 cluster changes, or another epilogue organization remain outside the validated
 space.
+
+The paired transition between the `(64,256,64)` cluster `(1,1)` root and its
+cluster `(2,1)` B-multicast state is an allowed deterministic realization of
+`change_cluster_shape` and consumes one `B_mut`. It must atomically rebuild cluster
+geometry, B-copy multicast ownership, TMA atom and partitioning, multicast masks,
+barrier synchronization, launch metadata, canonical identity, and rendered source.
+The clustered state may transition back to the root, but its combinations with
+alternate CTA tiles, SW64, a two-stage mainloop, or another epilogue organization
+remain outside the validated space.
 
 Static validation should reject only proven violations, including incompatible
 shapes/layouts, unsupported MMA partitions, invalid cluster geometry, insufficient

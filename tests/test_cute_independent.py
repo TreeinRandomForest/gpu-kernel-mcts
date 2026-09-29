@@ -154,6 +154,15 @@ def test_incompatible_multicast_is_statically_rejected() -> None:
     }
 
 
+def test_cluster_multicast_contract_coordinates_cluster_and_operand_copy() -> None:
+    clustered = make_independent_cute_gemm(cluster_m=2)
+
+    assert (clustered.mainloop.cluster_m, clustered.mainloop.cluster_n) == (2, 1)
+    assert clustered.mainloop.a_copy.multicast_axis == "none"
+    assert clustered.mainloop.b_copy.multicast_axis == "cluster_m"
+    assert validate_independent_cute_gemm(clustered).valid is True
+
+
 def test_overlapping_operand_storage_is_statically_rejected() -> None:
     plan = make_independent_tma_smem_mainloop()
     overlapping = replace(
