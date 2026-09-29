@@ -134,6 +134,30 @@ def test_cute_prompt_requests_only_typed_representation_json() -> None:
     )
 
 
+def test_independent_cute_prompt_requests_nested_typed_representation() -> None:
+    from kernel_mcts.cute_independent import make_independent_cute_gemm
+    from kernel_mcts.cute_independent_program import IndependentCuteGemmRenderer
+    from kernel_mcts.cute_mutations import CUTE_MUTATION_STRATEGIES
+
+    representation = make_independent_cute_gemm()
+    prompt = build_generation_prompt(
+        request(
+            parent=IndependentCuteGemmRenderer().render(representation),
+            strategy=CUTE_MUTATION_STRATEGIES[3],
+        )
+    )
+    payload = json.loads(prompt)
+
+    assert payload["parent_representation"] == json.loads(
+        json.dumps(representation.as_dict())
+    )
+    assert "parent_kernel" not in payload
+    assert any(
+        "admitted transformation" in constraint
+        for constraint in payload["constraints"]
+    )
+
+
 def test_repair_prompt_contains_failed_candidate_and_bounded_diagnostics() -> None:
     stderr = "x" * 9_000 + "useful compiler error"
     failed_program = KernelProgram("failed candidate")

@@ -3,7 +3,13 @@ from __future__ import annotations
 import json
 
 from kernel_mcts.cute_generation import CuteTypedLLMGenerator
-from kernel_mcts.cute_mutations import CUTE_MUTATION_STRATEGIES
+from kernel_mcts.cute_independent import make_independent_cute_gemm
+from kernel_mcts.cute_independent_program import IndependentCuteGemmRenderer
+from kernel_mcts.cute_mutations import (
+    CHANGE_CTA_TILE,
+    CHANGE_MAINLOOP_SCHEDULE,
+    CUTE_MUTATION_STRATEGIES,
+)
 from kernel_mcts.cute_program import (
     PinnedCuteGemmRenderer,
     REFERENCE_CUTE_GEMM,
@@ -40,6 +46,17 @@ def request() -> GenerationRequest:
     return GenerationRequest(
         PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM),
         CUTE_MUTATION_STRATEGIES[1],
+        WORKLOAD,
+        {"gpu_model": "H100"},
+        None,
+    )
+
+
+def independent_request(strategy_id: str) -> GenerationRequest:
+    strategy = next(item for item in CUTE_MUTATION_STRATEGIES if item.id == strategy_id)
+    return GenerationRequest(
+        IndependentCuteGemmRenderer().render(make_independent_cute_gemm()),
+        strategy,
         WORKLOAD,
         {"gpu_model": "H100"},
         None,
@@ -96,3 +113,30 @@ def test_statically_unsupported_typed_output_produces_no_program() -> None:
     assert result.program is None
     assert result.metadata["static_validation"]["valid"] is False
     assert result.metadata["configuration_hash"]
+
+
+def test_independent_typed_llm_json_is_rendered_canonically() -> None:
+    candidate = make_independent_cute_gemm(mainloop_schedule="prefetch")
+
+    result = CuteTypedLLMGenerator(
+        FixedGenerator(json.dumps(candidate.as_dict()))
+    ).generate(independent_request(CHANGE_MAINLOOP_SCHEDULE))
+
+    assert result.program == IndependentCuteGemmRenderer().render(candidate)
+    assert result.metadata["typed_output_format"] == "json"
+    assert result.metadata["static_validation"]["valid"] is True
+    assert result.metadata["transformation"]["strategy_id"] == CHANGE_MAINLOOP_SCHEDULE
+
+
+def test_independent_typed_llm_rejects_wrong_strategy_transition() -> None:
+    candidate = make_independent_cute_gemm(mainloop_schedule="prefetch")
+
+    result = CuteTypedLLMGenerator(
+        FixedGenerator(json.dumps(candidate.as_dict()))
+    ).generate(independent_request(CHANGE_CTA_TILE))
+
+    assert result.program is None
+    assert result.metadata["static_validation"]["valid"] is False
+    assert result.metadata["static_validation"]["violations"][-1]["code"] == (
+        "inadmissible_typed_transition"
+    )

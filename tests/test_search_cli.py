@@ -16,6 +16,7 @@ from kernel_mcts.generation import (
 from kernel_mcts.llm_generation import LLMKernelGenerator
 from kernel_mcts.cute_mutations import CuteMutationGenerator
 from kernel_mcts.cute_generation import CuteTypedLLMGenerator
+from kernel_mcts.cute_independent_program import independent_cute_gemm_from_source
 from kernel_mcts.cute_program import cute_gemm_program_from_source
 from kernel_mcts.provenance import RepositoryState
 from kernel_mcts.search_cli import (
@@ -653,6 +654,8 @@ def test_cute_mixed_search_constructs_mutation_first_router(
             "cute_dsl",
             "--generator",
             "cute-mixed",
+            "--cute-root-kind",
+            "independent",
             "--model",
             "test-model",
             "--generation-budget",
@@ -675,6 +678,8 @@ def test_cute_mixed_search_constructs_mutation_first_router(
     assert captured["search"]["generation_budget"] == 2
     assert captured["search"]["mutation_budget"] == 3
     assert captured["provider_config"].backend == "cute_dsl"
+    assert captured["provider_config"].cute_root_kind == "independent"
+    independent_cute_gemm_from_source(captured["search"]["root_program"].source)
 
 
 def test_search_progress_finishes_readiness_and_reports_events() -> None:

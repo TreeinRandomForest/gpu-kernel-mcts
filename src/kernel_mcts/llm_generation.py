@@ -69,9 +69,17 @@ def build_generation_prompt(request: GenerationRequest) -> str:
         "attempt": request.attempt,
     }
     if request.parent.backend == "cute_dsl":
+        from .cute_independent_program import (
+            REPRESENTATION_NAME as INDEPENDENT_REPRESENTATION_NAME,
+            independent_cute_gemm_from_source,
+        )
         from .cute_program import cute_gemm_program_from_source
 
-        parent_representation = cute_gemm_program_from_source(request.parent.source)
+        parent_representation = (
+            independent_cute_gemm_from_source(request.parent.source)
+            if INDEPENDENT_REPRESENTATION_NAME in request.parent.source
+            else cute_gemm_program_from_source(request.parent.source)
+        )
         payload.update(
             {
                 "task": (
@@ -88,6 +96,7 @@ def build_generation_prompt(request: GenerationRequest) -> str:
                     "Do not return Python source, Markdown, or explanatory text.",
                     "Change fields only as required by the selected strategy.",
                     "Use only statically supported values evident from the strategy.",
+                    "Return a child reachable by one admitted transformation from the parent.",
                 ],
             }
         )

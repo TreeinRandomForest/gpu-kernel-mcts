@@ -323,8 +323,6 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("post-search autotuning is not implemented for --backend=cute_dsl")
     if arguments.backend != "cute_dsl" and arguments.cute_root_kind != "pinned":
         parser.error("--cute-root-kind requires --backend=cute_dsl")
-    if arguments.cute_root_kind == "independent" and arguments.generator == "cute-mixed":
-        parser.error("the independent CuTe root does not yet support LLM proposals")
     if arguments.tuned_best_output is not None and arguments.tuned_best_output.exists():
         parser.error(
             f"refusing to overwrite existing tuned output: {arguments.tuned_best_output}"

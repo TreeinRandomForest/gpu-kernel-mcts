@@ -171,6 +171,32 @@ completed hardware validation is identified explicitly.
 
 ## Next
 
+### Prioritized CuTe search/generalization work
+
+- [ ] Enable typed LLM proposals for the independently lowered CuTe root. Prompt
+  for a complete versioned typed representation, parse and statically validate it,
+  require an admitted parent-to-child structural transition, render it through the
+  deterministic independent lowering, charge every initial/repair call to `B_gen`,
+  and persist mechanism-specific failures without creating invalid nodes.
+- [ ] Add separately budgeted post-search autotuning for the best independent CuTe
+  result. Preserve the untuned winner, persist every `B_tune` trial and failure,
+  report tuned and untuned results separately, and prove that tuning cannot alter
+  MCTS visits, Q values, backups, or `B_gen`/`B_mut` accounting.
+- [ ] Run the four required ablations from `spec.md` section 47.9: typed only; typed
+  plus final tuning; typed plus LLM; and typed plus LLM plus final tuning. Hold the
+  root, strategies, worker class, MCTS settings, measurement contract, and declared
+  seeds fixed; report all budgets, validity rates, latency, cost, and canonical-state
+  coverage separately.
+- [ ] Refactor the admitted independent CuTe transitions behind reusable structural
+  transformation descriptors with applicability, parameter schema/enumeration,
+  coupled-field rebuild, legality, deterministic lowering, and before/after
+  evidence. Preserve the current canonical states and mutation graph while doing
+  this mechanical refactor.
+- [ ] Exercise the reusable transformations over a controlled GEMM shape/dtype
+  sensitivity suite, including non-divisible shapes with explicit boundary/padding
+  behavior. Keep arbitrary operations and architectures as a subsequent milestone;
+  do not encode GEMM-specific fields into core MCTS.
+
 - [x] Implement an initial searchable expert-template `CuTeDSLBackend` with canonical
   typed state, deterministic rendering, static legality checks, separate mutation
   accounting, and remote MCTS integration. The validated active fields are CTA tile,

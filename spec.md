@@ -2850,8 +2850,11 @@ Milestone B includes:
 - semantic MCTS actions that can change kernel structure;
 - deterministic typed mutations and stochastic LLM realizations beneath the
   existing strategy layer;
+- mixed deterministic/LLM proposal routing for the independently lowered typed
+  representation;
 - complete compile, correctness, benchmark, profile, artifact, and trace records;
-- standalone local schedule tuning under `B_tune`; and
+- standalone and final-result local schedule tuning under `B_tune`;
+- controlled typed/LLM/tuning ablations; and
 - comparisons with cuBLAS, Hopper CUTLASS, the fixed CuTe baseline, tuned CuTe,
   and the best CUDA-MCTS result under identical evaluation contracts.
 
@@ -3098,6 +3101,17 @@ still chooses among existing valid realizations. Deterministic mutations must be
 logged with the same proposal identity and transformation evidence needed to audit
 LLM-generated realizations.
 
+For the independently lowered representation, an LLM realization must return a
+complete versioned typed representation, not arbitrary CuTe Python. The response is
+parsed, statically validated, canonically serialized, and rendered through the same
+deterministic lowering as a mutation-produced state. The proposed parent-to-child
+transition must be one of the structural transformations admitted by the current
+schema; an LLM may choose parameters for that transformation but may not bypass its
+applicability, coupled-field rebuild, legality, or workload-coverage rules. Parse,
+schema, static-legality, rendering, JIT, launch, and correctness failures remain
+proposal records and do not become nodes. Every initial call and repair consumes
+`B_gen`.
+
 For the initial mixed-mechanism implementation, mechanism routing is deterministic.
 After PUCT selects a semantic strategy and progressive widening permits a new
 realization, the controller should choose an untried supported typed mutation first.
@@ -3139,10 +3153,28 @@ their existing realization edges remain available to UCB traversal. Budget exhau
 must not change the PUCT, progressive-widening, or UCB formulas among eligible edges.
 
 Standalone schedule tuning remains outside MCTS and consumes `B_tune`. Its trials do
-not become MCTS nodes or affect backup. Any future leaf-local tuner must be enabled by
-an explicit ablation flag, use a fixed per-call `B_tune`, and retain the pre-tuning
-and post-tuning implementations. Promoting tuned results into MCTS requires a later
-explicit specification amendment; it is not part of the initial Milestone B search.
+not become MCTS nodes or affect backup.
+
+Milestone B additionally permits an explicitly enabled **post-search final-result
+tuner**. It runs only after MCTS has terminated and starts from the best valid
+measured search node under the ordinary fixed-root reward. It must:
+
+- use a separately configured total `B_tune` limit;
+- tune only parameters exposed by the selected typed kernel family;
+- preserve the algorithmic and numerical workload contract;
+- evaluate every trial through compile, correctness, and benchmark checks;
+- persist every attempted configuration, including static, compile, launch, and
+  correctness failures;
+- retain both the untuned search winner and the best valid tuned implementation;
+- report search-best and tuned-best latency/reward separately; and
+- never create MCTS nodes, update visits or Q values, perform backups, alter the
+  selected search path, or consume `B_gen`/`B_mut`.
+
+The tuner may return the original implementation when no valid trial improves it.
+Its cache identity includes the typed program, workload, hardware, toolchain, and
+tuning configuration. Repeated cached trials do not imply GPU reevaluation. A future
+leaf-local or in-search tuner still requires a separate explicit specification
+amendment because it could affect tree policy and search allocation.
 
 ## 47.7 Preserved search invariants
 
@@ -3184,3 +3216,64 @@ demonstrates at least one of:
 
 The tuned fixed baseline is a calibration target, not a required search outcome and
 must not be used to prune valid nodes.
+
+## 47.9 Required proposal/tuning ablations
+
+Run the independently lowered CuTe search under the same workload, worker class,
+root state, semantic strategy set, MCTS hyperparameters, measurement contract, and
+declared random seeds. Compare at least:
+
+1. typed deterministic mutations only, without final-result tuning;
+2. typed deterministic mutations only, followed by final-result tuning;
+3. mixed typed mutations plus typed LLM realizations, without tuning; and
+4. mixed typed mutations plus typed LLM realizations, followed by final-result
+   tuning.
+
+Each run must report configured and consumed `B_mut`, `B_gen`, `B_prior`, and
+`B_tune` independently. Comparisons must not combine these into a single nominal
+budget. Report search-best latency before tuning for every run, tuned-best latency
+where enabled, validity rates by proposal mechanism, unique canonical states,
+transpositions, wall time, GPU cost, and LLM token/API cost. Use repeated runs when
+claiming a performance difference rather than treating one stochastic LLM trace or
+one noisy timing sample as conclusive.
+
+## 47.10 Reusable structural transformations and generalization boundary
+
+The fixed BF16 GEMM realizations above must be refactored toward reusable structural
+transformations. A transformation is not merely a hard-coded winning child. It
+defines:
+
+```text
+StructuralTransformation = (
+    semantic strategy and transformation ID,
+    applicable operation families and hardware capabilities,
+    required typed input properties,
+    parameter schema or bounded enumerator,
+    coupled-field rebuild,
+    static legality and workload-coverage checks,
+    deterministic lowering contract,
+    auditable before/after evidence
+)
+```
+
+Reusable transformations express intent such as software prefetching, changing CTA
+decomposition, changing WGMMA/warp-group ownership, changing TMA/shared-memory
+layout, or specializing producer and consumer agents. A workload-specific
+realization supplies concrete matrix extents, layouts, dtypes, instruction atoms,
+tile sizes, stage counts, alignments, boundary policy, accumulator/output types, and
+numerical tolerances. Performance measurements remain properties of that complete
+realization and environment; they are not universal properties of the reusable
+transformation.
+
+As an initial generalization test, evaluate admitted transformations across a
+controlled matrix-shape and dtype sensitivity suite. State/cache identity must
+include all shape, layout, dtype, numerical-contract, hardware, and toolchain fields.
+Non-divisible shapes require an explicit legal boundary or padding policy rather
+than silently assuming 4096-divisible tiles.
+
+Milestone B still targets one H100 BF16 GEMM and does not claim arbitrary-kernel
+optimization. Generalizing the typed operation model, transformation applicability,
+lowering, references, and correctness contracts to attention, reductions,
+convolutions, elementwise/fused graphs, and other GPU architectures is a subsequent
+milestone. That later milestone should reuse the search protocol and transformation
+interface rather than encode GEMM-specific fields in the core MCTS algorithm.
