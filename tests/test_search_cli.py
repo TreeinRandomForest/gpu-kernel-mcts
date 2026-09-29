@@ -662,6 +662,9 @@ def test_cute_mixed_search_constructs_mutation_first_router(
             "2",
             "--mutation-budget",
             "3",
+            "--autotune",
+            "--tuning-budget",
+            "6",
             "--ephemeral-storage",
             "--confirm-create-and-terminate",
         ]
@@ -677,6 +680,7 @@ def test_cute_mixed_search_constructs_mutation_first_router(
     assert isinstance(llm_progress._generator._delegate, LLMKernelGenerator)
     assert captured["search"]["generation_budget"] == 2
     assert captured["search"]["mutation_budget"] == 3
+    assert captured["search"]["tuning_config"].budget == 6
     assert captured["provider_config"].backend == "cute_dsl"
     assert captured["provider_config"].cute_root_kind == "independent"
     independent_cute_gemm_from_source(captured["search"]["root_program"].source)

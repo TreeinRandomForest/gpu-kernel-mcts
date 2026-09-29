@@ -173,15 +173,20 @@ completed hardware validation is identified explicitly.
 
 ### Prioritized CuTe search/generalization work
 
-- [ ] Enable typed LLM proposals for the independently lowered CuTe root. Prompt
+- [x] Enable typed LLM proposals for the independently lowered CuTe root. Prompt
   for a complete versioned typed representation, parse and statically validate it,
   require an admitted parent-to-child structural transition, render it through the
   deterministic independent lowering, charge every initial/repair call to `B_gen`,
   and persist mechanism-specific failures without creating invalid nodes.
-- [ ] Add separately budgeted post-search autotuning for the best independent CuTe
+- [x] Add separately budgeted post-search autotuning for the best independent CuTe
   result. Preserve the untuned winner, persist every `B_tune` trial and failure,
   report tuned and untuned results separately, and prove that tuning cannot alter
   MCTS visits, Q values, backups, or `B_gen`/`B_mut` accounting.
+- [ ] Run bounded H100 validation of the independent mixed generator and post-search
+  tuner. Confirm that LLM proposals remain within admitted typed transitions, every
+  call and repair is charged to `B_gen`, static tuning failures remain trace records,
+  the unchanged baseline is not re-evaluated as a trial, and MCTS counters and
+  backups are identical before and after final-result tuning.
 - [ ] Run the four required ablations from `spec.md` section 47.9: typed only; typed
   plus final tuning; typed plus LLM; and typed plus LLM plus final tuning. Hold the
   root, strategies, worker class, MCTS settings, measurement contract, and declared

@@ -319,8 +319,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--tuned-best-output requires --autotune")
     if arguments.autotune and arguments.tuning_budget < 1:
         parser.error("--tuning-budget must be positive")
-    if arguments.backend == "cute_dsl" and arguments.autotune:
-        parser.error("post-search autotuning is not implemented for --backend=cute_dsl")
+    if (
+        arguments.backend == "cute_dsl"
+        and arguments.autotune
+        and arguments.cute_root_kind != "independent"
+    ):
+        parser.error(
+            "post-search CuTe autotuning requires --cute-root-kind=independent"
+        )
     if arguments.backend != "cute_dsl" and arguments.cute_root_kind != "pinned":
         parser.error("--cute-root-kind requires --backend=cute_dsl")
     if arguments.tuned_best_output is not None and arguments.tuned_best_output.exists():

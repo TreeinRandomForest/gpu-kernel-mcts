@@ -6,6 +6,11 @@ from kernel_mcts.autotuning import (
     parse_tuning_parameters,
     render_configuration,
 )
+from kernel_mcts.cute_independent import make_independent_cute_gemm
+from kernel_mcts.cute_independent_program import (
+    IndependentCuteGemmRenderer,
+    independent_cute_gemm_from_source,
+)
 from kernel_mcts.domain import (
     BenchmarkResult,
     EvaluationResult,
@@ -96,7 +101,7 @@ def test_post_search_tuner_has_separate_bounded_trials_and_best() -> None:
 
     assert result.used == 3
     assert result.best is not None
-    assert result.best_parameters == {"BLOCK_M": 128, "STAGES": 1}
+    assert result.best_parameters == {"BLOCK_M": 128, "STAGES": 2}
     assert [event for event, _ in events.events] == [
         "tuning_started",
         "tuning_trial",
@@ -115,3 +120,63 @@ def test_post_search_tuner_skips_unannotated_kernel() -> None:
     assert result.used == 0
     assert result.skipped_reason is not None
     assert events.events[0][0] == "tuning_skipped"
+
+
+def test_independent_cute_tuning_rebuilds_coupled_typed_state() -> None:
+    parent = make_independent_cute_gemm(
+        tile_m=128,
+        mainloop_schedule="prefetch",
+        producer_consumer_mode="warp_specialized",
+    )
+    program = IndependentCuteGemmRenderer().render(parent)
+
+    parameters = parse_tuning_parameters(program)
+    rendered = render_configuration(
+        program,
+        {"PIPELINE_STAGES": 2, "SWIZZLE_BYTES": 64},
+    )
+    candidate = independent_cute_gemm_from_source(rendered.source)
+
+    assert [(item.name, item.choices) for item in parameters] == [
+        ("PIPELINE_STAGES", (2, 3, 4)),
+        ("SWIZZLE_BYTES", (64, 128)),
+    ]
+    assert candidate.mainloop.tile_m == 128
+    assert candidate.mainloop.schedule == "prefetch"
+    assert candidate.mainloop.producer_consumer_mode == "warp_specialized"
+    assert candidate.mainloop.pipeline_stages == 2
+    assert candidate.mainloop.a_copy.swizzle_bytes == 64
+    assert candidate.configuration_hash != parent.configuration_hash
+
+
+def test_independent_cute_tuner_records_static_rejections_in_budget() -> None:
+    parent = make_independent_cute_gemm(
+        tile_m=128,
+        mainloop_schedule="prefetch",
+        producer_consumer_mode="warp_specialized",
+    )
+    program = IndependentCuteGemmRenderer().render(parent)
+    parent_evaluation = EvaluationResult(
+        ProposalStatus.VALID,
+        program,
+        parent.configuration_hash,
+        1.0,
+        BenchmarkResult((1.0,), 1.0),
+    )
+    events = Events()
+
+    result = PostSearchAutotuner(
+        Evaluator(), WORKLOAD, TuningConfig(6, "grid"), events
+    ).run(parent_evaluation)
+
+    assert result.used == 5
+    rejected = [
+        trial
+        for trial in result.trials
+        if trial.evaluation.status == ProposalStatus.INVALID
+    ]
+    assert len(rejected) == 2
+    assert all(
+        trial.evaluation.metadata["error_type"] == "static_tuning_rejection"
+        for trial in rejected
+    )

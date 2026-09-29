@@ -6,7 +6,19 @@ from dataclasses import dataclass
 from random import Random
 from typing import Mapping, Sequence
 
-from .domain import EvaluationResult, KernelProgram, ProposalStatus, WorkloadContract
+from .cute_independent import make_independent_cute_gemm
+from .cute_independent_program import (
+    REPRESENTATION_NAME as INDEPENDENT_REPRESENTATION_NAME,
+    IndependentCuteGemmRenderer,
+    independent_cute_gemm_from_source,
+)
+from .domain import (
+    EvaluationResult,
+    InvalidReason,
+    KernelProgram,
+    ProposalStatus,
+    WorkloadContract,
+)
 from .interfaces import EventSink, KernelEvaluator
 from .serialization import serialize_evaluation
 
@@ -67,6 +79,12 @@ class TuningResult:
 
 
 def parse_tuning_parameters(program: KernelProgram) -> tuple[TuningParameter, ...]:
+    if INDEPENDENT_REPRESENTATION_NAME in program.source:
+        independent_cute_gemm_from_source(program.source)
+        return (
+            TuningParameter("PIPELINE_STAGES", (2, 3, 4)),
+            TuningParameter("SWIZZLE_BYTES", (64, 128)),
+        )
     parameters: list[TuningParameter] = []
     seen: set[str] = set()
     for match in _ANNOTATION.finditer(program.source):
@@ -87,6 +105,23 @@ def parse_tuning_parameters(program: KernelProgram) -> tuple[TuningParameter, ..
 def render_configuration(
     program: KernelProgram, parameters: Mapping[str, int]
 ) -> KernelProgram:
+    if INDEPENDENT_REPRESENTATION_NAME in program.source:
+        expected = {"PIPELINE_STAGES", "SWIZZLE_BYTES"}
+        if set(parameters) != expected:
+            raise ValueError(
+                f"independent CuTe tuning parameters must be exactly {sorted(expected)}"
+            )
+        parent = independent_cute_gemm_from_source(program.source)
+        candidate = make_independent_cute_gemm(
+            swizzle_bytes=parameters["SWIZZLE_BYTES"],
+            pipeline_stages=parameters["PIPELINE_STAGES"],
+            tile_m=parent.mainloop.tile_m,
+            tile_n=parent.mainloop.tile_n,
+            cluster_m=parent.mainloop.cluster_m,
+            mainloop_schedule=parent.mainloop.schedule,
+            producer_consumer_mode=parent.mainloop.producer_consumer_mode,
+        )
+        return IndependentCuteGemmRenderer().render(candidate)
     source = program.source
     for name, value in parameters.items():
         define = re.compile(
@@ -121,6 +156,8 @@ class PostSearchAutotuner:
             return TuningResult((), (), None, None, baseline.reward, reason)
 
         configurations = list(_configurations(parameters))
+        current = _current_configuration(baseline.program, parameters)
+        configurations = [item for item in configurations if item != current]
         if self._config.method == "random":
             Random(self._config.seed).shuffle(configurations)
         configurations = configurations[: self._config.budget]
@@ -141,8 +178,19 @@ class PostSearchAutotuner:
         best: EvaluationResult | None = None
         best_parameters: Mapping[str, int] | None = None
         for number, configuration in enumerate(configurations, 1):
-            program = render_configuration(baseline.program, configuration)
-            evaluation = self._evaluator.evaluate(program, self._workload)
+            try:
+                program = render_configuration(baseline.program, configuration)
+            except ValueError as error:
+                evaluation = EvaluationResult(
+                    ProposalStatus.INVALID,
+                    invalid_reason=InvalidReason.OTHER,
+                    metadata={
+                        "error_type": "static_tuning_rejection",
+                        "message": str(error),
+                    },
+                )
+            else:
+                evaluation = self._evaluator.evaluate(program, self._workload)
             trial = TuningTrial(number, configuration, evaluation)
             trials.append(trial)
             if (
@@ -186,3 +234,26 @@ def _configurations(
         dict(zip((parameter.name for parameter in parameters), values))
         for values in itertools.product(*(parameter.choices for parameter in parameters))
     )
+
+
+def _current_configuration(
+    program: KernelProgram,
+    parameters: Sequence[TuningParameter],
+) -> dict[str, int]:
+    if INDEPENDENT_REPRESENTATION_NAME in program.source:
+        representation = independent_cute_gemm_from_source(program.source)
+        return {
+            "PIPELINE_STAGES": representation.mainloop.pipeline_stages,
+            "SWIZZLE_BYTES": representation.mainloop.a_copy.swizzle_bytes,
+        }
+    current: dict[str, int] = {}
+    for parameter in parameters:
+        define = re.search(
+            rf"^\s*#define\s+{re.escape(parameter.name)}\s+([0-9]+)\s*$",
+            program.source,
+            re.MULTILINE,
+        )
+        if define is None:
+            raise ValueError(f"tuning parameter {parameter.name} has no integer #define")
+        current[parameter.name] = int(define.group(1))
+    return current
