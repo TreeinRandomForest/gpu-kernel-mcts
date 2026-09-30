@@ -24,6 +24,7 @@ from .cute_independent_program import (
     IndependentCuteGemmRenderer,
     independent_cute_gemm_from_source,
 )
+from .cute_transformations import enumerate_independent_transformations
 from .domain import Strategy
 from .generation import (
     GenerationRequest,
@@ -184,6 +185,7 @@ class IndependentCuteMutationProposal:
     strategy_id: str
     parameters: Mapping[str, object]
     validation: IndependentTmaSmemLegality
+    transformation_id: str | None = None
 
     def as_dict(self) -> dict[str, object]:
         before = self.parent.as_dict()
@@ -198,6 +200,7 @@ class IndependentCuteMutationProposal:
             "transformation": {
                 "mechanism": "typed_mutation",
                 "strategy_id": self.strategy_id,
+                "transformation_id": self.transformation_id,
                 "parameters": dict(self.parameters),
                 "parent_configuration_hash": self.parent.configuration_hash,
                 "child_configuration_hash": self.candidate.configuration_hash,
@@ -211,6 +214,24 @@ class IndependentCuteMutationProposal:
 
 
 def enumerate_independent_cute_mutations(
+    parent: IndependentCuteGemmKernel,
+) -> tuple[IndependentCuteMutationProposal, ...]:
+    """Return independently validated realizations from reusable descriptors."""
+
+    return tuple(
+        IndependentCuteMutationProposal(
+            parent=parent,
+            candidate=realization.candidate,
+            strategy_id=transformation.semantic_strategy_id,
+            parameters=realization.parameters,
+            validation=validate_independent_cute_gemm(realization.candidate),
+            transformation_id=transformation.transformation_id,
+        )
+        for transformation, realization in enumerate_independent_transformations(parent)
+    )
+
+
+def _legacy_enumerate_independent_cute_mutations(
     parent: IndependentCuteGemmKernel,
 ) -> tuple[IndependentCuteMutationProposal, ...]:
     """Return only independently H100-validated one-hop controls."""

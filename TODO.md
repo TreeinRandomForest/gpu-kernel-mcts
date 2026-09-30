@@ -199,7 +199,11 @@ completed hardware validation is identified explicitly.
   transformation descriptors with applicability, parameter schema/enumeration,
   coupled-field rebuild, legality, deterministic lowering, and before/after
   evidence. Preserve the current canonical states and mutation graph while doing
-  this mechanical refactor.
+  this mechanical refactor. The first slice routes production enumeration through
+  versioned descriptors for all six admitted transformation families and records a
+  stable transformation ID. A temporary parity implementation proves identical
+  proposal order, parameters, and child hashes across ten representative states;
+  remove that duplicate after the descriptor boundary has one more review cycle.
 - [ ] Exercise the reusable transformations over a controlled GEMM shape/dtype
   sensitivity suite, including non-divisible shapes with explicit boundary/padding
   behavior. Keep arbitrary operations and architectures as a subsequent milestone;
