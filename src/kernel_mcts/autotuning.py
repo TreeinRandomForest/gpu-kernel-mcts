@@ -175,7 +175,7 @@ class PostSearchAutotuner:
             },
         )
         trials: list[TuningTrial] = []
-        best: EvaluationResult | None = None
+        best: EvaluationResult | None = baseline
         best_parameters: Mapping[str, int] | None = None
         for number, configuration in enumerate(configurations, 1):
             try:
@@ -196,7 +196,7 @@ class PostSearchAutotuner:
             if (
                 evaluation.status == ProposalStatus.VALID
                 and evaluation.reward is not None
-                and (best is None or best.reward is None or evaluation.reward > best.reward)
+                and (best.reward is None or evaluation.reward > best.reward)
             ):
                 best = evaluation
                 best_parameters = configuration

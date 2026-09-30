@@ -180,3 +180,6 @@ def test_independent_cute_tuner_records_static_rejections_in_budget() -> None:
         trial.evaluation.metadata["error_type"] == "static_tuning_rejection"
         for trial in rejected
     )
+    assert result.best == parent_evaluation
+    assert result.best_parameters is None
+    assert result.improved is False

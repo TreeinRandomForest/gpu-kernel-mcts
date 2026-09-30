@@ -186,7 +186,10 @@ completed hardware validation is identified explicitly.
   tuner. Confirm that LLM proposals remain within admitted typed transitions, every
   call and repair is charged to `B_gen`, static tuning failures remain trace records,
   the unchanged baseline is not re-evaluated as a trial, and MCTS counters and
-  backups are identical before and after final-result tuning.
+  backups are identical before and after final-result tuning. The v82 smoke validated
+  separate `B_mut=1`, `B_gen=1`, and `B_tune=2` accounting plus canonical LLM
+  transposition reuse. It exposed and fixed retention of a slower tuned trial;
+  rerun the bounded smoke to validate that corrected persisted/output behavior.
 - [ ] Run the four required ablations from `spec.md` section 47.9: typed only; typed
   plus final tuning; typed plus LLM; and typed plus LLM plus final tuning. Hold the
   root, strategies, worker class, MCTS settings, measurement contract, and declared
