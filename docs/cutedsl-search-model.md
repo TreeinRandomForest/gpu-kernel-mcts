@@ -447,6 +447,24 @@ new complete configuration once and reuse its cached result. Standalone or post-
 autotuning remains separately budgeted. Any future leaf-local tuner should be an
 explicit ablation rather than hidden work performed at every expansion.
 
+The independently lowered backend now supports post-search final-result tuning.
+Its initial bounded grid varies mainloop stages `{2,3,4}` and shared-memory swizzle
+`{64,128}` while rebuilding all coupled typed fields. The unchanged search winner
+is excluded from `B_tune`; statically illegal combinations remain recorded trials;
+and a tuned result replaces the untuned winner only when its valid measured reward
+is strictly higher. Tuning never creates nodes or changes visits, Q values, or
+backups.
+
+`run-cutedsl-ablations.sh` launches the four comparisons required by `spec.md`
+section 47.9: typed only, typed plus tuning, typed plus LLM, and typed plus LLM plus
+tuning. It fixes the independent serial root, worker class, strategy catalog, MCTS
+hyperparameters, profile set, and seed across runs, refuses to overwrite local
+artifacts, and keeps `B_mut`, `B_gen`, and `B_tune` explicit. Required environment
+variables are `NEBIUS_PROJECT_ID`, `NEBIUS_SUBNET_ID`, and `OPENAI_API_KEY`; optional
+overrides include `IMAGE`, `MODEL`, `MUTATION_BUDGET`, `GENERATION_BUDGET`,
+`TUNING_BUDGET`, `SEED`, `OUTPUT_DIR`, and `NEBIUS_SSH_KEY`.
+Set `DRY_RUN=1` to print all four fully resolved commands without provisioning VMs.
+
 ## Independent pipeline-depth realizations
 
 For the independent `(64,256,64)`, cluster `(1,1)`, SW128 root,

@@ -231,3 +231,4 @@ __marimo__/
 /*.ncu-rep
 *.swp
 *-tuned-*.cu
+/ablation-results/
