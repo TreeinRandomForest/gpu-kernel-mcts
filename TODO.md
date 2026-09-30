@@ -195,15 +195,15 @@ completed hardware validation is identified explicitly.
   root, strategies, worker class, MCTS settings, measurement contract, and declared
   seeds fixed; report all budgets, validity rates, latency, cost, and canonical-state
   coverage separately.
-- [ ] Refactor the admitted independent CuTe transitions behind reusable structural
+- [x] Refactor the admitted independent CuTe transitions behind reusable structural
   transformation descriptors with applicability, parameter schema/enumeration,
   coupled-field rebuild, legality, deterministic lowering, and before/after
   evidence. Preserve the current canonical states and mutation graph while doing
   this mechanical refactor. The first slice routes production enumeration through
   versioned descriptors for all six admitted transformation families and records a
-  stable transformation ID. A temporary parity implementation proves identical
-  proposal order, parameters, and child hashes across ten representative states;
-  remove that duplicate after the descriptor boundary has one more review cycle.
+  stable transformation ID. A temporary parity implementation proved identical
+  proposal order, parameters, and child hashes across ten representative states and
+  was then removed; production now has one descriptor-driven enumeration path.
 - [ ] Exercise the reusable transformations over a controlled GEMM shape/dtype
   sensitivity suite, including non-divisible shapes with explicit boundary/padding
   behavior. Keep arbitrary operations and architectures as a subsequent milestone;
