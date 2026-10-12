@@ -413,6 +413,48 @@ def test_cli_client_starts_privileged_worker_behind_ssh_tunnel(tmp_path) -> None
     )
 
 
+def test_cli_client_retries_ssh_timeout_until_worker_is_ready(tmp_path) -> None:
+    class FirstSSHTimeoutRunner(RecordingRunner):
+        def __init__(self):
+            super().__init__()
+            self.ssh_attempts = 0
+
+        def __call__(self, command, *, input=None, timeout=None):
+            if command[0] == "ssh" and command[-1] == "true":
+                self.ssh_attempts += 1
+                if self.ssh_attempts == 1:
+                    raise subprocess.TimeoutExpired(command, timeout)
+            return super().__call__(command, input=input, timeout=timeout)
+
+    class Tunnel:
+        def poll(self):
+            return None
+
+        def terminate(self):
+            pass
+
+        def wait(self, timeout=None):
+            return 0
+
+    runner = FirstSSHTimeoutRunner()
+    client = NebiusCLIClient(
+        config(tmp_path),
+        runner=runner,
+        tunnel_factory=lambda command: Tunnel(),
+        port_factory=lambda: 43210,
+        worker_status=lambda address, token: "ready",
+        sleep=lambda seconds: None,
+    )
+
+    endpoint = client.wait_until_ready(
+        NebiusInstance("instance-1", "disk-1", "203.0.113.2"), 30.0
+    )
+
+    assert endpoint.worker_id == "instance-1"
+    assert runner.ssh_attempts == 2
+    client.terminate_instance("instance-1")
+
+
 @pytest.mark.parametrize("username", ["root", "admin"])
 def test_config_rejects_reserved_ssh_users(tmp_path, username) -> None:
     with pytest.raises(ValueError, match="cannot be root or admin"):

@@ -337,11 +337,14 @@ class NebiusCLIClient:
         known_hosts = self._known_hosts_file(instance.instance_id)
         ssh_base = self._ssh_base(public_ip, known_hosts)
         while True:
-            result = self._runner(
-                [*ssh_base, f"{self.config.username}@{public_ip}", "true"],
-                timeout=min(15.0, max(1.0, deadline - self._monotonic())),
-            )
-            if result.returncode == 0:
+            try:
+                result = self._runner(
+                    [*ssh_base, f"{self.config.username}@{public_ip}", "true"],
+                    timeout=min(15.0, max(1.0, deadline - self._monotonic())),
+                )
+            except subprocess.TimeoutExpired:
+                result = None
+            if result is not None and result.returncode == 0:
                 break
             if progress is not None:
                 progress("SSH", self._monotonic() - started)
