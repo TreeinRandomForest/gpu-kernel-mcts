@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
+from .dataflow import SCHEMA_VERSION as DATAFLOW_VERSION
+from .dataflow import cuda_node_dataflow
 from .resource_graph import SCHEMA_VERSION as RESOURCE_GRAPH_VERSION
 from .resource_graph import h100_constraint_checks, h100_sxm_resource_graph, ncu_resource_observations
 
@@ -267,17 +269,45 @@ class TraceCatalog:
                         stored[row["node_id"]] = observation
             observations = []
             kernels = []
+            stored_dataflow = {}
+            if self._has_table(connection, "node_dataflow_graphs"):
+                for row in connection.execute(
+                    """SELECT node_id, graph_json FROM node_dataflow_graphs
+                       WHERE run_id = ? AND graph_schema_version = ?""",
+                    (run_id, DATAFLOW_VERSION),
+                ):
+                    candidate = _json_value(row["graph_json"])
+                    if isinstance(candidate, dict) and candidate.get("schema_version") == DATAFLOW_VERSION:
+                        stored_dataflow[row["node_id"]] = candidate
             for row in connection.execute(
-                """SELECT node_id, profile_json, metadata_json, launch_config_json
+                """SELECT node_id, program_text, backend_type, workload_json, profile_json,
+                          metadata_json, launch_config_json
                    FROM nodes WHERE run_id = ? ORDER BY node_id""",
                 (run_id,),
             ):
                 metadata = _json_value(row["metadata_json"], {})
                 context = metadata.get("compiler_context") if isinstance(metadata, dict) else None
                 launch = _json_value(row["launch_config_json"], {})
+                workload = _json_value(row["workload_json"], {})
+                source_text = row["program_text"]
+                dataflow = stored_dataflow.get(row["node_id"])
+                dataflow_source = "persisted" if dataflow is not None else None
+                if dataflow is not None and (
+                    not isinstance(source_text, str)
+                    or dataflow.get("source_sha256") != hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+                ):
+                    dataflow = None
+                    dataflow_source = None
+                if (dataflow is None and row["backend_type"] == "cuda_cpp"
+                        and isinstance(workload, dict) and isinstance(launch, dict)):
+                    dataflow = cuda_node_dataflow(source_text, workload, launch, context)
+                    if dataflow is not None:
+                        dataflow_source = "derived_from_node"
                 kernels.append({
                     "node_id": row["node_id"],
                     "constraint_checks": h100_constraint_checks(graph, context, launch),
+                    "dataflow": dataflow,
+                    "dataflow_source": dataflow_source,
                 })
                 profile = _json_value(row["profile_json"])
                 observation = stored.get(row["node_id"])

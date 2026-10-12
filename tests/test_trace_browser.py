@@ -8,9 +8,15 @@ import zipfile
 
 import pytest
 
+from kernel_mcts.benchmarks.bf16_gemm import (
+    BF16_GEMM_WORKLOAD,
+    load_bf16_gemm_smoke_candidate,
+)
+from kernel_mcts.dataflow import bf16_gemm_dataflow
 from kernel_mcts.persistence import SQLiteTraceStore
 from kernel_mcts.resource_graph import h100_sxm_resource_graph, ncu_resource_observations
 from kernel_mcts.trace_browser import TraceBrowserError, TraceCatalog
+from kernel_mcts.serialization import serialize_workload
 
 
 def _browser_trace(tmp_path):
@@ -128,6 +134,9 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
         },
     }
     observation = ncu_resource_observations(graph, profile)
+    workload = serialize_workload(BF16_GEMM_WORKLOAD)
+    launch = workload["metadata"]["abi"]["launch"]
+    dataflow = bf16_gemm_dataflow(load_bf16_gemm_smoke_candidate().source, workload, launch)
     with sqlite3.connect(path) as connection:
         connection.execute(
             """INSERT INTO environment_manifests(manifest_id, worker_id, provider, gpu_model,
@@ -146,9 +155,12 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
             (manifest["manifest_id"], json.dumps(graph)),
         )
         connection.execute(
-            """UPDATE nodes SET profile_json = ?, metadata_json = ?, launch_config_json = ?
+            """UPDATE nodes SET program_text = ?, workload_json = ?, profile_json = ?,
+               metadata_json = ?, launch_config_json = ?
                WHERE run_id = 'run-1' AND node_id = 'right'""",
             (
+                load_bf16_gemm_smoke_candidate().source,
+                json.dumps(workload),
                 json.dumps(profile),
                 json.dumps({"compiler_context": {
                     "architecture": "sm_90",
@@ -157,7 +169,7 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
                         "static_shared_memory_bytes": 1024,
                     }},
                 }}),
-                json.dumps({"block": [16, 16, 1], "dynamic_shared_memory_bytes": 0}),
+                json.dumps(launch),
             ),
         )
         connection.execute(
@@ -165,6 +177,12 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
                (run_id, node_id, graph_schema_version, observation_json, created_at)
                VALUES ('run-1', 'right', 2, ?, '2026-01-01')""",
             (json.dumps(observation),),
+        )
+        connection.execute(
+            """INSERT INTO node_dataflow_graphs
+               (run_id, node_id, graph_schema_version, graph_json, created_at)
+               VALUES ('run-1', 'right', 1, ?, '2026-01-01')""",
+            (json.dumps(dataflow),),
         )
 
     catalog = TraceCatalog(tmp_path)
@@ -179,6 +197,8 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
     checks = {row["constraint_id"]: row for row in right["constraint_checks"]}
     assert checks["registers_per_thread"]["observed"]["value"] == 31
     assert checks["threads_per_block"]["observed"]["value"] == 256
+    assert right["dataflow_source"] == "persisted"
+    assert right["dataflow"]["summary"]["source_global_load_bytes"] == 256 * 1024**3
 
     # A stored v1 graph is upgraded for display, without rewriting the trace.
     with sqlite3.connect(path) as connection:
@@ -195,6 +215,7 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
 
     # Old traces can be viewed without a schema migration or file write.
     with sqlite3.connect(path) as connection:
+        connection.execute("DROP TABLE node_dataflow_graphs")
         connection.execute("DROP TABLE hardware_resource_observations")
         connection.execute("DROP TABLE hardware_resource_graphs")
         connection.execute("PRAGMA user_version = 10")
@@ -205,8 +226,45 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
     assert hardware["observations"][0]["observations"][0]["value"] == 1.4
     right = next(row for row in hardware["kernels"] if row["node_id"] == "right")
     assert right["constraint_checks"][0]["observed"]["value"] == 31
+    assert right["dataflow_source"] == "derived_from_node"
+    assert right["dataflow"]["template"] == "direct_load_candidate"
     assert path.stat().st_mtime_ns == before
 
+
+def test_hardware_view_derives_generated_cuda_node_graph_read_only(tmp_path) -> None:
+    path = _browser_trace(tmp_path)
+    manifest = {
+        "manifest_id": "h100-worker", "gpu_model": "NVIDIA H100 80GB HBM3",
+        "form_factor": "SXM", "compute_capability": "9.0", "gpu_count": 1,
+        "total_memory_bytes": 85_520_809_984, "mig_configuration": {},
+    }
+    source = load_bf16_gemm_smoke_candidate().source + "\n// generated variant\n"
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """INSERT INTO environment_manifests(manifest_id, worker_id, provider, gpu_model,
+               compute_capability, form_factor, captured_at, manifest_json)
+               VALUES (?, 'worker', 'nebius', ?, '9.0', 'SXM', '2026-01-01', ?)""",
+            (manifest["manifest_id"], manifest["gpu_model"], json.dumps(manifest)),
+        )
+        connection.execute(
+            "UPDATE search_runs SET environment_manifest_id = ? WHERE run_id = 'run-1'",
+            (manifest["manifest_id"],),
+        )
+        connection.execute(
+            """UPDATE nodes SET program_text = ?, metadata_json = ?
+               WHERE run_id = 'run-1' AND node_id = 'right'""",
+            (source, json.dumps({"compiler_context": {"sass": {
+                "status": "parsed", "categories": {"global_load": 2, "global_store": 1}
+            }}})),
+        )
+    before = path.stat().st_mtime_ns
+    catalog = TraceCatalog(tmp_path)
+    hardware = catalog.hardware(catalog.list_traces()[0]["trace_id"], "run-1")
+    right = next(row for row in hardware["kernels"] if row["node_id"] == "right")
+    assert right["dataflow_source"] == "derived_from_node"
+    assert right["dataflow"]["kind"] == "compiler_operation_skeleton"
+    assert right["dataflow"]["summary"]["static_sass_instruction_sites"]["global_load"] == 2
+    assert path.stat().st_mtime_ns == before
 
 def test_hardware_view_handles_run_without_supported_gpu_graph(tmp_path) -> None:
     _browser_trace(tmp_path)

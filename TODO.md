@@ -204,11 +204,25 @@ completed hardware validation is identified explicitly.
 - [ ] Calibrate sustainable bandwidth and latency ranges for graph links with
   same-worker measurements and NCU byte/time evidence. Keep published peaks
   distinct from observed performance and leave unsupported links unknown.
-- [ ] Extract a bounded CUDA dataflow graph for the current BF16 GEMM: memory
-  placement, transfers, reuse, computation, synchronization, and output ownership.
-  Map it onto the H100 graph to explain measured bottlenecks and assess only proven
-  launch/resource violations as hard failures. Keep cross-kernel fusion behind a
-  separately specified workload contract.
+- [x] Persist bounded, exact-source dataflow graphs for the fixed BF16 GEMM root
+  and smoke candidate: memory placement, source-level transfer demand, shared
+  reuse, scalar computation, synchronization, output ownership, and possible H100
+  paths. Show them in the trace browser without changing search decisions. See
+  `docs/bf16-dataflow.md`.
+- [x] Give each valid CUDA node a cached diagnostic dataflow graph at creation.
+  Preserve the exact-source BF16 models and use static SASS instruction categories
+  for a conservative operation skeleton on generated nodes. Keep dynamic bytes and
+  value dependencies unknown; support read-only derivation for older traces.
+- [ ] Extract bounded value dependencies from retained PTX for generated CUDA
+  nodes, with explicit unsupported/partial status for control flow, aliasing, and
+  untracked memory. Compare against SASS and NCU before treating paths as measured.
+- [ ] Add a parent/child dataflow diff in the trace browser. Compare aligned
+  memory/compute stages and evidence provenance before showing quantitative deltas;
+  do not compare unknown traffic as zero.
+- [ ] Profile both kernels on the same worker for DRAM/L2/shared byte or sector
+  counts, then reconcile the source-level dataflow with measured traffic before
+  attributing bottlenecks. Assess only proven launch/resource violations as hard
+  failures. Keep cross-kernel fusion behind a separately specified workload contract.
 - [ ] Add an off-by-default, fully persisted prompt ablation for compact compiler
   summaries, followed by equal-budget CUDA-only, NCU, compiler-context, and combined
   experiments.

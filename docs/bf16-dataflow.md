@@ -1,0 +1,74 @@
+# Bounded BF16 GEMM dataflow v1
+
+`src/kernel_mcts/dataflow.py` recognizes only the exact packaged CUDA root and
+smoke-candidate sources under the fixed `bf16_gemm_4096_h100` workload and its
+16×16 launch. It returns no graph if source, shape, dtype, layout, or launch
+differs. The graph is diagnostic and does not affect MCTS validity, selection,
+budget accounting, or reward.
+
+```mermaid
+flowchart LR
+    A[A global] --> AS[A shared tile] --> AR[A thread operand]
+    B[B global] --> BS[B shared tile] --> BR[B thread operand]
+    AR --> MAC[FP32 multiply-accumulate]
+    BR --> MAC
+    MAC --> ACC[FP32 accumulator] --> C[C global]
+```
+
+The root follows this shared-tile path. It has two CTA barriers per K tile:
+one after loading the tile and one before reusing shared storage. The candidate
+instead connects A and B global loads directly to thread operands and has no
+explicit shared staging or CTA barrier. Both assign one output C element to
+each active thread.
+
+| Source-level quantity, fixed 4096³ case | Tiled root | Direct-load candidate |
+|---|---:|---:|
+| A and B global element references × 2 bytes | 16 GiB | 256 GiB |
+| C stores × 2 bytes | 32 MiB | 32 MiB |
+| Multiply-accumulates | 68,719,476,736 | 68,719,476,736 |
+| Explicit shared reuse per loaded A/B element | 16 threads | None |
+| CTA barriers per block | 512 | 0 |
+
+These are counts from the CUDA source and fixed shape, **not measured HBM or L2
+traffic**. Hardware caches, broadcasts, compiler transformations, transaction
+widths, and spills can change physical traffic. In the H100 validation trace,
+the root's bounded SASS summary includes 32 shared loads and two shared stores,
+while the candidate has no shared loads or stores; both have zero tensor-category
+instructions. The summary supports the structural distinction but is not an
+execution-count or traffic measurement. The candidate has no NCU profile in
+that trace, so the 16× source-level difference is a hypothesis to investigate,
+not a measured bottleneck attribution.
+
+Each edge lists possible H100 resource links. For example, a tiled global-to-
+shared assignment passes through the model's L2/L1, L1/register, and
+register/shared paths. The graph does not assign bytes to those links; the
+HBM-to-L2 contribution remains unknown because global loads can hit cache.
+
+SQLite schema 13 stores one versioned graph per recognized node in
+`node_dataflow_graphs`. Existing traces are backfilled when opened by
+`SQLiteTraceStore`. The trace browser is read-only: it uses a stored graph
+when available, or derives the same bounded graph from the stored node source
+and workload. Selecting a dataflow edge highlights its possible links in the
+GPU resource view. Unrecognized kernels show an explicit unavailable message.
+
+Next evidence should be a same-worker NCU profile for both kernels with DRAM,
+L2, and shared-memory byte or sector counts. Compare those measurements with
+the source-level demand before using the model in prompts or search priors.
+
+## Generated CUDA nodes
+
+At `node_created`, every valid CUDA node with nonempty source now receives a
+cached graph. The two exact packaged sources retain the quantitative model above.
+Other sources receive a `compiler_operation_skeleton` based on the node's bounded
+SASS instruction categories when present. The skeleton indicates possible global,
+shared, register, and compute stages. Static instruction sites cannot establish
+which input feeds which instruction, how often a path executes, or the number of
+bytes transferred, so all such quantities remain unknown. A node without parsed
+SASS still gets a minimal graph with explicit `structure_only` evidence status.
+
+SQLite schema 14 backfills generated CUDA nodes in older traces. Subsequent node
+snapshots and profiles retain the same graph rather than extracting it again.
+The browser can derive a missing graph read-only from node source and compiler
+metadata. These graphs remain diagnostic: they do not change candidate validity,
+MCTS selection, profiling policy, or budget accounting. A parent/child graph diff
+is planned; it will need to preserve unknowns and evidence provenance.

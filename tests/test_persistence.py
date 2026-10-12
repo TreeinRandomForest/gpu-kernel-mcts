@@ -5,6 +5,7 @@ import sqlite3
 import pytest
 
 from kernel_mcts.budget import GenerationBudget
+from kernel_mcts.benchmarks.bf16_gemm import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
 from kernel_mcts.domain import (
     BenchmarkResult,
     CompileStatus,
@@ -22,7 +23,7 @@ from kernel_mcts.persistence import SQLiteTraceStore
 from kernel_mcts.priors import UniformStrategyPrior
 from kernel_mcts.providers import EnvironmentManifest
 from kernel_mcts.search import MCTS, MCTSConfig
-from kernel_mcts.serialization import serialize_environment_manifest, serialize_evaluation
+from kernel_mcts.serialization import serialize_environment_manifest, serialize_evaluation, serialize_workload
 
 
 def test_trace_store_records_run_and_event(tmp_path) -> None:
@@ -105,8 +106,9 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "node_compiler_artifacts",
             "hardware_resource_graphs",
             "hardware_resource_observations",
+            "node_dataflow_graphs",
         } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 12
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 14
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -389,6 +391,78 @@ def test_h100_graph_and_ncu_observation_are_materialized_in_trace(tmp_path) -> N
         assert connection.execute(
             "SELECT graph_schema_version FROM hardware_resource_observations"
         ).fetchone() == (2,)
+
+
+def test_fixed_bf16_dataflow_is_persisted_and_backfilled(tmp_path) -> None:
+    path = tmp_path / "trace.sqlite"
+    workload = serialize_workload(BF16_GEMM_WORKLOAD)
+    launch = workload["metadata"]["abi"]["launch"]
+    node = {
+        "node_id": "root", "state_key": "root-state", "reward": 0.0,
+        "evaluation": {
+            "status": "VALID",
+            "program": {"source": load_bf16_gemm_root().source, "backend": "cuda_cpp"},
+            "launch_config": launch,
+            "metadata": {},
+        },
+    }
+    with SQLiteTraceStore(path) as store:
+        store.start_run("run", "bf16_gemm_4096_h100", "mcts", {})
+        store.emit("run_started", {"workload": workload, "hardware": {}})
+        store.emit("node_created", node)
+    with sqlite3.connect(path) as connection:
+        row = connection.execute(
+            "SELECT graph_schema_version, graph_json FROM node_dataflow_graphs"
+        ).fetchone()
+        assert row[0] == 1
+        assert json.loads(row[1])["summary"]["source_global_load_bytes"] == 16 * 1024**3
+        connection.execute("DELETE FROM node_dataflow_graphs")
+        connection.execute("PRAGMA user_version = 12")
+    with SQLiteTraceStore(path):
+        pass
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT count(*) FROM node_dataflow_graphs"
+        ).fetchone() == (1,)
+
+
+def test_generated_cuda_node_graph_is_created_once_and_backfilled(tmp_path) -> None:
+    path = tmp_path / "trace.sqlite"
+    workload = serialize_workload(BF16_GEMM_WORKLOAD)
+    source = load_bf16_gemm_root().source + "\n// generated variant\n"
+    context = {"sass": {"status": "parsed", "categories": {
+        "global_load": 2, "global_store": 1, "shared_load": 1,
+        "shared_store": 1, "tensor": 0,
+    }}}
+    node = {
+        "node_id": "generated", "state_key": "generated-state", "reward": 0.1,
+        "evaluation": {
+            "status": "VALID",
+            "program": {"source": source, "backend": "cuda_cpp"},
+            "launch_config": workload["metadata"]["abi"]["launch"],
+            "metadata": {"compiler_context": context},
+        },
+    }
+    with SQLiteTraceStore(path) as store:
+        store.start_run("run", "bf16_gemm_4096_h100", "mcts", {})
+        store.emit("run_started", {"workload": workload, "hardware": {}})
+        store.emit("node_created", node)
+        created = store.connection.execute(
+            "SELECT graph_json, created_at FROM node_dataflow_graphs WHERE node_id = 'generated'"
+        ).fetchone()
+        assert json.loads(created[0])["summary"]["static_sass_instruction_sites"]["shared_load"] == 1
+        store.emit("node_snapshot", node)
+        assert store.connection.execute(
+            "SELECT graph_json, created_at FROM node_dataflow_graphs WHERE node_id = 'generated'"
+        ).fetchone() == created
+    with sqlite3.connect(path) as connection:
+        connection.execute("DELETE FROM node_dataflow_graphs")
+        connection.execute("PRAGMA user_version = 13")
+    with SQLiteTraceStore(path) as store:
+        graph = json.loads(store.connection.execute(
+            "SELECT graph_json FROM node_dataflow_graphs WHERE node_id = 'generated'"
+        ).fetchone()[0])
+        assert graph["evidence_status"] == "sass_categories"
 
 
 def test_trace_store_keeps_ptx_bytes_separate_and_links_valid_node(tmp_path) -> None:

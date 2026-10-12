@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .compiler_context import MAX_PTX_ARTIFACT_BYTES
+from .dataflow import cuda_node_dataflow
 from .resource_graph import h100_sxm_resource_graph, ncu_resource_observations
 
 
@@ -56,6 +57,15 @@ CREATE TABLE IF NOT EXISTS node_compiler_artifacts (
     node_id TEXT NOT NULL,
     sha256 TEXT NOT NULL REFERENCES compiler_artifacts(sha256),
     PRIMARY KEY (run_id, node_id, sha256),
+    FOREIGN KEY (run_id, node_id) REFERENCES nodes(run_id, node_id)
+);
+CREATE TABLE IF NOT EXISTS node_dataflow_graphs (
+    run_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    graph_schema_version INTEGER NOT NULL,
+    graph_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (run_id, node_id),
     FOREIGN KEY (run_id, node_id) REFERENCES nodes(run_id, node_id)
 );
 CREATE INDEX IF NOT EXISTS search_events_run_id ON search_events(run_id, id);
@@ -283,7 +293,7 @@ CREATE TABLE IF NOT EXISTS tuning_trials (
 );
 """
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 14
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -351,6 +361,8 @@ class SQLiteTraceStore:
             self._migrate_table("iterations", ITERATION_ADDITIONAL_COLUMNS)
             if current_version < 12:
                 self._backfill_resource_graphs()
+            if current_version < 14:
+                self._backfill_dataflow_graphs()
             self.connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.connection.commit()
         self.run_id: str | None = None
@@ -478,6 +490,56 @@ class SQLiteTraceStore:
                     (run_id, node_id, observation["graph_schema_version"],
                      _json(observation), _now()),
                 )
+
+    def _backfill_dataflow_graphs(self) -> None:
+        """Materialize bounded graphs for existing valid CUDA nodes."""
+        required = {
+            "run_id", "node_id", "program_text", "workload_json",
+            "launch_config_json", "backend_type", "metadata_json",
+        }
+        columns = {
+            row[1] for row in self.connection.execute("PRAGMA table_info(nodes)")
+        }
+        if not required <= columns:
+            return
+        rows = self.connection.execute(
+            """SELECT run_id, node_id, program_text, workload_json, launch_config_json, metadata_json
+               FROM nodes WHERE backend_type = 'cuda_cpp'"""
+        ).fetchall()
+        for run_id, node_id, source, workload_json, launch_json, metadata_json in rows:
+            workload = json.loads(workload_json or "{}")
+            launch = json.loads(launch_json or "{}")
+            metadata = json.loads(metadata_json or "{}")
+            if isinstance(workload, Mapping) and isinstance(launch, Mapping):
+                context = metadata.get("compiler_context") if isinstance(metadata, Mapping) else None
+                self._store_dataflow_graph(run_id, node_id, source, workload, launch, context, _now())
+
+    def _store_dataflow_graph(
+        self,
+        run_id: str,
+        node_id: str,
+        source: str,
+        workload: Mapping[str, object],
+        launch: Mapping[str, object],
+        compiler_context: Mapping[str, object] | None,
+        created_at: str,
+    ) -> None:
+        existing = self.connection.execute(
+            "SELECT graph_json FROM node_dataflow_graphs WHERE run_id = ? AND node_id = ?",
+            (run_id, node_id),
+        ).fetchone()
+        if existing is not None:
+            previous = json.loads(existing[0])
+            if previous.get("source_sha256") == hashlib.sha256(source.encode("utf-8")).hexdigest():
+                return
+        graph = cuda_node_dataflow(source, workload, launch, compiler_context)
+        if graph is not None:
+            self.connection.execute(
+                """INSERT OR REPLACE INTO node_dataflow_graphs(
+                   run_id, node_id, graph_schema_version, graph_json, created_at
+                ) VALUES (?, ?, ?, ?, ?)""",
+                (run_id, node_id, graph["schema_version"], _json(graph), created_at),
+            )
 
     def _migrate_table(
         self, table: str, columns: Mapping[str, str]
@@ -752,8 +814,17 @@ class SQLiteTraceStore:
                 payload.get("configuration_hash"),
             ),
         )
+        workload = json.loads(workload_json or "{}")
+        launch = evaluation.get("launch_config", {})
         metadata = evaluation.get("metadata", {})
-        context = metadata.get("compiler_context", {}) if isinstance(metadata, Mapping) else {}
+        context = metadata.get("compiler_context") if isinstance(metadata, Mapping) else None
+        if program.get("backend") == "cuda_cpp" and isinstance(workload, Mapping) and isinstance(launch, Mapping):
+            self._store_dataflow_graph(
+                self.run_id, payload["node_id"],
+                payload.get("program_text", program["source"]),
+                workload, launch, context, created_at,
+            )
+        context = context or {}
         ptx = context.get("ptx", {}) if isinstance(context, Mapping) else {}
         artifacts = ptx.get("artifacts", []) if isinstance(ptx, Mapping) else []
         for artifact in artifacts:

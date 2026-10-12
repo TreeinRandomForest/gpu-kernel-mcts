@@ -46,6 +46,14 @@
           <thead><tr><th>Constraint</th><th>Scope</th><th>Maximum</th><th>Kernel evidence</th><th>Assessment</th></tr></thead><tbody></tbody>
         </table></div>
       </div>
+      <div id="dataflow-panel" hidden>
+        <h3>CUDA dataflow</h3>
+        <p class="hint" id="dataflow-summary"></p>
+        <div id="dataflow-visual" hidden>
+          <svg id="dataflow-graph" viewBox="0 0 1240 290" role="img" aria-label="CUDA kernel dataflow graph"></svg>
+          <div id="dataflow-detail" class="hardware-detail" aria-live="polite"></div>
+        </div>
+      </div>
       <p class="hint">Select a resource or path for evidence. Architectural checks are diagnostic; compile and launch remain the validity gates.</p>
     </section>
     <section class="analysis-grid">

@@ -34,12 +34,29 @@ button:hover { border-color: var(--blue); }
 .hardware-profile { fill: var(--green); font: 12px ui-monospace, monospace; pointer-events: none; }
 .hardware-link-line { stroke: #6e7681; stroke-width: 2.5; marker-end: url(#hardware-arrow); }
 .hardware-link.selected .hardware-link-line { stroke: var(--gold); stroke-width: 4; }
+.hardware-link.mapped .hardware-link-line { stroke: var(--green); stroke-width: 4; }
+.hardware-link.selected.mapped .hardware-link-line { stroke: var(--gold); }
 .hardware-link-hit { stroke: transparent; stroke-width: 16; }
 .hardware-detail { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: #0d1117; font: 12px/1.6 ui-monospace, monospace; }
 #hardware-constraints { margin-top: 12px; }
 #hardware-constraints h3 { margin: 0 0 6px; font-size: 14px; }
 #hardware-constraint-table th:not(:first-child), #hardware-constraint-table td:not(:first-child) { text-align: left; }
 #hardware-constraint-table .constraint-exceeds { color: var(--red); }
+#dataflow-panel { margin-top: 14px; }
+#dataflow-panel h3 { margin: 0 0 6px; font-size: 14px; }
+#dataflow-visual { display: grid; grid-template-columns: minmax(0, 2fr) minmax(230px, 1fr); gap: 12px; margin-top: 8px; }
+#dataflow-visual[hidden] { display: none; }
+#dataflow-graph { width: 100%; min-height: 240px; border: 1px solid var(--border); border-radius: 6px; background: #080b10; }
+.dataflow-node rect { fill: #172636; stroke: var(--blue); stroke-width: 1.5; }
+.dataflow-shared rect { fill: #18332b; stroke: var(--green); }
+.dataflow-register rect { fill: #302547; stroke: var(--purple); }
+.dataflow-compute rect { fill: #493316; stroke: var(--gold); }
+.dataflow-label { fill: var(--text); font: 13px system-ui, sans-serif; pointer-events: none; }
+.dataflow-sub { fill: var(--muted); font: 11px ui-monospace, monospace; pointer-events: none; }
+.dataflow-edge { cursor: pointer; }
+.dataflow-edge-line { fill: none; stroke: #6e7681; stroke-width: 2; marker-end: url(#dataflow-arrow); }
+.dataflow-edge.selected .dataflow-edge-line, .dataflow-edge:focus-visible .dataflow-edge-line { stroke: var(--gold); stroke-width: 4; }
+.dataflow-edge-hit { fill: none; stroke: transparent; stroke-width: 14; }
 .graph-edge { fill: none; stroke: #52606d; stroke-width: 1.5; marker-end: url(#arrow); }
 .graph-edge.realization { stroke: #238636; }
 .graph-edge.failure { stroke: var(--red); stroke-dasharray: 5 4; }
@@ -85,5 +102,5 @@ th:first-child, td:first-child { text-align: left; }
   header { align-items: flex-start; flex-direction: column; }
   .selection-grid, .comparison-grid, .analysis-grid, .decision-grid { grid-template-columns: 1fr; }
   #graph-container { height: 420px; }
-  #hardware-visual { grid-template-columns: 1fr; }
+  #hardware-visual, #dataflow-visual { grid-template-columns: 1fr; }
 }
