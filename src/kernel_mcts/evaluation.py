@@ -129,6 +129,10 @@ class BackendKernelEvaluator:
                 artifact,
                 self.context.launch_config,
             )
+            compiler_context = getattr(compiled, "compiler_context", None)
+            valid_metadata = dict(backend_metadata)
+            if compiler_context is not None:
+                valid_metadata["compiler_context"] = compiler_context
             state_key = _state_key(
                 binary_hash=binary_hash,
                 workload=workload,
@@ -147,7 +151,7 @@ class BackendKernelEvaluator:
                 artifact=artifact,
                 compilation=compilation,
                 correctness=correctness,
-                metadata=backend_metadata,
+                metadata=valid_metadata,
             )
         except (CandidateBenchmarkError, CandidateLaunchError, CandidateTimeoutError) as error:
             if isinstance(error, CandidateLaunchError):

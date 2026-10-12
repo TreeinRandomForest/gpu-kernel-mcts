@@ -29,6 +29,7 @@ class FakeRunner:
         self.compile_stdout = ""
         self.compile_stderr = ""
         self.execution_stdout = '{"status":"ok","success":true,"maximum_error":0.01,"mean_error":0.001,"failed_test_id":null,"reference_metadata":{"implementation":"cuBLAS"}}'
+        self.benchmark_stdout = None
         self.execution_returncode = 0
         self.ncu_stdout = ""
         self.ncu_stderr = ""
@@ -46,6 +47,11 @@ class FakeRunner:
             output = Path(command[command.index("-o") + 1])
             if self.compile_returncode == 0:
                 output.write_bytes(b"compiled executable")
+                if "--keep-dir" in command:
+                    keep_dir = Path(command[command.index("--keep-dir") + 1])
+                    (keep_dir / "candidate.ptx").write_text(
+                        ".visible .entry bf16_gemm_root() {}", encoding="utf-8"
+                    )
             return subprocess.CompletedProcess(
                 command,
                 self.compile_returncode,
@@ -82,7 +88,11 @@ class FakeRunner:
         return subprocess.CompletedProcess(
             command,
             self.execution_returncode,
-            self.execution_stdout,
+            (
+                self.benchmark_stdout
+                if "--mode=benchmark" in command and self.benchmark_stdout is not None
+                else self.execution_stdout
+            ),
             "",
         )
 
@@ -138,11 +148,59 @@ def test_compile_uses_shell_safe_arguments_and_sanitized_environment(tmp_path) -
     assert command[0] == "/opt/cuda/bin/nvcc"
     assert "-arch=sm_90" in command
     assert "-rdc=true" in command
+    assert "--keep" in command
+    assert "-Xptxas=-v" in command
     assert "-lcublas" in command
     assert timeout == 120.0
     assert environment == {"PATH": os.defpath, "LANG": "C", "LC_ALL": "C"}
     assert "RUNPOD_API_KEY" not in environment
     assert result.artifact.executable.read_bytes() == b"compiled executable"
+    assert result.compiler_context is not None
+    assert result.compiler_context["ptx"]["status"] == "captured"
+
+
+def test_valid_evaluation_caches_compiler_context_without_extra_compilation(tmp_path) -> None:
+    runner = FakeRunner()
+    runner.benchmark_stdout = '{"status":"ok","timings_us":[5.0,5.0,5.0]}'
+    runner.compile_stderr = """ptxas info : Function properties for bf16_gemm_root
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info : Used 48 registers, 2048 bytes smem
+"""
+    subject = backend(tmp_path, runner, cuobjdump=None, nvidia_smi=None)
+    evaluator = BackendKernelEvaluator(
+        backend=subject,
+        root_benchmark=BenchmarkResult((10.0, 10.0, 10.0), 10.0),
+        context=EvaluationContext("worker", "manifest", {}, {"gpu": "H100"}),
+    )
+
+    result = evaluator.evaluate(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+
+    assert result.status.value == "VALID"
+    assert result.metadata["compiler_context"]["ptxas"]["resources"] == {
+        "stack_frame_bytes": 0,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 0,
+        "registers_per_thread": 48,
+        "static_shared_memory_bytes": 2048,
+    }
+    assert sum("-o" in call[0] for call in runner.calls) == 1
+
+
+def test_invalid_cuda_candidate_has_no_node_compiler_context(tmp_path) -> None:
+    runner = FakeRunner()
+    runner.execution_stdout = '{"status":"ok","success":false,"maximum_error":1.0,"mean_error":1.0}'
+    subject = backend(tmp_path, runner, cuobjdump=None, nvidia_smi=None)
+    evaluator = BackendKernelEvaluator(
+        backend=subject,
+        root_benchmark=BenchmarkResult((10.0,), 10.0),
+        context=EvaluationContext("worker", "manifest", {}, {"gpu": "H100"}),
+    )
+
+    result = evaluator.evaluate(load_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+
+    assert result.status.value == "INVALID"
+    assert "compiler_context" not in result.metadata
+    assert not any("--mode=benchmark" in call[0] for call in runner.calls)
 
 
 def test_compile_failure_and_timeout_are_structured(tmp_path) -> None:

@@ -278,6 +278,36 @@ def test_trace_store_materializes_cute_representation_and_proposal_provenance(
         )
 
 
+def test_trace_store_persists_compiler_context_on_valid_node(tmp_path) -> None:
+    context = {
+        "schema_version": 1,
+        "backend": "cuda_cpp",
+        "ptx": {"status": "captured", "artifacts": [{"sha256": "ptx-hash"}]},
+        "ptxas": {"status": "parsed", "resources": {"registers_per_thread": 48}},
+    }
+    path = tmp_path / "trace.sqlite"
+    with SQLiteTraceStore(path) as store:
+        store.start_run("run", "bf16", "mcts", {})
+        store.emit("run_started", {"workload": {}, "hardware": {}})
+        store.emit(
+            "node_created",
+            {
+                "node_id": "cuda-node",
+                "state_key": "cuda-state",
+                "reward": 0.5,
+                "evaluation": {
+                    "status": "VALID",
+                    "program": {"source": "cuda source", "backend": "cuda_cpp"},
+                    "metadata": {"compiler_context": context},
+                },
+            },
+        )
+
+    with sqlite3.connect(path) as connection:
+        metadata = json.loads(connection.execute("SELECT metadata_json FROM nodes").fetchone()[0])
+    assert metadata["compiler_context"] == context
+
+
 def test_trace_store_rejects_newer_schema(tmp_path) -> None:
     path = tmp_path / "trace.sqlite"
     with sqlite3.connect(path) as connection:

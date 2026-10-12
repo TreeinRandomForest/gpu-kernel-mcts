@@ -97,6 +97,11 @@ source of truth for Milestone A behavior and architecture and for the searchable
 CuTe DSL backend introduced in Milestone B. Longer-term research ideas are tracked in
 [docs/research-roadmap.md](docs/research-roadmap.md).
 
+The current post-slide research handoff prioritizes a CUDA-first optimizer enriched
+with compiler, profiling, dataflow, and hardware context while preserving CuTe as a
+structured-search case study. See
+[docs/cuda-first-next-direction.md](docs/cuda-first-next-direction.md).
+
 The local browser-based SQLite trace explorer is described in
 [docs/trace-browser-design.md](docs/trace-browser-design.md). Start it from the
 directory containing traces with:
@@ -124,5 +129,7 @@ Use this opening prompt when continuing work in a new session:
 
 > Read `AGENTS.md`, `spec.md`, `TODO.md`, and all files under `docs/` before
 > making changes. Treat `spec.md` as the Milestone A and Milestone B source of truth, then
-> inspect `git status` and the relevant implementation and tests for the next
-> unchecked item. Do not commit or push unless explicitly asked.
+> read `docs/cuda-first-next-direction.md` for the current research priority. Inspect
+> `git status` and the relevant implementation and tests before proposing the next
+> small change. Do not resume broad CuTe language expansion by default, and do not
+> commit or push unless explicitly asked.

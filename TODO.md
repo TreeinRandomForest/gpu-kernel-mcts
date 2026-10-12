@@ -171,6 +171,37 @@ completed hardware validation is identified explicitly.
 
 ## Next
 
+### CUDA-first compiler and hardware context
+
+- [ ] Pause broad operation-specific CuTe language expansion and preserve the current
+  backend and measurements as a structured-search case study. Follow
+  `docs/cuda-first-next-direction.md` for the active research handoff.
+- [x] Define a versioned, cached compiler-context record for valid CUDA evaluations,
+  beginning with PTX path/hash provenance and parsed `ptxas` resource evidence.
+  GPU-free parser, evaluation, transport, and SQLite tests pass; ordinary MCTS visits
+  do not trigger context extraction or GPU reevaluation.
+- [ ] Validate the v1 compiler-context record on the pinned H100 CUDA worker: check
+  retained candidate PTX naming, entry-point resource parsing, artifact lifetime,
+  and any effect of retention flags on the compiled binary and timing contract.
+- [ ] Extend the compiler record with bounded SASS instruction categories and
+  launch/resource constraints, keeping raw artifacts separate from prompt-sized
+  summaries. Investigate Clang CUDA AST/LLVM/NVVM only after PTX/SASS evidence is
+  reliable; ordinary NVCC compilation does not expose a CuTe-style MLIR view.
+- [ ] Build a small versioned H100 resource graph for HBM, L2, shared memory,
+  registers, and compute units. Record capacities and uncertain bandwidth/latency
+  estimates per link, then calibrate them against NCU measurements rather than
+  treating theoretical peaks as observed performance.
+- [ ] Extract a bounded CUDA dataflow graph for the current BF16 GEMM: memory
+  placement, transfers, reuse, computation, synchronization, and output ownership.
+  Map it onto the H100 graph to explain measured bottlenecks and assess only proven
+  launch/resource violations as hard failures. Keep cross-kernel fusion behind a
+  separately specified workload contract.
+- [ ] Add an off-by-default, fully persisted prompt ablation for compact compiler
+  summaries, followed by equal-budget CUDA-only, NCU, compiler-context, and combined
+  experiments.
+- [ ] Evaluate a bounded dataflow/hardware summary as a later off-by-default prompt
+  ablation only after its predictions agree with inspected NCU and compiler evidence.
+
 ### Prioritized CuTe search/generalization work
 
 - [x] Enable typed LLM proposals for the independently lowered CuTe root. Prompt

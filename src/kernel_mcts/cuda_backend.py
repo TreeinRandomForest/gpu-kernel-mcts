@@ -16,6 +16,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Mapping, Protocol, Sequence
 
+from .compiler_context import cuda_compiler_context
 from .domain import BenchmarkResult, KernelProgram, WorkloadContract
 from .evaluation import (
     CandidateBenchmarkError,
@@ -87,6 +88,7 @@ class CudaCompilationResult:
     stderr: str
     duration_seconds: float | None
     timed_out: bool = False
+    compiler_context: Mapping[str, object] | None = None
 
     @property
     def artifact_paths(self) -> tuple[str, ...]:
@@ -148,6 +150,10 @@ class CudaCppBackend:
             "-std=c++17",
             "-O3",
             "-rdc=true",
+            "--keep",
+            "--keep-dir",
+            str(artifact_dir),
+            "-Xptxas=-v",
             str(candidate_path),
             str(harness_path),
             "-lcublas",
@@ -182,12 +188,20 @@ class CudaCppBackend:
                 duration,
             )
         artifact_id = hashlib.sha256(executable.read_bytes()).hexdigest()
+        context = cuda_compiler_context(
+            artifact_dir=artifact_dir,
+            artifact_id=artifact_id,
+            architecture=self.config.architecture,
+            entry_point=str(workload.metadata["entry_point"]),
+            compiler_output=f"{completed.stdout}\n{completed.stderr}",
+        )
         return CudaCompilationResult(
             True,
             CudaArtifact(artifact_id, executable),
             _bounded(completed.stdout),
             _bounded(completed.stderr),
             duration,
+            compiler_context=context,
         )
 
     def check_correctness(

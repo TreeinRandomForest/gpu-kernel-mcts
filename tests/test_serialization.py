@@ -18,6 +18,7 @@ from kernel_mcts.domain import (
 )
 from kernel_mcts.generation import GenerationResult
 from kernel_mcts.serialization import (
+    deserialize_evaluation,
     serialize_environment_manifest,
     serialize_evaluation,
     serialize_generation,
@@ -76,6 +77,26 @@ def test_complete_evaluation_serializes_to_json() -> None:
     }
     assert "compiled_artifact" not in serialized
     json.dumps(serialized)
+
+
+def test_compiler_context_survives_worker_evaluation_round_trip() -> None:
+    context = {
+        "schema_version": 1,
+        "backend": "cuda_cpp",
+        "ptx": {"status": "captured", "artifacts": [{"sha256": "ptx-hash"}]},
+        "ptxas": {"status": "parsed", "resources": {"registers_per_thread": 48}},
+    }
+    evaluation = EvaluationResult(
+        status=ProposalStatus.VALID,
+        program=KernelProgram("kernel"),
+        state_key="state",
+        reward=0.5,
+        metadata={"compiler_context": context},
+    )
+
+    restored = deserialize_evaluation(serialize_evaluation(evaluation))
+
+    assert restored.metadata["compiler_context"] == context
 
 
 def test_generation_workload_and_profile_serialize_to_json() -> None:
