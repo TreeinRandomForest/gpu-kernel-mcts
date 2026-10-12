@@ -195,10 +195,15 @@ completed hardware validation is identified explicitly.
 - [ ] Add launch/resource constraints to the compiler record. Investigate Clang
   CUDA AST/LLVM/NVVM only after PTX/SASS evidence is reliable; ordinary NVCC
   compilation does not expose a CuTe-style MLIR view.
-- [ ] Build a small versioned H100 resource graph for HBM, L2, shared memory,
-  registers, and compute units. Record capacities and uncertain bandwidth/latency
-  estimates per link, then calibrate them against NCU measurements rather than
-  treating theoretical peaks as observed performance.
+- [x] Build and persist a versioned, diagnostic-only H100 SXM resource graph for
+  HBM, L2, L1, shared memory, registers, SMs, and compute units. Record sourced
+  capacities and architectural limits, a published HBM peak, explicit unknown
+  link bandwidths/latencies, NCU percentage observations, and per-kernel
+  compiler/launch constraint comparisons in the trace browser. See
+  `docs/h100-resource-graph.md`.
+- [ ] Calibrate sustainable bandwidth and latency ranges for graph links with
+  same-worker measurements and NCU byte/time evidence. Keep published peaks
+  distinct from observed performance and leave unsupported links unknown.
 - [ ] Extract a bounded CUDA dataflow graph for the current BF16 GEMM: memory
   placement, transfers, reuse, computation, synchronization, and output ownership.
   Map it onto the H100 graph to explain measured bottlenecks and assess only proven

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .compiler_context import MAX_PTX_ARTIFACT_BYTES
+from .resource_graph import h100_sxm_resource_graph, ncu_resource_observations
 
 
 SCHEMA = """
@@ -69,6 +70,22 @@ CREATE TABLE IF NOT EXISTS environment_manifests (
     form_factor TEXT,
     captured_at TEXT NOT NULL,
     manifest_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS hardware_resource_graphs (
+    run_id TEXT PRIMARY KEY REFERENCES search_runs(run_id),
+    manifest_id TEXT NOT NULL REFERENCES environment_manifests(manifest_id),
+    graph_schema_version INTEGER NOT NULL,
+    graph_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS hardware_resource_observations (
+    run_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    graph_schema_version INTEGER NOT NULL,
+    observation_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (run_id, node_id),
+    FOREIGN KEY (run_id, node_id) REFERENCES nodes(run_id, node_id)
 );
 CREATE TABLE IF NOT EXISTS generations (
     generation_id TEXT PRIMARY KEY,
@@ -266,7 +283,7 @@ CREATE TABLE IF NOT EXISTS tuning_trials (
 );
 """
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 12
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -332,6 +349,8 @@ class SQLiteTraceStore:
             self._migrate_nodes()
             self._migrate_table("strategy_edges", STRATEGY_EDGE_ADDITIONAL_COLUMNS)
             self._migrate_table("iterations", ITERATION_ADDITIONAL_COLUMNS)
+            if current_version < 12:
+                self._backfill_resource_graphs()
             self.connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.connection.commit()
         self.run_id: str | None = None
@@ -419,6 +438,46 @@ class SQLiteTraceStore:
         for name, sql_type in NODE_ADDITIONAL_COLUMNS.items():
             if name not in existing:
                 self.connection.execute(f"ALTER TABLE nodes ADD COLUMN {name} {sql_type}")
+
+    def _backfill_resource_graphs(self) -> None:
+        """Refresh versioned H100 evidence from preexisting manifests and profiles."""
+        rows = self.connection.execute(
+            """SELECT r.run_id, m.manifest_json
+            FROM search_runs r JOIN environment_manifests m
+            ON m.manifest_id = r.environment_manifest_id"""
+        ).fetchall()
+        for run_id, manifest_json in rows:
+            manifest = json.loads(manifest_json)
+            graph = h100_sxm_resource_graph(manifest)
+            if graph is None:
+                continue
+            self.connection.execute(
+                """INSERT OR REPLACE INTO hardware_resource_graphs(
+                    run_id, manifest_id, graph_schema_version, graph_json, created_at
+                ) VALUES (?, ?, ?, ?, ?)""",
+                (run_id, graph["manifest_id"], graph["schema_version"],
+                 _json(graph), _now()),
+            )
+            profiles = self.connection.execute(
+                """SELECT node_id, profile_json FROM nodes
+                WHERE run_id = ? AND profile_json IS NOT NULL""",
+                (run_id,),
+            ).fetchall()
+            for node_id, profile_json in profiles:
+                profile = json.loads(profile_json)
+                if not isinstance(profile, Mapping):
+                    continue
+                observation = ncu_resource_observations(graph, profile)
+                if observation is None:
+                    continue
+                self.connection.execute(
+                    """INSERT OR REPLACE INTO hardware_resource_observations(
+                        run_id, node_id, graph_schema_version,
+                        observation_json, created_at
+                    ) VALUES (?, ?, ?, ?, ?)""",
+                    (run_id, node_id, observation["graph_schema_version"],
+                     _json(observation), _now()),
+                )
 
     def _migrate_table(
         self, table: str, columns: Mapping[str, str]
@@ -559,6 +618,20 @@ class SQLiteTraceStore:
             "UPDATE search_runs SET environment_manifest_id = ? WHERE run_id = ?",
             (payload["manifest_id"], self.run_id),
         )
+        graph = h100_sxm_resource_graph(payload)
+        if graph is not None:
+            self.connection.execute(
+                """INSERT OR REPLACE INTO hardware_resource_graphs(
+                    run_id, manifest_id, graph_schema_version, graph_json, created_at
+                ) VALUES (?, ?, ?, ?, ?)""",
+                (
+                    self.run_id,
+                    payload["manifest_id"],
+                    graph["schema_version"],
+                    _json(graph),
+                    created_at,
+                ),
+            )
 
     def _materialize_run_started(
         self, payload: Mapping[str, object], created_at: str
@@ -691,6 +764,28 @@ class SQLiteTraceStore:
                 SELECT ?, ?, sha256 FROM compiler_artifacts WHERE sha256 = ?""",
                 (self.run_id, payload["node_id"], artifact["sha256"]),
             )
+        profile = payload.get("profile")
+        if isinstance(profile, Mapping):
+            row = self.connection.execute(
+                "SELECT graph_json FROM hardware_resource_graphs WHERE run_id = ?",
+                (self.run_id,),
+            ).fetchone()
+            if row is not None:
+                observation = ncu_resource_observations(json.loads(row[0]), profile)
+                if observation is not None:
+                    self.connection.execute(
+                        """INSERT OR REPLACE INTO hardware_resource_observations(
+                            run_id, node_id, graph_schema_version,
+                            observation_json, created_at
+                        ) VALUES (?, ?, ?, ?, ?)""",
+                        (
+                            self.run_id,
+                            payload["node_id"],
+                            observation["graph_schema_version"],
+                            _json(observation),
+                            created_at,
+                        ),
+                    )
 
     def _materialize_strategy_priors(
         self, payload: Mapping[str, object], created_at: str

@@ -17,6 +17,9 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
+from .resource_graph import SCHEMA_VERSION as RESOURCE_GRAPH_VERSION
+from .resource_graph import h100_constraint_checks, h100_sxm_resource_graph, ncu_resource_observations
+
 
 class TraceBrowserError(RuntimeError):
     """A trace-browser request cannot be satisfied safely."""
@@ -219,6 +222,70 @@ class TraceCatalog:
                 "failures": [dict(row) for row in failures],
                 "analysis": self._analysis(connection, run_id, root_id, nodes),
             }
+
+    def hardware(self, trace_id: str, run_id: str) -> dict[str, object]:
+        """Read a run's GPU graph and node overlays without modifying the trace."""
+        path = self._resolve(trace_id)
+        with _connection(path) as connection:
+            self._validate(connection)
+            run = self._run(connection, run_id)
+            graph = None
+            source = None
+            if self._has_table(connection, "hardware_resource_graphs"):
+                row = connection.execute(
+                    "SELECT graph_json FROM hardware_resource_graphs WHERE run_id = ?",
+                    (run_id,),
+                ).fetchone()
+                if row is not None:
+                    candidate = _json_value(row["graph_json"])
+                    if isinstance(candidate, dict) and candidate.get("schema_version") == RESOURCE_GRAPH_VERSION:
+                        graph, source = candidate, "persisted"
+            if graph is None and self._has_table(connection, "environment_manifests"):
+                manifest_id = _row_value(run, "environment_manifest_id")
+                if manifest_id is not None:
+                    row = connection.execute(
+                        "SELECT manifest_json FROM environment_manifests WHERE manifest_id = ?",
+                        (manifest_id,),
+                    ).fetchone()
+                    manifest = _json_value(row["manifest_json"]) if row else None
+                    if isinstance(manifest, dict):
+                        graph = h100_sxm_resource_graph(manifest)
+                        if graph is not None:
+                            source = "derived_from_manifest"
+            if graph is None:
+                return {"graph": None, "source": None, "observations": [], "kernels": []}
+
+            stored = {}
+            if self._has_table(connection, "hardware_resource_observations"):
+                for row in connection.execute(
+                    """SELECT node_id, observation_json FROM hardware_resource_observations
+                       WHERE run_id = ? AND graph_schema_version = ?""",
+                    (run_id, graph["schema_version"]),
+                ):
+                    observation = _json_value(row["observation_json"])
+                    if isinstance(observation, dict):
+                        stored[row["node_id"]] = observation
+            observations = []
+            kernels = []
+            for row in connection.execute(
+                """SELECT node_id, profile_json, metadata_json, launch_config_json
+                   FROM nodes WHERE run_id = ? ORDER BY node_id""",
+                (run_id,),
+            ):
+                metadata = _json_value(row["metadata_json"], {})
+                context = metadata.get("compiler_context") if isinstance(metadata, dict) else None
+                launch = _json_value(row["launch_config_json"], {})
+                kernels.append({
+                    "node_id": row["node_id"],
+                    "constraint_checks": h100_constraint_checks(graph, context, launch),
+                })
+                profile = _json_value(row["profile_json"])
+                observation = stored.get(row["node_id"])
+                if observation is None and isinstance(profile, dict):
+                    observation = ncu_resource_observations(graph, profile)
+                if observation is not None:
+                    observations.append({"node_id": row["node_id"], **observation})
+            return {"graph": graph, "source": source, "observations": observations, "kernels": kernels}
 
     def node(self, trace_id: str, run_id: str, node_id: str) -> dict[str, object]:
         path = self._resolve(trace_id)
@@ -1025,6 +1092,9 @@ class TraceBrowserHandler(BaseHTTPRequestHandler):
             query = {key: values[-1] for key, values in parse_qs(parsed.query).items()}
             if parsed.path == "/api/graph":
                 self._json(self.catalog.graph(query["trace"], query["run"]))
+                return
+            if parsed.path == "/api/hardware":
+                self._json(self.catalog.hardware(query["trace"], query["run"]))
                 return
             if parsed.path == "/api/node":
                 self._json(

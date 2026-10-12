@@ -9,6 +9,7 @@ import zipfile
 import pytest
 
 from kernel_mcts.persistence import SQLiteTraceStore
+from kernel_mcts.resource_graph import h100_sxm_resource_graph, ncu_resource_observations
 from kernel_mcts.trace_browser import TraceBrowserError, TraceCatalog
 
 
@@ -108,6 +109,112 @@ def test_catalog_lists_runs_and_graph_without_source(tmp_path) -> None:
     assert graph["historical_scores_available"] is False
     assert [node["depth"] for node in graph["nodes"] if node["node_id"] == "right"] == [1]
     assert "program_text" not in graph["nodes"][0]
+
+
+def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> None:
+    path = _browser_trace(tmp_path)
+    manifest = {
+        "manifest_id": "h100-worker", "gpu_model": "NVIDIA H100 80GB HBM3",
+        "form_factor": "SXM", "compute_capability": "9.0", "gpu_count": 1,
+        "total_memory_bytes": 85_520_809_984, "mig_configuration": {},
+    }
+    graph = h100_sxm_resource_graph(manifest)
+    profile = {
+        "profiler": "ncu", "metric_set": "lightweight_v1",
+        "metrics": {
+            "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+                "value": 1.4, "unit": "%"
+            }
+        },
+    }
+    observation = ncu_resource_observations(graph, profile)
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """INSERT INTO environment_manifests(manifest_id, worker_id, provider, gpu_model,
+               compute_capability, form_factor, captured_at, manifest_json)
+               VALUES (?, 'worker', 'nebius', ?, '9.0', 'SXM', '2026-01-01', ?)""",
+            (manifest["manifest_id"], manifest["gpu_model"], json.dumps(manifest)),
+        )
+        connection.execute(
+            "UPDATE search_runs SET environment_manifest_id = ? WHERE run_id = 'run-1'",
+            (manifest["manifest_id"],),
+        )
+        connection.execute(
+            """INSERT INTO hardware_resource_graphs
+               (run_id, manifest_id, graph_schema_version, graph_json, created_at)
+               VALUES ('run-1', ?, 2, ?, '2026-01-01')""",
+            (manifest["manifest_id"], json.dumps(graph)),
+        )
+        connection.execute(
+            """UPDATE nodes SET profile_json = ?, metadata_json = ?, launch_config_json = ?
+               WHERE run_id = 'run-1' AND node_id = 'right'""",
+            (
+                json.dumps(profile),
+                json.dumps({"compiler_context": {
+                    "architecture": "sm_90",
+                    "ptxas": {"status": "parsed", "resources": {
+                        "registers_per_thread": 31,
+                        "static_shared_memory_bytes": 1024,
+                    }},
+                }}),
+                json.dumps({"block": [16, 16, 1], "dynamic_shared_memory_bytes": 0}),
+            ),
+        )
+        connection.execute(
+            """INSERT INTO hardware_resource_observations
+               (run_id, node_id, graph_schema_version, observation_json, created_at)
+               VALUES ('run-1', 'right', 2, ?, '2026-01-01')""",
+            (json.dumps(observation),),
+        )
+
+    catalog = TraceCatalog(tmp_path)
+    trace_id = catalog.list_traces()[0]["trace_id"]
+    hardware = catalog.hardware(trace_id, "run-1")
+    assert hardware["source"] == "persisted"
+    assert len(hardware["graph"]["nodes"]) == 8
+    assert len(hardware["graph"]["links"]) == 9
+    assert hardware["observations"][0]["node_id"] == "right"
+    assert hardware["observations"][0]["observations"][0]["value"] == 1.4
+    right = next(row for row in hardware["kernels"] if row["node_id"] == "right")
+    checks = {row["constraint_id"]: row for row in right["constraint_checks"]}
+    assert checks["registers_per_thread"]["observed"]["value"] == 31
+    assert checks["threads_per_block"]["observed"]["value"] == 256
+
+    # A stored v1 graph is upgraded for display, without rewriting the trace.
+    with sqlite3.connect(path) as connection:
+        old_graph = {**graph, "schema_version": 1, "constraints": [graph["constraints"][-1]]}
+        connection.execute(
+            "UPDATE hardware_resource_graphs SET graph_schema_version = 1, graph_json = ?",
+            (json.dumps(old_graph),),
+        )
+    before = path.stat().st_mtime_ns
+    hardware = catalog.hardware(trace_id, "run-1")
+    assert hardware["source"] == "derived_from_manifest"
+    assert hardware["graph"]["schema_version"] == 2
+    assert path.stat().st_mtime_ns == before
+
+    # Old traces can be viewed without a schema migration or file write.
+    with sqlite3.connect(path) as connection:
+        connection.execute("DROP TABLE hardware_resource_observations")
+        connection.execute("DROP TABLE hardware_resource_graphs")
+        connection.execute("PRAGMA user_version = 10")
+    before = path.stat().st_mtime_ns
+    hardware = catalog.hardware(trace_id, "run-1")
+    assert hardware["source"] == "derived_from_manifest"
+    assert hardware["graph"]["manifest_id"] == "h100-worker"
+    assert hardware["observations"][0]["observations"][0]["value"] == 1.4
+    right = next(row for row in hardware["kernels"] if row["node_id"] == "right")
+    assert right["constraint_checks"][0]["observed"]["value"] == 31
+    assert path.stat().st_mtime_ns == before
+
+
+def test_hardware_view_handles_run_without_supported_gpu_graph(tmp_path) -> None:
+    _browser_trace(tmp_path)
+    catalog = TraceCatalog(tmp_path)
+    trace_id = catalog.list_traces()[0]["trace_id"]
+    assert catalog.hardware(trace_id, "run-1") == {
+        "graph": None, "source": None, "observations": [], "kernels": []
+    }
 
 
 def test_node_and_comparison_include_source_profile_diff_and_shortest_path(tmp_path) -> None:

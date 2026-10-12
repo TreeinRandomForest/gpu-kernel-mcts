@@ -30,6 +30,24 @@
       <div id="graph-container"><svg id="graph" role="img" aria-label="MCTS search graph"><g id="viewport"></g></svg></div>
       <p class="hint">Click a kernel for A; Shift-click for B. Drag to pan and scroll to zoom.</p>
     </section>
+    <section class="panel" id="hardware-panel">
+      <div class="panel-title">
+        <h2>GPU resources</h2>
+        <label>Kernel <select id="hardware-node"></select></label>
+      </div>
+      <p class="hint" id="hardware-summary">Load a run to view its GPU resource graph.</p>
+      <div id="hardware-visual" hidden>
+        <svg id="hardware-graph" viewBox="0 0 1100 400" role="img" aria-label="GPU memory and compute resource graph"></svg>
+        <div class="hardware-detail" id="hardware-detail" aria-live="polite"></div>
+      </div>
+      <div id="hardware-constraints" hidden>
+        <h3>Architectural constraints</h3>
+        <div class="table-wrap"><table id="hardware-constraint-table">
+          <thead><tr><th>Constraint</th><th>Scope</th><th>Maximum</th><th>Kernel evidence</th><th>Assessment</th></tr></thead><tbody></tbody>
+        </table></div>
+      </div>
+      <p class="hint">Select a resource or path for evidence. Architectural checks are diagnostic; compile and launch remain the validity gates.</p>
+    </section>
     <section class="analysis-grid">
       <article class="panel">
         <div class="panel-title"><h2>Iteration playback</h2><button id="play-iterations">Play</button></div>

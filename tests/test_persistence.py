@@ -103,8 +103,10 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "tuning_trials",
             "compiler_artifacts",
             "node_compiler_artifacts",
+            "hardware_resource_graphs",
+            "hardware_resource_observations",
         } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 10
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 12
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -308,6 +310,85 @@ def test_trace_store_persists_compiler_context_on_valid_node(tmp_path) -> None:
     with sqlite3.connect(path) as connection:
         metadata = json.loads(connection.execute("SELECT metadata_json FROM nodes").fetchone()[0])
     assert metadata["compiler_context"] == context
+
+
+def test_h100_graph_and_ncu_observation_are_materialized_in_trace(tmp_path) -> None:
+    path = tmp_path / "trace.sqlite"
+    manifest = {
+        "manifest_id": "manifest-h100", "worker_id": "worker-h100",
+        "provider": "nebius", "gpu_model": "NVIDIA H100 80GB HBM3",
+        "compute_capability": "9.0", "form_factor": "SXM",
+        "captured_at": "2026-10-12T00:00:00Z",
+        "total_memory_bytes": 85_520_809_984, "mig_configuration": {},
+    }
+    node = {
+        "node_id": "root", "state_key": "state", "reward": 0.0,
+        "evaluation": {
+            "status": "VALID",
+            "program": {"source": "cuda source", "backend": "cuda_cpp"},
+            "metadata": {},
+        },
+    }
+    profile = {
+        "profiler": "ncu", "metric_set": "lightweight_v1",
+        "metrics": {
+            "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+                "value": 1.4, "unit": "%"
+            }
+        },
+    }
+    with SQLiteTraceStore(path) as store:
+        store.start_run("run", "bf16", "mcts", {})
+        store.emit("run_started", {"workload": {}, "hardware": {}})
+        store.emit("environment_manifest", manifest)
+        store.emit("node_created", node)
+        store.emit("node_profiled", {**node, "profile": profile})
+
+    with sqlite3.connect(path) as connection:
+        graph_row = connection.execute(
+            "SELECT manifest_id, graph_schema_version, graph_json "
+            "FROM hardware_resource_graphs"
+        ).fetchone()
+        assert graph_row[:2] == ("manifest-h100", 2)
+        graph = json.loads(graph_row[2])
+        assert graph["purpose"] == "diagnostic_only"
+        observation_row = connection.execute(
+            "SELECT node_id, observation_json FROM hardware_resource_observations"
+        ).fetchone()
+        assert observation_row[0] == "root"
+        observation = json.loads(observation_row[1])
+        assert observation["observations"][0]["resource_id"] == "hbm"
+        assert observation["observations"][0]["value"] == 1.4
+        assert graph["links"][0]["sustainable_bandwidth"]["value"] is None
+
+    # A schema-11 trace has an older graph and observations that need refreshing.
+    with sqlite3.connect(path) as connection:
+        old_graph = {**graph, "schema_version": 1, "constraints": [graph["constraints"][-1]]}
+        old_observation = {**observation, "graph_schema_version": 1}
+        connection.execute(
+            "UPDATE hardware_resource_graphs SET graph_schema_version = 1, graph_json = ?",
+            (json.dumps(old_graph),),
+        )
+        connection.execute(
+            "UPDATE hardware_resource_observations "
+            "SET graph_schema_version = 1, observation_json = ?",
+            (json.dumps(old_observation),),
+        )
+        connection.execute("PRAGMA user_version = 11")
+    with SQLiteTraceStore(path):
+        pass
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT graph_schema_version FROM hardware_resource_graphs"
+        ).fetchone() == (2,)
+        refreshed = json.loads(connection.execute(
+            "SELECT graph_json FROM hardware_resource_graphs"
+        ).fetchone()[0])
+        assert refreshed["schema_version"] == 2
+        assert len(refreshed["constraints"]) == 7
+        assert connection.execute(
+            "SELECT graph_schema_version FROM hardware_resource_observations"
+        ).fetchone() == (2,)
 
 
 def test_trace_store_keeps_ptx_bytes_separate_and_links_valid_node(tmp_path) -> None:

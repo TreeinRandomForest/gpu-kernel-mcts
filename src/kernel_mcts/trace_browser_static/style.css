@@ -21,6 +21,25 @@ button:hover { border-color: var(--blue); }
 #graph-container { height: 520px; margin-top: 8px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #080b10; }
 #graph { width: 100%; height: 100%; cursor: grab; user-select: none; }
 #graph.dragging { cursor: grabbing; }
+#hardware-visual { display: grid; grid-template-columns: minmax(0, 2fr) minmax(230px, 1fr); gap: 12px; margin-top: 8px; }
+#hardware-visual[hidden] { display: none; }
+#hardware-graph { width: 100%; min-height: 280px; border: 1px solid var(--border); border-radius: 6px; background: #080b10; }
+.hardware-sm-region { fill: #101923; stroke: #52606d; stroke-dasharray: 6 5; }
+.hardware-node, .hardware-link { cursor: pointer; }
+.hardware-node rect { fill: #172636; stroke: var(--blue); stroke-width: 1.5; }
+.hardware-node.selected rect { stroke: var(--gold); stroke-width: 3; }
+.hardware-node:focus-visible rect, .hardware-link:focus-visible .hardware-link-line { stroke: var(--gold); stroke-width: 4; }
+.hardware-label { fill: var(--text); font: 15px system-ui, sans-serif; font-weight: 600; pointer-events: none; }
+.hardware-sub { fill: #b1bac4; font: 12px ui-monospace, monospace; pointer-events: none; }
+.hardware-profile { fill: var(--green); font: 12px ui-monospace, monospace; pointer-events: none; }
+.hardware-link-line { stroke: #6e7681; stroke-width: 2.5; marker-end: url(#hardware-arrow); }
+.hardware-link.selected .hardware-link-line { stroke: var(--gold); stroke-width: 4; }
+.hardware-link-hit { stroke: transparent; stroke-width: 16; }
+.hardware-detail { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: #0d1117; font: 12px/1.6 ui-monospace, monospace; }
+#hardware-constraints { margin-top: 12px; }
+#hardware-constraints h3 { margin: 0 0 6px; font-size: 14px; }
+#hardware-constraint-table th:not(:first-child), #hardware-constraint-table td:not(:first-child) { text-align: left; }
+#hardware-constraint-table .constraint-exceeds { color: var(--red); }
 .graph-edge { fill: none; stroke: #52606d; stroke-width: 1.5; marker-end: url(#arrow); }
 .graph-edge.realization { stroke: #238636; }
 .graph-edge.failure { stroke: var(--red); stroke-dasharray: 5 4; }
@@ -66,4 +85,5 @@ th:first-child, td:first-child { text-align: left; }
   header { align-items: flex-start; flex-direction: column; }
   .selection-grid, .comparison-grid, .analysis-grid, .decision-grid { grid-template-columns: 1fr; }
   #graph-container { height: 420px; }
+  #hardware-visual { grid-template-columns: 1fr; }
 }

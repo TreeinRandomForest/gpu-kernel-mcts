@@ -2,6 +2,7 @@
 
 const state = {
   traces: [], trace: null, run: null, graph: null, a: null, b: null,
+  hardware: null, hardwareSelection: {type: "link", id: "hbm_l2"},
   scale: 1, x: 30, y: 30, iteration: 0, playTimer: null,
 };
 const $ = id => document.getElementById(id);
@@ -71,6 +72,10 @@ async function loadRun() {
   state.run = $("run-select").value;
   state.a = null;
   state.b = null;
+  state.hardware = null;
+  $("hardware-visual").hidden = true;
+  $("hardware-constraints").hidden = true;
+  $("hardware-summary").textContent = "Loading GPU resources…";
   try {
     state.graph = await api(`/api/graph?${query({trace: state.trace.trace_id, run: state.run})}`);
     const run = state.graph.run;
@@ -86,8 +91,180 @@ async function loadRun() {
     loadDecisions();
     renderGraph();
     fitGraph();
+    await loadHardware();
   } catch (error) {
     showError(error);
+  }
+}
+
+async function loadHardware() {
+  const traceId = state.trace.trace_id, runId = state.run;
+  try {
+    const value = await api(`/api/hardware?${query({trace: traceId, run: runId})}`);
+    if (state.trace?.trace_id !== traceId || state.run !== runId) return;
+    state.hardware = value;
+    const select = $("hardware-node");
+    select.innerHTML = '<option value="">No kernel selected</option>' + value.kernels.map(row =>
+      `<option value="${escapeHtml(row.node_id)}">${escapeHtml(short(row.node_id))}` +
+      `${value.observations.some(item => item.node_id === row.node_id) ? " · NCU" : ""}</option>`
+    ).join("");
+    select.value = value.observations[0]?.node_id || value.kernels[0]?.node_id || "";
+    renderHardware();
+  } catch (error) {
+    $("hardware-summary").textContent = `GPU resources unavailable: ${error.message}`;
+  }
+}
+
+const hardwarePositions = {
+  hbm: {x: 30, y: 165, w: 140, h: 75, label: "HBM"},
+  l2: {x: 230, y: 165, w: 140, h: 75, label: "L2 cache"},
+  sm: {x: 420, y: 20, w: 160, h: 34, label: "SMs"},
+  l1: {x: 450, y: 80, w: 135, h: 70, label: "L1 cache"},
+  shared: {x: 450, y: 250, w: 135, h: 70, label: "Shared memory"},
+  registers: {x: 675, y: 165, w: 135, h: 75, label: "Registers"},
+  scalar_compute: {x: 875, y: 80, w: 150, h: 70, label: "CUDA cores"},
+  tensor_compute: {x: 875, y: 250, w: 150, h: 70, label: "Tensor cores"},
+};
+const hardwareRoutes = {
+  hbm_l2: [170, 202, 230, 202], l2_l1: [370, 185, 450, 115],
+  l1_registers: [585, 115, 675, 190], l1_shared: [517, 150, 517, 250],
+  l2_shared: [370, 220, 450, 280], shared_registers: [585, 280, 675, 218],
+  registers_scalar: [810, 190, 875, 115], shared_tensor: [585, 300, 875, 300],
+  tensor_registers: [875, 265, 810, 220],
+};
+function hardwareValue(evidence) {
+  if (!evidence || evidence.value == null) return "unknown";
+  const value = Number(evidence.value);
+  if (evidence.unit === "bytes/s") return `${(value / 1e12).toFixed(2)} TB/s`;
+  if (evidence.unit === "bytes") {
+    if (value >= 1e9) return `${(value / 2 ** 30).toFixed(1)} GiB`;
+    if (value >= 1e6) return `${(value / 1e6).toFixed(0)} MB`;
+    return `${(value / 1024).toFixed(0)} KiB`;
+  }
+  return `${value.toLocaleString()} ${evidence.unit}`;
+}
+function hardwareFacts(resource) {
+  const fields = ["capacity", "maximum_capacity", "count", "units"];
+  return fields.filter(key => resource[key]).map(key =>
+    `${key.replaceAll("_", " ")}: ${hardwareValue(resource[key])} (${resource[key].basis})` +
+    (resource[key].source ? `\nsource: ${resource[key].source}` : "")
+  );
+}
+function renderHardware() {
+  const value = state.hardware;
+  const graph = value?.graph;
+  const svg = $("hardware-graph");
+  svg.replaceChildren();
+  if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.links)) {
+    $("hardware-visual").hidden = true;
+    $("hardware-constraints").hidden = true;
+    $("hardware-summary").textContent = "No supported H100 SXM 80 GB resource graph is available for this run.";
+    return;
+  }
+  $("hardware-visual").hidden = false;
+  $("hardware-constraints").hidden = false;
+  const selectedNodeId = $("hardware-node").value;
+  const profile = value.observations.find(row => row.node_id === selectedNodeId);
+  const kernel = value.kernels.find(row => row.node_id === selectedNodeId);
+  const metricsByResource = new Map();
+  (profile?.observations || []).forEach(row => {
+    if (!metricsByResource.has(row.resource_id)) metricsByResource.set(row.resource_id, []);
+    metricsByResource.get(row.resource_id).push(row);
+  });
+  $("hardware-summary").textContent = `${graph.model} · graph v${graph.schema_version} · ` +
+    `${value.source === "persisted" ? "stored in trace" : "derived from stored manifest"} · ` +
+    `${kernel ? `kernel ${short(kernel.node_id)}` : "no kernel selected"} · ` +
+    `${profile ? "NCU profile available" : "no NCU profile"}. ` +
+    "Paths are conceptual; link costs are not calibrated.";
+
+  const defs = svgElement("defs");
+  defs.innerHTML = '<marker id="hardware-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6e7681"/></marker>';
+  svg.appendChild(defs);
+  svg.appendChild(svgElement("rect", {x: 405, y: 8, width: 665, height: 365, rx: 12, class: "hardware-sm-region"}));
+  graph.links.forEach(link => {
+    const route = hardwareRoutes[link.id];
+    if (!route) return;
+    const selected = state.hardwareSelection.type === "link" && state.hardwareSelection.id === link.id;
+    const group = svgElement("g", {class: `hardware-link${selected ? " selected" : ""}`, tabindex: "0", role: "button", "aria-label": `${link.source} to ${link.target}: ${link.pathway}`});
+    const [x1, y1, x2, y2] = route;
+    group.appendChild(svgElement("line", {x1, y1, x2, y2, class: "hardware-link-line"}));
+    group.appendChild(svgElement("line", {x1, y1, x2, y2, class: "hardware-link-hit"}));
+    activateHardware(group, "link", link.id);
+    svg.appendChild(group);
+  });
+  graph.nodes.forEach(resource => {
+    const position = hardwarePositions[resource.id];
+    if (!position) return;
+    const selected = state.hardwareSelection.type === "node" && state.hardwareSelection.id === resource.id;
+    const group = svgElement("g", {class: `hardware-node${selected ? " selected" : ""}`, tabindex: "0", role: "button", "aria-label": position.label});
+    group.appendChild(svgElement("rect", {x: position.x, y: position.y, width: position.w, height: position.h, rx: 8}));
+    text(group, position.x + 10, position.y + (resource.id === "sm" ? 22 : 23), position.label, "hardware-label");
+    if (resource.id !== "sm") {
+      const fact = resource.capacity || resource.maximum_capacity || resource.units;
+      text(group, position.x + 10, position.y + 43, hardwareValue(fact), "hardware-sub");
+      const metrics = metricsByResource.get(resource.id) || [];
+      text(group, position.x + 10, position.y + 60,
+        metrics.length ? `NCU ${number(metrics[0].value, 2)}%` : "", "hardware-profile");
+    } else {
+      text(group, position.x + 75, position.y + 22, `× ${resource.count?.value ?? "?"}`, "hardware-sub");
+    }
+    activateHardware(group, "node", resource.id);
+    svg.appendChild(group);
+  });
+  showHardwareDetail(graph, metricsByResource);
+  renderHardwareConstraints(graph, kernel);
+}
+function renderHardwareConstraints(graph, kernel) {
+  const checks = new Map((kernel?.constraint_checks || []).map(row => [row.constraint_id, row]));
+  $("hardware-constraint-table").querySelector("tbody").innerHTML = (graph.constraints || []).map(row => {
+    const limit = row.maximum || row.combined_maximum;
+    const check = checks.get(row.id);
+    const observed = check?.observed?.value == null ? "—" : hardwareValue(check.observed) +
+      (check.observed.basis === "lower_bound" ? " (minimum)" : "");
+    const status = {
+      exceeds_architectural_limit: "Exceeds limit",
+      within_architectural_limit: "Within maximum",
+      lower_bound_within_limit: "Minimum within; total unknown",
+      unknown: "Evidence missing",
+    }[check?.status] || "Context only";
+    const klass = check?.status === "exceeds_architectural_limit" ? "constraint-exceeds" : "";
+    return `<tr class="${klass}"><td>${escapeHtml(row.id.replaceAll("_", " "))}</td>` +
+      `<td>${escapeHtml(row.scope || "per SM")}</td><td>${escapeHtml(hardwareValue(limit))}</td>` +
+      `<td>${escapeHtml(observed)}</td><td>${escapeHtml(status)}</td></tr>`;
+  }).join("");
+}
+function activateHardware(element, type, id) {
+  const choose = () => { state.hardwareSelection = {type, id}; renderHardware(); };
+  element.addEventListener("click", choose);
+  element.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); choose(); }
+  });
+}
+function showHardwareDetail(graph, metricsByResource) {
+  const selection = state.hardwareSelection;
+  const detail = $("hardware-detail");
+  if (selection.type === "node") {
+    const resource = graph.nodes.find(row => row.id === selection.id);
+    if (!resource) return;
+    const metrics = metricsByResource.get(resource.id) || [];
+    const facts = hardwareFacts(resource);
+    (graph.constraints || []).filter(row => row.resource_id === resource.id).forEach(row => {
+      facts.push(`${row.id.replaceAll("_", " ")}: max ${hardwareValue(row.maximum)} (${row.scope})` +
+        (row.maximum?.source ? `\nsource: ${row.maximum.source}` : ""));
+    });
+    if (resource.id === "l1") facts.push("Capacity depends on the L1/shared carveout.");
+    if (resource.id === "shared") facts.push("Shares a configurable 256 KiB pool with L1 per SM.");
+    detail.textContent = `${hardwarePositions[resource.id]?.label || resource.id} · ${resource.scope}\n` +
+      `${facts.join("\n") || "Capacity unknown"}\n` +
+      (metrics.length ? `\nSelected kernel NCU metrics:\n${metrics.map(row => `${row.metric}: ${number(row.value, 2)}${row.unit}`).join("\n")}` : "\nNo NCU metric mapped to this resource for the selected kernel.");
+  } else {
+    const link = graph.links.find(row => row.id === selection.id);
+    if (!link) return;
+    detail.textContent = `${link.source} ${link.direction === "forward" ? "→" : "↔"} ${link.target} · ${link.pathway}\n` +
+      `Published peak: ${hardwareValue(link.published_peak_bandwidth)}\n` +
+      `Sustainable bandwidth: ${hardwareValue(link.sustainable_bandwidth)}\n` +
+      `Latency: ${hardwareValue(link.latency)}\n` +
+      (link.published_peak_bandwidth?.source ? `Peak source: ${link.published_peak_bandwidth.source}` : "No published peak recorded.");
   }
 }
 
@@ -469,7 +646,13 @@ async function selectNode(nodeId, selectB) {
   try {
     const detail = await api(`/api/node?${query({trace: state.trace.trace_id, run: state.run, node: nodeId})}`);
     if (selectB) state.b = detail;
-    else state.a = detail;
+    else {
+      state.a = detail;
+      if (state.hardware?.kernels.some(row => row.node_id === nodeId)) {
+        $("hardware-node").value = nodeId;
+        renderHardware();
+      }
+    }
     showNode(selectB ? "b" : "a", detail);
     renderGraph();
     if (state.a && state.b) {
@@ -613,6 +796,7 @@ $("iteration-slider").addEventListener("input", event => setIteration(event.targ
 $("play-iterations").addEventListener("click", togglePlayback);
 $("compare-runs").addEventListener("click", compareRuns);
 $("export-bundle").addEventListener("click", exportBundle);
+$("hardware-node").addEventListener("change", renderHardware);
 ["max-depth", "min-visits", "show-failures"].forEach(id => $(id).addEventListener("change", renderGraph));
 installPanZoom();
 loadCatalog().catch(showError);
