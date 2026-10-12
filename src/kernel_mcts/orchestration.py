@@ -33,6 +33,8 @@ class SearchTraceStore(EventSink, Protocol):
         config: Mapping[str, object],
     ) -> None: ...
 
+    def store_compiler_artifact(self, sha256: str, content: bytes) -> None: ...
+
 
 @dataclass(frozen=True, slots=True)
 class SearchExecution:
@@ -59,9 +61,12 @@ class StandaloneTuningExecution:
 class WorkerKernelEvaluator:
     """Adapt one run-scoped GPU worker to the search evaluator interface."""
 
-    def __init__(self, worker: GPUWorker, run_id: str) -> None:
+    def __init__(
+        self, worker: GPUWorker, run_id: str, trace: SearchTraceStore | None = None
+    ) -> None:
         self._worker = worker
         self._run_id = run_id
+        self._trace = trace
 
     def evaluate(
         self,
@@ -69,12 +74,51 @@ class WorkerKernelEvaluator:
         workload: WorkloadContract,
     ) -> EvaluationResult:
         evaluation_id = _worker_evaluation_id(self._run_id, program, workload)
-        return self._worker.evaluate(
+        result = self._worker.evaluate(
             evaluation_id,
             program,
             workload,
             "tier0",
         )
+        if result.status != ProposalStatus.VALID or self._trace is None:
+            return result
+        fetch = getattr(self._worker, "fetch_compiler_artifact", None)
+        if not callable(fetch):
+            return result
+        context = result.metadata.get("compiler_context")
+        if not isinstance(context, Mapping):
+            return result
+        ptx = context.get("ptx")
+        if not isinstance(ptx, Mapping):
+            return result
+        artifacts = ptx.get("artifacts")
+        if not isinstance(artifacts, list):
+            return result
+        updated_artifacts = []
+        for artifact in artifacts:
+            if not isinstance(artifact, Mapping):
+                continue
+            updated = dict(artifact)
+            sha256 = updated.get("sha256")
+            if updated.get("storage_status") == "eligible" and isinstance(sha256, str):
+                try:
+                    raw = fetch(evaluation_id, sha256)
+                except Exception as error:
+                    updated["storage_status"] = "fetch_failed"
+                    self._trace.emit("compiler_artifact_fetch_failed", {
+                        "evaluation_id": evaluation_id,
+                        "sha256": sha256,
+                        "error_type": type(error).__name__,
+                    })
+                else:
+                    self._trace.store_compiler_artifact(sha256, raw)
+                    updated["storage_status"] = "stored"
+            updated_artifacts.append(updated)
+        updated_context = dict(context)
+        updated_context["ptx"] = {**ptx, "artifacts": updated_artifacts}
+        return replace(result, metadata={
+            **result.metadata, "compiler_context": updated_context,
+        })
 
 
 class WorkerNodeProfiler:
@@ -275,7 +319,7 @@ def run_mcts_search(
     try:
         worker = provider.acquire_worker(hardware)
         trace.emit("environment_manifest", worker.get_environment_manifest().as_dict())
-        worker_evaluator = WorkerKernelEvaluator(worker, resolved_run_id)
+        worker_evaluator = WorkerKernelEvaluator(worker, resolved_run_id, trace)
         def record_root_attempt(attempt: int, result: EvaluationResult) -> None:
             nonlocal root_attempts
             root_attempts = attempt

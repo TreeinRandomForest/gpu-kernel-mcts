@@ -180,12 +180,15 @@ completed hardware validation is identified explicitly.
   beginning with PTX path/hash provenance and parsed `ptxas` resource evidence.
   GPU-free parser, evaluation, transport, and SQLite tests pass; ordinary MCTS visits
   do not trigger context extraction or GPU reevaluation.
-- [ ] Validate the v1 compiler-context record on the pinned H100 CUDA worker: check
-  retained candidate PTX naming, entry-point resource parsing, artifact lifetime,
-  and any effect of retention flags on the compiled binary and timing contract.
-- [ ] Extend the compiler record with bounded SASS instruction categories and
-  launch/resource constraints, keeping raw artifacts separate from prompt-sized
-  summaries. Investigate Clang CUDA AST/LLVM/NVVM only after PTX/SASS evidence is
+- [x] Validate v1 PTX naming and entry-point `ptxas` parsing on the pinned H100
+  worker. The run exposed that worker-local PTX paths expire on teardown.
+- [x] Store size-capped, hash-checked PTX in a separate SQLite artifact table and
+  attach bounded SASS instruction categories to the valid CUDA node context.
+  GPU-free transport, parser, persistence, and orchestration tests pass.
+- [ ] Validate durable PTX transfer and SASS parsing on the pinned H100 worker;
+  compare compilation with and without retention flags on one worker to check
+  binary identity and timing. Add launch/resource constraints after this evidence
+  is reliable. Investigate Clang CUDA AST/LLVM/NVVM only after PTX/SASS evidence is
   reliable; ordinary NVCC compilation does not expose a CuTe-style MLIR view.
 - [ ] Build a small versioned H100 resource graph for HBM, L2, shared memory,
   registers, and compute units. Record capacities and uncertain bandwidth/latency

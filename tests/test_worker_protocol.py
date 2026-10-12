@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+from dataclasses import replace
 
 import pytest
 
@@ -127,6 +129,43 @@ def test_worker_evaluation_is_idempotent_by_request_id_and_payload() -> None:
     assert first.payload == second.payload
     assert len(evaluator.calls) == 1
     assert conflict.status == 409
+
+
+def test_worker_serves_only_hash_checked_ptx_from_valid_evaluation(tmp_path) -> None:
+    raw = b".visible .entry bf16_gemm_root() {}"
+    sha256 = hashlib.sha256(raw).hexdigest()
+    path = tmp_path / "candidate.ptx"
+    path.write_bytes(raw)
+
+    class ArtifactEvaluator(FakeEvaluator):
+        def evaluate(self, program, workload):
+            result = super().evaluate(program, workload)
+            return replace(result, metadata={"compiler_context": {
+                "ptx": {"artifacts": [{
+                    "path": str(path), "sha256": sha256,
+                    "size_bytes": len(raw), "storage_status": "eligible",
+                }]},
+            }})
+
+    app = WorkerApplication(
+        auth_token="token", manifest=MANIFEST, evaluator=ArtifactEvaluator()
+    )
+
+    def http(method, url, headers, body, timeout):
+        response = app.handle(method, url.removeprefix("https://worker.invalid"), headers, body or b"")
+        return response.status, json.dumps(response.payload).encode()
+
+    transport = HTTPWorkerTransport(
+        WorkerEndpoint("pod-1", "https://worker.invalid", "token"), http=http
+    )
+    transport.evaluate("evaluation-1", KernelProgram("kernel", "cuda_cpp"), WORKLOAD, "tier0")
+    assert transport.fetch_compiler_artifact("evaluation-1", sha256) == raw
+    assert app.handle("POST", "/compiler-artifact", {}, b"{}").status == 401
+    with pytest.raises(WorkerProtocolError, match="HTTP 404"):
+        transport.fetch_compiler_artifact("evaluation-1", "0" * 64)
+    path.write_bytes(b"changed")
+    with pytest.raises(WorkerProtocolError, match="HTTP 409"):
+        transport.fetch_compiler_artifact("evaluation-1", sha256)
 
 
 def test_worker_profiles_cached_evaluation_idempotently() -> None:

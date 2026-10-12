@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
+
+from .compiler_context import MAX_PTX_ARTIFACT_BYTES
 
 
 SCHEMA = """
@@ -40,6 +43,19 @@ CREATE TABLE IF NOT EXISTS search_events (
     event_type TEXT NOT NULL,
     payload_json TEXT NOT NULL,
     created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS compiler_artifacts (
+    sha256 TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    content BLOB NOT NULL
+);
+CREATE TABLE IF NOT EXISTS node_compiler_artifacts (
+    run_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    sha256 TEXT NOT NULL REFERENCES compiler_artifacts(sha256),
+    PRIMARY KEY (run_id, node_id, sha256),
+    FOREIGN KEY (run_id, node_id) REFERENCES nodes(run_id, node_id)
 );
 CREATE INDEX IF NOT EXISTS search_events_run_id ON search_events(run_id, id);
 CREATE TABLE IF NOT EXISTS environment_manifests (
@@ -250,7 +266,7 @@ CREATE TABLE IF NOT EXISTS tuning_trials (
 );
 """
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -354,6 +370,22 @@ class SQLiteTraceStore:
                 (self.run_id, event_type, _json(payload), created_at),
             )
             self._materialize_event(event_type, payload, created_at)
+
+    def store_compiler_artifact(self, sha256: str, content: bytes) -> None:
+        """Store bounded PTX bytes separately from event and node JSON."""
+        if self.run_id is None:
+            raise RuntimeError("start_run must be called before storing artifacts")
+        if len(content) > MAX_PTX_ARTIFACT_BYTES:
+            raise ValueError("PTX artifact exceeds size limit")
+        if hashlib.sha256(content).hexdigest() != sha256:
+            raise ValueError("PTX artifact hash mismatch")
+        with self.connection:
+            self.connection.execute(
+                """INSERT OR IGNORE INTO compiler_artifacts(
+                    sha256, kind, size_bytes, content
+                ) VALUES (?, 'ptx', ?, ?)""",
+                (sha256, len(content), content),
+            )
 
     def close(self) -> None:
         self.connection.close()
@@ -647,6 +679,18 @@ class SQLiteTraceStore:
                 payload.get("configuration_hash"),
             ),
         )
+        metadata = evaluation.get("metadata", {})
+        context = metadata.get("compiler_context", {}) if isinstance(metadata, Mapping) else {}
+        ptx = context.get("ptx", {}) if isinstance(context, Mapping) else {}
+        artifacts = ptx.get("artifacts", []) if isinstance(ptx, Mapping) else []
+        for artifact in artifacts:
+            if not isinstance(artifact, Mapping) or not isinstance(artifact.get("sha256"), str):
+                continue
+            self.connection.execute(
+                """INSERT OR IGNORE INTO node_compiler_artifacts(run_id, node_id, sha256)
+                SELECT ?, ?, sha256 FROM compiler_artifacts WHERE sha256 = ?""",
+                (self.run_id, payload["node_id"], artifact["sha256"]),
+            )
 
     def _materialize_strategy_priors(
         self, payload: Mapping[str, object], created_at: str

@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import base64
 import hmac
 import json
 import threading
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Mapping, Protocol
 
-from .domain import EvaluationResult, KernelProgram, WorkloadContract
+from .compiler_context import MAX_PTX_ARTIFACT_BYTES
+from .domain import EvaluationResult, KernelProgram, ProposalStatus, WorkloadContract
 from .evaluation import EvaluationInfrastructureError
 from .interfaces import KernelEvaluator, NodeProfiler
 from .profiling import PROFILE_METRIC_SET_IDS
@@ -93,6 +96,8 @@ class WorkerApplication:
             return WorkerResponse(200, self._calibration)
         if method == "POST" and path == "/profile":
             return self._handle_profile(body)
+        if method == "POST" and path == "/compiler-artifact":
+            return self._handle_compiler_artifact(body)
         if method != "POST" or path != "/evaluate":
             return WorkerResponse(404, {"error": "not_found"})
         if len(body) > self._max_request_bytes:
@@ -128,6 +133,52 @@ class WorkerApplication:
             self._evaluation_results[evaluation_id] = result
             self._evaluation_workloads[evaluation_id] = workload
             return WorkerResponse(200, serialized)
+
+    def _handle_compiler_artifact(self, body: bytes) -> WorkerResponse:
+        if len(body) > self._max_request_bytes:
+            return WorkerResponse(413, {"error": "request_too_large"})
+        try:
+            payload = json.loads(body)
+            evaluation_id = payload["evaluation_id"]
+            sha256 = payload["sha256"]
+            if not isinstance(evaluation_id, str) or not isinstance(sha256, str):
+                raise ValueError
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            return WorkerResponse(400, {"error": "invalid_request"})
+        with self._lock:
+            evaluation = self._evaluation_results.get(evaluation_id)
+            if evaluation is None or evaluation.status != ProposalStatus.VALID:
+                return WorkerResponse(404, {"error": "evaluation_not_found"})
+            context = evaluation.metadata.get("compiler_context", {})
+            ptx = context.get("ptx", {}) if isinstance(context, Mapping) else {}
+            artifacts = ptx.get("artifacts", []) if isinstance(ptx, Mapping) else []
+            match = next(
+                (
+                    item for item in artifacts
+                    if isinstance(item, Mapping) and item.get("sha256") == sha256
+                ),
+                None,
+            )
+            if match is None:
+                return WorkerResponse(404, {"error": "artifact_not_found"})
+            if match.get("storage_status") == "too_large":
+                return WorkerResponse(413, {"error": "artifact_too_large"})
+            try:
+                path = Path(str(match["path"]))
+                if path.stat().st_size > MAX_PTX_ARTIFACT_BYTES:
+                    return WorkerResponse(413, {"error": "artifact_too_large"})
+                raw = path.read_bytes()
+            except (OSError, KeyError):
+                return WorkerResponse(404, {"error": "artifact_not_found"})
+            if len(raw) > MAX_PTX_ARTIFACT_BYTES:
+                return WorkerResponse(413, {"error": "artifact_too_large"})
+            if hashlib.sha256(raw).hexdigest() != sha256:
+                return WorkerResponse(409, {"error": "artifact_hash_mismatch"})
+            return WorkerResponse(200, {
+                "sha256": sha256,
+                "size_bytes": len(raw),
+                "content_base64": base64.b64encode(raw).decode("ascii"),
+            })
 
     def _handle_profile(self, body: bytes) -> WorkerResponse:
         if len(body) > self._max_request_bytes:
@@ -227,6 +278,24 @@ class HTTPWorkerTransport(WorkerTransport):
             "profile_level": profile_level,
         }
         return deserialize_evaluation(self._request("POST", "/evaluate", payload))
+
+    def fetch_compiler_artifact(self, evaluation_id: str, sha256: str) -> bytes:
+        value = self._request(
+            "POST", "/compiler-artifact",
+            {"evaluation_id": evaluation_id, "sha256": sha256},
+        )
+        try:
+            raw = base64.b64decode(value["content_base64"], validate=True)
+        except (KeyError, TypeError, ValueError) as error:
+            raise WorkerProtocolError("remote worker returned malformed artifact") from error
+        if (
+            value.get("sha256") != sha256
+            or value.get("size_bytes") != len(raw)
+            or len(raw) > MAX_PTX_ARTIFACT_BYTES
+            or hashlib.sha256(raw).hexdigest() != sha256
+        ):
+            raise WorkerProtocolError("remote worker returned invalid artifact")
+        return raw
 
     def profile(
         self,

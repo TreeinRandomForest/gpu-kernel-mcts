@@ -98,11 +98,13 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "iteration_steps",
             "selection_decisions",
             "puct_candidates",
-                "ucb_candidates",
-                "tuning_runs",
-                "tuning_trials",
-            } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 9
+            "ucb_candidates",
+            "tuning_runs",
+            "tuning_trials",
+            "compiler_artifacts",
+            "node_compiler_artifacts",
+        } <= tables
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 10
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -306,6 +308,43 @@ def test_trace_store_persists_compiler_context_on_valid_node(tmp_path) -> None:
     with sqlite3.connect(path) as connection:
         metadata = json.loads(connection.execute("SELECT metadata_json FROM nodes").fetchone()[0])
     assert metadata["compiler_context"] == context
+
+
+def test_trace_store_keeps_ptx_bytes_separate_and_links_valid_node(tmp_path) -> None:
+    import hashlib
+
+    raw = b".visible .entry bf16_gemm_root() {}"
+    sha256 = hashlib.sha256(raw).hexdigest()
+    path = tmp_path / "trace.sqlite"
+    with SQLiteTraceStore(path) as store:
+        store.start_run("run", "bf16", "mcts", {})
+        store.emit("run_started", {"workload": {}, "hardware": {}})
+        store.store_compiler_artifact(sha256, raw)
+        store.store_compiler_artifact(sha256, raw)
+        store.emit("node_created", {
+            "node_id": "node",
+            "state_key": "state",
+            "reward": 0.0,
+            "evaluation": {
+                "status": "VALID",
+                "program": {"source": "cuda source", "backend": "cuda_cpp"},
+                "metadata": {"compiler_context": {
+                    "ptx": {"artifacts": [{"sha256": sha256, "storage_status": "stored"}]},
+                    "sass": {"status": "parsed", "instruction_count": 1},
+                }},
+            },
+        })
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT sha256, size_bytes, content FROM compiler_artifacts"
+        ).fetchall() == [(sha256, len(raw), raw)]
+        assert connection.execute(
+            "SELECT run_id, node_id, sha256 FROM node_compiler_artifacts"
+        ).fetchall() == [("run", "node", sha256)]
+        metadata = connection.execute("SELECT metadata_json FROM nodes").fetchone()[0]
+        events = connection.execute("SELECT payload_json FROM search_events").fetchall()
+        assert raw.decode() not in metadata
+        assert all(raw.decode() not in event[0] for event in events)
 
 
 def test_trace_store_rejects_newer_schema(tmp_path) -> None:

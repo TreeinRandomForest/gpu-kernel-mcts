@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import sqlite3
+from dataclasses import replace
 
 import pytest
 
@@ -19,11 +21,57 @@ from kernel_mcts.domain import (
     WorkloadContract,
 )
 from kernel_mcts.generation import GenerationResult, ProposalBudgetKind
-from kernel_mcts.orchestration import run_candidate_evaluation, run_mcts_search
+from kernel_mcts.orchestration import (
+    WorkerKernelEvaluator,
+    run_candidate_evaluation,
+    run_mcts_search,
+)
 from kernel_mcts.persistence import SQLiteTraceStore
 from kernel_mcts.priors import UniformStrategyPrior
 from kernel_mcts.providers import EnvironmentManifest, HardwareSpec
 from kernel_mcts.search import MCTSConfig
+from kernel_mcts.serialization import serialize_evaluation
+
+
+def test_worker_evaluator_persists_ptx_before_node_event(tmp_path) -> None:
+    raw = b".visible .entry root() {}"
+    sha256 = hashlib.sha256(raw).hexdigest()
+
+    class ArtifactWorker(MockWorker):
+        def evaluate(self, evaluation_id, program, workload, profile_level):
+            result = super().evaluate(evaluation_id, program, workload, profile_level)
+            return replace(result, metadata={"compiler_context": {
+                "ptx": {"artifacts": [{
+                    "sha256": sha256, "size_bytes": len(raw),
+                    "storage_status": "eligible",
+                }]},
+            }})
+
+        def fetch_compiler_artifact(self, evaluation_id, requested_sha256):
+            assert requested_sha256 == sha256
+            return raw
+
+    path = tmp_path / "trace.sqlite"
+    with SQLiteTraceStore(path) as trace:
+        trace.start_run("run", "mock-kernel", "mcts", {})
+        trace.emit("run_started", {"workload": {}, "hardware": {}})
+        result = WorkerKernelEvaluator(ArtifactWorker(), "run", trace).evaluate(
+            KernelProgram("root", "cuda_cpp"), WORKLOAD
+        )
+        assert result.metadata["compiler_context"]["ptx"]["artifacts"][0][
+            "storage_status"
+        ] == "stored"
+        trace.emit("node_created", {
+            "node_id": "root", "state_key": "root", "reward": 0.0,
+            "evaluation": serialize_evaluation(result),
+        })
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT content FROM compiler_artifacts WHERE sha256 = ?", (sha256,)
+        ).fetchone()[0] == raw
+        assert connection.execute(
+            "SELECT node_id FROM node_compiler_artifacts WHERE sha256 = ?", (sha256,)
+        ).fetchone()[0] == "root"
 
 
 WORKLOAD = WorkloadContract(

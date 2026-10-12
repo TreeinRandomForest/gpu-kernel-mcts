@@ -115,6 +115,8 @@ class GPUWorker(Protocol):
         metric_set: str = "lightweight_v1",
     ) -> Mapping[str, object]: ...
 
+    def fetch_compiler_artifact(self, evaluation_id: str, sha256: str) -> bytes: ...
+
 
 class GPUProvider(Protocol):
     def acquire_worker(self, hardware: HardwareSpec) -> GPUWorker: ...
@@ -239,6 +241,8 @@ class WorkerTransport(Protocol):
         metric_set: str = "lightweight_v1",
     ) -> Mapping[str, object]: ...
 
+    def fetch_compiler_artifact(self, evaluation_id: str, sha256: str) -> bytes: ...
+
     def close(self) -> None: ...
 
 
@@ -321,6 +325,11 @@ class RunPodWorker:
         if self._released:
             raise RuntimeError("cannot profile on a released RunPod worker")
         return self._transport.profile(evaluation_id, profile_level, metric_set)
+
+    def fetch_compiler_artifact(self, evaluation_id: str, sha256: str) -> bytes:
+        if self._released:
+            raise RuntimeError("cannot fetch artifact from a released RunPod worker")
+        return self._transport.fetch_compiler_artifact(evaluation_id, sha256)
 
     def _close(self) -> None:
         if not self._released:

@@ -62,7 +62,7 @@ class FakeRunner:
             return subprocess.CompletedProcess(
                 command,
                 0,
-                "/*0000*/ HMMA; /*0010*/ EXIT;",
+                "Function : bf16_gemm_root\n/*0000*/ HMMA;\n/*0010*/ EXIT;",
                 "",
             )
         if command[0] == "/opt/cuda/bin/ncu":
@@ -166,7 +166,7 @@ def test_valid_evaluation_caches_compiler_context_without_extra_compilation(tmp_
     0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
 ptxas info : Used 48 registers, 2048 bytes smem
 """
-    subject = backend(tmp_path, runner, cuobjdump=None, nvidia_smi=None)
+    subject = backend(tmp_path, runner, nvidia_smi=None)
     evaluator = BackendKernelEvaluator(
         backend=subject,
         root_benchmark=BenchmarkResult((10.0, 10.0, 10.0), 10.0),
@@ -183,6 +183,10 @@ ptxas info : Used 48 registers, 2048 bytes smem
         "registers_per_thread": 48,
         "static_shared_memory_bytes": 2048,
     }
+    sass = result.metadata["compiler_context"]["sass"]
+    assert sass["status"] == "parsed"
+    assert sass["categories"]["tensor"] == 1
+    assert sum("--dump-sass" in call[0] for call in runner.calls) == 1
     assert sum("-o" in call[0] for call in runner.calls) == 1
 
 
@@ -494,7 +498,10 @@ def test_sass_fingerprint_ignores_instruction_addresses(tmp_path) -> None:
 
     def relocated(command, *, timeout, env):
         if "--dump-sass" in command:
-            return subprocess.CompletedProcess(command, 0, "/*1230*/ HMMA; /*ABC0*/ EXIT;", "")
+            return subprocess.CompletedProcess(
+                command, 0,
+                "Function : bf16_gemm_root\n/*1230*/ HMMA;\n/*ABC0*/ EXIT;", "",
+            )
         return original_call(command, timeout=timeout, env=env)
 
     subject._runner = relocated

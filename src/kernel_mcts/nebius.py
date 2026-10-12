@@ -631,6 +631,11 @@ class NebiusWorker:
             raise RuntimeError("cannot profile on a released Nebius worker")
         return self._transport.profile(evaluation_id, profile_level, metric_set)
 
+    def fetch_compiler_artifact(self, evaluation_id: str, sha256: str) -> bytes:
+        if self._released:
+            raise RuntimeError("cannot fetch artifact from a released Nebius worker")
+        return self._transport.fetch_compiler_artifact(evaluation_id, sha256)
+
 
 class NebiusProvider:
     def __init__(

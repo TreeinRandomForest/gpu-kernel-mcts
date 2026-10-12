@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import hashlib
 
-from kernel_mcts.compiler_context import cuda_compiler_context, parse_ptxas_resources
+from kernel_mcts.compiler_context import (
+    cuda_compiler_context,
+    parse_ptxas_resources,
+    sass_instruction_categories,
+)
 
 
 PTXAS_OUTPUT = """ptxas info    : Compiling entry function 'helper' for 'sm_90'
@@ -39,7 +43,7 @@ def test_context_records_ptx_provenance_without_embedding_source(tmp_path) -> No
         compiler_output=PTXAS_OUTPUT,
     )
 
-    assert context["schema_version"] == 1
+    assert context["schema_version"] == 2
     assert context["artifact_id"] == "artifact-1"
     assert context["ptx"] == {
         "status": "captured",
@@ -48,11 +52,13 @@ def test_context_records_ptx_provenance_without_embedding_source(tmp_path) -> No
                 "path": str(ptx),
                 "sha256": hashlib.sha256(ptx.read_bytes()).hexdigest(),
                 "size_bytes": ptx.stat().st_size,
+                "storage_status": "eligible",
             }
         ],
     }
     assert context["ptxas"]["status"] == "parsed"
     assert context["ptxas"]["resources"]["registers_per_thread"] == 64
+    assert context["sass"] == {"status": "pending"}
     assert ".version" not in str(context)
 
 
@@ -68,3 +74,27 @@ def test_missing_optional_evidence_has_explicit_status(tmp_path) -> None:
     assert context["ptx"] == {"status": "missing", "artifacts": []}
     assert context["ptxas"]["status"] == "missing"
     assert context["ptxas"]["resources"] is None
+
+
+def test_sass_summary_counts_only_requested_kernel() -> None:
+    output = """Function : helper
+/*0000*/ LDG.E R1, [R2];
+Function : bf16_gemm_root
+/*0000*/ LDG.E R1, [R2];
+/*0010*/ LDS R3, [R4];
+/*0020*/ HMMA.16816 R5, R6, R7, R8;
+/*0030*/ FFMA R9, R1, R2, R3;
+/*0040*/ STG.E [R2], R9;
+/*0050*/ EXIT;
+"""
+    summary = sass_instruction_categories(output, "bf16_gemm_root")
+    assert summary is not None
+    assert summary["instruction_count"] == 6
+    assert {key: count for key, count in summary["categories"].items() if count} == {
+        "global_load": 1,
+        "shared_load": 1,
+        "tensor": 1,
+        "arithmetic": 1,
+        "global_store": 1,
+        "control": 1,
+    }

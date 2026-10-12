@@ -16,7 +16,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Mapping, Protocol, Sequence
 
-from .compiler_context import cuda_compiler_context
+from .compiler_context import cuda_compiler_context, sass_instruction_categories
 from .domain import BenchmarkResult, KernelProgram, WorkloadContract
 from .evaluation import (
     CandidateBenchmarkError,
@@ -119,6 +119,8 @@ class CudaCppBackend:
         self.config = config
         self._runner = runner or _run_command
         self._validated_profile_metric_sets: set[str] = set()
+        self._entry_points: dict[str, str] = {}
+        self._sass_summaries: dict[str, Mapping[str, object]] = {}
 
     def normalize_program(self, program: KernelProgram) -> str:
         without_comments = re.sub(r"//[^\n]*|/\*.*?\*/", " ", program.source, flags=re.S)
@@ -188,6 +190,7 @@ class CudaCppBackend:
                 duration,
             )
         artifact_id = hashlib.sha256(executable.read_bytes()).hexdigest()
+        self._entry_points[artifact_id] = str(workload.metadata["entry_point"])
         context = cuda_compiler_context(
             artifact_dir=artifact_dir,
             artifact_id=artifact_id,
@@ -291,6 +294,7 @@ class CudaCppBackend:
         artifact: CudaArtifact,
         launch_config: Mapping[str, object],
     ) -> str:
+        self._sass_summaries[artifact.artifact_id] = {"status": "unavailable"}
         if self.config.cuobjdump:
             try:
                 result = self._runner(
@@ -303,12 +307,24 @@ class CudaCppBackend:
                     env=self.config.subprocess_environment,
                 )
                 if result.returncode == 0 and result.stdout.strip():
+                    summary = sass_instruction_categories(
+                        result.stdout,
+                        self._entry_points.get(artifact.artifact_id, ""),
+                    )
+                    self._sass_summaries[artifact.artifact_id] = (
+                        {"status": "parsed", **summary}
+                        if summary is not None
+                        else {"status": "missing_entry_point"}
+                    )
                     normalized = re.sub(r"/\*[^*]*\*/", "", result.stdout)
                     normalized = " ".join(normalized.split())
                     return hashlib.sha256(normalized.encode()).hexdigest()
             except (OSError, subprocess.TimeoutExpired):
                 pass
         return hashlib.sha256(artifact.executable.read_bytes()).hexdigest()
+
+    def sass_summary(self, artifact: CudaArtifact) -> Mapping[str, object]:
+        return self._sass_summaries.get(artifact.artifact_id, {"status": "unavailable"})
 
     def lightweight_profile(
         self,

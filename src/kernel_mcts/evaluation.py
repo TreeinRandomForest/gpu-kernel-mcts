@@ -132,6 +132,10 @@ class BackendKernelEvaluator:
             compiler_context = getattr(compiled, "compiler_context", None)
             valid_metadata = dict(backend_metadata)
             if compiler_context is not None:
+                compiler_context = dict(compiler_context)
+                sass_summary = getattr(self.backend, "sass_summary", None)
+                if callable(sass_summary):
+                    compiler_context["sass"] = sass_summary(artifact)
                 valid_metadata["compiler_context"] = compiler_context
             state_key = _state_key(
                 binary_hash=binary_hash,
