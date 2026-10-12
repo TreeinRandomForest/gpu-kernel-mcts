@@ -185,11 +185,16 @@ completed hardware validation is identified explicitly.
 - [x] Store size-capped, hash-checked PTX in a separate SQLite artifact table and
   attach bounded SASS instruction categories to the valid CUDA node context.
   GPU-free transport, parser, persistence, and orchestration tests pass.
-- [ ] Validate durable PTX transfer and SASS parsing on the pinned H100 worker;
-  compare compilation with and without retention flags on one worker to check
-  binary identity and timing. Add launch/resource constraints after this evidence
-  is reliable. Investigate Clang CUDA AST/LLVM/NVVM only after PTX/SASS evidence is
-  reliable; ordinary NVCC compilation does not expose a CuTe-style MLIR view.
+- [x] Validate durable PTX transfer and entry-point SASS parsing on the pinned
+  H100 worker: the root and one valid candidate produced two hash-verified PTX
+  blobs, two node links, and parsed SASS summaries in the SQLite trace.
+- [x] Compare the root on one H100 worker with and without `--keep`, `--keep-dir`,
+  and `-Xptxas=-v`: both passed correctness, normalized SASS fingerprints matched,
+  and four interleaved timing medians spanned 1.17 microseconds. See
+  `docs/experiments/compiler-context-h100-v2.md`.
+- [ ] Add launch/resource constraints to the compiler record. Investigate Clang
+  CUDA AST/LLVM/NVVM only after PTX/SASS evidence is reliable; ordinary NVCC
+  compilation does not expose a CuTe-style MLIR view.
 - [ ] Build a small versioned H100 resource graph for HBM, L2, shared memory,
   registers, and compute units. Record capacities and uncertain bandwidth/latency
   estimates per link, then calibrate them against NCU measurements rather than

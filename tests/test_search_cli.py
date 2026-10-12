@@ -690,12 +690,16 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
     class Trace:
         def __init__(self) -> None:
             self.events = []
+            self.artifacts = []
 
         def start_run(self, *args) -> None:
             pass
 
         def emit(self, event_type, payload) -> None:
             self.events.append((event_type, payload))
+
+        def store_compiler_artifact(self, sha256, content) -> None:
+            self.artifacts.append((sha256, content))
 
     class Readiness:
         def __init__(self) -> None:
@@ -708,6 +712,7 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
     readiness = Readiness()
     stream = io.StringIO()
     progress = SearchCLIProgress(trace, readiness, stream)
+    progress.store_compiler_artifact("hash", b"ptx")
 
     progress.emit("environment_manifest", {"worker_id": "worker-1"})
     progress.emit("profiling_started", {"node_id": "node-1", "profile_call": 1})
@@ -729,6 +734,7 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
     progress.emit("run_completed", {"iterations": 2, "b_gen": 3, "best_reward": 0.5})
 
     assert readiness.finished == 1
+    assert trace.artifacts == [("hash", b"ptx")]
     assert [event for event, _ in trace.events] == [
         "environment_manifest",
         "profiling_started",

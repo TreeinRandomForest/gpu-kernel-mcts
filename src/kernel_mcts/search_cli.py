@@ -73,6 +73,9 @@ class SearchCLIProgress:
     ) -> None:
         self._trace.start_run(run_id, benchmark_id, algorithm, config)
 
+    def store_compiler_artifact(self, sha256: str, content: bytes) -> None:
+        self._trace.store_compiler_artifact(sha256, content)
+
     def emit(self, event_type: str, payload: Mapping[str, object]) -> None:
         self._trace.emit(event_type, payload)
         if event_type == "environment_manifest":
