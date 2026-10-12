@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .compiler_context import MAX_PTX_ARTIFACT_BYTES
+from .dataflow import SCHEMA_VERSION as DATAFLOW_VERSION
 from .dataflow import cuda_node_dataflow
 from .resource_graph import h100_sxm_resource_graph, ncu_resource_observations
 
@@ -293,7 +294,7 @@ CREATE TABLE IF NOT EXISTS tuning_trials (
 );
 """
 
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 SEARCH_RUN_ADDITIONAL_COLUMNS = {
     "seed": "INTEGER",
@@ -361,7 +362,7 @@ class SQLiteTraceStore:
             self._migrate_table("iterations", ITERATION_ADDITIONAL_COLUMNS)
             if current_version < 12:
                 self._backfill_resource_graphs()
-            if current_version < 14:
+            if current_version < 15:
                 self._backfill_dataflow_graphs()
             self.connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         self.connection.commit()
@@ -530,7 +531,8 @@ class SQLiteTraceStore:
         ).fetchone()
         if existing is not None:
             previous = json.loads(existing[0])
-            if previous.get("source_sha256") == hashlib.sha256(source.encode("utf-8")).hexdigest():
+            if (previous.get("schema_version") == DATAFLOW_VERSION
+                    and previous.get("source_sha256") == hashlib.sha256(source.encode("utf-8")).hexdigest()):
                 return
         graph = cuda_node_dataflow(source, workload, launch, compiler_context)
         if graph is not None:

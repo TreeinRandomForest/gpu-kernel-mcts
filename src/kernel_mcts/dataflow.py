@@ -8,7 +8,7 @@ from importlib.resources import files
 from typing import Mapping
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 TILE = 16
 BF16_BYTES = 2
 
@@ -201,11 +201,11 @@ def cuda_node_dataflow(
     launch_config: Mapping[str, object],
     compiler_context: Mapping[str, object] | None = None,
 ) -> dict[str, object] | None:
-    """Return an exact source model or a conservative per-node operation graph.
+    """Return an exact source model or logical inputs plus static observations.
 
     SASS categories count static instruction sites. They cannot establish value
-    dependencies, execution counts, or memory traffic, so the fallback graph
-    deliberately leaves all edge quantities unknown.
+    dependencies, execution counts, or memory traffic. In particular, sites
+    from mutually exclusive branches can appear together in one disassembly.
     """
     exact = bf16_gemm_dataflow(source, workload, launch_config)
     if exact is not None:
@@ -222,33 +222,42 @@ def cuda_node_dataflow(
             "global_load", "global_store", "shared_load", "shared_store", "tensor", "arithmetic", "control"
         ) if isinstance((value := categories.get(name)), int) and not isinstance(value, bool) and value >= 0
     }
-    evidenced = bool(counts)
-    nodes = [
-        _node("inputs", "Kernel inputs · global", "global", None, 0, 0),
-        _node("input_registers", "Thread values", "register", "registers", 1, 0),
-        _node("compute", "Kernel compute", "compute", "tensor_compute" if counts.get("tensor", 0) else "scalar_compute", 3, 0),
-        _node("output_registers", "Result values", "register", "registers", 4, 0),
-        _node("outputs", "Kernel outputs · global", "global", None, 5, 0),
-    ]
-    edges = []
-    if counts.get("global_load", 0) or not evidenced:
-        edges.append(_edge("global_load", "inputs", "input_registers", "global_load", None, "bytes", ["l2_l1", "l1_registers"] if evidenced else [], note="Possible route; static instructions do not identify the input tensor or runtime bytes."))
-    if counts.get("shared_store", 0) or counts.get("shared_load", 0):
-        nodes.append(_node("shared", "Shared storage", "shared", "shared", 2, 2))
-        if counts.get("shared_store", 0):
-            edges.append(_edge("shared_store", "input_registers", "shared", "shared_store", None, "bytes", ["shared_registers"], note="Static shared-store instruction exists; its producer and execution count are unknown."))
-        if counts.get("shared_load", 0):
-            edges.append(_edge("shared_load", "shared", "compute", "shared_load", None, "bytes", ["shared_registers"], note="Static shared-load instruction exists; its consumer and execution count are unknown."))
-    edges += [
-        _edge("compute_input", "input_registers", "compute", "possible_dependency", None, "elements", [], note="Value dependence is unresolved."),
-        _edge("compute_output", "compute", "output_registers", "possible_dependency", None, "elements", [], note="Value dependence is unresolved."),
-    ]
-    if counts.get("global_store", 0) or not evidenced:
-        edges.append(_edge("global_store", "output_registers", "outputs", "global_store", None, "bytes", ["l1_registers", "l2_l1"] if evidenced else [], note="Possible route; static instructions do not establish runtime bytes."))
+    metadata = workload.get("metadata")
+    tensors = metadata.get("tensors") if isinstance(metadata, Mapping) else None
+    logical_gemm = (
+        workload.get("operation") == "gemm"
+        and isinstance(tensors, Mapping)
+        and all(isinstance(tensors.get(name), Mapping) for name in ("A", "B", "C"))
+    )
+    if logical_gemm:
+        nodes = [
+            _node("a_contract", "A · global input", "global", None, 0, 0),
+            _node("b_contract", "B · global input", "global", None, 0, 2),
+            _node("logical_gemm", "GEMM · logical", "compute", None, 2, 1),
+            _node("c_contract", "C · global output", "global", None, 4, 1),
+        ]
+        edges = [
+            _edge("a_logical_input", "a_contract", "logical_gemm", "logical_operand", None, "elements", [], note="Workload-level A operand; the compiled memory route is unresolved."),
+            _edge("b_logical_input", "b_contract", "logical_gemm", "logical_operand", None, "elements", [], note="Workload-level B operand; the compiled memory route is unresolved."),
+            _edge("c_logical_output", "logical_gemm", "c_contract", "logical_output", None, "elements", [], note="Workload-level C output; the compiled memory route is unresolved."),
+        ]
+    else:
+        nodes = [_node("unresolved", "Kernel paths unresolved", "unknown", None, 2, 1)]
+        edges = []
+
+    for column, name, label, space, resource in (
+        (0, "global_load", "Global loads", "global", None),
+        (1, "shared_store", "Shared stores", "shared", "shared"),
+        (2, "shared_load", "Shared loads", "shared", "shared"),
+        (3, "tensor", "Tensor ops", "compute", "tensor_compute"),
+        (4, "global_store", "Global stores", "global", None),
+    ):
+        if name in counts:
+            nodes.append(_node(f"sass_{name}", f"{label} · {counts[name]} sites", space, resource, column, 3))
     return {
         "schema_version": SCHEMA_VERSION,
-        "kind": "compiler_operation_skeleton",
-        "template": "compiler_operation_skeleton",
+        "kind": "logical_and_static_sites",
+        "template": "logical_gemm_and_static_sites" if logical_gemm else "static_sites_only",
         "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
         "shape": None,
         "nodes": nodes,
@@ -258,14 +267,14 @@ def cuda_node_dataflow(
             "source_global_store_bytes": None,
             "source_multiply_accumulates": None,
             "barriers_per_cta": None,
-            "static_sass_instruction_sites": counts if evidenced else None,
+            "static_sass_instruction_sites": counts or None,
         },
         "synchronization": [],
         "ownership": "unknown",
-        "evidence_status": "sass_categories" if evidenced else "structure_only",
+        "evidence_status": "sass_categories" if counts else "workload_contract_only" if logical_gemm else "structure_only",
         "uncertainty": [
-            "This graph shows possible stages, not traced value dependencies.",
-            "Static SASS instruction sites are not execution counts or measured traffic.",
-            "Unknown quantities and absent edges must not be interpreted as zero.",
+            "Logical arrows come from the workload contract, not a compiler value-dependency trace.",
+            "Static SASS sites may include mutually exclusive or inactive branches.",
+            "Instruction sites are not execution counts or measured traffic; physical paths and bytes remain unknown.",
         ],
     }

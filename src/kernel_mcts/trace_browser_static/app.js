@@ -4,6 +4,7 @@ const state = {
   traces: [], trace: null, run: null, graph: null, a: null, b: null,
   hardware: null, hardwareSelection: {type: "link", id: "hbm_l2"},
   dataflowSelection: "a_global_load",
+  comparisonDataflowSelection: {a: null, b: null},
   scale: 1, x: 30, y: 30, iteration: 0, playTimer: null,
 };
 const $ = id => document.getElementById(id);
@@ -112,6 +113,8 @@ async function loadHardware() {
     ).join("");
     select.value = value.observations[0]?.node_id || value.kernels[0]?.node_id || "";
     renderHardware();
+    if (state.a) renderNodeDataflow("a", state.a.node_id);
+    if (state.b) renderNodeDataflow("b", state.b.node_id);
   } catch (error) {
     $("hardware-summary").textContent = `GPU resources unavailable: ${error.message}`;
   }
@@ -220,56 +223,80 @@ function renderHardware() {
   renderHardwareConstraints(graph, kernel);
   renderDataflow(kernel);
 }
-function renderDataflow(kernel) {
-  const graph = kernel?.dataflow;
-  $("dataflow-panel").hidden = false;
-  const svg = $("dataflow-graph");
-  svg.replaceChildren();
-  if (!graph) {
-    $("dataflow-visual").hidden = true;
-    $("dataflow-summary").textContent = kernel
-      ? "No bounded dataflow model for this source and workload."
-      : "Select a kernel to view its dataflow.";
-    return;
-  }
-  $("dataflow-visual").hidden = false;
+function dataflowSummary(kernel) {
+  const graph = kernel.dataflow;
   const summary = graph.summary;
   const provenance = kernel.dataflow_source === "persisted" ? "stored in trace" : "derived from stored node";
-  if (graph.kind === "compiler_operation_skeleton") {
+  if (graph.kind === "logical_and_static_sites") {
     const sites = summary.static_sass_instruction_sites;
     const siteText = sites ? Object.entries(sites).map(([name, count]) => `${name.replaceAll("_", " ")} ${count}`).join(" · ") : "SASS evidence unavailable";
-    $("dataflow-summary").textContent = `Compiler operation skeleton · ${provenance} · ${siteText}. ` +
-      "Instruction sites are static. Value dependencies, runtime bytes, and barriers per block are unknown.";
-  } else {
-    $("dataflow-summary").textContent = `${graph.template.replaceAll("_", " ")} · ` +
-      `${provenance} · ` +
-      `source-level global loads ${hardwareValue({value: summary.source_global_load_bytes, unit: "bytes"})} · ` +
-      `stores ${hardwareValue({value: summary.source_global_store_bytes, unit: "bytes"})} · ` +
-      `${summary.source_multiply_accumulates.toLocaleString()} multiply-accumulates · ` +
-      `${summary.barriers_per_cta} CTA barriers per block. ` +
-      "These are source-level counts, not measured HBM or L2 traffic.";
+    return `Logical workload graph and static SASS inventory · ${provenance} · ${siteText}. ` +
+      "Arrows show only workload inputs and output. SASS sites may include inactive branches; physical routes and runtime bytes are unknown.";
   }
+  return `${graph.template.replaceAll("_", " ")} · ${provenance} · ` +
+    `source-level global loads ${hardwareValue({value: summary.source_global_load_bytes, unit: "bytes"})} · ` +
+    `stores ${hardwareValue({value: summary.source_global_store_bytes, unit: "bytes"})} · ` +
+    `${summary.source_multiply_accumulates.toLocaleString()} multiply-accumulates · ` +
+    `${summary.barriers_per_cta} CTA barriers per block. ` +
+    "Edge values are source-level references, not measured HBM or L2 traffic.";
+}
+
+function dataflowEdgeLabel(graph, edge) {
+  if (edge.operation.startsWith("logical_")) return "logical";
+  const quantity = edge.source_level_quantity;
+  if (quantity?.value != null) {
+    if (quantity.unit === "bytes") return hardwareValue(quantity);
+    const count = new Intl.NumberFormat("en", {notation: "compact", maximumFractionDigits: 1}).format(quantity.value);
+    return `${count} ${quantity.unit === "source operations" ? "ops" : quantity.unit}`;
+  }
+  const sites = graph.summary?.static_sass_instruction_sites;
+  if (sites && Number.isInteger(sites[edge.operation])) return `${sites[edge.operation]} SASS sites`;
+  return "unknown";
+}
+
+function dataflowEdgeDetail(graph, edge) {
+  if (!edge) return "No dataflow edges.";
+  const quantity = edge.source_level_quantity;
+  const evidence = edge.operation.startsWith("logical_")
+    ? "Workload-level relationship; compiled route and runtime quantity unknown"
+    : quantity?.value != null
+    ? `Source-level quantity: ${hardwareValue(quantity)} (${quantity.basis})`
+    : `Static evidence: ${dataflowEdgeLabel(graph, edge)}; runtime quantity unknown`;
+  return `${edge.operation}: ${edge.source} → ${edge.target}\n${evidence}\n` +
+    `Mapped GPU links: ${edge.hardware_links.join(" → ") || "none"}\n` +
+    `Measured bytes on those links: unknown\n${edge.note || ""}`;
+}
+
+function drawDataflowDiagram(svg, graph, selectedId, choose) {
+  svg.replaceChildren();
+  svg.setAttribute("viewBox", graph.kind === "logical_and_static_sites" ? "0 0 1240 390" : "0 0 1240 290");
   const defs = svgElement("defs");
-  defs.innerHTML = '<marker id="dataflow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6e7681"/></marker>';
+  const markerId = `${svg.id}-arrow`;
+  defs.innerHTML = `<marker id="${markerId}" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6e7681"/></marker>`;
   svg.appendChild(defs);
   const positions = new Map(graph.nodes.map(node => [node.id, {
     x: 25 + node.column * 205, y: 15 + node.lane * 95,
   }]));
+  if (graph.kind === "logical_and_static_sites" && graph.nodes.some(node => node.id.startsWith("sass_"))) {
+    svg.appendChild(svgElement("line", {x1: 25, y1: 275, x2: 1125, y2: 275, class: "dataflow-divider"}));
+    text(svg, 25, 293, "Static SASS sites (possibly inactive branches)", "dataflow-section-label");
+  }
   graph.edges.forEach(edge => {
     const from = positions.get(edge.source), to = positions.get(edge.target);
     if (!from || !to) return;
-    const selected = edge.id === state.dataflowSelection;
+    const selected = edge.id === selectedId;
     const group = svgElement("g", {
-      class: `dataflow-edge${selected ? " selected" : ""}`, tabindex: "0", role: "button",
-      "aria-label": `${edge.operation}: ${edge.source} to ${edge.target}`,
+      class: `dataflow-edge${selected ? " selected" : ""}${edge.operation.startsWith("logical_") ? " logical" : ""}`, tabindex: "0", role: "button",
+      "aria-label": `${edge.operation}: ${edge.source} to ${edge.target}; ${dataflowEdgeLabel(graph, edge)}`,
     });
     const x1 = from.x + 165, y1 = from.y + 27, x2 = to.x, y2 = to.y + 27;
-    group.appendChild(svgElement("path", {d: `M${x1},${y1} C${(x1+x2)/2},${y1} ${(x1+x2)/2},${y2} ${x2},${y2}`, class: "dataflow-edge-line"}));
+    group.appendChild(svgElement("path", {d: `M${x1},${y1} C${(x1+x2)/2},${y1} ${(x1+x2)/2},${y2} ${x2},${y2}`, class: "dataflow-edge-line", "marker-end": `url(#${markerId})`}));
     group.appendChild(svgElement("path", {d: `M${x1},${y1} C${(x1+x2)/2},${y1} ${(x1+x2)/2},${y2} ${x2},${y2}`, class: "dataflow-edge-hit"}));
-    const choose = () => { state.dataflowSelection = edge.id; renderHardware(); };
-    group.addEventListener("click", choose);
+    const labelY = Math.abs(y1 - y2) < 5 ? y1 + 52 : (y1 + y2) / 2 - 9;
+    text(group, (x1 + x2) / 2, labelY, dataflowEdgeLabel(graph, edge), "dataflow-edge-value");
+    group.addEventListener("click", () => choose(edge.id));
     group.addEventListener("keydown", event => {
-      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); choose(); }
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); choose(edge.id); }
     });
     svg.appendChild(group);
   });
@@ -281,13 +308,50 @@ function renderDataflow(kernel) {
     text(group, position.x + 8, position.y + 42, node.memory_space, "dataflow-sub");
     svg.appendChild(group);
   });
+}
+
+function renderDataflow(kernel) {
+  const graph = kernel?.dataflow;
+  $("dataflow-panel").hidden = false;
+  $("dataflow-graph").replaceChildren();
+  if (!graph) {
+    $("dataflow-visual").hidden = true;
+    $("dataflow-summary").textContent = kernel
+      ? "No bounded dataflow model for this source and workload."
+      : "Select a kernel to view its dataflow.";
+    return;
+  }
+  $("dataflow-visual").hidden = false;
+  $("dataflow-summary").textContent = dataflowSummary(kernel);
+  drawDataflowDiagram($("dataflow-graph"), graph, state.dataflowSelection, edgeId => {
+    state.dataflowSelection = edgeId;
+    renderHardware();
+  });
   const edge = graph.edges.find(row => row.id === state.dataflowSelection) || graph.edges[0];
-  $("dataflow-detail").textContent = edge
-    ? `${edge.operation}: ${edge.source} → ${edge.target}\n` +
-      `Quantity: ${hardwareValue(edge.source_level_quantity)}\n` +
-      `Mapped GPU links: ${edge.hardware_links.join(" → ") || "none"}\n` +
-      `Measured bytes on those links: unknown\n${edge.note || ""}`
-    : "No dataflow edges.";
+  $("dataflow-detail").textContent = dataflowEdgeDetail(graph, edge);
+}
+
+function renderNodeDataflow(side, nodeId) {
+  const panel = $(`node-${side}-dataflow`);
+  const kernel = state.hardware?.kernels.find(row => row.node_id === nodeId);
+  panel.hidden = !kernel;
+  if (!kernel) return;
+  const graph = kernel.dataflow;
+  const svg = $(`node-${side}-dataflow-graph`);
+  svg.replaceChildren();
+  if (!graph) {
+    $(`node-${side}-dataflow-summary`).textContent = "No dataflow graph for this node.";
+    $(`node-${side}-dataflow-detail`).textContent = "";
+    return;
+  }
+  $(`node-${side}-dataflow-summary`).textContent = dataflowSummary(kernel);
+  const selectedId = state.comparisonDataflowSelection[side];
+  drawDataflowDiagram(svg, graph, selectedId, edgeId => {
+    state.comparisonDataflowSelection[side] = edgeId;
+    renderNodeDataflow(side, nodeId);
+  });
+  const edge = graph.edges.find(row => row.id === selectedId) || graph.edges[0];
+  $(`node-${side}-dataflow-detail`).textContent = dataflowEdgeDetail(graph, edge);
 }
 function renderHardwareConstraints(graph, kernel) {
   const checks = new Map((kernel?.constraint_checks || []).map(row => [row.constraint_id, row]));
@@ -561,11 +625,14 @@ function showDecision(index) {
 }
 
 function clearSelections() {
+  state.comparisonDataflowSelection = {a: null, b: null};
   for (const side of ["a", "b"]) {
     $(`node-${side}-title`).textContent = side === "a" ? "not selected" : "Shift-click a node";
     $(`node-${side}-meta`).textContent = "";
     $(`node-${side}-source`).textContent = "";
     $(`node-${side}-profile`).textContent = "";
+    $(`node-${side}-dataflow`).hidden = true;
+    $(`node-${side}-dataflow-graph`).replaceChildren();
   }
   $("relationship").textContent = "Select two nodes.";
   $("relationship").className = "relationship empty";
@@ -729,6 +796,7 @@ async function selectNode(nodeId, selectB) {
       }
     }
     showNode(selectB ? "b" : "a", detail);
+    renderNodeDataflow(selectB ? "b" : "a", detail.node_id);
     renderGraph();
     if (state.a && state.b) {
       $("export-bundle").disabled = false;

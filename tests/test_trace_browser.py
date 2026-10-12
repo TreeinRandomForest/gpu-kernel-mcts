@@ -181,7 +181,7 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
         connection.execute(
             """INSERT INTO node_dataflow_graphs
                (run_id, node_id, graph_schema_version, graph_json, created_at)
-               VALUES ('run-1', 'right', 1, ?, '2026-01-01')""",
+               VALUES ('run-1', 'right', 2, ?, '2026-01-01')""",
             (json.dumps(dataflow),),
         )
 
@@ -199,6 +199,24 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
     assert checks["threads_per_block"]["observed"]["value"] == 256
     assert right["dataflow_source"] == "persisted"
     assert right["dataflow"]["summary"]["source_global_load_bytes"] == 256 * 1024**3
+    root = next(row for row in hardware["kernels"] if row["node_id"] == "root")
+    assert root["dataflow_source"] == "derived_from_node"
+    assert root["dataflow"]["kind"] == "logical_and_static_sites"
+    assert root["dataflow"]["summary"]["source_global_load_bytes"] is None
+
+    # A stored older dataflow graph is rederived for display without writing.
+    with sqlite3.connect(path) as connection:
+        old_dataflow = {**dataflow, "schema_version": 1}
+        connection.execute(
+            "UPDATE node_dataflow_graphs SET graph_schema_version = 1, graph_json = ?",
+            (json.dumps(old_dataflow),),
+        )
+    before = path.stat().st_mtime_ns
+    hardware = catalog.hardware(trace_id, "run-1")
+    right = next(row for row in hardware["kernels"] if row["node_id"] == "right")
+    assert right["dataflow_source"] == "derived_from_node"
+    assert right["dataflow"]["schema_version"] == 2
+    assert path.stat().st_mtime_ns == before
 
     # A stored v1 graph is upgraded for display, without rewriting the trace.
     with sqlite3.connect(path) as connection:
@@ -262,7 +280,7 @@ def test_hardware_view_derives_generated_cuda_node_graph_read_only(tmp_path) -> 
     hardware = catalog.hardware(catalog.list_traces()[0]["trace_id"], "run-1")
     right = next(row for row in hardware["kernels"] if row["node_id"] == "right")
     assert right["dataflow_source"] == "derived_from_node"
-    assert right["dataflow"]["kind"] == "compiler_operation_skeleton"
+    assert right["dataflow"]["kind"] == "logical_and_static_sites"
     assert right["dataflow"]["summary"]["static_sass_instruction_sites"]["global_load"] == 2
     assert path.stat().st_mtime_ns == before
 

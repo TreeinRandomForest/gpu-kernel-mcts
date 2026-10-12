@@ -16,7 +16,7 @@ LAUNCH = WORKLOAD["metadata"]["abi"]["launch"]
 def test_tiled_root_dataflow_records_explicit_reuse_and_barriers() -> None:
     graph = bf16_gemm_dataflow(load_bf16_gemm_root().source, WORKLOAD, LAUNCH)
     assert graph is not None
-    assert graph["schema_version"] == 1
+    assert graph["schema_version"] == 2
     assert graph["template"] == "shared_tiled_root"
     assert graph["summary"]["source_global_load_bytes"] == 16 * 1024**3
     assert graph["summary"]["source_global_store_bytes"] == 32 * 1024**2
@@ -50,7 +50,7 @@ def test_dataflow_refuses_modified_source_or_unverified_contract() -> None:
     assert bf16_gemm_dataflow(source, {**WORKLOAD, "benchmark_id": "other"}, LAUNCH) is None
 
 
-def test_generated_cuda_node_gets_conservative_compiler_graph() -> None:
+def test_generated_cuda_node_separates_logical_tensors_from_static_sites() -> None:
     source = load_bf16_gemm_root().source + "\n// generated variant\n"
     context = {"sass": {"status": "parsed", "categories": {
         "global_load": 3, "global_store": 1, "shared_load": 2,
@@ -58,13 +58,18 @@ def test_generated_cuda_node_gets_conservative_compiler_graph() -> None:
     }}}
     graph = cuda_node_dataflow(source, WORKLOAD, LAUNCH, context)
     assert graph is not None
-    assert graph["kind"] == "compiler_operation_skeleton"
+    assert graph["kind"] == "logical_and_static_sites"
     assert graph["evidence_status"] == "sass_categories"
     assert graph["summary"]["static_sass_instruction_sites"]["tensor"] == 4
     assert graph["summary"]["source_global_load_bytes"] is None
-    assert {node["memory_space"] for node in graph["nodes"]} == {
-        "global", "shared", "register", "compute"
+    assert {node["id"] for node in graph["nodes"] if not node["id"].startswith("sass_")} == {
+        "a_contract", "b_contract", "logical_gemm", "c_contract"
     }
+    assert {node["id"] for node in graph["nodes"] if node["id"].startswith("sass_")} == {
+        "sass_global_load", "sass_global_store", "sass_shared_load", "sass_shared_store", "sass_tensor"
+    }
+    assert {edge["operation"] for edge in graph["edges"]} == {"logical_operand", "logical_output"}
+    assert all(not edge["hardware_links"] for edge in graph["edges"])
     assert all(edge["source_level_quantity"]["value"] is None for edge in graph["edges"])
     assert all(edge["measured_link_bytes"] is None for edge in graph["edges"])
 

@@ -1,4 +1,4 @@
-# Bounded BF16 GEMM dataflow v1
+# Bounded BF16 GEMM dataflow
 
 `src/kernel_mcts/dataflow.py` recognizes only the exact packaged CUDA root and
 smoke-candidate sources under the fixed `bf16_gemm_4096_h100` workload and its
@@ -44,7 +44,7 @@ shared assignment passes through the model's L2/L1, L1/register, and
 register/shared paths. The graph does not assign bytes to those links; the
 HBM-to-L2 contribution remains unknown because global loads can hit cache.
 
-SQLite schema 13 stores one versioned graph per recognized node in
+SQLite stores one versioned graph per recognized node in
 `node_dataflow_graphs`. Existing traces are backfilled when opened by
 `SQLiteTraceStore`. The trace browser is read-only: it uses a stored graph
 when available, or derives the same bounded graph from the stored node source
@@ -59,16 +59,26 @@ the source-level demand before using the model in prompts or search priors.
 
 At `node_created`, every valid CUDA node with nonempty source now receives a
 cached graph. The two exact packaged sources retain the quantitative model above.
-Other sources receive a `compiler_operation_skeleton` based on the node's bounded
-SASS instruction categories when present. The skeleton indicates possible global,
-shared, register, and compute stages. Static instruction sites cannot establish
-which input feeds which instruction, how often a path executes, or the number of
-bytes transferred, so all such quantities remain unknown. A node without parsed
-SASS still gets a minimal graph with explicit `structure_only` evidence status.
+Other sources receive a `logical_and_static_sites` graph. For a GEMM workload, A
+and B appear as separate logical operands of GEMM, with C as its logical output.
+Those arrows come from the workload contract, not from compiler dependencies.
+Available SASS instruction categories appear as a separate, disconnected row of
+static site counts. They may include mutually exclusive or inactive branches.
+They cannot establish which tensor feeds an instruction, how often a path runs,
+or bytes transferred. A node without parsed SASS still gets the logical contract
+when available; otherwise it reports unresolved paths.
 
-SQLite schema 14 backfills generated CUDA nodes in older traces. Subsequent node
+SQLite schema 15 upgrades older dataflow graphs to version 2. Subsequent node
 snapshots and profiles retain the same graph rather than extracting it again.
-The browser can derive a missing graph read-only from node source and compiler
-metadata. These graphs remain diagnostic: they do not change candidate validity,
+The browser can derive a missing or older graph read-only from node source and
+compiler metadata. These graphs remain diagnostic: they do not change candidate validity,
 MCTS selection, profiling policy, or budget accounting. A parent/child graph diff
 is planned; it will need to preserve unknowns and evidence provenance.
+
+The trace browser shows a dataflow diagram for each selected A/B node alongside
+its source. Edge labels show source-level quantities on exact models and `logical`
+on generated-node contracts; SASS site counts appear on their disconnected nodes.
+An `unknown` label means there is no defensible numerical estimate. Each diagram
+scrolls horizontally at narrow widths; selecting an edge shows its provenance and
+possible hardware links. The cross-run comparison is for different search runs,
+not for comparing two kernels in one run.

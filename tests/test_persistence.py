@@ -108,7 +108,7 @@ def test_trace_store_creates_versioned_structured_schema(tmp_path) -> None:
             "hardware_resource_observations",
             "node_dataflow_graphs",
         } <= tables
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 14
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 15
 
 
 def test_trace_store_additively_migrates_existing_search_runs(tmp_path) -> None:
@@ -414,7 +414,7 @@ def test_fixed_bf16_dataflow_is_persisted_and_backfilled(tmp_path) -> None:
         row = connection.execute(
             "SELECT graph_schema_version, graph_json FROM node_dataflow_graphs"
         ).fetchone()
-        assert row[0] == 1
+        assert row[0] == 2
         assert json.loads(row[1])["summary"]["source_global_load_bytes"] == 16 * 1024**3
         connection.execute("DELETE FROM node_dataflow_graphs")
         connection.execute("PRAGMA user_version = 12")
@@ -455,6 +455,19 @@ def test_generated_cuda_node_graph_is_created_once_and_backfilled(tmp_path) -> N
         assert store.connection.execute(
             "SELECT graph_json, created_at FROM node_dataflow_graphs WHERE node_id = 'generated'"
         ).fetchone() == created
+    with sqlite3.connect(path) as connection:
+        old_graph = {**json.loads(created[0]), "schema_version": 1, "kind": "compiler_operation_skeleton"}
+        connection.execute(
+            "UPDATE node_dataflow_graphs SET graph_schema_version = 1, graph_json = ?",
+            (json.dumps(old_graph),),
+        )
+        connection.execute("PRAGMA user_version = 14")
+    with SQLiteTraceStore(path) as store:
+        upgraded = json.loads(store.connection.execute(
+            "SELECT graph_json FROM node_dataflow_graphs WHERE node_id = 'generated'"
+        ).fetchone()[0])
+        assert upgraded["schema_version"] == 2
+        assert upgraded["kind"] == "logical_and_static_sites"
     with sqlite3.connect(path) as connection:
         connection.execute("DELETE FROM node_dataflow_graphs")
         connection.execute("PRAGMA user_version = 13")

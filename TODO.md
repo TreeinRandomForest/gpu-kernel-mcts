@@ -211,8 +211,12 @@ completed hardware validation is identified explicitly.
   `docs/bf16-dataflow.md`.
 - [x] Give each valid CUDA node a cached diagnostic dataflow graph at creation.
   Preserve the exact-source BF16 models and use static SASS instruction categories
-  for a conservative operation skeleton on generated nodes. Keep dynamic bytes and
-  value dependencies unknown; support read-only derivation for older traces.
+  as a disconnected inventory beside logical A/B/GEMM/C nodes for generated CUDA.
+  Keep physical routes, dynamic bytes, and value dependencies unknown; support
+  read-only derivation for older traces.
+- [x] Show independently selectable A/B dataflow diagrams beside the existing
+  source comparison. Label source-level quantities, logical relationships, static
+  SASS site counts, and unknowns directly in the diagrams.
 - [ ] Extract bounded value dependencies from retained PTX for generated CUDA
   nodes, with explicit unsupported/partial status for control flow, aliasing, and
   untracked memory. Compare against SASS and NCU before treating paths as measured.

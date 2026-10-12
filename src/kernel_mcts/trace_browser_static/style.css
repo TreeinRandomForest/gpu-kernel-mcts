@@ -54,9 +54,19 @@ button:hover { border-color: var(--blue); }
 .dataflow-label { fill: var(--text); font: 13px system-ui, sans-serif; pointer-events: none; }
 .dataflow-sub { fill: var(--muted); font: 11px ui-monospace, monospace; pointer-events: none; }
 .dataflow-edge { cursor: pointer; }
-.dataflow-edge-line { fill: none; stroke: #6e7681; stroke-width: 2; marker-end: url(#dataflow-arrow); }
+.dataflow-edge-line { fill: none; stroke: #6e7681; stroke-width: 2; }
+.dataflow-edge.logical .dataflow-edge-line { stroke-dasharray: 5 4; }
 .dataflow-edge.selected .dataflow-edge-line, .dataflow-edge:focus-visible .dataflow-edge-line { stroke: var(--gold); stroke-width: 4; }
 .dataflow-edge-hit { fill: none; stroke: transparent; stroke-width: 14; }
+.dataflow-edge-value { fill: var(--text); font: 12px ui-monospace, monospace; text-anchor: middle; paint-order: stroke; stroke: #080b10; stroke-width: 5px; pointer-events: none; }
+.dataflow-divider { stroke: #52606d; stroke-dasharray: 4 4; }
+.dataflow-section-label { fill: var(--muted); font: 12px system-ui, sans-serif; }
+.node-dataflow { margin: 12px 0; }
+.node-dataflow[hidden] { display: none; }
+.node-dataflow h3 { margin: 0 0 6px; font-size: 14px; }
+.node-dataflow-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; background: #080b10; }
+.node-dataflow svg { display: block; width: 100%; min-width: 1080px; height: auto; }
+.node-dataflow .hardware-detail { margin-top: 8px; }
 .graph-edge { fill: none; stroke: #52606d; stroke-width: 1.5; marker-end: url(#arrow); }
 .graph-edge.realization { stroke: #238636; }
 .graph-edge.failure { stroke: var(--red); stroke-dasharray: 5 4; }
