@@ -5,6 +5,7 @@ import hashlib
 from kernel_mcts.compiler_context import (
     cuda_compiler_context,
     parse_ptxas_resources,
+    prompt_compiler_summary,
     sass_instruction_categories,
 )
 
@@ -97,4 +98,39 @@ Function : bf16_gemm_root
         "arithmetic": 1,
         "global_store": 1,
         "control": 1,
+    }
+
+
+def test_prompt_summary_is_bounded_and_labels_static_sass_sites() -> None:
+    context = {
+        "schema_version": 2,
+        "architecture": "sm_90",
+        "ptx": {"artifacts": [{"path": "/private/candidate.ptx", "raw": "PTX TEXT"}]},
+        "ptxas": {"status": "parsed", "resources": {
+            "registers_per_thread": 64, "static_shared_memory_bytes": 1024,
+            "spill_load_bytes": 0, "unbounded_diagnostic": "secret",
+        }},
+        "sass": {"status": "parsed", "categories": {
+            "global_load": 2, "shared_load": 33, "tensor": 10,
+            "unexpected": 999, "global_store": -1,
+        }},
+    }
+
+    summary = prompt_compiler_summary(context)
+
+    assert summary["status"] == "available"
+    assert summary["architecture"] == "sm_90"
+    assert summary["ptxas_resources"] == {
+        "registers_per_thread": 64, "static_shared_memory_bytes": 1024,
+        "spill_load_bytes": 0,
+    }
+    assert summary["sass_static_instruction_sites"] == {
+        "global_load": 2, "shared_load": 33, "tensor": 10,
+    }
+    assert "inactive branches" in summary["limitations"]
+    assert "PTX TEXT" not in str(summary)
+    assert "/private" not in str(summary)
+    assert "secret" not in str(summary)
+    assert prompt_compiler_summary({"schema_version": 1}) == {
+        "schema_version": 1, "status": "unavailable",
     }

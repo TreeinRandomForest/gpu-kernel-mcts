@@ -83,6 +83,8 @@ def test_search_cli_parser_accepts_manual_volume_pair() -> None:
     assert arguments.data_center_id == "EUR-IS-3"
     assert arguments.c_puct == 1.5
     assert not arguments.include_incoming_profile_delta
+    assert not arguments.omit_parent_profile
+    assert not arguments.include_compiler_summary
     assert arguments.profile_metric_set == "lightweight_v1"
     assert arguments.measurement_drift_interval == 0
     assert arguments.measurement_drift_threshold == 0.05
@@ -102,6 +104,16 @@ def test_search_cli_parser_accepts_incoming_profile_delta_ablation() -> None:
     )
 
     assert arguments.include_incoming_profile_delta
+
+
+def test_search_cli_parser_accepts_compiler_prompt_ablation_flags() -> None:
+    arguments = build_parser().parse_args([
+        "--image", "worker:v1", "--trace", "trace.sqlite",
+        "--generator", "openai", "--omit-parent-profile",
+        "--include-compiler-summary",
+    ])
+    assert arguments.omit_parent_profile
+    assert arguments.include_compiler_summary
 
 
 def test_search_cli_parser_accepts_diagnostic_profile_metric_set() -> None:
@@ -365,6 +377,8 @@ def test_openai_search_wires_configured_generator_and_exports_best(
             str(strategies),
             "--generation-budget",
             "3",
+            "--omit-parent-profile",
+            "--include-compiler-summary",
             "--c-puct",
             "12",
             "--network-volume-id",
@@ -395,6 +409,8 @@ def test_openai_search_wires_configured_generator_and_exports_best(
     }
     assert search["mcts_config"].max_repairs == 1
     assert search["mcts_config"].c_puct == 12
+    assert not search["mcts_config"].include_parent_profile
+    assert search["mcts_config"].include_compiler_summary
     assert search["mcts_config"].max_infrastructure_retries == 1
     assert search["hardware"].required_profilers == ("ncu",)
     assert "OpenAI search completed" in capsys.readouterr().out

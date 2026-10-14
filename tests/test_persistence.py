@@ -555,6 +555,10 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
                 instructions_text="fixed API instructions",
                 input_tokens=10,
                 output_tokens=5,
+                metadata={"parent_compiler_summary": {
+                    "schema_version": 1, "status": "available",
+                    "ptxas_resources": {"registers_per_thread": 64},
+                }},
             )
 
     class Evaluator:
@@ -658,6 +662,12 @@ def test_mcts_events_materialize_complete_search_trace(tmp_path) -> None:
             "SELECT profile_json FROM nodes WHERE node_id = ?",
             (result.root.id,),
         ).fetchone() == ('{"occupancy": 0.75}',)
+        generation_metadata = json.loads(connection.execute(
+            "SELECT metadata_json FROM generations ORDER BY b_gen LIMIT 1"
+        ).fetchone()[0])
+        assert generation_metadata["generation"]["parent_compiler_summary"]["ptxas_resources"] == {
+            "registers_per_thread": 64,
+        }
         assert connection.execute(
             "SELECT count(*) FROM search_events WHERE event_type = 'node_profiled'"
         ).fetchone() == (result.profile_calls,)

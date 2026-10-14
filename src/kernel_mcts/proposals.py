@@ -113,6 +113,7 @@ def run_proposal(
                 workload=request.workload,
                 hardware=request.hardware,
                 profile=request.profile,
+                compiler_summary=request.compiler_summary,
                 incoming_profile_delta=request.incoming_profile_delta,
                 attempt=attempt_number + 1,
                 previous_program=generation.program,

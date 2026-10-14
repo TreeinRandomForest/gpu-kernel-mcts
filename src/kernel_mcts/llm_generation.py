@@ -30,6 +30,8 @@ class LLMKernelGenerator:
                 "response_id": completion.response_id,
             }
         )
+        if request.compiler_summary is not None:
+            metadata["parent_compiler_summary"] = dict(request.compiler_summary)
         return GenerationResult(
             generation_id=completion.response_id,
             raw_output=completion.output_text,
@@ -105,6 +107,8 @@ def build_generation_prompt(request: GenerationRequest) -> str:
         payload["incoming_profile_delta"] = _json_value(
             request.incoming_profile_delta
         )
+    if request.compiler_summary is not None:
+        payload["parent_compiler_summary"] = _json_value(request.compiler_summary)
     if request.previous_program is not None or request.previous_result is not None:
         payload["repair"] = {
             "previous_candidate": (

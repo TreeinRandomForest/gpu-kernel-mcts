@@ -276,6 +276,16 @@ def build_parser() -> argparse.ArgumentParser:
             "prompts (path-dependent ablation; disabled by default)"
         ),
     )
+    parser.add_argument(
+        "--omit-parent-profile",
+        action="store_true",
+        help="hide the parent NCU profile from generation prompts while still collecting it",
+    )
+    parser.add_argument(
+        "--include-compiler-summary",
+        action="store_true",
+        help="include bounded parent ptxas resources and static SASS site counts in CUDA prompts",
+    )
     parser.add_argument("--best-output", type=Path)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--timeout", type=float, default=600.0)
@@ -314,6 +324,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("at least one proposal budget must be positive")
     if arguments.c_puct <= 0:
         parser.error("--c-puct must be positive")
+    if arguments.omit_parent_profile and arguments.include_incoming_profile_delta:
+        parser.error("--omit-parent-profile conflicts with --include-incoming-profile-delta")
+    if arguments.include_compiler_summary and (arguments.generator != "openai" or arguments.backend != "cuda_cpp"):
+        parser.error("--include-compiler-summary requires --generator=openai and --backend=cuda_cpp")
     if arguments.best_output is not None and arguments.best_output.exists():
         parser.error(
             f"refusing to overwrite existing best output: {arguments.best_output}"
@@ -588,6 +602,8 @@ def _search_components(
                 include_incoming_profile_delta=(
                     arguments.include_incoming_profile_delta
                 ),
+                include_parent_profile=not arguments.omit_parent_profile,
+                include_compiler_summary=arguments.include_compiler_summary,
                 profile_metric_set=arguments.profile_metric_set,
                 measurement_drift_interval=arguments.measurement_drift_interval,
                 measurement_drift_threshold=arguments.measurement_drift_threshold,
@@ -703,6 +719,8 @@ def _mcts_config(
         max_repairs=max_repairs,
         max_infrastructure_retries=arguments.max_infrastructure_retries,
         include_incoming_profile_delta=arguments.include_incoming_profile_delta,
+        include_parent_profile=not arguments.omit_parent_profile,
+        include_compiler_summary=arguments.include_compiler_summary,
         profile_metric_set=arguments.profile_metric_set,
         measurement_drift_interval=arguments.measurement_drift_interval,
         measurement_drift_threshold=arguments.measurement_drift_threshold,

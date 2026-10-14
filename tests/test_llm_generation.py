@@ -80,6 +80,7 @@ def test_llm_generator_builds_complete_fresh_prompt_and_records_metadata() -> No
     assert payload["strategy"]["id"] == "shared_memory"
     assert payload["strategy"]["backend_prompt"].startswith("Stage reusable")
     assert payload["parent_profile"] == {"occupancy": 0.5}
+    assert "parent_compiler_summary" not in payload
     assert "incoming_profile_delta" not in payload
     assert "bf16_gemm_root" in payload["parent_kernel"]
     assert result.generation_id == "response-1"
@@ -111,6 +112,24 @@ def test_generation_prompt_includes_opt_in_incoming_profile_delta() -> None:
     prompt = build_generation_prompt(request(incoming_profile_delta=delta))
 
     assert json.loads(prompt)["incoming_profile_delta"] == delta
+
+
+def test_opt_in_compiler_summary_is_in_prompt_and_result_metadata() -> None:
+    summary = {
+        "schema_version": 1,
+        "status": "available",
+        "ptxas_resources": {"registers_per_thread": 64},
+    }
+    client = FakeLLMClient("optimized source")
+    result = LLMKernelGenerator(client).generate(
+        request(profile=None, compiler_summary=summary)
+    )
+
+    payload = json.loads(result.prompt_text)
+    assert payload["parent_profile"] is None
+    assert payload["parent_compiler_summary"] == summary
+    assert result.metadata["parent_compiler_summary"] == summary
+    assert result.prompt_hash == hashlib.sha256(result.prompt_text.encode()).hexdigest()
 
 
 def test_cute_prompt_requests_only_typed_representation_json() -> None:

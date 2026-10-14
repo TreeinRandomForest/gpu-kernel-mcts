@@ -7,6 +7,7 @@ from typing import Mapping, Sequence
 from uuid import uuid4
 
 from ..budget import GenerationBudget, MutationBudget
+from ..compiler_context import prompt_compiler_summary
 from ..domain import EvaluationResult, ProposalStatus, Strategy, WorkloadContract
 from ..generation import (
     GenerationRequest,
@@ -39,6 +40,8 @@ class MCTSConfig:
     max_repairs: int = 2
     max_infrastructure_retries: int = 1
     include_incoming_profile_delta: bool = False
+    include_parent_profile: bool = True
+    include_compiler_summary: bool = False
     profile_metric_set: str = "lightweight_v1"
     measurement_drift_interval: int = 0
     measurement_drift_threshold: float = 0.05
@@ -52,6 +55,8 @@ class MCTSConfig:
             raise ValueError("invalid progressive-widening configuration")
         if self.profile_metric_set not in PROFILE_METRIC_SET_IDS:
             raise ValueError("unknown profile metric set")
+        if not self.include_parent_profile and self.include_incoming_profile_delta:
+            raise ValueError("incoming profile delta requires parent profile in prompts")
         if self.measurement_drift_interval < 0 or self.measurement_drift_threshold < 0:
             raise ValueError("measurement drift settings cannot be negative")
 
@@ -523,7 +528,12 @@ class MCTS:
             strategy=self.strategies[action.strategy_id],
             workload=self.workload,
             hardware=self.hardware,
-            profile=parent.profile,
+            profile=parent.profile if self.config.include_parent_profile else None,
+            compiler_summary=(
+                prompt_compiler_summary(parent.evaluation.metadata.get("compiler_context"))
+                if self.config.include_compiler_summary and parent.program.backend == "cuda_cpp"
+                else None
+            ),
             incoming_profile_delta=self._incoming_profile_delta(parent, incoming_edge),
         )
 

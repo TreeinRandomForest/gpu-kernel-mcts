@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from dataclasses import replace
 
 from kernel_mcts.budget import GenerationBudget, MutationBudget
 from kernel_mcts.cute_mutations import (
@@ -899,6 +900,47 @@ def test_profile_delta_is_disabled_by_default() -> None:
     ).run(valid_evaluation("0", "state:0", 0.0))
 
     assert all(request.incoming_profile_delta is None for request in generator.requests)
+
+
+def test_compiler_summary_prompt_ablation_keeps_parent_profile_independent() -> None:
+    class RecordingGenerator(ToyGenerator):
+        def __init__(self) -> None:
+            super().__init__()
+            self.requests = []
+
+        def generate(self, request):
+            self.requests.append(request)
+            return super().generate(request)
+
+    class Profiler:
+        def lightweight_profile(self, evaluation, workload):
+            return {"summary": {"occupancy": 50.0}}
+
+    root = replace(valid_evaluation("0", "state:0", 0.0), metadata={
+        "compiler_context": {
+            "schema_version": 2, "architecture": "sm_90",
+            "ptxas": {"status": "parsed", "resources": {"registers_per_thread": 64}},
+            "sass": {"status": "parsed", "categories": {"tensor": 4}},
+        }
+    })
+    for config, expected_profile, expected_summary in (
+        (MCTSConfig(k_max=1, max_repairs=0), True, False),
+        (MCTSConfig(k_max=1, max_repairs=0, include_parent_profile=False,
+                    include_compiler_summary=True), False, True),
+    ):
+        generator = RecordingGenerator()
+        result = MCTS(
+            strategies=(STRATEGIES[0],), workload=WORKLOAD,
+            generator=generator, evaluator=ToyEvaluator(),
+            prior_provider=UniformStrategyPrior(), budget=GenerationBudget(1),
+            config=config, profiler=Profiler(),
+        ).run(root)
+        request = generator.requests[0]
+        assert (request.profile is not None) is expected_profile
+        assert (request.compiler_summary is not None) is expected_summary
+        if expected_summary:
+            assert request.compiler_summary["ptxas_resources"]["registers_per_thread"] == 64
+        assert result.profile_calls == 2  # root expansion and final best in both arms
 
 
 def test_mcts_rejects_unknown_profile_metric_set() -> None:

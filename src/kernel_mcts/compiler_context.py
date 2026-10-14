@@ -9,13 +9,64 @@ from typing import Mapping
 
 
 SCHEMA_VERSION = 2
+PROMPT_SUMMARY_VERSION = 1
 MAX_PTX_ARTIFACT_BYTES = 1_000_000
+PROMPT_RESOURCE_FIELDS = (
+    "registers_per_thread", "static_shared_memory_bytes", "stack_frame_bytes",
+    "spill_store_bytes", "spill_load_bytes",
+)
+PROMPT_SASS_CATEGORIES = (
+    "global_load", "global_store", "shared_load", "shared_store",
+    "tensor", "arithmetic", "control", "other",
+)
 _FUNCTION = re.compile(r"(?:Compiling entry function\s+'|Function properties for\s+)([^'\s]+)")
 _STACK = re.compile(r"(\d+) bytes stack frame,\s*(\d+) bytes spill stores,\s*(\d+) bytes spill loads")
 _REGISTERS = re.compile(r"Used\s+(\d+) registers")
 _SHARED = re.compile(r"(\d+) bytes smem")
 _SASS_FUNCTION = re.compile(r"^\s*Function\s*:\s*(\S+)", re.MULTILINE)
 _SASS_OPCODE = re.compile(r"/\*[0-9a-fA-F]+\*/\s*(?:@!?P\d+\s+)?([A-Z][A-Z0-9_.]*)")
+
+
+def prompt_compiler_summary(context: Mapping[str, object] | None) -> dict[str, object]:
+    """Bounded parent-compilation evidence suitable for an opt-in prompt."""
+    summary: dict[str, object] = {
+        "schema_version": PROMPT_SUMMARY_VERSION,
+        "status": "unavailable",
+    }
+    if not isinstance(context, Mapping) or context.get("schema_version") != SCHEMA_VERSION:
+        return summary
+    architecture = context.get("architecture")
+    if isinstance(architecture, str) and re.fullmatch(r"sm_\d{2,3}", architecture):
+        summary["architecture"] = architecture
+    ptxas = context.get("ptxas")
+    if isinstance(ptxas, Mapping) and ptxas.get("status") == "parsed":
+        resources = ptxas.get("resources")
+        if isinstance(resources, Mapping):
+            bounded = {
+                key: value for key in PROMPT_RESOURCE_FIELDS
+                if isinstance((value := resources.get(key)), int)
+                and not isinstance(value, bool) and value >= 0
+            }
+            if bounded:
+                summary["ptxas_resources"] = bounded
+    sass = context.get("sass")
+    if isinstance(sass, Mapping) and sass.get("status") == "parsed":
+        categories = sass.get("categories")
+        if isinstance(categories, Mapping):
+            bounded = {
+                key: value for key in PROMPT_SASS_CATEGORIES
+                if isinstance((value := categories.get(key)), int)
+                and not isinstance(value, bool) and value >= 0
+            }
+            if bounded:
+                summary["sass_static_instruction_sites"] = bounded
+    if "ptxas_resources" in summary or "sass_static_instruction_sites" in summary:
+        summary["status"] = "available"
+        summary["limitations"] = (
+            "SASS counts are static instruction sites, possibly including inactive branches; "
+            "they are not execution counts, tensor dependencies, or measured memory traffic."
+        )
+    return summary
 
 
 def sass_instruction_categories(output: str, entry_point: str) -> dict[str, object] | None:
