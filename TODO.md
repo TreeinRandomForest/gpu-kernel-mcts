@@ -250,10 +250,11 @@ completed hardware validation is identified explicitly.
    with the same root, image, declared strategy catalog, and search settings. Compare both
    arms within each seed and against their `lightweight_v1` counterparts. One
    additional combined-only seed 3 is recorded in the same report.
-3. [ ] Plot best-so-far latency versus `B_gen` and inspect representative winning
+3. [x] Plot best-so-far latency versus `B_gen` and inspect representative winning
    and failed trajectories to identify which compiler/NCU facts correlate with
    useful edits. Treat three-seed differences as exploratory rather than a
-   reliable causal ranking.
+   reliable causal ranking. See the trajectory section and figure in
+   `docs/experiments/terra-sol-prompt-context-bgen50.md`.
 4. [ ] Build and validate bounded PTX value-dependency extraction for generated
    CUDA nodes, explicitly marking unsupported control flow, aliasing, and memory
    paths. Reconcile selected graphs with source, SASS, and measured NCU traffic

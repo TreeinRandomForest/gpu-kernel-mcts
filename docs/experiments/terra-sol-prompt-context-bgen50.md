@@ -80,6 +80,90 @@ stopped while the search was still finding improvements. A deeper run should
 be designed separately from a prompt-effect test: one long trajectory cannot
 resolve the cross-seed variance in this table.
 
+## Best-so-far trajectories
+
+![Best measured latency through 50 generation calls for each model and prompt arm](terra-sol-prompt-context-bgen50-curves.svg)
+
+Each thin line is one seed; each thick line is the median of seeds 0–2 at that
+call. The vertical axis is logarithmic. Call 0 is the measured root. A curve
+updates only when a newly created, valid node has a lower stored node benchmark
+median; repairs, invalid proposals, and infrastructure failures still consume
+their recorded `B_gen` calls. This uses node benchmarks rather than a reused
+generation's benchmark, which can differ slightly from the cached node value.
+The extra diagnostic combined seed 3 is omitted from the matched curves.
+
+| Model | NCU set | Prompt | Call 10 | Call 25 | Call 40 | Call 50 |
+|---|---|---|---:|---:|---:|---:|
+| Terra | lightweight | Source | 3,682.5 | 3,036.6 | 1,806.5 | 1,792.9 |
+| Terra | lightweight | NCU | 4,158.8 | 3,232.1 | 3,073.6 | 3,073.6 |
+| Terra | lightweight | Compiler | 1,837.9 | 1,837.9 | 1,837.9 | 1,740.2 |
+| Terra | lightweight | NCU + compiler | 3,137.2 | 3,137.2 | 2,795.4 | 2,795.4 |
+| Sol | lightweight | Source | 1,019.0 | 871.1 | 871.1 | 821.3 |
+| Sol | lightweight | NCU | 2,482.4 | 1,216.7 | 1,056.8 | 842.7 |
+| Sol | lightweight | Compiler | 1,139.2 | 1,111.4 | 1,015.7 | 879.5 |
+| Sol | lightweight | NCU + compiler | 1,323.6 | 1,323.6 | 1,069.0 | 914.4 |
+| Sol | diagnostic | NCU | 2,528.7 | 2,528.7 | 990.8 | 893.7 |
+| Sol | diagnostic | NCU + compiler | 3,110.4 | 1,290.2 | 877.7 | 877.7 |
+
+The table shows the three-seed median best latency in microseconds at each
+checkpoint. Terra's Compiler arm led its Source arm at call 10, while Source
+had the lower median by call 40. Sol's lightweight Source arm had the lowest
+median at all four checkpoints. Individual seeds still cross frequently; these
+curves do not establish a prompt effect or predict how a deeper run would rank
+the arms.
+
+## Representative node paths and edit inspection
+
+The paths below follow parent links from the root to each run's final best
+node. A call number identifies when the node was created, not its depth. All
+four named final nodes passed compilation, correctness, and measurement.
+
+| Run | Path: call, selected strategy, node latency |
+|---|---|
+| Sol lightweight Compiler, seed 0 | 7 specialization 1,767.1 µs → 27 output tiling 868.6 µs → 42 specialization **724.4 µs** |
+| Sol lightweight Source, seed 2 | 20 specialization 982.4 µs → 24 global coalescing **815.8 µs** |
+| Sol diagnostic NCU, seed 2 | 15 multi-accumulator 2,531.2 µs → 32 output tiling **876.4 µs** |
+| Sol diagnostic NCU + compiler, seed 2 | 31 output tiling 3,522.2 µs → 37 global coalescing **1,348.3 µs** |
+
+The fastest individual kernel came from Sol Compiler seed 0 at call 42. Its
+prompt contained the parent's compiler summary (96 registers per thread, no
+reported spills, 20,480 static shared-memory bytes) and no NCU profile. The
+selected strategy was workload specialization, but the source diff mainly
+introduced `cp.async` operand copies and double-buffered shared storage. The
+kernel improved from 868.6 to 724.4 µs. This is one concrete case where the
+realized edit crossed strategy themes; assigning the gain solely to workload
+specialization or to compiler context would be unsupported.
+
+For the diagnostic seed-2 pair, all 150 NCU-only prompts had a non-null parent
+profile and all 150 combined prompts had both a non-null profile and an
+available compiler summary. The two final paths nevertheless explored
+different parents. Combined call 37 widened the output tile from 64×32 to
+64×64, added 16-byte vector loads, and changed the shared-memory stride. Its
+measured parent-to-child latency fell from 3,522.2 to 1,348.3 µs; recorded
+shared-memory bank conflicts fell from 460.8 million to 68.2 million, while
+DRAM read bytes rose from 514.9 million to 544.0 million. The selected
+global-coalescing strategy thus produced several coupled changes. NCU-only
+call 32 changed output tiling, asynchronous copies, and resource use; its
+parent-to-child latency fell from 2,531.2 to 876.4 µs. These observations
+identify promising code paths to inspect, but neither run isolates the effect
+of one metric or prompt component.
+
+Across the 30 matched runs, 436 of 1,500 generation calls ended with invalid
+proposals: 356 compile failures, 65 correctness failures, 14 launch failures,
+and one timeout. Another 11 calls had infrastructure failures. The invalid
+calls and repairs are visible as flat portions of the curves; a flat segment
+can also contain valid candidates that did not beat the current best. In Sol
+diagnostic combined seed 2, calls 35 and 36 were a failed launch and its
+failed repair, followed by the valid improvement at call 37. After that,
+further valid candidates through call 50 did not improve the run's best.
+
+The review supports studying **where the model's actual edit diverges from the
+selected strategy** and which measured bottleneck changes accompanied a gain.
+It does not support a causal claim that NCU and compiler summaries conflict or
+that any one prompt arm is superior. A targeted, fixed-parent realization
+comparison would test prompt influence more directly than another set of
+independent search trees.
+
 ## Verification and limits
 
 The report was recomputed from 31 completed SQLite traces. Each passed
@@ -110,8 +194,6 @@ plus `prompt-ablation-sol-diagnostic-combined-bgen50-seed3.sqlite`. These large
 local SQLite traces are intentionally outside Git; this report records the
 aggregate evidence without adding them to the repository.
 
-The next useful analysis is a per-generation best-so-far curve and inspection
-of representative winning and failed trajectories, including whether generated
-code followed its PUCT-selected strategy. That can separate failures to use
-profiling/compiler evidence from ordinary stochastic search variation before
-another prompt or metric-set ablation.
+The next implementation step is the bounded PTX dependency extractor in
+`docs/ptx-dataflow-extraction-plan.md`, followed by source/SASS/NCU
+reconciliation before any dataflow prompt ablation.
