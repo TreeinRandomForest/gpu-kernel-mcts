@@ -227,11 +227,45 @@ completed hardware validation is identified explicitly.
   counts, then reconcile the source-level dataflow with measured traffic before
   attributing bottlenecks. Assess only proven launch/resource violations as hard
   failures. Keep cross-kernel fusion behind a separately specified workload contract.
-- [ ] Add an off-by-default, fully persisted prompt ablation for compact compiler
-  summaries, followed by equal-budget CUDA-only, NCU, compiler-context, and combined
-  experiments.
+- [x] Add an off-by-default CUDA prompt option for bounded parent `ptxas` resources
+  and static SASS site counts. Persist the exact prompt, versioned summary, and
+  option flags without changing profiling or MCTS budget semantics.
+- [x] Run the equal-budget CUDA-only, NCU, compiler-summary, and combined prompt
+  pilot at `B_gen=10`; verify all prompt records, hashes, budgets, and worker
+  manifests. See `docs/experiments/compiler-prompt-ablation.md`.
+- [x] Run matched-seed comparisons of those four arms at `B_gen=50`, then report
+  final best latency, validity, token cost, and cross-seed variability. See
+  `docs/experiments/terra-sol-prompt-context-bgen50.md`.
 - [ ] Evaluate a bounded dataflow/hardware summary as a later off-by-default prompt
   ablation only after its predictions agree with inspected NCU and compiler evidence.
+
+### Near-term CUDA experiment order
+
+1. [x] Finish and verify the twelve matched `gpt-5.6-sol`, `B_gen=50`
+   source-only, NCU-only, compiler-only, and combined traces using the pinned
+   worker image and `lightweight_v1` metrics. Collate seed-level best latency,
+   validity, token cost, and profile calls. See
+   `docs/experiments/terra-sol-prompt-context-bgen50.md`.
+2. [x] Run matched-seed Sol `diagnostic_v2` NCU-only and NCU-plus-compiler arms
+   with the same root, image, declared strategy catalog, and search settings. Compare both
+   arms within each seed and against their `lightweight_v1` counterparts. One
+   additional combined-only seed 3 is recorded in the same report.
+3. [ ] Plot best-so-far latency versus `B_gen` and inspect representative winning
+   and failed trajectories to identify which compiler/NCU facts correlate with
+   useful edits. Treat three-seed differences as exploratory rather than a
+   reliable causal ranking.
+4. [ ] Build and validate bounded PTX value-dependency extraction for generated
+   CUDA nodes, explicitly marking unsupported control flow, aliasing, and memory
+   paths. Reconcile selected graphs with source, SASS, and measured NCU traffic
+   before assigning quantitative movement claims. See
+   `docs/ptx-dataflow-extraction-plan.md`.
+5. [ ] Only after that validation, test an off-by-default compact dataflow/hardware
+   prompt summary against the strongest existing prompt arm at equal `B_gen` and
+   matched seeds. Use the results to choose targeted PTX/SASS details or refine
+   existing strategy prompts before adding new strategy categories.
+
+Keep runtime code fixed during future prompt comparisons so every arm runs
+under matched implementation settings.
 
 ### Prioritized CuTe search/generalization work
 
