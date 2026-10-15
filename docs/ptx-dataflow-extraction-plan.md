@@ -1,15 +1,16 @@
 # Bounded PTX dataflow extraction plan
 
 This is an operation- and dtype-independent diagnostic design for generated
-CUDA nodes. It does not change MCTS selection, validity, reward, `B_gen`,
-profiling policy, or prompt contents.
+CUDA nodes. It does not change MCTS selection, validity, reward, `B_gen`, or
+profiling policy. Prompt views are optional and off by default.
 `spec.md` remains authoritative for those behaviors.
 
 ## Current evidence and scope
 
-Generated nodes currently store a version-2 graph with workload-level A/B/GEMM/C
-relationships and disconnected static SASS site counts. It does not assert
-compiled value dependencies or traffic. The SQLite `compiler_artifacts` table
+Earlier generated nodes stored a version-2 graph with workload-level A/B/GEMM/C
+relationships and disconnected static SASS site counts. The version-3 graph
+adds bounded PTX value dependencies without asserting traffic. The SQLite
+`compiler_artifacts` table
 retains hash-checked PTX blobs separately from node metadata, and
 `node_compiler_artifacts` links blobs to valid nodes. In the completed Sol
 compiler-only seed-0 trace, 42 PTX artifacts range from 3.3 to 74.8 KB; all

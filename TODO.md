@@ -241,6 +241,13 @@ completed hardware validation is identified explicitly.
 - [x] Add off-by-default prompt plumbing for four deterministic views of a recorded
   PTX graph: counts, local paths, bounded adjacency subgraph, and full adjacency
   (with an explicit prompt-size limit). Persist the exact view and prompt per call.
+- [x] Run a one-seed Sol `B_gen=50` pilot of compiler-only, counts, paths,
+  subgraph, and full PTX graph prompts. Validate exact prompt exposure,
+  budgets, traces, and token cost. See
+  `docs/experiments/ptx-dataflow-view-seed0.md`.
+- [x] Analyze the five pilot traces for winner edits, graph exposure,
+  strategy allocation, NCU diagnostics, and best-so-far curves. See
+  `docs/experiments/ptx-dataflow-view-trace-analysis-seed0.md`.
 - [ ] Run matched-seed, equal-`B_gen` ablations across the four PTX graph views and
   a compiler-summary-only baseline. Record exact prompts, token use, validity,
   best latency, and variation across seeds; keep NCU context and other flags fixed.
