@@ -253,6 +253,36 @@ completed hardware validation is identified explicitly.
   best latency, and variation across seeds; keep NCU context and other flags fixed.
 - [ ] Evaluate a bounded dataflow/hardware summary after PTX/SASS/NCU reconciliation.
 
+### Sequential CUDA refinement experiment
+
+- [x] Build a standalone, non-MCTS single-session loop with no required strategy
+  choice: prompt from the current verified CUDA source and its measured latency,
+  NCU profile, compiler context, and bounded dataflow view; ask the model for an
+  optimization hypothesis and replacement source. Charge every proposal/repair
+  to a fixed generation-call budget. Keep the current kernel after an invalid
+  proposal; advance to every valid proposal, including locally slower ones,
+  while tracking the best verified kernel separately. Extract the next context
+  only after the normal compile, correctness, and timing gates. Persist exact
+  prompts, candidate/source lineage, feedback, context versions, token usage,
+  profiling calls, and wall/GPU cost. Keep this experiment separate from MCTS
+  semantics and reuse the existing correctness and timing contract. The worker
+  occupancy wall time is recorded as a cost proxy; provider billing is not yet
+  reconciled. See `docs/experiments/sequential-cuda-refinement.md`.
+- [ ] Reconcile the worker occupancy proxy with provider billing before reporting
+  dollar cost for sequential runs.
+- [ ] Smoke-test the loop at a small generation budget, then compare a
+  `B_gen=50` run with the existing MCTS traces on the same root, model,
+  workload, worker image, and measurement contract. Plot best-so-far latency
+  against generation calls; also report accepted-chain depth, validity,
+  profiling cost, and tokens. Fix a bounded session-memory policy before
+  comparisons so growing history does not silently change prompt exposure.
+- [ ] Ablate one factor at a time with repeated runs: generation-call depth;
+  compiler-summary detail; dataflow view and explanatory text; visible NCU
+  metric bundle; and an unconstrained prompt versus a fixed explicit strategy
+  menu from which the model chooses. Hold the other context and acceptance
+  rules fixed. Keep profiling collection and prompt visibility distinct where
+  possible, and report both performance and context/profiling cost.
+
 ### Near-term CUDA experiment order
 
 1. [x] Finish and verify the twelve matched `gpt-5.6-sol`, `B_gen=50`

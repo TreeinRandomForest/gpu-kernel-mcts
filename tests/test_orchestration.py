@@ -27,11 +27,13 @@ from kernel_mcts.orchestration import (
     WorkerKernelEvaluator,
     run_candidate_evaluation,
     run_mcts_search,
+    run_sequential_search,
 )
 from kernel_mcts.persistence import SQLiteTraceStore
 from kernel_mcts.priors import UniformStrategyPrior
 from kernel_mcts.providers import EnvironmentManifest, HardwareSpec
 from kernel_mcts.search import MCTSConfig
+from kernel_mcts.sequential import SequentialConfig
 from kernel_mcts.serialization import serialize_evaluation
 
 
@@ -554,3 +556,62 @@ def test_mcts_root_exhausted_retries_are_traced_without_generation(tmp_path) -> 
     assert failed_payload["root_evaluation_attempts"] == 2
     assert failed_payload["root_evaluation_status"] == "INFRASTRUCTURE_FAILURE"
     assert failed_payload["root_error_type"] == "WorkerProtocolError"
+
+
+def test_sequential_orchestration_reuses_worker_and_releases_it(tmp_path):
+    provider = MockProvider()
+    generator = MockGenerator()
+    path = tmp_path / "sequential-worker.sqlite"
+    with SQLiteTraceStore(path) as trace:
+        execution = run_sequential_search(
+            provider=provider, hardware=HARDWARE, workload=WORKLOAD,
+            root_program=KernelProgram("root"), generator=generator,
+            generation_budget=3, trace=trace,
+            config=SequentialConfig(max_repairs=0, dataflow_view="none"),
+            run_id="sequential-worker",
+        )
+    assert provider.acquisitions == provider.releases == 1
+    assert execution.result.generations == 3
+    assert execution.result.current.evaluation.program.source == "candidate-2"
+    assert len(provider.worker.profile_calls) == 3
+    with sqlite3.connect(path) as connection:
+        assert connection.execute(
+            "SELECT algorithm, final_b_gen, final_profile_calls FROM search_runs"
+        ).fetchone() == ("sequential", 3, 3)
+
+
+def test_sequential_next_prompt_reads_recorded_ptx_graph(tmp_path):
+    raw = (b".visible .entry kernel(.param .u64 p0) {\n"
+           b"ld.param.u64 %rd1, [p0];\n"
+           b"ld.global.u32 %r1, [%rd1];\nret;\n}\n")
+    sha256 = hashlib.sha256(raw).hexdigest()
+
+    class ArtifactWorker(MockWorker):
+        def evaluate(self, evaluation_id, program, workload, profile_level):
+            result = super().evaluate(evaluation_id, program, workload, profile_level)
+            if result.status != ProposalStatus.VALID:
+                return result
+            return replace(result, metadata={"compiler_context": {
+                "schema_version": 2, "entry_point": "kernel", "architecture": "sm_90",
+                "ptx": {"artifacts": [{"sha256": sha256, "storage_status": "eligible"}]},
+            }})
+
+        def fetch_compiler_artifact(self, evaluation_id, requested_sha256):
+            assert requested_sha256 == sha256
+            return raw
+
+    provider = MockProvider(ArtifactWorker())
+    generator = MockGenerator()
+    path = tmp_path / "sequential-dataflow.sqlite"
+    with SQLiteTraceStore(path) as trace:
+        run_sequential_search(
+            provider=provider, hardware=HARDWARE, workload=WORKLOAD,
+            root_program=KernelProgram("root"), generator=generator,
+            generation_budget=2, trace=trace,
+            config=SequentialConfig(max_repairs=0, dataflow_view="paths"),
+            run_id="sequential-dataflow",
+        )
+    assert generator.requests[0].dataflow_view["status"] != "unavailable"
+    assert generator.requests[1].dataflow_view["view"] == "paths"
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("SELECT count(*) FROM node_dataflow_graphs").fetchone()[0] == 2

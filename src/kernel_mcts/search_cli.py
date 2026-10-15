@@ -39,7 +39,7 @@ from .generation import (
 from .llm_generation import LLMKernelGenerator
 from .nebius import NebiusConfig, create_nebius_provider
 from .openai_client import OpenAIResponsesClient, OpenAIResponsesConfig
-from .orchestration import run_mcts_search
+from .orchestration import run_mcts_search, run_sequential_search
 from .persistence import SQLiteTraceStore
 from .priors import UniformStrategyPrior
 from .profiling import PROFILE_METRIC_SET_IDS
@@ -50,6 +50,8 @@ from .runpod_cli import ReadinessProgress
 from .runpod_volume import resolve_reusable_volume
 from .search import MCTSConfig
 from .smoke import SmokeKernelGenerator
+from .sequential import SequentialConfig
+from .sequential_generation import SEQUENTIAL_INSTRUCTIONS, SequentialKernelGenerator
 
 
 class SearchCLIProgress:
@@ -64,6 +66,7 @@ class SearchCLIProgress:
         self._trace = trace
         self._readiness = readiness
         self._stream = stream
+        self._algorithm = "mcts"
 
     def start_run(
         self,
@@ -72,6 +75,7 @@ class SearchCLIProgress:
         algorithm: str,
         config: Mapping[str, object],
     ) -> None:
+        self._algorithm = algorithm
         self._trace.start_run(run_id, benchmark_id, algorithm, config)
 
     def store_compiler_artifact(self, sha256: str, content: bytes) -> None:
@@ -124,7 +128,7 @@ class SearchCLIProgress:
             )
         elif event_type == "run_completed":
             self._write(
-                "MCTS completed: "
+                f"{'MCTS' if self._algorithm == 'mcts' else 'Sequential'} completed: "
                 f"iterations={payload.get('iterations')}, B_gen={payload.get('b_gen')}, "
                 f"B_mut={payload.get('b_mut', 0)}, "
                 f"profiles={payload.get('profile_calls')}, "
@@ -198,10 +202,11 @@ class ProgressKernelGenerator:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run deterministic-smoke or OpenAI-backed MCTS on an H100 worker."
+        description="Run MCTS or sequential CUDA refinement on an H100 worker."
     )
     parser.add_argument("--image", required=True)
     parser.add_argument("--trace", type=Path, required=True)
+    parser.add_argument("--algorithm", choices=("mcts", "sequential"), default="mcts")
     parser.add_argument(
         "--backend", choices=("cuda_cpp", "cute_dsl"), default="cuda_cpp"
     )
@@ -260,6 +265,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-output-tokens", type=int, default=16_384)
     parser.add_argument("--llm-timeout", type=float, default=180.0)
     parser.add_argument("--max-repairs", type=int, default=1)
+    parser.add_argument("--session-history-turns", type=int, default=2,
+                        help="bounded prior text turns for the sequential session")
+    parser.add_argument("--sequential-compiler-detail",
+                        choices=("none", "resources", "full"), default="full")
+    parser.add_argument("--sequential-profile-visibility",
+                        choices=("none", "lightweight", "full"), default="full")
+    parser.add_argument("--sequential-dataflow-description",
+                        choices=("none", "limits"), default="limits")
+    parser.add_argument("--sequential-dataflow-view",
+                        choices=DATAFLOW_PROMPT_VIEWS, default="paths")
+    parser.add_argument("--sequential-strategy-menu", action="store_true",
+                        help="show the fixed --strategies catalog as an optional ablation")
     parser.add_argument("--max-infrastructure-retries", type=int, default=1)
     parser.add_argument("--c-puct", type=float, default=1.5)
     parser.add_argument("--k-max", type=int, default=4)
@@ -362,9 +379,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(
             f"refusing to overwrite existing tuned output: {arguments.tuned_best_output}"
         )
-    strategies, generator, model_name, mcts_config = _search_components(
-        parser, arguments
-    )
+    if arguments.algorithm == "sequential":
+        generator, model_name, sequential_config = _sequential_components(parser, arguments)
+    else:
+        strategies, generator, model_name, mcts_config = _search_components(
+            parser, arguments
+        )
     root_program = _root_program(parser, arguments)
     repository = capture_repository_state(Path(__file__).resolve().parents[2])
     image_digest = image_digest_from_reference(arguments.image)
@@ -453,44 +473,44 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with SQLiteTraceStore(arguments.trace) as trace:
             reporting_trace = SearchCLIProgress(trace, progress)
-            execution = run_mcts_search(
+            shared = dict(
                 provider=provider,
                 hardware=HardwareSpec(
-                    "H100",
-                    form_factor="SXM",
-                    minimum_compute_capability="9.0",
-                    required_profilers=("ncu",),
+                    "H100", form_factor="SXM",
+                    minimum_compute_capability="9.0", required_profilers=("ncu",),
                 ),
-                workload=BF16_GEMM_WORKLOAD,
-                root_program=root_program,
-                strategies=strategies,
+                workload=BF16_GEMM_WORKLOAD, root_program=root_program,
                 generator=ProgressKernelGenerator(generator),
-                prior_provider=UniformStrategyPrior(),
                 generation_budget=arguments.generation_budget,
-                mutation_budget=arguments.mutation_budget,
-                trace=reporting_trace,
-                mcts_config=mcts_config,
-                seed=arguments.seed,
-                run_id=arguments.run_id,
-                model_name=model_name,
+                trace=reporting_trace, seed=arguments.seed,
+                run_id=arguments.run_id, model_name=model_name,
                 run_metadata=provenance,
-                tuning_config=(
-                    TuningConfig(
-                        arguments.tuning_budget,
-                        arguments.tuning_method,
-                        arguments.seed,
-                    )
-                    if arguments.autotune
-                    else None
-                ),
             )
+            if arguments.algorithm == "sequential":
+                execution = run_sequential_search(**shared, config=sequential_config)
+            else:
+                execution = run_mcts_search(
+                    **shared, strategies=strategies, prior_provider=UniformStrategyPrior(),
+                    mutation_budget=arguments.mutation_budget, mcts_config=mcts_config,
+                    tuning_config=(
+                        TuningConfig(arguments.tuning_budget, arguments.tuning_method, arguments.seed)
+                        if arguments.autotune else None
+                    ),
+                )
     finally:
         progress.finish()
 
     result = execution.result
     if arguments.best_output is not None:
-        arguments.best_output.write_text(result.best.program.source, encoding="utf-8")
+        best_program = (
+            result.best.evaluation.program
+            if arguments.algorithm == "sequential" else result.best.program
+        )
+        assert best_program is not None
+        arguments.best_output.write_text(best_program.source, encoding="utf-8")
     if (
+        arguments.algorithm == "mcts"
+        and
         arguments.tuned_best_output is not None
         and execution.tuning is not None
         and execution.tuning.best is not None
@@ -505,6 +525,17 @@ def main(argv: list[str] | None = None) -> int:
         "cute-mutation": "CuTe mutation",
         "cute-mixed": "CuTe mixed",
     }[arguments.generator]
+    if arguments.algorithm == "sequential":
+        print(
+            f"Sequential search completed: run_id={execution.run_id}, "
+            f"iterations={result.iterations}, B_gen={result.generations}, "
+            f"profiles={result.profile_calls}, accepted_depth={result.accepted_depth}, "
+            f"nodes={len(result.nodes)}, best_reward={result.best.evaluation.reward:.6g}"
+        )
+        print(f"SQLite trace: {arguments.trace.resolve()}")
+        if arguments.best_output is not None:
+            print(f"Best kernel: {arguments.best_output.resolve()}")
+        return 0
     print(
         f"{generator_label} search completed: run_id={execution.run_id}, "
         f"iterations={result.iterations}, B_gen={result.generations}, "
@@ -580,6 +611,58 @@ def _root_program(
     if arguments.backend == "cute_dsl":
         return PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
     return load_bf16_gemm_root()
+
+
+def _sequential_components(
+    parser: argparse.ArgumentParser, arguments: argparse.Namespace,
+) -> tuple[KernelGenerator, str, SequentialConfig]:
+    if arguments.backend != "cuda_cpp" or arguments.generator != "openai":
+        parser.error("sequential search requires --backend=cuda_cpp --generator=openai")
+    if arguments.generation_budget < 1 or arguments.mutation_budget:
+        parser.error("sequential search requires a positive generation budget and no mutation budget")
+    if not arguments.model:
+        parser.error("--model is required for sequential search")
+    if arguments.session_history_turns < 0:
+        parser.error("--session-history-turns cannot be negative")
+    if arguments.autotune or arguments.tuned_best_output is not None:
+        parser.error("post-search autotuning is not part of the sequential experiment")
+    if arguments.sequential_strategy_menu and arguments.strategies is None:
+        parser.error("--sequential-strategy-menu requires --strategies")
+    if (
+        arguments.omit_parent_profile or arguments.include_incoming_profile_delta
+        or arguments.include_compiler_summary or arguments.dataflow_prompt_view != "none"
+    ):
+        parser.error("use --sequential-* context flags with sequential search")
+    if not os.environ.get(arguments.openai_api_key_env):
+        parser.error(f"environment variable {arguments.openai_api_key_env!r} is not set")
+    menu: tuple[str, ...] = ()
+    if arguments.sequential_strategy_menu:
+        catalog = parse_strategies(load_data(arguments.strategies))
+        if not catalog:
+            parser.error("strategy menu must contain at least one strategy")
+        menu = tuple(
+            f"{item.id}: {item.description}; {item.prompt_for('cuda_cpp')}"
+            for item in catalog
+        )
+    client = OpenAIResponsesClient(OpenAIResponsesConfig(
+        model=arguments.model, reasoning_effort=arguments.reasoning_effort,
+        max_output_tokens=arguments.max_output_tokens,
+        timeout_seconds=arguments.llm_timeout,
+        api_key_env=arguments.openai_api_key_env, store=False,
+        instructions=SEQUENTIAL_INSTRUCTIONS,
+        history_turns=arguments.session_history_turns,
+    ))
+    generator = SequentialKernelGenerator(client, strategy_menu=menu)
+    config = SequentialConfig(
+        max_repairs=arguments.max_repairs,
+        max_infrastructure_retries=arguments.max_infrastructure_retries,
+        profile_metric_set=arguments.profile_metric_set,
+        profile_visibility=arguments.sequential_profile_visibility,
+        compiler_detail=arguments.sequential_compiler_detail,
+        dataflow_view=arguments.sequential_dataflow_view,
+        dataflow_description=arguments.sequential_dataflow_description,
+    )
+    return generator, arguments.model, config
 
 
 def _search_components(

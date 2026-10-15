@@ -119,6 +119,8 @@ def run_proposal(
                 attempt=attempt_number + 1,
                 previous_program=generation.program,
                 previous_result=evaluation,
+                current_benchmark=request.current_benchmark,
+                recent_feedback=request.recent_feedback,
             )
 
     if attempts:

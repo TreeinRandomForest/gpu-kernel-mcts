@@ -22,6 +22,8 @@ class OpenAIResponsesConfig:
     timeout_seconds: float = 180.0
     api_key_env: str = "OPENAI_API_KEY"
     store: bool = False
+    instructions: str = OPENAI_GENERATION_INSTRUCTIONS
+    history_turns: int = 0
 
     def __post_init__(self) -> None:
         if not self.model.strip():
@@ -30,6 +32,8 @@ class OpenAIResponsesConfig:
             raise ValueError("max_output_tokens must be positive")
         if self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
+        if self.history_turns < 0:
+            raise ValueError("history_turns cannot be negative")
 
 
 class OpenAIResponsesClient:
@@ -56,18 +60,28 @@ class OpenAIResponsesClient:
                 ) from error
             client = OpenAI(api_key=api_key, timeout=config.timeout_seconds)
         self._client = client
+        self._history: list[tuple[str, str]] = []
 
     def complete(self, prompt: str) -> LLMCompletion:
         started = perf_counter()
+        history = self._history[-self.config.history_turns:] if self.config.history_turns else []
+        messages = [message for user, assistant in history for message in (
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": assistant},
+        )]
+        messages.append({"role": "user", "content": prompt})
         response = self._client.responses.create(
             model=self.config.model,
-            instructions=OPENAI_GENERATION_INSTRUCTIONS,
-            input=prompt,
+            instructions=self.config.instructions,
+            input=messages if self.config.history_turns else prompt,
             max_output_tokens=self.config.max_output_tokens,
             reasoning={"effort": self.config.reasoning_effort},
             store=self.config.store,
         )
         latency = perf_counter() - started
+        if self.config.history_turns:
+            self._history.append((prompt, str(response.output_text or "")))
+            self._history = self._history[-self.config.history_turns:]
         usage = getattr(response, "usage", None)
         return LLMCompletion(
             response_id=str(response.id),
@@ -82,6 +96,8 @@ class OpenAIResponsesClient:
                 "reasoning_effort": self.config.reasoning_effort,
                 "max_output_tokens": self.config.max_output_tokens,
                 "store": self.config.store,
+                "history_turns": len(history),
+                **({"conversation_input": messages} if self.config.history_turns else {}),
             },
-            instructions_text=OPENAI_GENERATION_INSTRUCTIONS,
+            instructions_text=self.config.instructions,
         )

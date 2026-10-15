@@ -85,3 +85,25 @@ def test_client_requires_configured_api_key(monkeypatch) -> None:
                 api_key_env="MISSING_TEST_OPENAI_KEY",
             )
         )
+
+
+def test_bounded_local_conversation_replays_only_recent_text_turn():
+    responses = FakeResponses()
+    subject = OpenAIResponsesClient(
+        OpenAIResponsesConfig(model="test-model", history_turns=1, instructions="JSON only"),
+        client=SimpleNamespace(responses=responses),
+    )
+    subject.complete("first")
+    subject.complete("second")
+    third = subject.complete("third")
+
+    assert responses.calls[0]["input"] == [{"role": "user", "content": "first"}]
+    assert responses.calls[1]["input"] == [
+        {"role": "user", "content": "first"},
+        {"role": "assistant", "content": "kernel source"},
+        {"role": "user", "content": "second"},
+    ]
+    assert responses.calls[2]["input"][0]["content"] == "second"
+    assert responses.calls[2]["instructions"] == "JSON only"
+    assert responses.calls[2]["store"] is False
+    assert third.metadata["conversation_input"] == responses.calls[2]["input"]

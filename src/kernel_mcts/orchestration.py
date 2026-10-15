@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict, dataclass, replace
+from time import perf_counter
 from typing import Callable, Mapping, Protocol, Sequence
 from uuid import uuid4
 
@@ -409,6 +410,92 @@ def run_mcts_search(
     finally:
         if worker is not None:
             provider.release_worker(worker)
+
+
+def run_sequential_search(
+    *, provider: GPUProvider, hardware: HardwareSpec, workload: WorkloadContract,
+    root_program: KernelProgram, generator: KernelGenerator, generation_budget: int,
+    trace: SearchTraceStore, config: "SequentialConfig", seed: int = 0,
+    run_id: str | None = None, model_name: str | None = None,
+    run_metadata: Mapping[str, object] | None = None,
+) -> "SequentialExecution":
+    """Run linear refinement on one worker, preserving the tier-0 contract."""
+    from .sequential import run_sequential_loop
+
+    resolved_run_id = run_id or str(uuid4())
+    run_config: dict[str, object] = {
+        "generation_budget": generation_budget, "sequential": asdict(config), "seed": seed,
+    }
+    if model_name is not None:
+        run_config["model_name"] = model_name
+    if run_metadata is not None:
+        reserved = set(run_config) & set(run_metadata)
+        if reserved:
+            raise ValueError(f"run metadata overrides reserved keys: {', '.join(sorted(reserved))}")
+        run_config.update(run_metadata)
+    trace.start_run(resolved_run_id, workload.benchmark_id, "sequential", run_config)
+    worker: GPUWorker | None = None
+    worker_started: float | None = None
+    started = False
+    root_attempts = 0
+    try:
+        worker = provider.acquire_worker(hardware)
+        worker_started = perf_counter()
+        trace.emit("environment_manifest", worker.get_environment_manifest().as_dict())
+        worker_evaluator = WorkerKernelEvaluator(worker, resolved_run_id, trace)
+
+        def record_root_attempt(attempt: int, result: EvaluationResult) -> None:
+            nonlocal root_attempts
+            root_attempts = attempt
+            trace.emit("root_evaluation_attempt", {
+                "attempt": attempt,
+                "max_infrastructure_retries": config.max_infrastructure_retries,
+                "evaluation": serialize_evaluation(result),
+            })
+
+        root = _evaluate_with_infrastructure_retries(
+            worker_evaluator, root_program, workload,
+            config.max_infrastructure_retries, record_root_attempt,
+        )
+        if root.status != ProposalStatus.VALID or root.benchmark is None:
+            raise RuntimeError(
+                f"root evaluation must be valid after {root_attempts} attempt(s), got {root.status.value}"
+            )
+        root = replace(root, reward=0.0)
+        started = True
+        result = run_sequential_loop(
+            root_evaluation=root, workload=workload, hardware=asdict(hardware),
+            generator=generator,
+            evaluator=RootNormalizedEvaluator(worker_evaluator, root.benchmark),
+            profiler=WorkerNodeProfiler(worker, resolved_run_id, config.profile_metric_set),
+            trace=trace, generation_budget=generation_budget, config=config, seed=seed,
+        )
+        return SequentialExecution(resolved_run_id, result)
+    except Exception as error:
+        if not started:
+            trace.emit("run_failed", {
+                "iterations": 0, "b_gen": 0, "b_mut": 0, "b_prior": 0,
+                "profile_calls": 0, "error_type": type(error).__name__,
+                "root_evaluation_attempts": root_attempts,
+            })
+        raise
+    finally:
+        if worker is not None:
+            try:
+                if worker_started is not None:
+                    trace.emit("worker_usage", {
+                        "worker_wall_seconds": perf_counter() - worker_started,
+                        "gpu_count": hardware.gpu_count,
+                        "note": "worker occupancy is a wall-time proxy, not billed GPU cost",
+                    })
+            finally:
+                provider.release_worker(worker)
+
+
+@dataclass(frozen=True, slots=True)
+class SequentialExecution:
+    run_id: str
+    result: "SequentialResult"
 
 
 def run_standalone_autotuning(
