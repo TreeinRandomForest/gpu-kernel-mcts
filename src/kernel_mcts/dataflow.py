@@ -8,7 +8,7 @@ from importlib.resources import files
 from typing import Mapping
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 TILE = 16
 BF16_BYTES = 2
 
@@ -192,6 +192,7 @@ def bf16_gemm_dataflow(
             "Cache residency, HBM/L2 traffic, compiler transformations, and link latency are unknown.",
             "The hardware path lists possible resource links; it does not assign bytes to them.",
         ],
+        "compiled_ptx": None,
     }
 
 
@@ -200,6 +201,7 @@ def cuda_node_dataflow(
     workload: Mapping[str, object],
     launch_config: Mapping[str, object],
     compiler_context: Mapping[str, object] | None = None,
+    compiled_ptx: Mapping[str, object] | None = None,
 ) -> dict[str, object] | None:
     """Return an exact source model or logical inputs plus static observations.
 
@@ -209,6 +211,7 @@ def cuda_node_dataflow(
     """
     exact = bf16_gemm_dataflow(source, workload, launch_config)
     if exact is not None:
+        exact["compiled_ptx"] = dict(compiled_ptx) if compiled_ptx is not None else None
         return exact
     if not isinstance(source, str) or not source.strip():
         return None
@@ -277,4 +280,5 @@ def cuda_node_dataflow(
             "Static SASS sites may include mutually exclusive or inactive branches.",
             "Instruction sites are not execution counts or measured traffic; physical paths and bytes remain unknown.",
         ],
+        "compiled_ptx": dict(compiled_ptx) if compiled_ptx is not None else None,
     }

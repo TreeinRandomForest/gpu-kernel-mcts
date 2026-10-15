@@ -35,6 +35,8 @@ class SearchTraceStore(EventSink, Protocol):
 
     def store_compiler_artifact(self, sha256: str, content: bytes) -> None: ...
 
+    def get_node_dataflow(self, node_id: str) -> Mapping[str, object] | None: ...
+
 
 @dataclass(frozen=True, slots=True)
 class SearchExecution:
@@ -367,6 +369,9 @@ def run_mcts_search(
             config=mcts_config,
             seed=seed,
             events=trace,
+            dataflow_provider=(
+                trace.get_node_dataflow if mcts_config.dataflow_prompt_view != "none" else None
+            ),
             profiler=WorkerNodeProfiler(
                 worker,
                 resolved_run_id,

@@ -21,6 +21,8 @@ from kernel_mcts.domain import (
     WorkloadContract,
 )
 from kernel_mcts.generation import GenerationResult, ProposalBudgetKind
+from kernel_mcts.llm import LLMCompletion
+from kernel_mcts.llm_generation import LLMKernelGenerator
 from kernel_mcts.orchestration import (
     WorkerKernelEvaluator,
     run_candidate_evaluation,
@@ -72,6 +74,62 @@ def test_worker_evaluator_persists_ptx_before_node_event(tmp_path) -> None:
         assert connection.execute(
             "SELECT node_id FROM node_compiler_artifacts WHERE sha256 = ?", (sha256,)
         ).fetchone()[0] == "root"
+
+
+def test_search_prompt_reads_recorded_parent_ptx_graph(tmp_path) -> None:
+    raw = (b".visible .entry kernel(.param .u64 p0) {\n"
+           b"ld.param.u64 %rd1, [p0];\n"
+           b"ld.global.u32 %r1, [%rd1];\nret;\n}\n")
+    sha256 = hashlib.sha256(raw).hexdigest()
+
+    class ArtifactWorker(MockWorker):
+        def evaluate(self, evaluation_id, program, workload, profile_level):
+            result = super().evaluate(evaluation_id, program, workload, profile_level)
+            if result.status != ProposalStatus.VALID:
+                return result
+            return replace(result, metadata={"compiler_context": {
+                "entry_point": "kernel",
+                "ptx": {"artifacts": [{"sha256": sha256, "storage_status": "eligible"}]},
+            }})
+
+        def fetch_compiler_artifact(self, evaluation_id, requested_sha256):
+            assert requested_sha256 == sha256
+            return raw
+
+    class RecordingClient:
+        def __init__(self):
+            self.prompts = []
+
+        def complete(self, prompt):
+            self.prompts.append(prompt)
+            return LLMCompletion("generation-1", "candidate", "fake-model", metadata={})
+
+    client = RecordingClient()
+    database = tmp_path / "dataflow-prompt.sqlite"
+    with SQLiteTraceStore(database) as trace:
+        run_mcts_search(
+            provider=MockProvider(ArtifactWorker()), hardware=HARDWARE,
+            workload=WORKLOAD, root_program=KernelProgram("root"),
+            strategies=(STRATEGY,), generator=LLMKernelGenerator(client),
+            prior_provider=UniformStrategyPrior(), generation_budget=1,
+            trace=trace, run_id="dataflow-prompt",
+            mcts_config=MCTSConfig(k_max=1, max_repairs=0, dataflow_prompt_view="full"),
+        )
+
+    with sqlite3.connect(database) as connection:
+        prompt_text, prompt_hash, metadata_text = connection.execute(
+            "SELECT prompt_text, prompt_hash, metadata_json FROM generations"
+        ).fetchone()
+        config = json.loads(connection.execute("SELECT config_json FROM search_runs").fetchone()[0])
+    assert prompt_text == client.prompts[0]
+    assert prompt_hash == hashlib.sha256(prompt_text.encode()).hexdigest()
+    view = json.loads(prompt_text)["parent_dataflow"]
+    assert view["view"] == "full"
+    assert view["ptx_sha256"] == sha256
+    assert view["adjacency"]["sites"]
+    assert any(edge[2] == "parameter_provenance" for edge in view["adjacency"]["edges"])
+    assert json.loads(metadata_text)["generation"]["parent_dataflow"] == view
+    assert config["mcts"]["dataflow_prompt_view"] == "full"
 
 
 WORKLOAD = WorkloadContract(

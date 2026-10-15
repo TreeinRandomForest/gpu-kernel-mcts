@@ -948,6 +948,53 @@ def test_mcts_rejects_unknown_profile_metric_set() -> None:
         MCTSConfig(profile_metric_set="unknown")
 
 
+def test_dataflow_prompt_view_uses_recorded_parent_once() -> None:
+    class RecordingGenerator(ToyGenerator):
+        def __init__(self) -> None:
+            super().__init__()
+            self.requests = []
+
+        def generate(self, request):
+            self.requests.append(request)
+            return super().generate(request)
+
+    graph = {"compiled_ptx": {
+        "status": "partial", "ptx_sha256": "abc", "entry_point": "kernel",
+        "instruction_count": 1, "block_count": 1, "uncertainty": [],
+        "nodes": [{"id": "site_1", "kind": "arithmetic", "opcode": "add.u32"}],
+        "edges": [],
+    }}
+    lookups = []
+    generator = RecordingGenerator()
+
+    def recorded_graph(node_id):
+        lookups.append(node_id)
+        return graph
+
+    MCTS(
+        strategies=(STRATEGIES[0],), workload=WORKLOAD,
+        generator=generator, evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(), budget=GenerationBudget(1),
+        config=MCTSConfig(k_max=1, max_repairs=0, dataflow_prompt_view="full"),
+        dataflow_provider=recorded_graph,
+    ).run(valid_evaluation("0", "state:0", 0.0))
+    assert len(lookups) == 1
+    assert generator.requests[0].dataflow_view["view"] == "full"
+    assert generator.requests[0].dataflow_view["adjacency"]["sites"][0][0] == "site_1"
+
+
+def test_dataflow_prompt_view_requires_provider_and_known_choice() -> None:
+    with pytest.raises(ValueError, match="unknown dataflow prompt view"):
+        MCTSConfig(dataflow_prompt_view="invalid")
+    with pytest.raises(ValueError, match="requires a node dataflow provider"):
+        MCTS(
+            strategies=STRATEGIES, workload=WORKLOAD, generator=ToyGenerator(),
+            evaluator=ToyEvaluator(), prior_provider=UniformStrategyPrior(),
+            budget=GenerationBudget(1),
+            config=MCTSConfig(dataflow_prompt_view="counts"),
+        )
+
+
 def test_mcts_charges_and_logs_repair_generation() -> None:
     class RepairGenerator:
         def __init__(self) -> None:
@@ -982,6 +1029,11 @@ def test_mcts_charges_and_logs_repair_generation() -> None:
 
     generator = RepairGenerator()
     events = RecordingEvents()
+    graph = {"compiled_ptx": {
+        "status": "partial", "ptx_sha256": "abc", "entry_point": "kernel",
+        "instruction_count": 0, "block_count": 0, "uncertainty": [],
+        "nodes": [], "edges": [],
+    }}
     result = MCTS(
         strategies=(STRATEGIES[0],),
         workload=WORKLOAD,
@@ -989,8 +1041,9 @@ def test_mcts_charges_and_logs_repair_generation() -> None:
         evaluator=RepairEvaluator(),
         prior_provider=UniformStrategyPrior(),
         budget=GenerationBudget(2),
-        config=MCTSConfig(max_repairs=1),
+        config=MCTSConfig(max_repairs=1, dataflow_prompt_view="counts"),
         events=events,
+        dataflow_provider=lambda _node_id: graph,
     ).run(valid_evaluation("0", "state:0", 0.0))
 
     action = result.root.actions["a"]
@@ -998,6 +1051,8 @@ def test_mcts_charges_and_logs_repair_generation() -> None:
     backup_events = [payload for event, payload in events.events if event == "backup"]
     iteration_events = [payload for event, payload in events.events if event == "iteration_completed"]
     assert result.generations == 2
+    assert generator.requests[0].dataflow_view == generator.requests[1].dataflow_view
+    assert generator.requests[1].dataflow_view["view"] == "counts"
     assert len(result.nodes) == 2
     assert action.proposal_count == 1
     assert action.generation_attempt_count == 2

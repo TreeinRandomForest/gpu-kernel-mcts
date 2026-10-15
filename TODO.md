@@ -217,9 +217,11 @@ completed hardware validation is identified explicitly.
 - [x] Show independently selectable A/B dataflow diagrams beside the existing
   source comparison. Label source-level quantities, logical relationships, static
   SASS site counts, and unknowns directly in the diagrams.
-- [ ] Extract bounded value dependencies from retained PTX for generated CUDA
+- [x] Extract bounded value dependencies from retained PTX for generated CUDA
   nodes, with explicit unsupported/partial status for control flow, aliasing, and
-  untracked memory. Compare against SASS and NCU before treating paths as measured.
+  untracked memory. Keep the compiled graph separate from the logical workload view.
+- [ ] Reconcile representative PTX paths with SASS and same-worker NCU observations
+  before interpreting paths as measured traffic or bottlenecks.
 - [ ] Add a parent/child dataflow diff in the trace browser. Compare aligned
   memory/compute stages and evidence provenance before showing quantitative deltas;
   do not compare unknown traffic as zero.
@@ -236,8 +238,13 @@ completed hardware validation is identified explicitly.
 - [x] Run matched-seed comparisons of those four arms at `B_gen=50`, then report
   final best latency, validity, token cost, and cross-seed variability. See
   `docs/experiments/terra-sol-prompt-context-bgen50.md`.
-- [ ] Evaluate a bounded dataflow/hardware summary as a later off-by-default prompt
-  ablation only after its predictions agree with inspected NCU and compiler evidence.
+- [x] Add off-by-default prompt plumbing for four deterministic views of a recorded
+  PTX graph: counts, local paths, bounded adjacency subgraph, and full adjacency
+  (with an explicit prompt-size limit). Persist the exact view and prompt per call.
+- [ ] Run matched-seed, equal-`B_gen` ablations across the four PTX graph views and
+  a compiler-summary-only baseline. Record exact prompts, token use, validity,
+  best latency, and variation across seeds; keep NCU context and other flags fixed.
+- [ ] Evaluate a bounded dataflow/hardware summary after PTX/SASS/NCU reconciliation.
 
 ### Near-term CUDA experiment order
 
@@ -255,13 +262,16 @@ completed hardware validation is identified explicitly.
    useful edits. Treat three-seed differences as exploratory rather than a
    reliable causal ranking. See the trajectory section and figure in
    `docs/experiments/terra-sol-prompt-context-bgen50.md`.
-4. [ ] Build and validate operation- and dtype-independent bounded PTX
-   value-dependency extraction for generated CUDA nodes, explicitly marking
-   unsupported control flow, aliasing, and memory paths. Keep workload-specific
-   tensor labels in verified adapters. Reconcile selected graphs with source,
-   SASS, and measured NCU traffic before assigning quantitative movement claims. See
+4. [x] Build operation- and dtype-independent bounded PTX value-dependency
+   extraction for valid CUDA nodes. Persist hash-checked, versioned within-block
+   evidence; derive it read-only for older traces; keep workload-specific labels
+   separate and unsupported paths explicit. See
    `docs/ptx-dataflow-extraction-plan.md`.
-5. [ ] Only after that validation, test an off-by-default compact dataflow/hardware
+5. [ ] Reconcile selected compiled graphs with source, SASS, and same-worker NCU
+   traffic before assigning quantitative movement claims. The initial
+   source/PTX/SASS smoke is recorded in `docs/ptx-dataflow-extraction-plan.md`;
+   runtime path validation remains open.
+6. [ ] Only after that validation, test an off-by-default compact dataflow/hardware
    prompt summary against the strongest existing prompt arm at equal `B_gen` and
    matched seeds. Use the results to choose targeted PTX/SASS details or refine
    existing strategy prompts before adding new strategy categories.

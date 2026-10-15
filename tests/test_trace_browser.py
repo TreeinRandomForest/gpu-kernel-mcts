@@ -181,7 +181,7 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
         connection.execute(
             """INSERT INTO node_dataflow_graphs
                (run_id, node_id, graph_schema_version, graph_json, created_at)
-               VALUES ('run-1', 'right', 2, ?, '2026-01-01')""",
+               VALUES ('run-1', 'right', 3, ?, '2026-01-01')""",
             (json.dumps(dataflow),),
         )
 
@@ -204,18 +204,18 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
     assert root["dataflow"]["kind"] == "logical_and_static_sites"
     assert root["dataflow"]["summary"]["source_global_load_bytes"] is None
 
-    # A stored older dataflow graph is rederived for display without writing.
+    # A stored v2 dataflow graph is rederived for display without writing.
     with sqlite3.connect(path) as connection:
-        old_dataflow = {**dataflow, "schema_version": 1}
+        old_dataflow = {**dataflow, "schema_version": 2}
         connection.execute(
-            "UPDATE node_dataflow_graphs SET graph_schema_version = 1, graph_json = ?",
+            "UPDATE node_dataflow_graphs SET graph_schema_version = 2, graph_json = ?",
             (json.dumps(old_dataflow),),
         )
     before = path.stat().st_mtime_ns
     hardware = catalog.hardware(trace_id, "run-1")
     right = next(row for row in hardware["kernels"] if row["node_id"] == "right")
     assert right["dataflow_source"] == "derived_from_node"
-    assert right["dataflow"]["schema_version"] == 2
+    assert right["dataflow"]["schema_version"] == 3
     assert path.stat().st_mtime_ns == before
 
     # A stored v1 graph is upgraded for display, without rewriting the trace.
@@ -250,6 +250,8 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
 
 
 def test_hardware_view_derives_generated_cuda_node_graph_read_only(tmp_path) -> None:
+    import hashlib
+
     path = _browser_trace(tmp_path)
     manifest = {
         "manifest_id": "h100-worker", "gpu_model": "NVIDIA H100 80GB HBM3",
@@ -257,6 +259,10 @@ def test_hardware_view_derives_generated_cuda_node_graph_read_only(tmp_path) -> 
         "total_memory_bytes": 85_520_809_984, "mig_configuration": {},
     }
     source = load_bf16_gemm_smoke_candidate().source + "\n// generated variant\n"
+    ptx = (b".version 8.7\n.target sm_90\n"
+           b".visible .entry bf16_gemm_root(.param .u64 p0) {\n"
+           b"ld.param.u64 %rd1, [p0];\nld.global.u32 %r1, [%rd1];\nret;\n}\n")
+    sha256 = hashlib.sha256(ptx).hexdigest()
     with sqlite3.connect(path) as connection:
         connection.execute(
             """INSERT INTO environment_manifests(manifest_id, worker_id, provider, gpu_model,
@@ -271,9 +277,20 @@ def test_hardware_view_derives_generated_cuda_node_graph_read_only(tmp_path) -> 
         connection.execute(
             """UPDATE nodes SET program_text = ?, metadata_json = ?
                WHERE run_id = 'run-1' AND node_id = 'right'""",
-            (source, json.dumps({"compiler_context": {"sass": {
+            (source, json.dumps({"compiler_context": {
+                "entry_point": "bf16_gemm_root",
+                "ptx": {"artifacts": [{"sha256": sha256, "storage_status": "stored"}]},
+                "sass": {
                 "status": "parsed", "categories": {"global_load": 2, "global_store": 1}
             }}})),
+        )
+        connection.execute(
+            "INSERT INTO compiler_artifacts(sha256, kind, size_bytes, content) VALUES (?, 'ptx', ?, ?)",
+            (sha256, len(ptx), ptx),
+        )
+        connection.execute(
+            "INSERT INTO node_compiler_artifacts(run_id, node_id, sha256) VALUES ('run-1', 'right', ?)",
+            (sha256,),
         )
     before = path.stat().st_mtime_ns
     catalog = TraceCatalog(tmp_path)
@@ -282,6 +299,8 @@ def test_hardware_view_derives_generated_cuda_node_graph_read_only(tmp_path) -> 
     assert right["dataflow_source"] == "derived_from_node"
     assert right["dataflow"]["kind"] == "logical_and_static_sites"
     assert right["dataflow"]["summary"]["static_sass_instruction_sites"]["global_load"] == 2
+    assert right["dataflow"]["compiled_ptx"]["ptx_sha256"] == sha256
+    assert right["dataflow"]["compiled_ptx"]["instruction_count"] == 3
     assert path.stat().st_mtime_ns == before
 
 def test_hardware_view_handles_run_without_supported_gpu_graph(tmp_path) -> None:

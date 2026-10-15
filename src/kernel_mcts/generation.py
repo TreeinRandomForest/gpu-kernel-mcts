@@ -15,6 +15,7 @@ class GenerationRequest:
     hardware: Mapping[str, object]
     profile: Mapping[str, object] | None
     compiler_summary: Mapping[str, object] | None = None
+    dataflow_view: Mapping[str, object] | None = None
     incoming_profile_delta: Mapping[str, object] | None = None
     attempt: int = 0 #repair attempts
     previous_program: KernelProgram | None = None #track for repair

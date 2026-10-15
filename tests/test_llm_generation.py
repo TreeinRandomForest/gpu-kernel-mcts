@@ -81,6 +81,7 @@ def test_llm_generator_builds_complete_fresh_prompt_and_records_metadata() -> No
     assert payload["strategy"]["backend_prompt"].startswith("Stage reusable")
     assert payload["parent_profile"] == {"occupancy": 0.5}
     assert "parent_compiler_summary" not in payload
+    assert "parent_dataflow" not in payload
     assert "incoming_profile_delta" not in payload
     assert "bf16_gemm_root" in payload["parent_kernel"]
     assert result.generation_id == "response-1"
@@ -129,6 +130,16 @@ def test_opt_in_compiler_summary_is_in_prompt_and_result_metadata() -> None:
     assert payload["parent_profile"] is None
     assert payload["parent_compiler_summary"] == summary
     assert result.metadata["parent_compiler_summary"] == summary
+    assert result.prompt_hash == hashlib.sha256(result.prompt_text.encode()).hexdigest()
+
+
+def test_opt_in_dataflow_view_is_in_prompt_and_result_metadata() -> None:
+    view = {"schema_version": 1, "view": "paths", "status": "partial", "paths": []}
+    result = LLMKernelGenerator(FakeLLMClient("optimized source")).generate(
+        request(dataflow_view=view)
+    )
+    assert json.loads(result.prompt_text)["parent_dataflow"] == view
+    assert result.metadata["parent_dataflow"] == view
     assert result.prompt_hash == hashlib.sha256(result.prompt_text.encode()).hexdigest()
 
 

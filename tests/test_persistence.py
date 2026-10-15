@@ -414,7 +414,7 @@ def test_fixed_bf16_dataflow_is_persisted_and_backfilled(tmp_path) -> None:
         row = connection.execute(
             "SELECT graph_schema_version, graph_json FROM node_dataflow_graphs"
         ).fetchone()
-        assert row[0] == 2
+        assert row[0] == 3
         assert json.loads(row[1])["summary"]["source_global_load_bytes"] == 16 * 1024**3
         connection.execute("DELETE FROM node_dataflow_graphs")
         connection.execute("PRAGMA user_version = 12")
@@ -466,7 +466,7 @@ def test_generated_cuda_node_graph_is_created_once_and_backfilled(tmp_path) -> N
         upgraded = json.loads(store.connection.execute(
             "SELECT graph_json FROM node_dataflow_graphs WHERE node_id = 'generated'"
         ).fetchone()[0])
-        assert upgraded["schema_version"] == 2
+        assert upgraded["schema_version"] == 3
         assert upgraded["kind"] == "logical_and_static_sites"
     with sqlite3.connect(path) as connection:
         connection.execute("DELETE FROM node_dataflow_graphs")
@@ -481,7 +481,9 @@ def test_generated_cuda_node_graph_is_created_once_and_backfilled(tmp_path) -> N
 def test_trace_store_keeps_ptx_bytes_separate_and_links_valid_node(tmp_path) -> None:
     import hashlib
 
-    raw = b".visible .entry bf16_gemm_root() {}"
+    raw = (b".version 8.7\n.target sm_90\n"
+           b".visible .entry bf16_gemm_root(.param .u64 p0) {\n"
+           b"ld.param.u64 %rd1, [p0];\nld.global.u32 %r1, [%rd1];\nret;\n}\n")
     sha256 = hashlib.sha256(raw).hexdigest()
     path = tmp_path / "trace.sqlite"
     with SQLiteTraceStore(path) as store:
@@ -497,6 +499,7 @@ def test_trace_store_keeps_ptx_bytes_separate_and_links_valid_node(tmp_path) -> 
                 "status": "VALID",
                 "program": {"source": "cuda source", "backend": "cuda_cpp"},
                 "metadata": {"compiler_context": {
+                    "entry_point": "bf16_gemm_root",
                     "ptx": {"artifacts": [{"sha256": sha256, "storage_status": "stored"}]},
                     "sass": {"status": "parsed", "instruction_count": 1},
                 }},
@@ -513,6 +516,51 @@ def test_trace_store_keeps_ptx_bytes_separate_and_links_valid_node(tmp_path) -> 
         events = connection.execute("SELECT payload_json FROM search_events").fetchall()
         assert raw.decode() not in metadata
         assert all(raw.decode() not in event[0] for event in events)
+        graph = json.loads(connection.execute(
+            "SELECT graph_json FROM node_dataflow_graphs WHERE node_id = 'node'"
+        ).fetchone()[0])
+        assert graph["schema_version"] == 3
+        assert graph["compiled_ptx"]["ptx_sha256"] == sha256
+        assert graph["compiled_ptx"]["instruction_count"] == 3
+        assert any(edge["kind"] == "ptx_def_use" for edge in graph["compiled_ptx"]["edges"])
+
+    with SQLiteTraceStore(path) as store:
+        store.run_id = "run"
+        assert store.get_node_dataflow("node") == graph
+        assert store.get_node_dataflow("missing") is None
+
+
+def test_dataflow_refreshes_when_linked_ptx_arrives_after_node(tmp_path) -> None:
+    import hashlib
+
+    raw = (b".visible .entry kernel(.param .u64 p0) {\n"
+           b"ld.param.u64 %rd1, [p0];\nret;\n}\n")
+    sha256 = hashlib.sha256(raw).hexdigest()
+    node = {
+        "node_id": "node", "state_key": "state", "reward": 0.0,
+        "evaluation": {
+            "status": "VALID",
+            "program": {"source": "__global__ void kernel() {}", "backend": "cuda_cpp"},
+            "metadata": {"compiler_context": {
+                "entry_point": "kernel",
+                "ptx": {"artifacts": [{"sha256": sha256, "storage_status": "stored"}]},
+            }},
+        },
+    }
+    with SQLiteTraceStore(tmp_path / "late.sqlite") as store:
+        store.start_run("run", "test", "mcts", {})
+        store.emit("run_started", {"workload": {}, "hardware": {}})
+        store.emit("node_created", node)
+        before = json.loads(store.connection.execute(
+            "SELECT graph_json FROM node_dataflow_graphs"
+        ).fetchone()[0])
+        assert before["compiled_ptx"] is None
+        store.store_compiler_artifact(sha256, raw)
+        store.emit("node_snapshot", node)
+        after = json.loads(store.connection.execute(
+            "SELECT graph_json FROM node_dataflow_graphs"
+        ).fetchone()[0])
+        assert after["compiled_ptx"]["ptx_sha256"] == sha256
 
 
 def test_trace_store_rejects_newer_schema(tmp_path) -> None:

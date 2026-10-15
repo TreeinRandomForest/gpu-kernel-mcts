@@ -19,6 +19,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .dataflow import SCHEMA_VERSION as DATAFLOW_VERSION
 from .dataflow import cuda_node_dataflow
+from .ptx_dataflow import linked_ptx_dataflow
 from .resource_graph import SCHEMA_VERSION as RESOURCE_GRAPH_VERSION
 from .resource_graph import h100_constraint_checks, h100_sxm_resource_graph, ncu_resource_observations
 
@@ -300,7 +301,8 @@ class TraceCatalog:
                     dataflow_source = None
                 if (dataflow is None and row["backend_type"] == "cuda_cpp"
                         and isinstance(workload, dict) and isinstance(launch, dict)):
-                    dataflow = cuda_node_dataflow(source_text, workload, launch, context)
+                    compiled = linked_ptx_dataflow(connection, run_id, row["node_id"], context)
+                    dataflow = cuda_node_dataflow(source_text, workload, launch, context, compiled)
                     if dataflow is not None:
                         dataflow_source = "derived_from_node"
                 kernels.append({

@@ -16,7 +16,7 @@ LAUNCH = WORKLOAD["metadata"]["abi"]["launch"]
 def test_tiled_root_dataflow_records_explicit_reuse_and_barriers() -> None:
     graph = bf16_gemm_dataflow(load_bf16_gemm_root().source, WORKLOAD, LAUNCH)
     assert graph is not None
-    assert graph["schema_version"] == 2
+    assert graph["schema_version"] == 3
     assert graph["template"] == "shared_tiled_root"
     assert graph["summary"]["source_global_load_bytes"] == 16 * 1024**3
     assert graph["summary"]["source_global_store_bytes"] == 32 * 1024**2

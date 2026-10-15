@@ -10,6 +10,7 @@ from typing import Mapping
 from .compiler_context import MAX_PTX_ARTIFACT_BYTES
 from .dataflow import SCHEMA_VERSION as DATAFLOW_VERSION
 from .dataflow import cuda_node_dataflow
+from .ptx_dataflow import linked_ptx_dataflow
 from .resource_graph import h100_sxm_resource_graph, ncu_resource_observations
 
 
@@ -419,6 +420,16 @@ class SQLiteTraceStore:
                 (sha256, len(content), content),
             )
 
+    def get_node_dataflow(self, node_id: str) -> Mapping[str, object] | None:
+        """Read the recorded graph for a node in the active run, without deriving it."""
+        if self.run_id is None:
+            raise RuntimeError("start_run must be called before reading node dataflow")
+        row = self.connection.execute(
+            "SELECT graph_json FROM node_dataflow_graphs WHERE run_id = ? AND node_id = ?",
+            (self.run_id, node_id),
+        ).fetchone()
+        return json.loads(row[0]) if row is not None else None
+
     def close(self) -> None:
         self.connection.close()
 
@@ -525,6 +536,13 @@ class SQLiteTraceStore:
         compiler_context: Mapping[str, object] | None,
         created_at: str,
     ) -> None:
+        ptx = compiler_context.get("ptx") if isinstance(compiler_context, Mapping) else None
+        artifacts = ptx.get("artifacts") if isinstance(ptx, Mapping) else None
+        stored = [artifact.get("sha256") for artifact in artifacts
+                  if isinstance(artifact, Mapping)
+                  and artifact.get("storage_status") == "stored"
+                  and isinstance(artifact.get("sha256"), str)] if isinstance(artifacts, list) else []
+        expected_ptx_sha = stored[0] if len(stored) == 1 else None
         existing = self.connection.execute(
             "SELECT graph_json FROM node_dataflow_graphs WHERE run_id = ? AND node_id = ?",
             (run_id, node_id),
@@ -532,9 +550,11 @@ class SQLiteTraceStore:
         if existing is not None:
             previous = json.loads(existing[0])
             if (previous.get("schema_version") == DATAFLOW_VERSION
-                    and previous.get("source_sha256") == hashlib.sha256(source.encode("utf-8")).hexdigest()):
+                    and previous.get("source_sha256") == hashlib.sha256(source.encode("utf-8")).hexdigest()
+                    and (previous.get("compiled_ptx") or {}).get("ptx_sha256") == expected_ptx_sha):
                 return
-        graph = cuda_node_dataflow(source, workload, launch, compiler_context)
+        compiled = linked_ptx_dataflow(self.connection, run_id, node_id, compiler_context)
+        graph = cuda_node_dataflow(source, workload, launch, compiler_context, compiled)
         if graph is not None:
             self.connection.execute(
                 """INSERT OR REPLACE INTO node_dataflow_graphs(
@@ -820,12 +840,6 @@ class SQLiteTraceStore:
         launch = evaluation.get("launch_config", {})
         metadata = evaluation.get("metadata", {})
         context = metadata.get("compiler_context") if isinstance(metadata, Mapping) else None
-        if program.get("backend") == "cuda_cpp" and isinstance(workload, Mapping) and isinstance(launch, Mapping):
-            self._store_dataflow_graph(
-                self.run_id, payload["node_id"],
-                payload.get("program_text", program["source"]),
-                workload, launch, context, created_at,
-            )
         context = context or {}
         ptx = context.get("ptx", {}) if isinstance(context, Mapping) else {}
         artifacts = ptx.get("artifacts", []) if isinstance(ptx, Mapping) else []
@@ -836,6 +850,12 @@ class SQLiteTraceStore:
                 """INSERT OR IGNORE INTO node_compiler_artifacts(run_id, node_id, sha256)
                 SELECT ?, ?, sha256 FROM compiler_artifacts WHERE sha256 = ?""",
                 (self.run_id, payload["node_id"], artifact["sha256"]),
+            )
+        if program.get("backend") == "cuda_cpp" and isinstance(workload, Mapping) and isinstance(launch, Mapping):
+            self._store_dataflow_graph(
+                self.run_id, payload["node_id"],
+                payload.get("program_text", program["source"]),
+                workload, launch, context, created_at,
             )
         profile = payload.get("profile")
         if isinstance(profile, Mapping):

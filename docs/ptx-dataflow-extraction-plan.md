@@ -98,5 +98,53 @@ contract edges as if they were compiled dependencies.
   summary. Keep prompt provenance and equal-budget, matched-seed settings so
   it can be compared with the compiler-only arm.
 
-Implement this after the active Sol prompt comparisons, or in an isolated
-worktree, because later experiment arms launch from the current working tree.
+## Initial implementation checkpoint
+
+The operation-independent extractor is implemented in `ptx_dataflow.py`. Graph
+schema v3 retains the existing exact-source or logical workload view and adds a
+separate version-1 `compiled_ptx` record. It records hash, named entry, PTX
+version/target, ABI parameter slots, bounded operation sites, within-block
+register dependencies, uncertainty reasons, and null runtime/link quantities.
+New valid nodes persist it from linked PTX; the trace browser can derive it from
+older SQLite traces in read-only mode. The browser currently summarizes this
+compiled layer; detailed PTX-graph visualization remains future work.
+
+GPU-independent fixtures cover elementwise, reduction, transpose, and GEMM-like
+instructions, branches, predication, inline scopes, alias uncertainty, malformed
+artifacts, and extraction limits. A read-only smoke over three existing Sol
+traces produced 113 node graphs: 111 partial and two explicitly unsupported by
+the configured block or PTX-size limits. In three inspected winners, the PTX
+operation families and stored SASS site categories showed corresponding memory
+and tensor activity, but their static counts differed as expected across
+compiler lowering. One diagnostic winner has NCU aggregate DRAM and bank-conflict
+counters; these have not been assigned to individual PTX paths.
+
+The next acceptance step is a documented source/PTX/SASS/NCU reconciliation of
+selected kernels. No quantitative edge claim or prompt ablation is enabled yet.
+
+## Prompt-view plumbing
+
+The search CLI accepts `--dataflow-prompt-view={none,counts,paths,subgraph,full}`
+for OpenAI CUDA runs. `none` is the default and preserves the existing prompt.
+For an enabled view, MCTS reads the parent node's already persisted graph once,
+then passes a versioned `parent_dataflow` record to each generation or repair
+request. The exact record is included in the prompt and generation metadata;
+the selected view is in the run config. No extraction, compilation, profiling,
+or GPU evaluation is triggered by an MCTS visit.
+
+- `counts` gives static PTX site families, proven edge kinds, and uncertainty.
+- `paths` adds up to eight deterministic, operation-anchored local predecessor
+  paths, capped at 12,000 JSON characters. A path is a sequence of proven PTX
+  value edges, not a measured critical path.
+- `subgraph` adds a bounded node/edge list around operation sites (64 sites,
+  128 edges, 16,000 JSON characters), with omitted counts.
+- `full` adds every extracted site and edge if its compact adjacency record is
+  at most 120,000 JSON characters. An oversized graph reports
+  `prompt_size_limit` and includes no partial adjacency list.
+
+All views retain PTX hash, named entry, extraction status, and uncertainty.
+They never add memory-alias edges, cross-block dependencies, runtime counts,
+or measured bytes. This is only prompt plumbing: representative paths still
+need SASS/NCU reconciliation before a performance ablation. Matched-seed
+experiments should compare all four views against a compiler-summary-only arm
+with the same NCU/profile flag, model, search budget, and strategy set.

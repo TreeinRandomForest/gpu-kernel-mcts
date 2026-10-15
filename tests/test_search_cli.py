@@ -85,6 +85,7 @@ def test_search_cli_parser_accepts_manual_volume_pair() -> None:
     assert not arguments.include_incoming_profile_delta
     assert not arguments.omit_parent_profile
     assert not arguments.include_compiler_summary
+    assert arguments.dataflow_prompt_view == "none"
     assert arguments.profile_metric_set == "lightweight_v1"
     assert arguments.measurement_drift_interval == 0
     assert arguments.measurement_drift_threshold == 0.05
@@ -114,6 +115,24 @@ def test_search_cli_parser_accepts_compiler_prompt_ablation_flags() -> None:
     ])
     assert arguments.omit_parent_profile
     assert arguments.include_compiler_summary
+
+
+def test_search_cli_parser_accepts_each_dataflow_prompt_view() -> None:
+    for view in ("counts", "paths", "subgraph", "full"):
+        arguments = build_parser().parse_args([
+            "--image", "worker:v1", "--trace", "trace.sqlite",
+            "--generator", "openai", "--dataflow-prompt-view", view,
+        ])
+        assert arguments.dataflow_prompt_view == view
+
+
+def test_dataflow_prompt_view_requires_openai_cuda_before_provider(capsys) -> None:
+    with pytest.raises(SystemExit):
+        main([
+            "--image", "worker:v1", "--trace", "trace.sqlite",
+            "--dataflow-prompt-view", "counts", "--confirm-create-and-terminate",
+        ])
+    assert "--dataflow-prompt-view requires" in capsys.readouterr().err
 
 
 def test_search_cli_parser_accepts_diagnostic_profile_metric_set() -> None:
@@ -717,6 +736,9 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
         def store_compiler_artifact(self, sha256, content) -> None:
             self.artifacts.append((sha256, content))
 
+        def get_node_dataflow(self, node_id):
+            return {"node_id": node_id}
+
     class Readiness:
         def __init__(self) -> None:
             self.finished = 0
@@ -729,6 +751,7 @@ def test_search_progress_finishes_readiness_and_reports_events() -> None:
     stream = io.StringIO()
     progress = SearchCLIProgress(trace, readiness, stream)
     progress.store_compiler_artifact("hash", b"ptx")
+    assert progress.get_node_dataflow("node-1") == {"node_id": "node-1"}
 
     progress.emit("environment_manifest", {"worker_id": "worker-1"})
     progress.emit("profiling_started", {"node_id": "node-1", "profile_call": 1})

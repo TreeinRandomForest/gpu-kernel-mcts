@@ -32,6 +32,8 @@ class LLMKernelGenerator:
         )
         if request.compiler_summary is not None:
             metadata["parent_compiler_summary"] = dict(request.compiler_summary)
+        if request.dataflow_view is not None:
+            metadata["parent_dataflow"] = dict(request.dataflow_view)
         return GenerationResult(
             generation_id=completion.response_id,
             raw_output=completion.output_text,
@@ -109,6 +111,8 @@ def build_generation_prompt(request: GenerationRequest) -> str:
         )
     if request.compiler_summary is not None:
         payload["parent_compiler_summary"] = _json_value(request.compiler_summary)
+    if request.dataflow_view is not None:
+        payload["parent_dataflow"] = _json_value(request.dataflow_view)
     if request.previous_program is not None or request.previous_result is not None:
         payload["repair"] = {
             "previous_candidate": (

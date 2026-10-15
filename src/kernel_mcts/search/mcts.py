@@ -3,11 +3,12 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 from random import Random
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 from uuid import uuid4
 
 from ..budget import GenerationBudget, MutationBudget
 from ..compiler_context import prompt_compiler_summary
+from ..dataflow_prompt import VIEWS as DATAFLOW_PROMPT_VIEWS, prompt_dataflow_view
 from ..domain import EvaluationResult, ProposalStatus, Strategy, WorkloadContract
 from ..generation import (
     GenerationRequest,
@@ -42,6 +43,7 @@ class MCTSConfig:
     include_incoming_profile_delta: bool = False
     include_parent_profile: bool = True
     include_compiler_summary: bool = False
+    dataflow_prompt_view: str = "none"
     profile_metric_set: str = "lightweight_v1"
     measurement_drift_interval: int = 0
     measurement_drift_threshold: float = 0.05
@@ -55,6 +57,8 @@ class MCTSConfig:
             raise ValueError("invalid progressive-widening configuration")
         if self.profile_metric_set not in PROFILE_METRIC_SET_IDS:
             raise ValueError("unknown profile metric set")
+        if self.dataflow_prompt_view not in DATAFLOW_PROMPT_VIEWS:
+            raise ValueError("unknown dataflow prompt view")
         if not self.include_parent_profile and self.include_incoming_profile_delta:
             raise ValueError("incoming profile delta requires parent profile in prompts")
         if self.measurement_drift_interval < 0 or self.measurement_drift_threshold < 0:
@@ -131,6 +135,7 @@ class MCTS:
         profiler: NodeProfiler | None = None,
         drift_monitor: MeasurementDriftMonitor | None = None,
         events: EventSink | None = None,
+        dataflow_provider: Callable[[str], Mapping[str, object] | None] | None = None,
     ) -> None:
         if not strategies:
             raise ValueError("at least one strategy is required")
@@ -148,6 +153,10 @@ class MCTS:
         self.profiler = profiler
         self.drift_monitor = drift_monitor
         self.events = events or NullEventSink()
+        if config.dataflow_prompt_view != "none" and dataflow_provider is None:
+            raise ValueError("dataflow prompt view requires a node dataflow provider")
+        self.dataflow_provider = dataflow_provider
+        self._dataflow_prompt_cache: dict[str, Mapping[str, object]] = {}
         self.nodes = TranspositionTable()
         self.prior_calls = 0
         self.profile_calls = 0
@@ -523,6 +532,14 @@ class MCTS:
         action: StrategyEdge,
         incoming_edge: SelectedEdge | None = None,
     ) -> GenerationRequest:
+        dataflow_view = None
+        if self.config.dataflow_prompt_view != "none":
+            if parent.id not in self._dataflow_prompt_cache:
+                graph = self.dataflow_provider(parent.id) if self.dataflow_provider else None
+                self._dataflow_prompt_cache[parent.id] = prompt_dataflow_view(
+                    graph, self.config.dataflow_prompt_view
+                )
+            dataflow_view = self._dataflow_prompt_cache[parent.id]
         return GenerationRequest(
             parent=parent.program,
             strategy=self.strategies[action.strategy_id],
@@ -534,6 +551,7 @@ class MCTS:
                 if self.config.include_compiler_summary and parent.program.backend == "cuda_cpp"
                 else None
             ),
+            dataflow_view=dataflow_view,
             incoming_profile_delta=self._incoming_profile_delta(parent, incoming_edge),
         )
 

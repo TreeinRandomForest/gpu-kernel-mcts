@@ -26,6 +26,7 @@ from .cute_independent_program import (
     IndependentCuteGemmRenderer,
     independent_cute_gemm_from_source,
 )
+from .dataflow_prompt import VIEWS as DATAFLOW_PROMPT_VIEWS
 from .domain import Strategy
 from .generation import (
     GenerationRequest,
@@ -75,6 +76,9 @@ class SearchCLIProgress:
 
     def store_compiler_artifact(self, sha256: str, content: bytes) -> None:
         self._trace.store_compiler_artifact(sha256, content)
+
+    def get_node_dataflow(self, node_id: str) -> Mapping[str, object] | None:
+        return self._trace.get_node_dataflow(node_id)
 
     def emit(self, event_type: str, payload: Mapping[str, object]) -> None:
         self._trace.emit(event_type, payload)
@@ -286,6 +290,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="include bounded parent ptxas resources and static SASS site counts in CUDA prompts",
     )
+    parser.add_argument(
+        "--dataflow-prompt-view",
+        choices=DATAFLOW_PROMPT_VIEWS,
+        default="none",
+        help="include an opt-in PTX dataflow view in CUDA prompts",
+    )
     parser.add_argument("--best-output", type=Path)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--timeout", type=float, default=600.0)
@@ -328,6 +338,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--omit-parent-profile conflicts with --include-incoming-profile-delta")
     if arguments.include_compiler_summary and (arguments.generator != "openai" or arguments.backend != "cuda_cpp"):
         parser.error("--include-compiler-summary requires --generator=openai and --backend=cuda_cpp")
+    if arguments.dataflow_prompt_view != "none" and (arguments.generator != "openai" or arguments.backend != "cuda_cpp"):
+        parser.error("--dataflow-prompt-view requires --generator=openai and --backend=cuda_cpp")
     if arguments.best_output is not None and arguments.best_output.exists():
         parser.error(
             f"refusing to overwrite existing best output: {arguments.best_output}"
@@ -604,6 +616,7 @@ def _search_components(
                 ),
                 include_parent_profile=not arguments.omit_parent_profile,
                 include_compiler_summary=arguments.include_compiler_summary,
+                dataflow_prompt_view=arguments.dataflow_prompt_view,
                 profile_metric_set=arguments.profile_metric_set,
                 measurement_drift_interval=arguments.measurement_drift_interval,
                 measurement_drift_threshold=arguments.measurement_drift_threshold,
@@ -721,6 +734,7 @@ def _mcts_config(
         include_incoming_profile_delta=arguments.include_incoming_profile_delta,
         include_parent_profile=not arguments.omit_parent_profile,
         include_compiler_summary=arguments.include_compiler_summary,
+        dataflow_prompt_view=arguments.dataflow_prompt_view,
         profile_metric_set=arguments.profile_metric_set,
         measurement_drift_interval=arguments.measurement_drift_interval,
         measurement_drift_threshold=arguments.measurement_drift_threshold,

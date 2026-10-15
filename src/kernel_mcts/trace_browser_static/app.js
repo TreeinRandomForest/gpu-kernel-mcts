@@ -227,18 +227,22 @@ function dataflowSummary(kernel) {
   const graph = kernel.dataflow;
   const summary = graph.summary;
   const provenance = kernel.dataflow_source === "persisted" ? "stored in trace" : "derived from stored node";
+  const compiled = graph.compiled_ptx;
+  const compiledText = compiled
+    ? ` PTX dependency evidence: ${compiled.status}, ${compiled.instruction_count ?? 0} instruction sites, ${compiled.edges.length} proven local edges; unresolved paths are recorded separately.`
+    : " PTX dependency evidence unavailable.";
   if (graph.kind === "logical_and_static_sites") {
     const sites = summary.static_sass_instruction_sites;
     const siteText = sites ? Object.entries(sites).map(([name, count]) => `${name.replaceAll("_", " ")} ${count}`).join(" · ") : "SASS evidence unavailable";
     return `Logical workload graph and static SASS inventory · ${provenance} · ${siteText}. ` +
-      "Arrows show only workload inputs and output. SASS sites may include inactive branches; physical routes and runtime bytes are unknown.";
+      "Arrows show only workload inputs and output. SASS sites may include inactive branches; physical routes and runtime bytes are unknown." + compiledText;
   }
   return `${graph.template.replaceAll("_", " ")} · ${provenance} · ` +
     `source-level global loads ${hardwareValue({value: summary.source_global_load_bytes, unit: "bytes"})} · ` +
     `stores ${hardwareValue({value: summary.source_global_store_bytes, unit: "bytes"})} · ` +
     `${summary.source_multiply_accumulates.toLocaleString()} multiply-accumulates · ` +
     `${summary.barriers_per_cta} CTA barriers per block. ` +
-    "Edge values are source-level references, not measured HBM or L2 traffic.";
+    "Edge values are source-level references, not measured HBM or L2 traffic." + compiledText;
 }
 
 function dataflowEdgeLabel(graph, edge) {
