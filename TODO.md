@@ -255,10 +255,11 @@ completed hardware validation is identified explicitly.
    useful edits. Treat three-seed differences as exploratory rather than a
    reliable causal ranking. See the trajectory section and figure in
    `docs/experiments/terra-sol-prompt-context-bgen50.md`.
-4. [ ] Build and validate bounded PTX value-dependency extraction for generated
-   CUDA nodes, explicitly marking unsupported control flow, aliasing, and memory
-   paths. Reconcile selected graphs with source, SASS, and measured NCU traffic
-   before assigning quantitative movement claims. See
+4. [ ] Build and validate operation- and dtype-independent bounded PTX
+   value-dependency extraction for generated CUDA nodes, explicitly marking
+   unsupported control flow, aliasing, and memory paths. Keep workload-specific
+   tensor labels in verified adapters. Reconcile selected graphs with source,
+   SASS, and measured NCU traffic before assigning quantitative movement claims. See
    `docs/ptx-dataflow-extraction-plan.md`.
 5. [ ] Only after that validation, test an off-by-default compact dataflow/hardware
    prompt summary against the strongest existing prompt arm at equal `B_gen` and
