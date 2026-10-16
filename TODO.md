@@ -270,12 +270,28 @@ completed hardware validation is identified explicitly.
   reconciled. See `docs/experiments/sequential-cuda-refinement.md`.
 - [ ] Reconcile the worker occupancy proxy with provider billing before reporting
   dollar cost for sequential runs.
-- [ ] Smoke-test the loop at a small generation budget, then compare a
+- [x] Smoke-test the loop at a small generation budget, then compare a
   `B_gen=50` run with the existing MCTS traces on the same root, model,
   workload, worker image, and measurement contract. Plot best-so-far latency
   against generation calls; also report accepted-chain depth, validity,
   profiling cost, and tokens. Fix a bounded session-memory policy before
   comparisons so growing history does not silently change prompt exposure.
+  Completed Sol seed 0 with `B_gen=3` smoke and `B_gen=50` full run; see
+  `docs/experiments/sequential-sol-bgen50-seed0.md` and its plot. The full
+  run's best was 655.856 µs at call 44, with 47 valid calls and 41 profiles.
+- [x] Inspect each sequential proposal's source/hypothesis against the current
+  strategy catalog. The per-call table and source spot checks in
+  `docs/experiments/sequential-sol-bgen50-seed0.md` identify split-K tensor-core
+  bootstrapping and CTA grid remapping as the clearest catalog gaps.
+- [ ] Remeasure the 655.856 µs kernel on a fresh matched worker and replay
+  call-34 versus call-44 sources in alternating order to test the CTA mapping
+  effect. Repeat sequential seeds before drawing a ranking conclusion.
+- [ ] Compare a sequential explicit-menu arm with the same context, budget, and
+  two-turn history; then test a compact history policy to control the 1.37M
+  input-token cost observed in seed 0.
+- [ ] Design a separate hybrid search experiment with a bounded freeform
+  proposal action and optional context-dependent priors. Review the semantic
+  strategy requirement in `spec.md` before changing MCTS selection behavior.
 - [ ] Ablate one factor at a time with repeated runs: generation-call depth;
   compiler-summary detail; dataflow view and explanatory text; visible NCU
   metric bundle; and an unconstrained prompt versus a fixed explicit strategy

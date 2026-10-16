@@ -1,0 +1,7 @@
+# Sequential CUDA refinement: best-source reference, Sol seed 0
+
+This `B_gen=50` pilot repeated the [lightweight NCU seed-0 setup](sequential-sol-bgen50-seed0.md): `gpt-5.6-sol` at medium reasoning, two prior visible turns, full bounded compiler summary, PTX `paths`, `lightweight_v1` NCU, one repair, the same root and tier-0 measurement contract, and the same pinned H100 worker image. The only prompt change was `--sequential-best-so-far`: when the current verified node differed from the best verified node, the prompt included the best source and its measured median. It did not change acceptance or search budgets.
+
+The run's best saved node measured **1,306.080 µs** at call 16, compared with **655.856 µs** at call 44 in the earlier lightweight seed-0 run. The best-source field appeared in 41 of 50 recorded prompts, first at call 4. There were 49 valid and one invalid proposal, 47 distinct nodes and profiles including the root, and 49 accepted steps. Input/output tokens were 1,485,707 / 169,636. Worker occupancy was 2,215.7 seconds (a wall-time cost proxy).
+
+Run ID: `bd28165f-fe5b-4b84-b511-b208935a049c`. Local artifacts: [`sequential-sol-best-anchor-bgen50-seed0.sqlite`](../../sequential-sol-best-anchor-bgen50-seed0.sqlite) and [best CUDA source](../../sequential-sol-best-anchor-bgen50-seed0-best.cu). SQLite integrity and all 50 prompt hashes passed verification. All 47 stored profiles used `lightweight_v1`; Nebius listed no instance or disk after cleanup. One seed cannot establish whether the reference helps or hurts search quality.
