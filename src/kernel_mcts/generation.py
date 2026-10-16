@@ -22,6 +22,8 @@ class GenerationRequest:
     previous_result: EvaluationResult | None = None #track for repair
     current_benchmark: Mapping[str, object] | None = None
     recent_feedback: Mapping[str, object] | None = None
+    best_so_far: Mapping[str, object] | None = None
+    hardware_resource_graph: Mapping[str, object] | None = None
 
 
 @dataclass(frozen=True, slots=True)

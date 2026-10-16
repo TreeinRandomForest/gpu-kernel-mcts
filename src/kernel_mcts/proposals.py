@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .budget import GenerationBudget, MutationBudget
 from .domain import EvaluationResult, InvalidReason, KernelProgram, ProposalStatus, WorkloadContract
@@ -107,20 +107,11 @@ def run_proposal(
             and attempt_number < max_repairs
             and not budget.exhausted
         ):
-            current_request = GenerationRequest(
-                parent=request.parent,
-                strategy=request.strategy,
-                workload=request.workload,
-                hardware=request.hardware,
-                profile=request.profile,
-                compiler_summary=request.compiler_summary,
-                dataflow_view=request.dataflow_view,
-                incoming_profile_delta=request.incoming_profile_delta,
+            current_request = replace(
+                request,
                 attempt=attempt_number + 1,
                 previous_program=generation.program,
                 previous_result=evaluation,
-                current_benchmark=request.current_benchmark,
-                recent_feedback=request.recent_feedback,
             )
 
     if attempts:

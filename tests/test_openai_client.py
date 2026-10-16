@@ -22,7 +22,11 @@ class FakeResponses:
             output_text="kernel source",
             model="test-model-2026-09-11",
             status="completed",
-            usage=SimpleNamespace(input_tokens=123, output_tokens=45),
+            usage=SimpleNamespace(
+                input_tokens=123,
+                output_tokens=45,
+                input_tokens_details=SimpleNamespace(cached_tokens=64, cache_write_tokens=32),
+            ),
         )
 
 
@@ -47,6 +51,8 @@ def test_responses_client_makes_independent_unstored_request() -> None:
     assert result.output_tokens == 45
     assert result.latency_seconds is not None
     assert result.metadata["provider"] == "openai"
+    assert result.metadata["cached_input_tokens"] == 64
+    assert result.metadata["cache_write_input_tokens"] == 32
     assert result.instructions_text == OPENAI_GENERATION_INSTRUCTIONS
     assert responses.calls == [
         {
@@ -107,3 +113,17 @@ def test_bounded_local_conversation_replays_only_recent_text_turn():
     assert responses.calls[2]["instructions"] == "JSON only"
     assert responses.calls[2]["store"] is False
     assert third.metadata["conversation_input"] == responses.calls[2]["input"]
+
+
+def test_full_history_bound_keeps_first_turn_visible():
+    responses = FakeResponses()
+    subject = OpenAIResponsesClient(
+        OpenAIResponsesConfig(model="test-model", history_turns=50),
+        client=SimpleNamespace(responses=responses),
+    )
+    for number in range(4):
+        subject.complete(f"prompt-{number}")
+    messages = responses.calls[3]["input"]
+    assert len(messages) == 7
+    assert messages[0] == {"role": "user", "content": "prompt-0"}
+    assert messages[-1] == {"role": "user", "content": "prompt-3"}

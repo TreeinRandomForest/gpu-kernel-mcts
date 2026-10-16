@@ -13,6 +13,7 @@ from kernel_mcts.llm import LLMCompletion
 from kernel_mcts.persistence import SQLiteTraceStore
 from kernel_mcts.sequential import SequentialConfig, _visible_profile, run_sequential_loop
 from kernel_mcts.sequential_generation import SequentialKernelGenerator, build_sequential_prompt
+from kernel_mcts.resource_graph import h100_sxm_resource_graph
 
 
 WORKLOAD = WorkloadContract("test", "elementwise", "fp32", (ShapeCase({"n": 1}, 1.0),), 0, 0)
@@ -121,6 +122,55 @@ def test_unconstrained_prompt_and_strategy_menu():
     assert "strategy" not in plain and "strategy_menu" not in plain
     assert menu["strategy_menu"] == ["tile: change tile"]
     assert plain["current_benchmark"]["median_us"] == 100.0
+
+
+def test_best_so_far_context_is_opt_in_and_only_shown_away_from_best(tmp_path):
+    generator = Generator(["fast", "slow", "fast", "slow"])
+    with SQLiteTraceStore(tmp_path / "best-context.sqlite") as trace:
+        trace.start_run("run", WORKLOAD.benchmark_id, "sequential", {})
+        result = run_sequential_loop(
+            root_evaluation=valid("root", 100.0), workload=WORKLOAD,
+            hardware={}, generator=generator, evaluator=Evaluator(),
+            profiler=Profiler(), trace=trace, generation_budget=4,
+            config=SequentialConfig(
+                max_repairs=0, dataflow_view="none", include_best_so_far=True,
+            ),
+        )
+    assert [request.best_so_far for request in generator.requests] == [
+        None, None, {"source": "fast", "median_us": 80.0}, None,
+    ]
+    assert "best_so_far" not in json.loads(build_sequential_prompt(generator.requests[1]))
+    assert json.loads(build_sequential_prompt(generator.requests[2]))["best_so_far"] == {
+        "source": "fast", "median_us": 80.0,
+    }
+    assert result.best.evaluation.program.source == "fast"
+    assert result.current.evaluation.program.source == "slow"
+    assert result.generations == 4
+    assert result.profile_calls == 3
+
+
+def test_hardware_graph_context_is_opt_in_and_recorded_in_prompt(tmp_path):
+    graph = h100_sxm_resource_graph({
+        "manifest_id": "h100-test", "gpu_model": "H100 80 GB",
+        "form_factor": "SXM", "compute_capability": "9.0",
+        "gpu_count": 1, "mig_configuration": {},
+    })
+    assert graph is not None
+    generator = Generator(["fast"])
+    with SQLiteTraceStore(tmp_path / "hardware-context.sqlite") as trace:
+        trace.start_run("run", WORKLOAD.benchmark_id, "sequential", {})
+        run_sequential_loop(
+            root_evaluation=valid("root", 100.0), workload=WORKLOAD,
+            hardware={}, generator=generator, evaluator=Evaluator(),
+            profiler=Profiler(), trace=trace, generation_budget=1,
+            config=SequentialConfig(
+                max_repairs=0, dataflow_view="none", include_hardware_graph=True,
+            ), resource_graph=graph,
+        )
+    payload = json.loads(build_sequential_prompt(generator.requests[0]))
+    assert payload["hardware_resource_graph"]["manifest_id"] == "h100-test"
+    assert payload["hardware_resource_graph"]["constraints"]
+    assert payload["hardware_resource_graph"]["links"]
 
 
 def test_generator_requires_hypothesis_and_complete_source():

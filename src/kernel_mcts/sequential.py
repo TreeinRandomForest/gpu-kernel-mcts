@@ -19,6 +19,7 @@ from .profiling import (
     LIGHTWEIGHT_V1_ALIASES, LIGHTWEIGHT_V1_METRICS, PROFILE_METRIC_SET_IDS,
 )
 from .proposals import run_proposal
+from .resource_graph import prompt_h100_resource_graph
 from .serialization import serialize_benchmark, serialize_evaluation, serialize_generation, serialize_workload
 
 
@@ -31,6 +32,8 @@ class SequentialConfig:
     compiler_detail: str = "full"  # none, resources, or full
     dataflow_view: str = "paths"
     dataflow_description: str = "limits"  # none or limits
+    include_best_so_far: bool = False
+    include_hardware_graph: bool = False
 
     def __post_init__(self) -> None:
         if self.max_repairs < 0 or self.max_infrastructure_retries < 0:
@@ -76,11 +79,14 @@ def run_sequential_loop(
     hardware: Mapping[str, object], generator: KernelGenerator,
     evaluator: KernelEvaluator, profiler: NodeProfiler, trace: SearchTraceStore,
     generation_budget: int, config: SequentialConfig = SequentialConfig(), seed: int = 0,
+    resource_graph: Mapping[str, object] | None = None,
 ) -> SequentialResult:
     if root_evaluation.status != ProposalStatus.VALID:
         raise ValueError("sequential root must be valid")
     if root_evaluation.program is None or root_evaluation.benchmark is None:
         raise ValueError("sequential root requires a program and benchmark")
+    if config.include_hardware_graph and resource_graph is None:
+        raise ValueError("hardware graph context requires a supported resource graph")
     budget = GenerationBudget(generation_budget)
     started = perf_counter()
     root = SequentialNode(str(uuid4()), root_evaluation)
@@ -152,6 +158,19 @@ def run_sequential_loop(
                 compiler_summary=compiler, dataflow_view=dataflow,
                 current_benchmark=serialize_benchmark(evaluation.benchmark),
                 recent_feedback=feedback,
+                hardware_resource_graph=(
+                    prompt_h100_resource_graph(resource_graph)
+                    if config.include_hardware_graph and resource_graph is not None
+                    else None
+                ),
+                best_so_far=(
+                    {
+                        "source": best.evaluation.program.source,
+                        "median_us": best.evaluation.benchmark.median_us,
+                    }
+                    if config.include_best_so_far and best.id != current.id
+                    else None
+                ),
             )
             parent = current
             outcome = run_proposal(

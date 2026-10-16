@@ -83,6 +83,7 @@ class OpenAIResponsesClient:
             self._history.append((prompt, str(response.output_text or "")))
             self._history = self._history[-self.config.history_turns:]
         usage = getattr(response, "usage", None)
+        input_details = getattr(usage, "input_tokens_details", None)
         return LLMCompletion(
             response_id=str(response.id),
             output_text=str(response.output_text or ""),
@@ -97,6 +98,8 @@ class OpenAIResponsesClient:
                 "max_output_tokens": self.config.max_output_tokens,
                 "store": self.config.store,
                 "history_turns": len(history),
+                "cached_input_tokens": getattr(input_details, "cached_tokens", None),
+                "cache_write_input_tokens": getattr(input_details, "cache_write_tokens", None),
                 **({"conversation_input": messages} if self.config.history_turns else {}),
             },
             instructions_text=self.config.instructions,

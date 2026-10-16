@@ -226,6 +226,63 @@ def h100_sxm_resource_graph(
     }
 
 
+def prompt_h100_resource_graph(graph: Mapping[str, object]) -> dict[str, object]:
+    """Bounded architectural prompt view; unknown link properties stay unknown."""
+    if graph.get("schema_version") != SCHEMA_VERSION or graph.get("model") != "H100 SXM 80 GB":
+        raise ValueError("unsupported H100 resource graph")
+
+    def evidence(value: object) -> dict[str, object] | None:
+        if not isinstance(value, Mapping):
+            return None
+        return {key: value.get(key) for key in ("value", "unit", "basis")}
+
+    nodes = []
+    for node in graph.get("nodes", []):
+        if not isinstance(node, Mapping):
+            continue
+        row = {key: node.get(key) for key in ("id", "kind", "scope")}
+        for key in ("capacity", "maximum_capacity", "count", "units"):
+            if key in node:
+                row[key] = evidence(node[key])
+        nodes.append(row)
+
+    links = []
+    for link in graph.get("links", []):
+        if not isinstance(link, Mapping):
+            continue
+        row = {key: link.get(key) for key in (
+            "id", "source", "target", "pathway", "direction",
+        )}
+        row["published_peak_bandwidth"] = evidence(link.get("published_peak_bandwidth"))
+        links.append(row)
+
+    constraints = []
+    for constraint in graph.get("constraints", []):
+        if not isinstance(constraint, Mapping):
+            continue
+        row = {key: constraint[key] for key in (
+            "id", "scope", "resource_id", "resources", "note",
+        ) if key in constraint}
+        for key in ("maximum", "combined_maximum"):
+            if key in constraint:
+                row[key] = evidence(constraint[key])
+        constraints.append(row)
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "model": graph["model"],
+        "manifest_id": graph.get("manifest_id"),
+        "purpose": "diagnostic_architectural_context",
+        "nodes": nodes,
+        "links": links,
+        "constraints": constraints,
+        "uncertainty": (
+            "Published peaks and architectural limits are not measured performance. "
+            "Sustainable bandwidth and latency are uncalibrated for every link."
+        ),
+    }
+
+
 def h100_constraint_checks(
     graph: Mapping[str, object],
     compiler_context: Mapping[str, object] | None,

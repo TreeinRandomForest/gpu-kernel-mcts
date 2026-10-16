@@ -50,6 +50,8 @@ billable worker.
 | Collected NCU metrics | `--profile-metric-set` | `lightweight_v1`, `diagnostic_v2` |
 | Visible NCU metrics | `--sequential-profile-visibility` | `none`, `lightweight`, `full` |
 | Fixed strategy menu | `--sequential-strategy-menu --strategies PATH` | off by default |
+| Best verified source | `--sequential-best-so-far` | off by default; shown when current and best differ |
+| H100 architecture graph | `--sequential-hardware-graph` | off by default; versioned nodes, links, and constraints with uncertainty |
 
 The `full` compiler choice is the existing bounded ptxas resource and SASS
 static-site summary. The PTX graph views remain static evidence: they do not

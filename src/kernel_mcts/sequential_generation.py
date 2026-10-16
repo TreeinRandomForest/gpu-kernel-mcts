@@ -88,6 +88,10 @@ def build_sequential_prompt(request: GenerationRequest, strategy_menu: tuple[str
     if strategy_menu:
         payload["strategy_menu"] = list(strategy_menu)
         payload["strategy_instruction"] = "Choose one listed strategy in your hypothesis, then implement it."
+    if request.best_so_far is not None:
+        payload["best_so_far"] = dict(request.best_so_far)
+    if request.hardware_resource_graph is not None:
+        payload["hardware_resource_graph"] = dict(request.hardware_resource_graph)
     if request.previous_program is not None or request.previous_result is not None:
         payload["repair"] = {
             "previous_candidate": request.previous_program.source if request.previous_program else None,

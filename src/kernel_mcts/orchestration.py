@@ -21,6 +21,7 @@ from .evaluation import root_normalized_reward
 from .generation import KernelGenerator
 from .interfaces import EventSink, KernelEvaluator, StrategyPriorProvider
 from .providers import GPUProvider, GPUWorker, HardwareSpec
+from .resource_graph import h100_sxm_resource_graph
 from .search import MCTS, MCTSConfig, SearchResult
 from .serialization import serialize_evaluation, serialize_program, serialize_workload
 
@@ -441,7 +442,14 @@ def run_sequential_search(
     try:
         worker = provider.acquire_worker(hardware)
         worker_started = perf_counter()
-        trace.emit("environment_manifest", worker.get_environment_manifest().as_dict())
+        manifest = worker.get_environment_manifest().as_dict()
+        trace.emit("environment_manifest", manifest)
+        resource_graph = (
+            h100_sxm_resource_graph(manifest)
+            if config.include_hardware_graph else None
+        )
+        if config.include_hardware_graph and resource_graph is None:
+            raise RuntimeError("worker has no supported H100 SXM resource graph")
         worker_evaluator = WorkerKernelEvaluator(worker, resolved_run_id, trace)
 
         def record_root_attempt(attempt: int, result: EvaluationResult) -> None:
@@ -469,6 +477,7 @@ def run_sequential_search(
             evaluator=RootNormalizedEvaluator(worker_evaluator, root.benchmark),
             profiler=WorkerNodeProfiler(worker, resolved_run_id, config.profile_metric_set),
             trace=trace, generation_budget=generation_budget, config=config, seed=seed,
+            resource_graph=resource_graph,
         )
         return SequentialExecution(resolved_run_id, result)
     except Exception as error:

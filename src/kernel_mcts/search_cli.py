@@ -277,6 +277,10 @@ def build_parser() -> argparse.ArgumentParser:
                         choices=DATAFLOW_PROMPT_VIEWS, default="paths")
     parser.add_argument("--sequential-strategy-menu", action="store_true",
                         help="show the fixed --strategies catalog as an optional ablation")
+    parser.add_argument("--sequential-best-so-far", action="store_true",
+                        help="include the best verified source when the current source differs")
+    parser.add_argument("--sequential-hardware-graph", action="store_true",
+                        help="include a bounded H100 resource graph in sequential prompts")
     parser.add_argument("--max-infrastructure-retries", type=int, default=1)
     parser.add_argument("--c-puct", type=float, default=1.5)
     parser.add_argument("--k-max", type=int, default=4)
@@ -661,6 +665,8 @@ def _sequential_components(
         compiler_detail=arguments.sequential_compiler_detail,
         dataflow_view=arguments.sequential_dataflow_view,
         dataflow_description=arguments.sequential_dataflow_description,
+        include_best_so_far=arguments.sequential_best_so_far,
+        include_hardware_graph=arguments.sequential_hardware_graph,
     )
     return generator, arguments.model, config
 

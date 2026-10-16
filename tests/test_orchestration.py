@@ -580,6 +580,57 @@ def test_sequential_orchestration_reuses_worker_and_releases_it(tmp_path):
         ).fetchone() == ("sequential", 3, 3)
 
 
+def test_sequential_orchestration_builds_prompt_graph_from_worker_manifest(tmp_path):
+    class H100Worker(MockWorker):
+        def get_environment_manifest(self):
+            return replace(
+                MANIFEST, gpu_model="NVIDIA H100 80GB HBM3",
+                total_memory_bytes=85_520_809_984, sm_count=132,
+            )
+
+        def evaluate(self, evaluation_id, program, workload, profile_level):
+            result = super().evaluate(evaluation_id, program, workload, profile_level)
+            return replace(
+                result,
+                environment_manifest_id=self.get_environment_manifest().manifest_id,
+            )
+
+    provider = MockProvider(H100Worker())
+    generator = MockGenerator()
+    path = tmp_path / "sequential-hardware.sqlite"
+    with SQLiteTraceStore(path) as trace:
+        run_sequential_search(
+            provider=provider, hardware=HARDWARE, workload=WORKLOAD,
+            root_program=KernelProgram("root"), generator=generator,
+            generation_budget=1, trace=trace,
+            config=SequentialConfig(
+                max_repairs=0, dataflow_view="none", include_hardware_graph=True,
+            ), run_id="sequential-hardware",
+        )
+    assert provider.acquisitions == provider.releases == 1
+    assert generator.requests[0].hardware_resource_graph["model"] == "H100 SXM 80 GB"
+    with sqlite3.connect(path) as connection:
+        config = json.loads(connection.execute("SELECT config_json FROM search_runs").fetchone()[0])
+        assert config["sequential"]["include_hardware_graph"] is True
+
+
+def test_sequential_hardware_graph_rejects_unsupported_worker_and_releases_it(tmp_path):
+    provider = MockProvider()
+    generator = MockGenerator()
+    with SQLiteTraceStore(tmp_path / "unsupported-hardware.sqlite") as trace:
+        with pytest.raises(RuntimeError, match="no supported H100 SXM resource graph"):
+            run_sequential_search(
+                provider=provider, hardware=HARDWARE, workload=WORKLOAD,
+                root_program=KernelProgram("root"), generator=generator,
+                generation_budget=1, trace=trace,
+                config=SequentialConfig(
+                    max_repairs=0, dataflow_view="none", include_hardware_graph=True,
+                ), run_id="unsupported-hardware",
+            )
+    assert provider.acquisitions == provider.releases == 1
+    assert generator.requests == []
+
+
 def test_sequential_next_prompt_reads_recorded_ptx_graph(tmp_path):
     raw = (b".visible .entry kernel(.param .u64 p0) {\n"
            b"ld.param.u64 %rd1, [p0];\n"

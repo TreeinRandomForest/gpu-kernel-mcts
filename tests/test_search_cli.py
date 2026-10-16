@@ -107,6 +107,21 @@ def test_search_cli_parser_accepts_incoming_profile_delta_ablation() -> None:
     assert arguments.include_incoming_profile_delta
 
 
+def test_search_cli_wires_sequential_best_so_far(monkeypatch) -> None:
+    from kernel_mcts.search_cli import _sequential_components
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    arguments = build_parser().parse_args([
+        "--image", "worker:v1", "--trace", "trace.sqlite",
+        "--algorithm", "sequential", "--generator", "openai",
+        "--model", "test-model", "--sequential-best-so-far",
+        "--sequential-hardware-graph",
+    ])
+    _, _, config = _sequential_components(build_parser(), arguments)
+    assert config.include_best_so_far
+    assert config.include_hardware_graph
+
+
 def test_search_cli_parser_accepts_compiler_prompt_ablation_flags() -> None:
     arguments = build_parser().parse_args([
         "--image", "worker:v1", "--trace", "trace.sqlite",

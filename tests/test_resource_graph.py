@@ -4,6 +4,7 @@ from kernel_mcts.resource_graph import (
     h100_constraint_checks,
     h100_sxm_resource_graph,
     ncu_resource_observations,
+    prompt_h100_resource_graph,
 )
 
 
@@ -52,6 +53,21 @@ def test_h100_graph_rejects_other_devices_and_mig() -> None:
     assert h100_sxm_resource_graph({**MANIFEST, "gpu_model": "H100 SXM 94GB"}) is None
     assert h100_sxm_resource_graph({**MANIFEST, "mig_configuration": {"enabled": True}}) is None
     assert h100_sxm_resource_graph({**MANIFEST, "gpu_count": 2}) is None
+
+
+def test_h100_prompt_view_preserves_limits_and_unknown_link_properties() -> None:
+    graph = h100_sxm_resource_graph(MANIFEST)
+    assert graph is not None
+    view = prompt_h100_resource_graph(graph)
+    assert view["schema_version"] == graph["schema_version"]
+    assert view["manifest_id"] == MANIFEST["manifest_id"]
+    assert {row["id"] for row in view["nodes"]} == {row["id"] for row in graph["nodes"]}
+    assert {row["id"] for row in view["links"]} == {row["id"] for row in graph["links"]}
+    assert {row["id"] for row in view["constraints"]} == {row["id"] for row in graph["constraints"]}
+    links = {row["id"]: row for row in view["links"]}
+    assert links["hbm_l2"]["published_peak_bandwidth"]["basis"] == "published_peak"
+    assert links["l2_l1"]["published_peak_bandwidth"]["value"] is None
+    assert "uncalibrated" in view["uncertainty"]
 
 
 def test_ncu_observations_keep_percentage_units_and_metric_provenance() -> None:

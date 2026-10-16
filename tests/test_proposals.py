@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from kernel_mcts.baselines import independent_best_of_n
 from kernel_mcts.budget import GenerationBudget, MutationBudget
 from kernel_mcts.domain import (
@@ -86,6 +88,27 @@ def test_repair_generation_is_charged_and_receives_failure_context() -> None:
     assert generator.requests[1].previous_result is outcome.attempts[0].evaluation
     assert generator.requests[1].incoming_profile_delta == {"reward_delta": 0.5}
     assert generator.requests[1].compiler_summary == generator.requests[0].compiler_summary
+
+
+def test_repair_preserves_optional_context() -> None:
+    generator = RepairGenerator()
+    original = request()
+    original = replace(
+        original,
+        best_so_far={"source": "best", "median_us": 80.0},
+        hardware_resource_graph={"model": "H100 SXM 80 GB"},
+    )
+    run_proposal(
+        generator=generator,
+        evaluator=RepairEvaluator(),
+        budget=GenerationBudget(2),
+        request=original,
+        max_repairs=1,
+        max_infrastructure_retries=0,
+    )
+
+    assert generator.requests[1].best_so_far == original.best_so_far
+    assert generator.requests[1].hardware_resource_graph == original.hardware_resource_graph
 
 
 def test_global_budget_prevents_repair_call() -> None:
