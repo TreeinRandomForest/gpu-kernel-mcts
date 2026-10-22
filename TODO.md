@@ -286,12 +286,34 @@ completed hardware validation is identified explicitly.
 - [ ] Remeasure the 655.856 µs kernel on a fresh matched worker and replay
   call-34 versus call-44 sources in alternating order to test the CTA mapping
   effect. Repeat sequential seeds before drawing a ranking conclusion.
-- [ ] Compare a sequential explicit-menu arm with the same context, budget, and
-  two-turn history; then test a compact history policy to control the 1.37M
-  input-token cost observed in seed 0.
-- [ ] Design a separate hybrid search experiment with a bounded freeform
-  proposal action and optional context-dependent priors. Review the semantic
-  strategy requirement in `spec.md` before changing MCTS selection behavior.
+- [x] Record the matched sequential strategy-choice plan: two-turn versus
+  full-history context, H100 graph off/on, and freeform versus catalog choice.
+  Fix the compiler, PTX `paths`, NCU, root, worker image, and `B_gen=50`
+  settings within each pair. See
+  `docs/experiments/sequential-strategy-menu-plan.md`.
+- [ ] Implement an auditable sequential strategy choice in one generation
+  call: parse `selected_strategy_id`, freeze/hash the menu and prompt version,
+  persist the declared ID and adherence status for every proposal and repair,
+  and leave compile/correctness validity and `B_gen` accounting unchanged.
+  Add GPU-free generation, CLI, trace, and repair tests.
+- [ ] Smoke-test that instrumentation, then run the first matched
+  two-turn/no-H100-graph freeform and catalog arms at `B_gen=50`. Repeat over
+  declared seeds; compare best-so-far curves, validity, edits, profiles,
+  tokens, and GPU cost. The historical 655.856 µs run is not a fresh control.
+- [ ] Extend the same paired comparison to two-turn/graph and
+  full-history/graph-off and graph-on cells. Keep `lightweight_v1` collection
+  fixed for this factorial study; test diagnostic NCU as a later factor.
+- [ ] Independently classify sequential source transitions against declared
+  strategy IDs. Version and test catalog additions only for recurring useful
+  edits that are absent or prohibited by current strategy wording.
+- [x] Specify an opt-in hybrid CUDA MCTS action `freeform_cuda` in Section 48
+  of `spec.md`, leaving baseline Milestone A semantics unchanged.
+- [ ] After the sequential strategy study, implement and compare hybrid MCTS
+  versus strategy-only MCTS under matched MCTS budgets, context, priors, and
+  worker settings. Do not infer the cause of the MCTS/sequential gap from the
+  sequential menu comparison alone.
+- [ ] After the matched strategy study, test a compact history policy to
+  control the 1.37M input-token cost observed in the two-turn seed-0 run.
 - [ ] Ablate one factor at a time with repeated runs: generation-call depth;
   compiler-summary detail; dataflow view and explanatory text; visible NCU
   metric bundle; and an unconstrained prompt versus a fixed explicit strategy

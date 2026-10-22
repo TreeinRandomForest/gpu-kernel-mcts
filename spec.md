@@ -647,7 +647,9 @@ Profiler information is attached to a node but does not alter kernel semantics.
 
 # 8. Action / Edge Definition
 
-An action is a semantic GPU-kernel optimization strategy.
+In baseline Milestone A MCTS, an action is a semantic GPU-kernel optimization
+strategy. Section 48 defines a separately enabled CUDA experiment that adds one
+open-ended action; it does not change the baseline action set.
 
 Strategies should be identified by backend-independent semantic IDs. The concrete prompt used for a strategy may differ by backend.
 
@@ -3277,3 +3279,79 @@ lowering, references, and correctness contracts to attention, reductions,
 convolutions, elementwise/fused graphs, and other GPU architectures is a subsequent
 milestone. That later milestone should reuse the search protocol and transformation
 interface rather than encode GEMM-specific fields in the core MCTS algorithm.
+
+# 48. Experimental Hybrid CUDA MCTS with an Open-Ended Action
+
+This section specifies an **opt-in research variant**, to be implemented after the
+sequential strategy-menu comparison described in
+`docs/experiments/sequential-strategy-menu-plan.md`. Baseline Milestone A MCTS
+continues to use only configured semantic strategies. Existing traces and their
+interpretation do not change. The variant is initially restricted to the
+`cuda_cpp` backend and must be identified separately in run configuration and
+reports.
+
+## 48.1 Action set and generation
+
+The hybrid action set is the configured semantic strategy catalog plus one
+reserved action ID, `freeform_cuda`. PUCT selects this ID exactly as it selects
+any other action. Selecting `freeform_cuda` asks the generator to optimize the
+selected parent CUDA program under the same workload, hardware, correctness,
+and source-output contract, without choosing a catalog strategy first. It may
+make coupled changes across several mechanisms. The action ID is an explicit
+exception to the semantic-strategy definition in Section 8; it must not be
+retroactively assigned a catalog strategy merely because a generated edit
+resembles one. Post-hoc edit tags may be logged separately for analysis.
+
+One selected action leads to one candidate-generation call at a time, subject
+to the existing progressive-widening rule. An invalid candidate may receive
+the configured repair calls under that same selected action. Each generation
+and repair consumes `B_gen`; failed attempts remain proposal records and do
+not become nodes. Compile-successful, correctness-passing, benchmark-measured
+candidates become valid realizations even when locally slower. The same state
+reached through different actions uses the existing state identity and
+transposition rules.
+
+## 48.2 Unchanged tree policy and budgets
+
+The hybrid run remains **one global program search**. It does not commit to or
+re-root at the most recent child. PUCT uses the Section 9 score and `Q_mean`
+for every action, including `freeform_cuda`, with `Q_max` logged. Section 11's
+exact `K_allowed(s, a)` formula limits distinct realizations per action. Once
+widening is saturated, Section 12's UCB selects among existing realizations.
+Visits do not imply GPU reevaluation; profiling and evaluation caching retain
+their existing behavior. Valid measured-leaf-only backup and retention of
+locally slower valid kernels remain unchanged.
+
+For uniform priors, each of the `n + 1` configured actions receives
+`1 / (n + 1)`, where `n` is the number of catalog strategies. If LLM priors
+are used, the prior request must score the full enlarged action set and its
+calls remain in `B_prior`, separate from `B_gen`. Any fixed non-uniform prior
+for `freeform_cuda` is an explicit,
+versioned ablation setting; it must not silently change the PUCT formula or
+consume generation budget. Existing budget and reward definitions still apply.
+
+## 48.3 Context and auditability
+
+At a selected parent, both catalog and freeform generation use the same
+configured parent source, benchmark, profile visibility, compiler summary,
+dataflow view, hardware context, and fresh-session policy from Section 13.
+Only the selected action instruction differs. Optional prompt context must
+keep static PTX/SASS evidence distinct from measured whole-kernel NCU values;
+it must not assert unmeasured per-edge traffic. The exact action catalog,
+freeform prompt version, context flags, prior mode, prompt, model output,
+tokens, and selected action ID must be persisted for every generation and
+repair. A repair stays under its original selected action.
+
+## 48.4 Required comparison before interpretation
+
+Compare baseline strategy-only MCTS with the hybrid variant at equal `B_gen`,
+root, workload, model, worker image, profile policy, prompt context, search
+parameters, and declared seeds. Report best-so-far latency versus generation
+calls, validity, repairs, action allocation, unique states, depth, profiles,
+tokens, and GPU cost. Repeat runs before claiming an advantage. Analyze
+whether freeform proposals discover transitions absent from the catalog,
+combine catalog themes, or merely receive more search budget through their
+prior. Sequential menu versus freeform results motivate this experiment but
+do not by themselves isolate the cause of an MCTS-versus-sequential gap:
+sequential acceptance, history policy, profiling frequency, and action
+selection differ.
