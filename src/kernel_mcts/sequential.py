@@ -193,6 +193,7 @@ def run_sequential_loop(
                 final = attempt is outcome.attempts[-1]
                 attempt_result = attempt.evaluation
                 serialized = serialize_evaluation(attempt_result)
+                choice = attempt.generation.metadata or {}
                 trace.emit("generation", {
                     "generation_id": attempt.generation.generation_id,
                     "iteration": iterations, "b_gen": attempt.b_gen,
@@ -203,6 +204,9 @@ def run_sequential_loop(
                     "compile_status": serialized["compile_status"],
                     "correctness_status": serialized["correctness_status"],
                     "generation": serialize_generation(attempt.generation),
+                    "selected_strategy_id": choice.get("selected_strategy_id"),
+                    "strategy_choice_status": choice.get("strategy_choice_status"),
+                    "original_selected_strategy_id": choice.get("strategy_choice_original_id"),
                     "evaluation": serialized,
                     "prompt_hash": attempt.generation.prompt_hash,
                     "prompt_text": attempt.generation.prompt_text,

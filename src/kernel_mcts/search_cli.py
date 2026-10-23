@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import replace
+import hashlib
 import os
 import sys
 from pathlib import Path
@@ -401,6 +402,9 @@ def main(argv: list[str] | None = None) -> int:
         ),
         "backend": arguments.backend,
     }
+    if arguments.algorithm == "sequential":
+        assert isinstance(generator, SequentialKernelGenerator)
+        provenance["sequential_strategy_choice"] = generator.choice_provenance
     if arguments.backend == "cute_dsl":
         representation = (
             independent_cute_gemm_from_source(root_program.source)
@@ -640,10 +644,16 @@ def _sequential_components(
     if not os.environ.get(arguments.openai_api_key_env):
         parser.error(f"environment variable {arguments.openai_api_key_env!r} is not set")
     menu: tuple[str, ...] = ()
+    strategy_ids: tuple[str, ...] = ()
+    catalog_sha256: str | None = None
     if arguments.sequential_strategy_menu:
+        catalog_sha256 = hashlib.sha256(arguments.strategies.read_bytes()).hexdigest()
         catalog = parse_strategies(load_data(arguments.strategies))
         if not catalog:
             parser.error("strategy menu must contain at least one strategy")
+        strategy_ids = tuple(item.id for item in catalog)
+        if len(set(strategy_ids)) != len(strategy_ids) or "freeform" in strategy_ids:
+            parser.error("strategy menu IDs must be unique and cannot use freeform")
         menu = tuple(
             f"{item.id}: {item.description}; {item.prompt_for('cuda_cpp')}"
             for item in catalog
@@ -656,7 +666,10 @@ def _sequential_components(
         instructions=SEQUENTIAL_INSTRUCTIONS,
         history_turns=arguments.session_history_turns,
     ))
-    generator = SequentialKernelGenerator(client, strategy_menu=menu)
+    generator = SequentialKernelGenerator(
+        client, strategy_menu=menu, strategy_ids=strategy_ids,
+        catalog_sha256=catalog_sha256,
+    )
     config = SequentialConfig(
         max_repairs=arguments.max_repairs,
         max_infrastructure_retries=arguments.max_infrastructure_retries,

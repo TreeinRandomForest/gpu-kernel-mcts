@@ -24,6 +24,8 @@ class GenerationRequest:
     recent_feedback: Mapping[str, object] | None = None
     best_so_far: Mapping[str, object] | None = None
     hardware_resource_graph: Mapping[str, object] | None = None
+    strategy_choice_original_id: str | None = None
+    strategy_choice_locked_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -120,6 +121,54 @@ def test_search_cli_wires_sequential_best_so_far(monkeypatch) -> None:
     _, _, config = _sequential_components(build_parser(), arguments)
     assert config.include_best_so_far
     assert config.include_hardware_graph
+
+
+def test_sequential_strategy_catalog_provenance_is_frozen(monkeypatch, tmp_path) -> None:
+    from kernel_mcts.search_cli import _sequential_components
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    catalog = tmp_path / "strategies.yaml"
+    catalog.write_text(
+        "strategies:\n"
+        "  - id: tile\n"
+        "    description: Change the tile\n"
+        "    prompts:\n"
+        "      cuda_cpp: Rewrite tile dimensions.\n"
+        "  - id: mapping\n"
+        "    description: Change mapping\n"
+        "    prompts:\n"
+        "      cuda_cpp: Rewrite CTA mapping.\n"
+    )
+    arguments = build_parser().parse_args([
+        "--image", "worker:v1", "--trace", "trace.sqlite",
+        "--algorithm", "sequential", "--generator", "openai",
+        "--model", "test-model", "--generation-budget", "2",
+        "--sequential-strategy-menu", "--strategies", str(catalog),
+    ])
+    generator, _, _ = _sequential_components(build_parser(), arguments)
+    provenance = generator.choice_provenance
+    assert provenance["menu_enabled"] is True
+    assert provenance["ordered_strategy_ids"] == ["tile", "mapping"]
+    assert provenance["rendered_strategy_menu"] == [
+        "tile: Change the tile; Rewrite tile dimensions.",
+        "mapping: Change mapping; Rewrite CTA mapping.",
+    ]
+    assert provenance["catalog_sha256"] == hashlib.sha256(catalog.read_bytes()).hexdigest()
+    rendered_json = json.dumps(
+        provenance["rendered_strategy_menu"], ensure_ascii=False, separators=(",", ":")
+    )
+    assert provenance["rendered_menu_sha256"] == hashlib.sha256(rendered_json.encode()).hexdigest()
+    assert provenance["prompt_schema_version"] == 2
+
+    freeform_arguments = build_parser().parse_args([
+        "--image", "worker:v1", "--trace", "trace.sqlite",
+        "--algorithm", "sequential", "--generator", "openai",
+        "--model", "test-model", "--generation-budget", "2",
+    ])
+    freeform, _, _ = _sequential_components(build_parser(), freeform_arguments)
+    assert freeform.choice_provenance["menu_enabled"] is False
+    assert freeform.choice_provenance["ordered_strategy_ids"] == []
+    assert freeform.choice_provenance["catalog_sha256"] is None
 
 
 def test_search_cli_parser_accepts_compiler_prompt_ablation_flags() -> None:

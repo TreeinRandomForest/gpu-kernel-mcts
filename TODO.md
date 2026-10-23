@@ -291,7 +291,7 @@ completed hardware validation is identified explicitly.
   Fix the compiler, PTX `paths`, NCU, root, worker image, and `B_gen=50`
   settings within each pair. See
   `docs/experiments/sequential-strategy-menu-plan.md`.
-- [ ] Implement an auditable sequential strategy choice in one generation
+- [x] Implement an auditable sequential strategy choice in one generation
   call: parse `selected_strategy_id`, freeze/hash the menu and prompt version,
   persist the declared ID and adherence status for every proposal and repair,
   and leave compile/correctness validity and `B_gen` accounting unchanged.
@@ -300,12 +300,24 @@ completed hardware validation is identified explicitly.
   two-turn/no-H100-graph freeform and catalog arms at `B_gen=50`. Repeat over
   declared seeds; compare best-so-far curves, validity, edits, profiles,
   tokens, and GPU cost. The historical 655.856 µs run is not a fresh control.
+  Seed-0 smoke and pair completed; see
+  `docs/experiments/sequential-strategy-choice-seed0.md`. Repeat seeds and
+  classify source edits before drawing a general ranking.
+- [ ] Resolve the freeform response-label deviation before repeated strategy
+  comparisons: all 50 seed-0 freeform calls returned self-named IDs rather
+  than `freeform`. Preserve those raw labels in the trace; if the prompt or
+  parser changes, version the protocol and rerun a fresh matched pair.
 - [ ] Extend the same paired comparison to two-turn/graph and
   full-history/graph-off and graph-on cells. Keep `lightweight_v1` collection
   fixed for this factorial study; test diagnostic NCU as a later factor.
 - [ ] Independently classify sequential source transitions against declared
   strategy IDs. Version and test catalog additions only for recurring useful
-  edits that are absent or prohibited by current strategy wording.
+  edits that are absent or prohibited by current strategy wording. Seed-0
+  trace classification is in
+  `docs/experiments/sequential-strategy-choice-trace-analysis-seed0.md`;
+  the controlled CTA-placement/cache-policy crossover is in
+  `docs/experiments/sequential-cta-cache-crossover/README.md`. Repeated
+  matched search seeds and independent edit classification remain open.
 - [x] Specify an opt-in hybrid CUDA MCTS action `freeform_cuda` in Section 48
   of `spec.md`, leaving baseline Milestone A semantics unchanged.
 - [ ] After the sequential strategy study, implement and compare hybrid MCTS

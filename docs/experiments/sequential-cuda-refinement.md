@@ -13,9 +13,11 @@ selection, progressive widening, priors, backup, or re-rooting.
 3. Read the current node's recorded PTX dataflow graph and bounded compiler
    summary, if selected. The prompt includes the measured benchmark, source,
    selected profile/compiler/dataflow views, and one recent verification result.
-4. Ask the model for JSON containing a short optimization hypothesis and the
-   complete replacement CUDA source. A fixed strategy menu is optional; the
-   default prompt has no strategy field or menu.
+4. Ask the model for JSON containing `selected_strategy_id`, a short optimization
+   hypothesis, and the complete replacement CUDA source. A fixed strategy menu
+   is optional; the default prompt has no menu and asks for the reserved ID
+   `freeform`. Missing or out-of-catalog IDs are logged as prompt-adherence
+   violations without changing candidate verification.
 5. Compile, check correctness, and measure performance through the existing
    worker evaluator. Each generation or repair call consumes one `B_gen`.
    Infrastructure retries repeat worker evaluation without another model call.
@@ -57,9 +59,13 @@ The `full` compiler choice is the existing bounded ptxas resource and SASS
 static-site summary. The PTX graph views remain static evidence: they do not
 claim dynamic memory traffic or paths across control-flow joins.
 
-SQLite `search_runs.algorithm` is `sequential`. Standard `generations`, `nodes`,
+SQLite `search_runs.algorithm` is `sequential`. Run configuration stores the
+ordered strategy IDs, rendered menu, catalog/menu hashes, and prompt schema
+version. Generation metadata and events store the declared ID, adherence
+status, and repair's original ID. Standard `generations`, `nodes`,
 `node_dataflow_graphs`, and profiling records remain available to the trace
 browser. `sequential_step` events capture lineage, acceptance, current and best
 node IDs, and feedback. `worker_usage` records worker occupancy wall time as a
-GPU cost proxy; it is not a provider billing record. No GPU experiment has been
-run as part of this implementation.
+GPU cost proxy; it is not a provider billing record. The first matched H100
+experiment is recorded in
+[`sequential-strategy-choice-seed0.md`](sequential-strategy-choice-seed0.md).

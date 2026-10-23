@@ -107,11 +107,22 @@ def run_proposal(
             and attempt_number < max_repairs
             and not budget.exhausted
         ):
+            metadata = generation.metadata or {}
+            declared_id = metadata.get("selected_strategy_id")
+            locked_id = metadata.get("strategy_choice_lock_id")
             current_request = replace(
                 request,
                 attempt=attempt_number + 1,
                 previous_program=generation.program,
                 previous_result=evaluation,
+                strategy_choice_original_id=(
+                    current_request.strategy_choice_original_id
+                    or (declared_id if isinstance(declared_id, str) else None)
+                ),
+                strategy_choice_locked_id=(
+                    current_request.strategy_choice_locked_id
+                    or (locked_id if isinstance(locked_id, str) else None)
+                ),
             )
 
     if attempts:

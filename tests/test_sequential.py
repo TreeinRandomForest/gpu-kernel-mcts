@@ -119,8 +119,10 @@ def test_unconstrained_prompt_and_strategy_menu():
     )
     plain = json.loads(build_sequential_prompt(request))
     menu = json.loads(build_sequential_prompt(request, ("tile: change tile",)))
-    assert "strategy" not in plain and "strategy_menu" not in plain
+    assert "strategy_menu" not in plain
+    assert "freeform" in plain["strategy_instruction"]
     assert menu["strategy_menu"] == ["tile: change tile"]
+    assert "selected_strategy_id" in menu["strategy_instruction"]
     assert plain["current_benchmark"]["median_us"] == 100.0
 
 
@@ -179,12 +181,109 @@ def test_generator_requires_hypothesis_and_complete_source():
 
     class Client:
         def complete(self, prompt):
-            return LLMCompletion("r1", json.dumps({"hypothesis": "fuse loads", "source": "kernel"}), "fake")
+            return LLMCompletion("r1", json.dumps({
+                "selected_strategy_id": "freeform",
+                "hypothesis": "fuse loads", "source": "kernel",
+            }), "fake")
 
     request = GenerationRequest(KernelProgram("root"), Strategy("freeform", "", {"cuda_cpp": ""}), WORKLOAD, {}, None)
     result = SequentialKernelGenerator(Client()).generate(request)
     assert result.program.source == "kernel"
     assert result.metadata["hypothesis"] == "fuse loads"
+    assert result.metadata["strategy_choice_status"] == "valid"
+
+
+def test_strategy_choice_adherence_does_not_change_candidate_validity():
+    from kernel_mcts.domain import Strategy
+    from kernel_mcts.generation import GenerationRequest
+
+    class Client:
+        def __init__(self, outputs):
+            self.outputs = iter(outputs)
+            self.calls = 0
+
+        def complete(self, prompt):
+            self.calls += 1
+            return LLMCompletion(
+                f"r{self.calls}", json.dumps(next(self.outputs)), "fake",
+            )
+
+    request = GenerationRequest(
+        KernelProgram("root"), Strategy("freeform", "", {"cuda_cpp": ""}),
+        WORKLOAD, {}, None,
+    )
+    client = Client([
+        {"selected_strategy_id": "tile", "hypothesis": "tile", "source": "fast"},
+        {"selected_strategy_id": "unknown", "hypothesis": "other", "source": "slow"},
+        {"hypothesis": "missing", "source": "fast"},
+    ])
+    generator = SequentialKernelGenerator(client, strategy_menu=("tile: change tile",))
+    results = [generator.generate(request) for _ in range(3)]
+    assert client.calls == 3
+    assert [item.metadata["strategy_choice_status"] for item in results] == [
+        "valid", "out_of_catalog", "missing",
+    ]
+    assert [item.program.source for item in results] == ["fast", "slow", "fast"]
+    assert [item.metadata["selected_strategy_id"] for item in results] == [
+        "tile", "unknown", None,
+    ]
+
+
+def test_strategy_choice_repair_retains_original_id_and_trace_metadata(tmp_path):
+    class Client:
+        def __init__(self):
+            self.prompts = []
+
+        def complete(self, prompt):
+            self.prompts.append(json.loads(prompt))
+            source = "invalid" if len(self.prompts) == 1 else "fast"
+            selected_id = "tile" if len(self.prompts) == 1 else "other"
+            return LLMCompletion(
+                f"r{len(self.prompts)}",
+                json.dumps({
+                    "selected_strategy_id": selected_id,
+                    "hypothesis": "change tile", "source": source,
+                }),
+                "fake",
+            )
+
+    client = Client()
+    generator = SequentialKernelGenerator(
+        client, strategy_menu=("tile: change tile", "other: change mapping"),
+    )
+    path = tmp_path / "choice-repair.sqlite"
+    with SQLiteTraceStore(path) as trace:
+        trace.start_run("run", WORKLOAD.benchmark_id, "sequential", {
+            "sequential_strategy_choice": generator.choice_provenance,
+        })
+        result = run_sequential_loop(
+            root_evaluation=valid("root", 100.0), workload=WORKLOAD,
+            hardware={}, generator=generator, evaluator=Evaluator(),
+            profiler=Profiler(), trace=trace, generation_budget=2,
+            config=SequentialConfig(max_repairs=1, dataflow_view="none"),
+        )
+    assert result.generations == 2
+    assert result.current.evaluation.program.source == "fast"
+    assert len(client.prompts) == 2
+    assert client.prompts[1]["repair"]["original_selected_strategy_id"] == "tile"
+    assert client.prompts[1]["repair"]["locked_strategy_id"] == "tile"
+    with sqlite3.connect(path) as connection:
+        rows = connection.execute(
+            "SELECT repair_attempt, proposal_status, metadata_json FROM generations ORDER BY b_gen"
+        ).fetchall()
+        events = [json.loads(row[0]) for row in connection.execute(
+            "SELECT payload_json FROM search_events WHERE event_type='generation' ORDER BY id"
+        )]
+        run_config = json.loads(connection.execute("SELECT config_json FROM search_runs").fetchone()[0])
+    assert [(row[0], row[1]) for row in rows] == [(0, "INVALID"), (1, "VALID")]
+    metadata = [json.loads(row[2])["generation"] for row in rows]
+    assert [item["selected_strategy_id"] for item in metadata] == ["tile", "other"]
+    assert [item["strategy_choice_status"] for item in metadata] == ["valid", "repair_mismatch"]
+    assert [item["strategy_choice_original_id"] for item in metadata] == ["tile", "tile"]
+    assert [item["selected_strategy_id"] for item in events] == ["tile", "other"]
+    assert [item["strategy_choice_status"] for item in events] == ["valid", "repair_mismatch"]
+    assert [item["original_selected_strategy_id"] for item in events] == ["tile", "tile"]
+    assert run_config["sequential_strategy_choice"]["menu_enabled"] is True
 
 
 def test_context_visibility_does_not_change_profile_collection(tmp_path):

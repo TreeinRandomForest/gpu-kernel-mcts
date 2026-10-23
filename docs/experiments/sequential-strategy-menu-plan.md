@@ -72,11 +72,11 @@ accepted distinct node is profiled under the existing sequential policy.
    tokens including cache counts, wall time, and worker occupancy. Do not
    infer significance from the first seed.
 
-The existing `--sequential-strategy-menu --strategies PATH` flag already
-renders the menu, but today it asks for the choice only in free-text
-`hypothesis` and does not parse or persist a selected strategy ID. The first
-three items above make that existing path auditable rather than changing the
-sequential search rule.
+The first three implementation items are complete. The seed-0 smoke and
+two-turn/no-graph pair are recorded in
+[`sequential-strategy-choice-seed0.md`](sequential-strategy-choice-seed0.md).
+The freeform model supplied custom action labels despite the reserved-ID
+instruction; the trace records this prompt-adherence deviation.
 
 ## Analysis and decision gates
 
