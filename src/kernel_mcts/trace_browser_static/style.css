@@ -12,6 +12,16 @@ h2 { font-size: 15px; margin: 0; }
 p { margin: 4px 0; }
 #run-summary, .hint, .notice { color: var(--muted); }
 main { padding: 14px; display: grid; gap: 14px; }
+.view-content { display: grid; gap: 14px; min-width: 0; }
+.view-content[hidden] { display: none; }
+.view-tabs, .evidence-layers { display: flex; gap: 8px; flex-wrap: wrap; }
+.view-tabs button.active, .evidence-layers button.active { border-color: var(--blue); background: #172636; color: var(--blue); }
+.evidence-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.evidence-selectors { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.evidence-selectors label { flex: 1 1 150px; display: grid; }
+.evidence-selectors select { width: 100%; min-width: 0; }
+.evidence-layers { margin: 12px 0; }
+.evidence-content { max-height: 68vh; min-height: 320px; white-space: pre; overflow: auto; }
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-width: 0; }
 .panel-title, .selectors, .filters { display: flex; align-items: center; gap: 12px; justify-content: space-between; flex-wrap: wrap; }
 label { color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
@@ -110,7 +120,7 @@ th:first-child, td:first-child { text-align: left; }
 #tooltip { position: fixed; z-index: 20; pointer-events: none; max-width: 360px; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: #010409; box-shadow: 0 4px 20px #000; white-space: pre-line; font-size: 12px; }
 @media (max-width: 900px) {
   header { align-items: flex-start; flex-direction: column; }
-  .selection-grid, .comparison-grid, .analysis-grid, .decision-grid { grid-template-columns: 1fr; }
+  .selection-grid, .comparison-grid, .analysis-grid, .decision-grid, .evidence-grid { grid-template-columns: 1fr; }
   #graph-container { height: 420px; }
   #hardware-visual, #dataflow-visual { grid-template-columns: 1fr; }
 }

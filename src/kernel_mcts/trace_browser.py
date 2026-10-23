@@ -19,6 +19,8 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .dataflow import SCHEMA_VERSION as DATAFLOW_VERSION
 from .dataflow import cuda_node_dataflow
+from .dataflow_prompt import prompt_dataflow_view
+from .compiler_context import MAX_PTX_ARTIFACT_BYTES
 from .ptx_dataflow import linked_ptx_dataflow
 from .resource_graph import SCHEMA_VERSION as RESOURCE_GRAPH_VERSION
 from .resource_graph import h100_constraint_checks, h100_sxm_resource_graph, ncu_resource_observations
@@ -379,6 +381,91 @@ class TraceCatalog:
                     else None
                 ),
                 "generations": [dict(item) for item in generations],
+            }
+
+    def evidence(self, trace_id: str, run_id: str, node_id: str) -> dict[str, object]:
+        """Read one node's retained artifacts and bounded diagnostic views."""
+        path = self._resolve(trace_id)
+        with _connection(path) as connection:
+            self._validate(connection)
+            run = self._run(connection, run_id)
+            row = connection.execute(
+                """SELECT program_text, backend_type, benchmark_json, profile_json,
+                          metadata_json, workload_json, launch_config_json
+                   FROM nodes WHERE run_id = ? AND node_id = ?""",
+                (run_id, node_id),
+            ).fetchone()
+            if row is None:
+                raise TraceBrowserError(f"node not found: {node_id}")
+            metadata = _json_value(row["metadata_json"], {})
+            context = metadata.get("compiler_context") if isinstance(metadata, dict) else None
+            context = context if isinstance(context, dict) else {}
+            ptx = {"status": "unavailable", "sha256": None, "text": None}
+            artifacts = context.get("ptx", {}).get("artifacts", []) if isinstance(context.get("ptx"), dict) else []
+            stored = [item for item in artifacts if isinstance(item, dict)
+                      and item.get("storage_status") == "stored"
+                      and isinstance(item.get("sha256"), str)]
+            if len(stored) == 1 and self._has_table(connection, "compiler_artifacts") \
+                    and self._has_table(connection, "node_compiler_artifacts"):
+                sha256 = stored[0]["sha256"]
+                artifact = connection.execute(
+                    """SELECT a.content FROM node_compiler_artifacts n
+                       JOIN compiler_artifacts a ON a.sha256 = n.sha256
+                       WHERE n.run_id = ? AND n.node_id = ? AND n.sha256 = ?
+                             AND a.kind = 'ptx'""",
+                    (run_id, node_id, sha256),
+                ).fetchone()
+                if artifact is not None:
+                    raw = artifact["content"]
+                    if len(raw) > MAX_PTX_ARTIFACT_BYTES:
+                        ptx = {"status": "size_limit", "sha256": sha256, "text": None}
+                    elif hashlib.sha256(raw).hexdigest() != sha256:
+                        ptx = {"status": "hash_mismatch", "sha256": sha256, "text": None}
+                    else:
+                        try:
+                            ptx = {"status": "stored", "sha256": sha256,
+                                   "text": raw.decode("utf-8")}
+                        except UnicodeDecodeError:
+                            ptx = {"status": "not_utf8", "sha256": sha256, "text": None}
+
+            graph = None
+            graph_source = None
+            if self._has_table(connection, "node_dataflow_graphs"):
+                graph_row = connection.execute(
+                    """SELECT graph_json FROM node_dataflow_graphs
+                       WHERE run_id = ? AND node_id = ? AND graph_schema_version = ?""",
+                    (run_id, node_id, DATAFLOW_VERSION),
+                ).fetchone()
+                if graph_row is not None:
+                    candidate = _json_value(graph_row["graph_json"])
+                    if (isinstance(candidate, dict)
+                            and candidate.get("source_sha256") == hashlib.sha256(
+                                row["program_text"].encode("utf-8")
+                            ).hexdigest()):
+                        graph, graph_source = candidate, "persisted"
+            if graph is None and row["backend_type"] == "cuda_cpp":
+                workload = _json_value(row["workload_json"], {})
+                launch = _json_value(row["launch_config_json"], {})
+                compiled = linked_ptx_dataflow(connection, run_id, node_id, context)
+                graph = cuda_node_dataflow(row["program_text"], workload, launch, context, compiled)
+                if graph is not None:
+                    graph_source = "derived_read_only"
+            views = {}
+            if isinstance(graph, dict):
+                views = {view: prompt_dataflow_view(graph, view)
+                         for view in ("counts", "paths", "subgraph", "full")}
+            return {
+                "trace_id": trace_id, "run_id": run_id, "node_id": node_id,
+                "benchmark": _json_value(row["benchmark_json"]),
+                "source": row["program_text"],
+                "launch": _json_value(row["launch_config_json"], {}),
+                "compiler": context, "ptx": ptx,
+                "profile": _json_value(row["profile_json"]),
+                "dataflow": {"source": graph_source, "template": graph.get("template") if graph else None,
+                             "summary": graph.get("summary") if graph else None,
+                             "compiled_ptx": graph.get("compiled_ptx") if graph else None,
+                             "views": views},
+                "run_config": _json_value(run["config_json"], {}),
             }
 
     def compare(
@@ -1131,6 +1218,11 @@ class TraceBrowserHandler(BaseHTTPRequestHandler):
             if parsed.path == "/api/node":
                 self._json(
                     self.catalog.node(query["trace"], query["run"], query["node"])
+                )
+                return
+            if parsed.path == "/api/evidence":
+                self._json(
+                    self.catalog.evidence(query["trace"], query["run"], query["node"])
                 )
                 return
             if parsed.path == "/api/compare":

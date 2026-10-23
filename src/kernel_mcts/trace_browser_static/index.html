@@ -16,6 +16,11 @@
     </div>
   </header>
   <main>
+    <nav class="view-tabs" aria-label="Trace views">
+      <button id="tab-explore" class="active" type="button" aria-selected="true">Search explorer</button>
+      <button id="tab-evidence" type="button" aria-selected="false">Artifact reconciliation</button>
+    </nav>
+    <div id="explore-view" class="view-content">
     <section class="graph-panel panel">
       <div class="panel-title">
         <h2>MCTS DAG</h2>
@@ -148,6 +153,52 @@
       </article>
     </section>
     <section class="panel"><h2>Source diff (A → B)</h2><pre id="source-diff" class="source diff">Select two nodes.</pre></section>
+    </div>
+    <section id="evidence-view" class="view-content" hidden>
+      <div class="panel">
+        <h2>Artifact reconciliation</h2>
+        <p class="hint">Select nodes from either trace. Both columns show the same evidence layer. PTX is retained source text; SASS is a static category summary because the trace does not retain raw disassembly. NCU values describe the whole kernel.</p>
+        <div class="evidence-layers" role="group" aria-label="Evidence layer">
+          <button type="button" data-evidence-layer="source">CUDA source</button>
+          <button type="button" data-evidence-layer="ptx">PTX</button>
+          <button type="button" data-evidence-layer="sass">SASS summary</button>
+          <button type="button" data-evidence-layer="dataflow">PTX dataflow</button>
+          <button type="button" data-evidence-layer="ncu">NCU profile</button>
+          <button type="button" data-evidence-layer="hardware">H100 graph</button>
+        </div>
+        <label id="evidence-dataflow-control" hidden>Dataflow view
+          <select id="evidence-dataflow-view">
+            <option value="counts">Counts</option><option value="paths" selected>Paths</option>
+            <option value="subgraph">Subgraph</option><option value="full">Full prompt adjacency</option>
+            <option value="recorded">Recorded PTX graph</option>
+          </select>
+        </label>
+      </div>
+      <div class="evidence-grid">
+        <article class="panel">
+          <h2>Artifact A</h2>
+          <div class="evidence-selectors">
+            <label>Trace <select id="evidence-a-trace"></select></label>
+            <label>Run <select id="evidence-a-run"></select></label>
+            <label>Node <select id="evidence-a-node"></select></label>
+          </div>
+          <div id="evidence-a-meta" class="metadata"></div>
+          <p id="evidence-a-note" class="hint"></p>
+          <pre id="evidence-a-content" class="source evidence-content"></pre>
+        </article>
+        <article class="panel">
+          <h2>Artifact B</h2>
+          <div class="evidence-selectors">
+            <label>Trace <select id="evidence-b-trace"></select></label>
+            <label>Run <select id="evidence-b-run"></select></label>
+            <label>Node <select id="evidence-b-node"></select></label>
+          </div>
+          <div id="evidence-b-meta" class="metadata"></div>
+          <p id="evidence-b-note" class="hint"></p>
+          <pre id="evidence-b-content" class="source evidence-content"></pre>
+        </article>
+      </div>
+    </section>
   </main>
   <div id="tooltip" hidden></div>
   <script src="/app.js"></script>

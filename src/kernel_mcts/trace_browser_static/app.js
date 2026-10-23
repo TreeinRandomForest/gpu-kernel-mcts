@@ -6,6 +6,8 @@ const state = {
   dataflowSelection: "a_global_load",
   comparisonDataflowSelection: {a: null, b: null},
   scale: 1, x: 30, y: 30, iteration: 0, playTimer: null,
+  evidence: {layer: "source", a: null, b: null, hardware: {a: null, b: null},
+    requests: {a: 0, b: 0}},
 };
 const $ = id => document.getElementById(id);
 const query = values => new URLSearchParams(values).toString();
@@ -34,6 +36,12 @@ async function loadCatalog() {
     `<option value="${item.trace_id}" ${item.error ? "disabled" : ""}>` +
     `${escapeHtml(item.name)}${item.error ? " (invalid)" : ""}</option>`
   ).join("");
+  for (const side of ["a", "b"]) {
+    $(`evidence-${side}-trace`).innerHTML = state.traces.map(item =>
+      `<option value="${item.trace_id}" ${item.error ? "disabled" : ""}>` +
+      `${escapeHtml(item.name)}${item.error ? " (invalid)" : ""}</option>`
+    ).join("");
+  }
   const first = state.traces.find(item => !item.error && item.runs.length);
   if (!first) {
     $("run-summary").textContent = "No supported SQLite traces found.";
@@ -43,6 +51,10 @@ async function loadCatalog() {
   $("compare-trace").value = first.trace_id;
   chooseCompareTrace();
   chooseTrace();
+  for (const side of ["a", "b"]) {
+    $(`evidence-${side}-trace`).value = first.trace_id;
+    chooseEvidenceTrace(side);
+  }
 }
 
 function chooseCompareTrace() {
@@ -933,6 +945,178 @@ function showError(error) {
   $("run-summary").innerHTML = `<span class="error">${escapeHtml(error.message)}</span>`;
 }
 
+function switchView(view) {
+  $("explore-view").hidden = view !== "explore";
+  $("evidence-view").hidden = view !== "evidence";
+  for (const name of ["explore", "evidence"]) {
+    $(`tab-${name}`).classList.toggle("active", name === view);
+    $(`tab-${name}`).setAttribute("aria-selected", String(name === view));
+  }
+}
+
+function chooseEvidenceTrace(side) {
+  const trace = state.traces.find(item => item.trace_id === $(`evidence-${side}-trace`).value);
+  $(`evidence-${side}-run`).innerHTML = (trace?.runs || []).map(run =>
+    `<option value="${escapeHtml(run.run_id)}">${escapeHtml(run.started_at)} · ` +
+    `${escapeHtml(run.benchmark_id)} · ${escapeHtml(short(run.run_id))}</option>`
+  ).join("");
+  chooseEvidenceRun(side);
+}
+
+async function chooseEvidenceRun(side) {
+  const request = ++state.evidence.requests[side];
+  const trace = $(`evidence-${side}-trace`).value;
+  const run = $(`evidence-${side}-run`).value;
+  state.evidence[side] = null;
+  state.evidence.hardware[side] = null;
+  $(`evidence-${side}-node`).innerHTML = "";
+  $(`evidence-${side}-content`).textContent = "Loading nodes…";
+  if (!trace || !run) return;
+  try {
+    const graph = await api(`/api/graph?${query({trace, run})}`);
+    if (request !== state.evidence.requests[side]) return;
+    const nodes = [...graph.nodes].sort((a, b) =>
+      (a.created_iteration ?? 0) - (b.created_iteration ?? 0));
+    $(`evidence-${side}-node`).innerHTML = nodes.map(node =>
+      `<option value="${escapeHtml(node.node_id)}">` +
+      `${node.node_id === graph.root_node_id ? "root · " : ""}` +
+      `${node.node_id === graph.best_node_id ? "best · " : ""}` +
+      `${escapeHtml(short(node.node_id))} · ${number(node.median_us, 1)} µs</option>`
+    ).join("");
+    $(`evidence-${side}-node`).value = side === "a"
+      ? graph.root_node_id : graph.best_node_id;
+    chooseEvidenceNode(side);
+  } catch (error) {
+    if (request === state.evidence.requests[side]) {
+      $(`evidence-${side}-content`).textContent = `Nodes unavailable: ${error.message}`;
+    }
+  }
+}
+
+async function chooseEvidenceNode(side) {
+  const request = ++state.evidence.requests[side];
+  const trace = $(`evidence-${side}-trace`).value;
+  const run = $(`evidence-${side}-run`).value;
+  const node = $(`evidence-${side}-node`).value;
+  if (!node) return;
+  $(`evidence-${side}-content`).textContent = "Loading evidence…";
+  try {
+    const evidence = await api(`/api/evidence?${query({trace, run, node})}`);
+    if (request !== state.evidence.requests[side]) return;
+    state.evidence[side] = evidence;
+    renderEvidence(side);
+  } catch (error) {
+    if (request === state.evidence.requests[side]) {
+      $(`evidence-${side}-content`).textContent = `Evidence unavailable: ${error.message}`;
+    }
+  }
+}
+
+function setEvidenceLayer(layer) {
+  state.evidence.layer = layer;
+  document.querySelectorAll("[data-evidence-layer]").forEach(button =>
+    button.classList.toggle("active", button.dataset.evidenceLayer === layer));
+  $("evidence-dataflow-control").hidden = layer !== "dataflow";
+  for (const side of ["a", "b"]) {
+    renderEvidence(side);
+    if (layer === "hardware") loadEvidenceHardware(side);
+  }
+}
+
+async function loadEvidenceHardware(side) {
+  const evidence = state.evidence[side];
+  if (!evidence) return;
+  const key = `${evidence.trace_id}\u0000${evidence.run_id}`;
+  if (state.evidence.hardware[side]?.key === key) return;
+  try {
+    const value = await api(`/api/hardware?${query({trace: evidence.trace_id, run: evidence.run_id})}`);
+    if (state.evidence[side] !== evidence) return;
+    state.evidence.hardware[side] = {key, value};
+    renderEvidence(side);
+  } catch (error) {
+    if (state.evidence[side] === evidence) {
+      state.evidence.hardware[side] = {key, error: error.message};
+      renderEvidence(side);
+    }
+  }
+}
+
+function renderEvidence(side) {
+  const evidence = state.evidence[side];
+  if (!evidence) return;
+  const layer = state.evidence.layer;
+  const content = $(`evidence-${side}-content`);
+  const note = $(`evidence-${side}-note`);
+  $(`evidence-${side}-meta`).textContent =
+    `${evidence.node_id} · median ${number(evidence.benchmark?.median_us, 3)} µs · ` +
+    `launch ${JSON.stringify(evidence.launch)}`;
+  if (layer === "source") {
+    note.textContent = "Verified CUDA source stored in this node.";
+    content.textContent = evidence.source;
+  } else if (layer === "ptx") {
+    note.textContent = `Retained PTX · ${evidence.ptx.status} · SHA-256 ${evidence.ptx.sha256 || "unknown"}. ` +
+      "Line numbers are display aids; the stored artifact is unchanged.";
+    content.textContent = evidence.ptx.text
+      ? evidence.ptx.text.split("\n").map((line, index) =>
+          `${String(index + 1).padStart(5)}  ${line}`).join("\n")
+      : "PTX text is unavailable in this trace.";
+  } else if (layer === "sass") {
+    note.textContent = "Static SASS instruction sites and ptxas resources. Raw SASS disassembly was not retained; counts are not runtime execution counts.";
+    content.textContent = JSON.stringify({
+      ptxas: evidence.compiler?.ptxas || null,
+      sass: evidence.compiler?.sass || null,
+    }, null, 2);
+  } else if (layer === "dataflow") {
+    const view = $("evidence-dataflow-view").value;
+    const data = view === "recorded" ? evidence.dataflow?.compiled_ptx
+      : evidence.dataflow?.views?.[view];
+    const promptView = evidence.run_config?.sequential?.dataflow_view ??
+      evidence.run_config?.dataflow_prompt_view ?? "unknown";
+    note.textContent = `PTX ${view} view · ${evidence.dataflow?.source || "unavailable"} · ` +
+      `run prompt view: ${promptView}. ` +
+      "Static local value dependencies only; no cross-memory alias proof, execution counts, or per-edge measured bytes.";
+    if (view === "paths" && Array.isArray(data?.paths)) {
+      const paths = data.paths.map((path, index) =>
+        `${index + 1}. ` + path.sites.map(site =>
+          `line ${site[4] ?? "?"} ${site[2]}`).join(" → ")).join("\n");
+      content.textContent = `${paths || "No selected paths."}\n\nExact prompt view:\n` +
+        JSON.stringify(data, null, 2);
+    } else {
+      content.textContent = data ? JSON.stringify(data, null, 2) : "No PTX dataflow view available.";
+    }
+  } else if (layer === "ncu") {
+    note.textContent = "NCU counters aggregate the whole kernel. Percentages, bytes, stalls, and instruction counts are different units; these are not path measurements.";
+    content.textContent = evidence.profile ? JSON.stringify({
+      metric_set: evidence.profile.metric_set,
+      summary: evidence.profile.summary,
+      raw_metrics: evidence.profile.metrics,
+    }, null, 2) : "No NCU profile recorded for this node.";
+  } else if (layer === "hardware") {
+    const result = state.evidence.hardware[side];
+    if (!result || result.key !== `${evidence.trace_id}\u0000${evidence.run_id}`) {
+      note.textContent = "Loading H100 resource graph and node overlay…";
+      content.textContent = "";
+      return;
+    }
+    if (result.error) {
+      note.textContent = result.error;
+      content.textContent = "";
+      return;
+    }
+    const value = result.value;
+    const kernel = value.kernels?.find(row => row.node_id === evidence.node_id);
+    const observation = value.observations?.find(row => row.node_id === evidence.node_id);
+    note.textContent = "Architectural capacities and possible pathways; NCU observations attach to resources, not individual links. Unknown bandwidths and latencies remain unknown.";
+    content.textContent = value.graph ? JSON.stringify({
+      graph_source: value.source, model: value.graph.model,
+      nodes: value.graph.nodes, links: value.graph.links,
+      constraints: value.graph.constraints,
+      node_constraint_checks: kernel?.constraint_checks || [],
+      node_ncu_observations: observation?.observations || [],
+    }, null, 2) : "No supported H100 graph for this run.";
+  }
+}
+
 $("trace-select").addEventListener("change", chooseTrace);
 $("compare-trace").addEventListener("change", chooseCompareTrace);
 $("run-select").addEventListener("change", loadRun);
@@ -944,6 +1128,19 @@ $("play-iterations").addEventListener("click", togglePlayback);
 $("compare-runs").addEventListener("click", compareRuns);
 $("export-bundle").addEventListener("click", exportBundle);
 $("hardware-node").addEventListener("change", renderHardware);
+$("tab-explore").addEventListener("click", () => switchView("explore"));
+$("tab-evidence").addEventListener("click", () => switchView("evidence"));
+document.querySelectorAll("[data-evidence-layer]").forEach(button =>
+  button.addEventListener("click", () => setEvidenceLayer(button.dataset.evidenceLayer)));
+$("evidence-dataflow-view").addEventListener("change", () => {
+  renderEvidence("a"); renderEvidence("b");
+});
+for (const side of ["a", "b"]) {
+  $(`evidence-${side}-trace`).addEventListener("change", () => chooseEvidenceTrace(side));
+  $(`evidence-${side}-run`).addEventListener("change", () => chooseEvidenceRun(side));
+  $(`evidence-${side}-node`).addEventListener("change", () => chooseEvidenceNode(side));
+}
 ["max-depth", "min-visits", "show-failures"].forEach(id => $(id).addEventListener("change", renderGraph));
+setEvidenceLayer("source");
 installPanZoom();
 loadCatalog().catch(showError);

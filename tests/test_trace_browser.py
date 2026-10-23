@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import sqlite3
 import shutil
@@ -310,6 +311,50 @@ def test_hardware_view_handles_run_without_supported_gpu_graph(tmp_path) -> None
     assert catalog.hardware(trace_id, "run-1") == {
         "graph": None, "source": None, "observations": [], "kernels": []
     }
+
+
+def test_reconciliation_evidence_reads_verified_ptx_without_writing(tmp_path) -> None:
+    path = _browser_trace(tmp_path)
+    raw = (b".version 8.7\n.target sm_90\n"
+           b".visible .entry kernel(.param .u64 p0) {\n"
+           b"ld.param.u64 %rd1, [p0];\nld.global.u32 %r1, [%rd1];\nret;\n}\n")
+    digest = hashlib.sha256(raw).hexdigest()
+    context = {
+        "entry_point": "kernel",
+        "ptx": {"artifacts": [{"sha256": digest, "storage_status": "stored"}]},
+        "ptxas": {"status": "parsed", "resources": {"registers_per_thread": 32}},
+        "sass": {"status": "parsed", "categories": {"global_load": 1}},
+    }
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "UPDATE nodes SET metadata_json = ? WHERE run_id = 'run-1' AND node_id = 'right'",
+            (json.dumps({"compiler_context": context}),),
+        )
+        connection.execute(
+            "INSERT INTO compiler_artifacts(sha256, kind, size_bytes, content) VALUES (?, 'ptx', ?, ?)",
+            (digest, len(raw), raw),
+        )
+        connection.execute(
+            "INSERT INTO node_compiler_artifacts(run_id, node_id, sha256) VALUES ('run-1', 'right', ?)",
+            (digest,),
+        )
+    before = path.stat().st_mtime_ns
+    catalog = TraceCatalog(tmp_path)
+    trace_id = catalog.list_traces()[0]["trace_id"]
+    evidence = catalog.evidence(trace_id, "run-1", "right")
+    assert evidence["ptx"] == {"status": "stored", "sha256": digest, "text": raw.decode()}
+    assert evidence["compiler"]["sass"]["categories"]["global_load"] == 1
+    assert evidence["profile"]["metrics"]["occupancy"] == 45
+    assert evidence["dataflow"]["views"]["paths"]["entry_point"] == "kernel"
+    assert path.stat().st_mtime_ns == before
+
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "UPDATE compiler_artifacts SET content = ? WHERE sha256 = ?", (b"altered", digest)
+        )
+    evidence = catalog.evidence(trace_id, "run-1", "right")
+    assert evidence["ptx"]["status"] == "hash_mismatch"
+    assert evidence["ptx"]["text"] is None
 
 
 def test_node_and_comparison_include_source_profile_diff_and_shortest_path(tmp_path) -> None:

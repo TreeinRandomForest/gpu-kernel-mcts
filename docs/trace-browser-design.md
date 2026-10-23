@@ -77,6 +77,25 @@ selection, budgets, evaluation, or backup.
 - Export selected paths, kernels, diffs, profiles, relevant decisions, and run context
   as a versioned ZIP analysis bundle. **Implemented.**
 
+## Artifact reconciliation tab
+
+The **Artifact reconciliation** tab has independent trace, run, and node selectors
+for A and B. Select the same evidence layer in both columns to compare verified
+CUDA source, hash-checked retained PTX, `ptxas` resources and static SASS category
+counts, PTX dataflow views, whole-kernel NCU profiles, or the H100 resource graph
+with node observations and constraint checks. PTX is displayed with line numbers so
+the dataflow view's `ptx_line` fields can be located in the retained artifact.
+The dataflow selector exposes the four prompt views and the complete recorded PTX
+graph; the latter can be larger than the prompt's bounded `full` view. The tab
+also reports the run's configured prompt view when available.
+
+Raw SASS disassembly was not retained in these traces, so the tab cannot show a
+PTX-to-SASS instruction mapping. SASS counts are static sites, PTX paths are local
+static dependencies, and NCU counters are whole-kernel observations. The H100 graph
+has possible links and architectural limits, but it does not assign measured bytes
+or latency to a path. Missing artifacts remain explicit; the browser does not
+recompile, reprofile, or write to SQLite.
+
 ## Testing
 
 Keep database discovery, SQL queries, graph traversal, and diff construction independent
