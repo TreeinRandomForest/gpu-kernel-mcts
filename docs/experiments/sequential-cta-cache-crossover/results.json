@@ -1,0 +1,2415 @@
+{
+  "base": "sequential-sol-choice-freeform-bgen50-seed0-best.cu",
+  "base_sha256": "18222c5b7a759c3d918fc6b643f7f19556314b0c23f849582aa7ee8fc39ff4b2",
+  "complete": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-10-23T16:17:28.520561+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:f90da644bcabc3a07756ecea933f4e1bc2d7faa5785e1c5d39c851eecedb0429",
+    "container_runtime": null,
+    "dirty_tree": null,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-7e1d9760-86a6-4bae-e5e5-41d2be70946f",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "87b40af652b780e08e37ef37437e0b69ef2f49a81b87546ed68f392021558099",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00fa266ajm3abavjf",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": null,
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00fa266ajm3abavjf"
+  },
+  "image": "docker.io/saarora/gpu-kernel-mcts@sha256:f90da644bcabc3a07756ecea933f4e1bc2d7faa5785e1c5d39c851eecedb0429",
+  "measurements": [
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 148.99,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 44.0,
+            "utilization.gpu": 31.0,
+            "utilization.memory": 5.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 96.62,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 2.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 663.039978,
+        "mean_us": 658.2293354666667,
+        "median_us": 657.9840389999999,
+        "min_us": 656.512024,
+        "per_shape_median_us": {},
+        "stddev_us": 1.3128857638566815,
+        "timings_us": [
+          660.096008,
+          658.047974,
+          663.039978,
+          658.656006,
+          658.23999,
+          657.280029,
+          658.783997,
+          657.952026,
+          657.632019,
+          657.664001,
+          657.53595,
+          658.176025,
+          658.559998,
+          658.016052,
+          658.272034,
+          656.992004,
+          656.768005,
+          656.960022,
+          657.664001,
+          661.279968,
+          657.280029,
+          659.135986,
+          657.504028,
+          657.855957,
+          659.104004,
+          658.272034,
+          658.59198,
+          657.311951,
+          656.512024,
+          657.695984
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "acfcfe14f4c226c5f17d3266114b947a179acf86b05192025d6ca40c87758453",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-t454ceg8/candidate.ptx",
+              "sha256": "7cb639aae8b424ec13869f68f4eae488b91a35ffea5a3d1db098ee4be22d13d5",
+              "size_bytes": 26164,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "d8d547ada395217ea4c9aa24d6c7800dfffef0a3c68ff74a29d3015c95685c9a",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 185,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 299,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 0,
+      "evaluation_id": "crossover-0-compact_cg-4513389e-7e46-48e2-8cc9-abdfa1725d40",
+      "status": "VALID",
+      "variant": "compact_cg"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 148.15,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 48.0,
+            "utilization.gpu": 0.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 97.06,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 3.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 682.94397,
+        "mean_us": 673.1754638666666,
+        "median_us": 672.191986,
+        "min_us": 666.880005,
+        "per_shape_median_us": {},
+        "stddev_us": 4.452977266432129,
+        "timings_us": [
+          682.94397,
+          667.776001,
+          678.976013,
+          668.959961,
+          672.799988,
+          674.112,
+          667.359985,
+          672.992004,
+          669.856018,
+          671.679993,
+          680.288025,
+          670.495972,
+          671.807983,
+          671.42395,
+          671.16803,
+          674.687988,
+          668.768005,
+          669.376038,
+          672.575989,
+          675.776001,
+          675.872009,
+          681.599976,
+          668.895996,
+          678.848022,
+          671.231995,
+          666.880005,
+          677.791992,
+          678.23999,
+          667.007996,
+          675.072021
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "320cd976d9dd39b8af30a599058c3f2e11f15dc65c01b4e0241d7da881b58f1f",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-360aav8y/candidate.ptx",
+              "sha256": "2a3d934cb0cdeddecbb1303d734049c8bfd44272d534b917cf9cf072e59bd900",
+              "size_bytes": 26060,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "1276c9cef08bd9c205b58b816c3e54df9f61894d6215d41aa7fb4e544087715c",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 183,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 301,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 0,
+      "evaluation_id": "crossover-0-sparse_ca-62d833b8-b5a3-47de-8c55-c6323612c231",
+      "status": "VALID",
+      "variant": "sparse_ca"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 146.43,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 48.0,
+            "utilization.gpu": 3.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 96.26,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 5.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 695.776001,
+        "mean_us": 688.3466675333333,
+        "median_us": 688.0159914999999,
+        "min_us": 683.968018,
+        "per_shape_median_us": {},
+        "stddev_us": 2.9096548697207245,
+        "timings_us": [
+          688.607971,
+          686.079956,
+          686.176025,
+          684.864014,
+          689.952026,
+          695.776001,
+          693.952026,
+          691.007996,
+          687.552002,
+          689.472046,
+          688.864014,
+          687.328003,
+          693.983948,
+          683.968018,
+          687.007996,
+          686.079956,
+          684.671997,
+          685.151978,
+          687.679993,
+          689.279968,
+          689.248047,
+          688.895996,
+          691.807983,
+          686.176025,
+          688.35199,
+          684.447998,
+          691.776001,
+          686.335999,
+          688.416016,
+          687.488037
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "cbcb21c983c8b2bd21e2864a002589a973948301fa8f9f837e50ad25c2ac4c98",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-8x91by7b/candidate.ptx",
+              "sha256": "0037c9ec7d11df9bdd5e2c295d232705883a0f9200a30b1617af48d08453970c",
+              "size_bytes": 26060,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "6ce50570c538bb516a231cee9e6645b394049676821ac0d6be7bdf807d24d619",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 183,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 301,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 0,
+      "evaluation_id": "crossover-0-sparse_cg-ee513504-cd05-452d-bd23-bd92d50d884b",
+      "status": "VALID",
+      "variant": "sparse_cg"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 144.88,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 45.0,
+            "utilization.gpu": 1.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 95.78,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 3.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 662.783997,
+        "mean_us": 651.9616028333334,
+        "median_us": 651.4080205,
+        "min_us": 645.824036,
+        "per_shape_median_us": {},
+        "stddev_us": 3.609330804147831,
+        "timings_us": [
+          656.736023,
+          645.824036,
+          646.848022,
+          650.208008,
+          648.799988,
+          653.855957,
+          656.127991,
+          655.935974,
+          651.296021,
+          649.664001,
+          647.263977,
+          648.192017,
+          652.35199,
+          650.976013,
+          657.024048,
+          652.255981,
+          656.671997,
+          647.455994,
+          652.992004,
+          650.783997,
+          662.783997,
+          652.960022,
+          652.736023,
+          648.736023,
+          653.599976,
+          653.343994,
+          649.664001,
+          651.167969,
+          651.072021,
+          651.52002
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "f3a07438fe182deba90dea616dc9d4eeccb0099b532d856f07a1ef9732d09c42",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-2vv0ojxx/candidate.ptx",
+              "sha256": "0fa875e46f3e2aa6022815a1fa3d8202061321ec7ffe2e6d44d54e13aa68f3d0",
+              "size_bytes": 26164,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "759dcf9e80419551a535a1d592b72834fe966e47517cf70b8122cff890351a72",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 185,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 299,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 0,
+      "evaluation_id": "crossover-0-compact_ca-d5f15ffa-3f69-4a2b-9494-1d0e2fa6a192",
+      "status": "VALID",
+      "variant": "compact_ca"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 146.72,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 48.0,
+            "utilization.gpu": 0.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 96.98,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 3.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 644.47998,
+        "mean_us": 638.9525350666667,
+        "median_us": 639.040039,
+        "min_us": 632.960022,
+        "per_shape_median_us": {},
+        "stddev_us": 2.7165295633308917,
+        "timings_us": [
+          642.495972,
+          636.511963,
+          635.039978,
+          637.536011,
+          640.47998,
+          636.960022,
+          644.096008,
+          635.616028,
+          637.088013,
+          635.840027,
+          641.471985,
+          637.152039,
+          639.328003,
+          638.912048,
+          639.16803,
+          639.455994,
+          644.47998,
+          639.328003,
+          638.367981,
+          642.783997,
+          638.912048,
+          641.76001,
+          641.088013,
+          634.751953,
+          632.960022,
+          639.328003,
+          639.967957,
+          641.119995,
+          638.335999,
+          638.23999
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "eab0e4d2bc2b8202ee55a07b0a890046c2c8e026f26b056602a322812fbed804",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-8e3pye9m/candidate.ptx",
+              "sha256": "0fa875e46f3e2aa6022815a1fa3d8202061321ec7ffe2e6d44d54e13aa68f3d0",
+              "size_bytes": 26164,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "ea9054a6feadab319e82613338ab5714ccda6ee476fa8fb46b27958f5f5fe308",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 185,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 299,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 1,
+      "evaluation_id": "crossover-1-compact_ca-ba168ee7-6dcf-449e-89d0-0400e2774797",
+      "status": "VALID",
+      "variant": "compact_ca"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 150.39,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 47.0,
+            "utilization.gpu": 31.0,
+            "utilization.memory": 5.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 95.86,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 2.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 695.616028,
+        "mean_us": 685.0442687666667,
+        "median_us": 685.216034,
+        "min_us": 676.544006,
+        "per_shape_median_us": {},
+        "stddev_us": 4.21619128779574,
+        "timings_us": [
+          684.35199,
+          686.016052,
+          683.679993,
+          689.088013,
+          689.248047,
+          686.623962,
+          692.607971,
+          686.367981,
+          683.615967,
+          685.248047,
+          695.616028,
+          683.808044,
+          686.976013,
+          684.512024,
+          689.823975,
+          688.799988,
+          687.295959,
+          685.184021,
+          685.695984,
+          683.872009,
+          680.159973,
+          684.0,
+          680.57605,
+          688.992004,
+          681.119995,
+          679.584045,
+          685.375977,
+          679.135986,
+          677.407959,
+          676.544006
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "1d068e11ca9be243867fbc3db3a5502de76e897df68de7348cf8ef6fdf3f2100",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-o4d2ygid/candidate.ptx",
+              "sha256": "0037c9ec7d11df9bdd5e2c295d232705883a0f9200a30b1617af48d08453970c",
+              "size_bytes": 26060,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "b2e0fec7694237ed72901ce2c021414e28d71e70548534d4eb74395e05ff442e",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 183,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 301,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 1,
+      "evaluation_id": "crossover-1-sparse_cg-da6ffb80-8959-4190-bcee-c7787eec0e0a",
+      "status": "VALID",
+      "variant": "sparse_cg"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 146.77,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 49.0,
+            "utilization.gpu": 0.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 97.16,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 5.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 675.455994,
+        "mean_us": 668.1333312333334,
+        "median_us": 667.9840085000001,
+        "min_us": 662.080017,
+        "per_shape_median_us": {},
+        "stddev_us": 3.6314962036600344,
+        "timings_us": [
+          668.703979,
+          668.287964,
+          670.463989,
+          669.76001,
+          668.895996,
+          668.096008,
+          663.104004,
+          665.696045,
+          666.719971,
+          667.487976,
+          672.768005,
+          674.335999,
+          671.136047,
+          667.872009,
+          662.080017,
+          665.055969,
+          668.959961,
+          667.616028,
+          665.247986,
+          668.575989,
+          665.920044,
+          664.063965,
+          663.776001,
+          671.263977,
+          673.888,
+          662.624023,
+          667.711975,
+          674.624023,
+          675.455994,
+          663.807983
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "843f48f12df266b1c6784f5dc4ce9ef263650289fea1802bf6b5e7af6d5c154a",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-88ay80xn/candidate.ptx",
+              "sha256": "2a3d934cb0cdeddecbb1303d734049c8bfd44272d534b917cf9cf072e59bd900",
+              "size_bytes": 26060,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "e35e223f463fc99ffb6d66b97485ea442e4bff3282390d4b4a9c131bf8d93c0c",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 183,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 301,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 1,
+      "evaluation_id": "crossover-1-sparse_ca-ccbbcf36-94bd-410e-b717-ab57725fb957",
+      "status": "VALID",
+      "variant": "sparse_ca"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 148.28,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 0.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 96.05,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 3.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 668.031982,
+        "mean_us": 666.8650716,
+        "median_us": 666.7520139999999,
+        "min_us": 666.015991,
+        "per_shape_median_us": {},
+        "stddev_us": 0.5608510200165745,
+        "timings_us": [
+          667.967957,
+          667.231995,
+          667.296021,
+          666.144043,
+          667.16803,
+          666.656006,
+          666.367981,
+          666.815979,
+          666.528015,
+          667.104004,
+          666.688049,
+          666.015991,
+          668.031982,
+          666.23999,
+          667.328003,
+          667.135986,
+          666.400024,
+          666.304016,
+          667.392029,
+          667.104004,
+          666.047974,
+          667.936035,
+          667.64801,
+          666.463989,
+          667.007996,
+          666.528015,
+          666.624023,
+          666.815979,
+          666.271973,
+          666.688049
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "cf34c65d18f1bcc2dba3066861b12db7fbfd91b1b1157fe41a68dcfed04098b2",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-x8l8nc4d/candidate.ptx",
+              "sha256": "7cb639aae8b424ec13869f68f4eae488b91a35ffea5a3d1db098ee4be22d13d5",
+              "size_bytes": 26164,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "b4d7a556d378592788f0aa8cc3da28b80497426ecdafab5f8a84bfc931a27c8a",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 185,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 299,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 1,
+      "evaluation_id": "crossover-1-compact_cg-9aa4d0bf-d473-41de-8dc6-d3583dc07571",
+      "status": "VALID",
+      "variant": "compact_cg"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 145.83,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 45.0,
+            "utilization.gpu": 1.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 96.64,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 3.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 694.271973,
+        "mean_us": 688.2239969999999,
+        "median_us": 688.1759950000001,
+        "min_us": 682.143982,
+        "per_shape_median_us": {},
+        "stddev_us": 3.291292718011961,
+        "timings_us": [
+          692.0,
+          691.232056,
+          691.295959,
+          689.632019,
+          687.295959,
+          684.512024,
+          692.0,
+          682.143982,
+          688.159973,
+          685.792053,
+          690.624023,
+          684.640015,
+          687.936035,
+          683.776001,
+          690.047974,
+          684.607971,
+          686.463989,
+          689.375977,
+          694.271973,
+          689.216003,
+          682.720032,
+          688.127991,
+          685.567993,
+          684.319946,
+          688.383972,
+          693.983948,
+          689.53595,
+          693.920044,
+          688.192017,
+          686.944031
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "39b1547deb0e996185f54cf352f5fac2af14ee5872fdfc89f5b9a26452f2dfce",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-bw0r_d14/candidate.ptx",
+              "sha256": "0037c9ec7d11df9bdd5e2c295d232705883a0f9200a30b1617af48d08453970c",
+              "size_bytes": 26060,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "35786c6895ddde823dca7f905c09aa7b84dfece1eaf61a064e3524f056a9714d",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 183,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 301,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 2,
+      "evaluation_id": "crossover-2-sparse_cg-bbbcf02c-1bad-4001-a289-a834693cf066",
+      "status": "VALID",
+      "variant": "sparse_cg"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 148.95,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 31.0,
+            "utilization.memory": 5.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 92.64,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 4.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 661.632019,
+        "mean_us": 658.1951965333334,
+        "median_us": 657.8719785000001,
+        "min_us": 656.512024,
+        "per_shape_median_us": {},
+        "stddev_us": 1.1547410240051157,
+        "timings_us": [
+          660.063965,
+          657.216003,
+          658.272034,
+          657.504028,
+          658.23999,
+          658.656006,
+          657.888,
+          657.632019,
+          657.632019,
+          657.855957,
+          658.527954,
+          656.512024,
+          659.328003,
+          657.471985,
+          658.016052,
+          657.440002,
+          656.927979,
+          657.311951,
+          660.575989,
+          657.823975,
+          657.375977,
+          658.23999,
+          660.447998,
+          658.23999,
+          661.632019,
+          657.53595,
+          658.911987,
+          657.632019,
+          656.927979,
+          658.016052
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "ff14b312a81aa197e060a63b9346cb6d830c5eb48aa081cc8be4e3a3222180a9",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-x8kvoe5k/candidate.ptx",
+              "sha256": "7cb639aae8b424ec13869f68f4eae488b91a35ffea5a3d1db098ee4be22d13d5",
+              "size_bytes": 26164,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "724d741812effa0daf39c76414ee8b87d9e435028d176a863fb39c4b9bc73189",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 185,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 299,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 2,
+      "evaluation_id": "crossover-2-compact_cg-5cad8266-a109-4b0f-8d81-524258a1fa34",
+      "status": "VALID",
+      "variant": "compact_cg"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 147.92,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 45.0,
+            "utilization.gpu": 28.0,
+            "utilization.memory": 5.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 95.56,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 3.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 651.679993,
+        "mean_us": 644.9642660333334,
+        "median_us": 645.2960204999999,
+        "min_us": 639.552002,
+        "per_shape_median_us": {},
+        "stddev_us": 2.840816880974627,
+        "timings_us": [
+          648.127991,
+          651.679993,
+          644.832031,
+          642.208008,
+          646.495972,
+          646.976013,
+          646.879944,
+          642.880005,
+          645.76001,
+          645.76001,
+          646.175964,
+          648.895996,
+          646.624023,
+          644.384033,
+          648.799988,
+          640.288025,
+          641.984009,
+          643.104004,
+          642.112,
+          643.104004,
+          640.735962,
+          648.992004,
+          646.335999,
+          643.263977,
+          646.687988,
+          645.984009,
+          643.52002,
+          644.799988,
+          639.552002,
+          641.984009
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "a718635f578ce982e1a945c073c37d01fd73577305bbfee914037248ec14557f",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-eb9cneq7/candidate.ptx",
+              "sha256": "0fa875e46f3e2aa6022815a1fa3d8202061321ec7ffe2e6d44d54e13aa68f3d0",
+              "size_bytes": 26164,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "7bc35a1b54fc6656cc0c14f331cde8cc0b41990966fc8eda7b2e20b3f11bb5e2",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 185,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 299,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 2,
+      "evaluation_id": "crossover-2-compact_ca-8be82283-920b-496b-80a3-e6aa1fdef97e",
+      "status": "VALID",
+      "variant": "compact_ca"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 148.16,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 45.0,
+            "utilization.gpu": 32.0,
+            "utilization.memory": 5.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 95.02,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 1.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 683.07196,
+        "mean_us": 675.4613321666667,
+        "median_us": 675.3279725,
+        "min_us": 668.768005,
+        "per_shape_median_us": {},
+        "stddev_us": 3.5604449830622946,
+        "timings_us": [
+          680.447998,
+          683.07196,
+          668.768005,
+          672.703979,
+          673.600037,
+          675.231995,
+          674.144043,
+          672.992004,
+          673.407959,
+          678.112,
+          670.976013,
+          677.664001,
+          675.039978,
+          680.736023,
+          676.47998,
+          670.112,
+          670.080017,
+          677.600037,
+          672.47998,
+          680.800049,
+          679.231995,
+          676.223999,
+          675.42395,
+          679.615967,
+          675.935974,
+          673.919983,
+          672.096008,
+          672.064026,
+          676.096008,
+          678.783997
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "3f389a8dc564286070186341a96f2960dcc1faf949025b4c2fd9099e5bfff0e5",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-h76j7o3_/candidate.ptx",
+              "sha256": "2a3d934cb0cdeddecbb1303d734049c8bfd44272d534b917cf9cf072e59bd900",
+              "size_bytes": 26060,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "c7eb9e030f82fb859f105d5dcd33554f1a61a9bf4e457f9067ddb4f314dd79cb",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 183,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 301,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 2,
+      "evaluation_id": "crossover-2-sparse_ca-114fe5ab-ad6d-4be2-8140-ea628189c9d3",
+      "status": "VALID",
+      "variant": "sparse_ca"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 145.61,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 0.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 95.55,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 3.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 687.488037,
+        "mean_us": 679.0239969666667,
+        "median_us": 679.3760075,
+        "min_us": 669.023987,
+        "per_shape_median_us": {},
+        "stddev_us": 4.001912546960696,
+        "timings_us": [
+          677.664001,
+          686.303955,
+          684.223999,
+          676.0,
+          673.023987,
+          675.487976,
+          679.776001,
+          674.687988,
+          682.335999,
+          687.488037,
+          680.800049,
+          679.296021,
+          681.952026,
+          679.455994,
+          679.711975,
+          682.94397,
+          677.919983,
+          681.247986,
+          675.807983,
+          675.840027,
+          681.919983,
+          673.440002,
+          678.23999,
+          683.712036,
+          676.320007,
+          669.023987,
+          679.711975,
+          677.343994,
+          677.151978,
+          681.888
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "d41a3abf53eae05c839982f8af9e3799e202465d484f9de8e76b645c91b7eace",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-1brasmuc/candidate.ptx",
+              "sha256": "2a3d934cb0cdeddecbb1303d734049c8bfd44272d534b917cf9cf072e59bd900",
+              "size_bytes": 26060,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "525bc807a8903c888f19ee917e5dde7fb623af8644aafe147e348961936c6385",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 183,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 301,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 3,
+      "evaluation_id": "crossover-3-sparse_ca-fa3219f4-598f-4e27-b39e-6f5e672840e7",
+      "status": "VALID",
+      "variant": "sparse_ca"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 146.8,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 48.0,
+            "utilization.gpu": 0.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 95.95,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 5.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 651.359985,
+        "mean_us": 643.9338664666667,
+        "median_us": 644.0,
+        "min_us": 635.776001,
+        "per_shape_median_us": {},
+        "stddev_us": 3.925699663023796,
+        "timings_us": [
+          645.951965,
+          642.783997,
+          644.575989,
+          648.960022,
+          644.864014,
+          643.64801,
+          643.744019,
+          651.359985,
+          646.752014,
+          644.255981,
+          642.175964,
+          647.231995,
+          650.112,
+          645.632019,
+          641.503967,
+          647.52002,
+          643.136047,
+          646.112,
+          641.567993,
+          647.296021,
+          646.335999,
+          649.855957,
+          642.559998,
+          635.776001,
+          642.080017,
+          636.799988,
+          637.696045,
+          640.511963,
+          638.432007,
+          638.783997
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "e49d085423259d81cfbdc79ab3e8fda2359189bfd9e4af056fb3551f49540253",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-hc89qcnc/candidate.ptx",
+              "sha256": "0fa875e46f3e2aa6022815a1fa3d8202061321ec7ffe2e6d44d54e13aa68f3d0",
+              "size_bytes": 26164,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "1bc9a11b770078ea608afca9baba0f77d377244b5f237f10dcfd74e573656c13",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 185,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 299,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 3,
+      "evaluation_id": "crossover-3-compact_ca-8a2cf8e0-e39c-4b3a-8ad6-593e942c86ac",
+      "status": "VALID",
+      "variant": "compact_ca"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 149.81,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 45.0,
+            "utilization.gpu": 0.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 96.04,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 5.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 663.424011,
+        "mean_us": 659.0496012666666,
+        "median_us": 658.7679745,
+        "min_us": 657.151978,
+        "per_shape_median_us": {},
+        "stddev_us": 1.2525420534356468,
+        "timings_us": [
+          661.472046,
+          661.119995,
+          658.847961,
+          657.888,
+          659.008057,
+          659.744019,
+          658.272034,
+          659.264038,
+          659.328003,
+          659.039978,
+          658.016052,
+          657.53595,
+          663.424011,
+          658.335999,
+          659.583984,
+          658.463989,
+          657.728027,
+          658.656006,
+          658.143982,
+          658.687988,
+          659.328003,
+          659.968018,
+          658.559998,
+          658.367981,
+          659.16803,
+          658.559998,
+          658.303955,
+          657.151978,
+          660.383972,
+          659.135986
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "b490ea4fe566c406c35caf89d1bf2d6a90f57c74fe1a0caee32e31ec40d57bb9",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-lp_3ia2o/candidate.ptx",
+              "sha256": "7cb639aae8b424ec13869f68f4eae488b91a35ffea5a3d1db098ee4be22d13d5",
+              "size_bytes": 26164,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "dd12d0347a99fd3e8a6ffae8f31abaedfdd5e708e9fa1f93e6d52710805b4ffb",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 185,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 299,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 3,
+      "evaluation_id": "crossover-3-compact_cg-20ba350c-abcc-48b9-a8d9-3b7ad43ade8d",
+      "status": "VALID",
+      "variant": "compact_cg"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {
+          "after": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 147.13,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 48.0,
+            "utilization.gpu": 0.0,
+            "utilization.memory": 0.0
+          },
+          "before": {
+            "clocks.mem": 2619.0,
+            "clocks.sm": 1980.0,
+            "clocks_event_reasons.active": "0x0000000000000000",
+            "power.draw": 96.92,
+            "power.limit": 700.0,
+            "pstate": "P0",
+            "status": "observed",
+            "temperature.gpu": 43.0,
+            "utilization.gpu": 5.0,
+            "utilization.memory": 0.0
+          }
+        },
+        "max_us": 700.992004,
+        "mean_us": 691.2714639666666,
+        "median_us": 691.2160034999999,
+        "min_us": 679.871948,
+        "per_shape_median_us": {},
+        "stddev_us": 4.361168460630989,
+        "timings_us": [
+          692.671997,
+          694.751953,
+          689.984009,
+          690.976013,
+          689.440002,
+          689.343994,
+          687.488037,
+          691.872009,
+          689.088013,
+          698.687988,
+          693.152039,
+          697.951965,
+          700.992004,
+          689.919983,
+          688.799988,
+          691.455994,
+          692.83197,
+          690.463989,
+          692.096008,
+          696.608032,
+          692.416016,
+          692.607971,
+          696.92804,
+          691.455994,
+          686.752014,
+          690.815979,
+          689.343994,
+          679.871948,
+          682.015991,
+          687.359985
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "artifact_id": "7b83f075c797fc2eecde6590951d77bdae4481ac9a2183092061194245293c77",
+        "backend": "cuda_cpp",
+        "entry_point": "bf16_gemm_root",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/cuda-artifact-zzje21h_/candidate.ptx",
+              "sha256": "0037c9ec7d11df9bdd5e2c295d232705883a0f9200a30b1617af48d08453970c",
+              "size_bytes": 26060,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "ptxas": {
+          "diagnostic_sha256": "0181ae239b6b9b88b5a3176a1ce773d6fe4fad1a26697cf0afe0f079659dc46c",
+          "resources": {
+            "registers_per_thread": 128,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0,
+            "stack_frame_bytes": 0,
+            "static_shared_memory_bytes": 40960
+          },
+          "status": "parsed"
+        },
+        "sass": {
+          "categories": {
+            "arithmetic": 183,
+            "control": 17,
+            "global_load": 68,
+            "global_store": 9,
+            "other": 301,
+            "shared_load": 16,
+            "shared_store": 32,
+            "tensor": 64
+          },
+          "instruction_count": 690,
+          "status": "parsed"
+        },
+        "schema_version": 2
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "compute_type": "CUBLAS_COMPUTE_32F",
+          "implementation": "cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "cycle": 3,
+      "evaluation_id": "crossover-3-sparse_cg-34d3ef7b-304b-48df-b6f3-7c44d89e9250",
+      "status": "VALID",
+      "variant": "sparse_cg"
+    }
+  ],
+  "order": [
+    [
+      "compact_cg",
+      "sparse_ca",
+      "sparse_cg",
+      "compact_ca"
+    ],
+    [
+      "compact_ca",
+      "sparse_cg",
+      "sparse_ca",
+      "compact_cg"
+    ],
+    [
+      "sparse_cg",
+      "compact_cg",
+      "compact_ca",
+      "sparse_ca"
+    ],
+    [
+      "sparse_ca",
+      "compact_ca",
+      "compact_cg",
+      "sparse_cg"
+    ]
+  ],
+  "profiles": {
+    "compact_ca": {
+      "artifact_id": "f3a07438fe182deba90dea616dc9d4eeccb0099b532d856f07a1ef9732d09c42",
+      "metric_set": "lightweight_v1",
+      "metrics": {
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 12.63
+        },
+        "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 61.86
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 128.0
+        },
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 36.68
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 33.45
+        },
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 37.85
+        },
+        "sm__warps_active.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 24.0
+        },
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+          "unit": "inst",
+          "value": 0.65
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 130998272.0
+        }
+      },
+      "profiler": "ncu",
+      "resolved_metrics": [
+        "launch__registers_per_thread",
+        "sm__warps_active.avg.pct_of_peak_sustained_active",
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+        "l1tex__throughput.avg.pct_of_peak_sustained_active",
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+        "smsp__inst_executed.sum"
+      ],
+      "schema_version": 1,
+      "summary": {
+        "achieved_occupancy_pct": 24.0,
+        "dram_throughput_pct": 12.63,
+        "instructions_executed": 130998272.0,
+        "l1tex_throughput_pct": 61.86,
+        "l2_throughput_pct": 36.68,
+        "long_scoreboard_warps_per_issue": 0.65,
+        "registers_per_thread": 128.0,
+        "sm_throughput_pct": 37.85,
+        "tensor_pipe_utilization_pct": 33.45
+      },
+      "target": {
+        "architecture": "sm_90",
+        "ncu_version": "2025.1"
+      }
+    },
+    "compact_cg": {
+      "artifact_id": "acfcfe14f4c226c5f17d3266114b947a179acf86b05192025d6ca40c87758453",
+      "metric_set": "lightweight_v1",
+      "metrics": {
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 12.23
+        },
+        "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 38.72
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 128.0
+        },
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 54.98
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 32.92
+        },
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 38.18
+        },
+        "sm__warps_active.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 24.02
+        },
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+          "unit": "inst",
+          "value": 0.75
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 130998272.0
+        }
+      },
+      "profiler": "ncu",
+      "resolved_metrics": [
+        "launch__registers_per_thread",
+        "sm__warps_active.avg.pct_of_peak_sustained_active",
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+        "l1tex__throughput.avg.pct_of_peak_sustained_active",
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+        "smsp__inst_executed.sum"
+      ],
+      "schema_version": 1,
+      "summary": {
+        "achieved_occupancy_pct": 24.02,
+        "dram_throughput_pct": 12.23,
+        "instructions_executed": 130998272.0,
+        "l1tex_throughput_pct": 38.72,
+        "l2_throughput_pct": 54.98,
+        "long_scoreboard_warps_per_issue": 0.75,
+        "registers_per_thread": 128.0,
+        "sm_throughput_pct": 38.18,
+        "tensor_pipe_utilization_pct": 32.92
+      },
+      "target": {
+        "architecture": "sm_90",
+        "ncu_version": "2025.1"
+      }
+    },
+    "sparse_ca": {
+      "artifact_id": "320cd976d9dd39b8af30a599058c3f2e11f15dc65c01b4e0241d7da881b58f1f",
+      "metric_set": "lightweight_v1",
+      "metrics": {
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 12.67
+        },
+        "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 62.73
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 128.0
+        },
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 36.23
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 33.85
+        },
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 36.59
+        },
+        "sm__warps_active.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 22.57
+        },
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+          "unit": "inst",
+          "value": 0.67
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 130490368.0
+        }
+      },
+      "profiler": "ncu",
+      "resolved_metrics": [
+        "launch__registers_per_thread",
+        "sm__warps_active.avg.pct_of_peak_sustained_active",
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+        "l1tex__throughput.avg.pct_of_peak_sustained_active",
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+        "smsp__inst_executed.sum"
+      ],
+      "schema_version": 1,
+      "summary": {
+        "achieved_occupancy_pct": 22.57,
+        "dram_throughput_pct": 12.67,
+        "instructions_executed": 130490368.0,
+        "l1tex_throughput_pct": 62.73,
+        "l2_throughput_pct": 36.23,
+        "long_scoreboard_warps_per_issue": 0.67,
+        "registers_per_thread": 128.0,
+        "sm_throughput_pct": 36.59,
+        "tensor_pipe_utilization_pct": 33.85
+      },
+      "target": {
+        "architecture": "sm_90",
+        "ncu_version": "2025.1"
+      }
+    },
+    "sparse_cg": {
+      "artifact_id": "cbcb21c983c8b2bd21e2864a002589a973948301fa8f9f837e50ad25c2ac4c98",
+      "metric_set": "lightweight_v1",
+      "metrics": {
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 11.76
+        },
+        "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 38.89
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 128.0
+        },
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 54.22
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 33.07
+        },
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 37.08
+        },
+        "sm__warps_active.avg.pct_of_peak_sustained_active": {
+          "unit": "%",
+          "value": 22.5
+        },
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+          "unit": "inst",
+          "value": 0.64
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 130490368.0
+        }
+      },
+      "profiler": "ncu",
+      "resolved_metrics": [
+        "launch__registers_per_thread",
+        "sm__warps_active.avg.pct_of_peak_sustained_active",
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+        "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+        "l1tex__throughput.avg.pct_of_peak_sustained_active",
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+        "smsp__inst_executed.sum"
+      ],
+      "schema_version": 1,
+      "summary": {
+        "achieved_occupancy_pct": 22.5,
+        "dram_throughput_pct": 11.76,
+        "instructions_executed": 130490368.0,
+        "l1tex_throughput_pct": 38.89,
+        "l2_throughput_pct": 54.22,
+        "long_scoreboard_warps_per_issue": 0.64,
+        "registers_per_thread": 128.0,
+        "sm_throughput_pct": 37.08,
+        "tensor_pipe_utilization_pct": 33.07
+      },
+      "target": {
+        "architecture": "sm_90",
+        "ncu_version": "2025.1"
+      }
+    }
+  },
+  "variants": {
+    "compact_ca": {
+      "sha256": "18222c5b7a759c3d918fc6b643f7f19556314b0c23f849582aa7ee8fc39ff4b2"
+    },
+    "compact_cg": {
+      "sha256": "d6ed616eac998bcca322baad8ffa42fff7dec0c8b706c7d9beba9989880651a9"
+    },
+    "sparse_ca": {
+      "sha256": "ad463f993a4a9b9c467eafb0462742649a4d14e3ecef810f8f468fdb89044ee8"
+    },
+    "sparse_cg": {
+      "sha256": "bd447efb02bdef37dc68511a9669cc7038d3cfa0b8ca8635ed29a91fc7d0fde2"
+    }
+  }
+}
