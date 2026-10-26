@@ -56,7 +56,8 @@ path and the Milestone B typed CuTe DSL backend:
 - independent, greedy, and iterative best-of-K baselines,
 - uniform strategy priors and typed extension interfaces,
 - compile/correctness/benchmark evaluation with fixed root-normalized rewards,
-- provider-neutral LLM generation with an optional OpenAI Responses API adapter,
+- provider-neutral LLM generation with OpenAI Responses and Anthropic-compatible
+  Messages gateway adapters,
 - append-oriented SQLite trace events,
 - guarded Nebius H100 SXM VM lifecycle, worker, NCU profiling, and search CLIs,
 - deterministic CuTe DSL rendering, typed mutations, separate `B_mut` accounting,
@@ -89,6 +90,8 @@ API request and does not provision a GPU or validate the generated kernel.
 Use the guarded remote evaluation procedure in
 [docs/h100-validation.md](docs/h100-validation.md) to compile and correctness-test the
 generated candidate before running the documented OpenAI-backed MCTS command.
+The [Messages gateway guide](docs/messages-gateway.md) covers GLM-backed MCTS
+and sequential runs without changing the GPU evaluation path.
 
 ## Project status
 

@@ -5,13 +5,10 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Any
 
-from .llm import LLMCompletion
+from .llm import DEFAULT_GENERATION_INSTRUCTIONS, LLMCompletion
 
 
-OPENAI_GENERATION_INSTRUCTIONS = (
-    "Return only the complete replacement kernel source. "
-    "Do not use Markdown fences or explanatory prose."
-)
+OPENAI_GENERATION_INSTRUCTIONS = DEFAULT_GENERATION_INSTRUCTIONS
 
 
 @dataclass(frozen=True, slots=True)

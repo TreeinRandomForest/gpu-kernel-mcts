@@ -310,6 +310,12 @@ completed hardware validation is identified explicitly.
 - [ ] Extend the same paired comparison to two-turn/graph and
   full-history/graph-off and graph-on cells. Keep `lightweight_v1` collection
   fixed for this factorial study; test diagnostic NCU as a later factor.
+- [ ] Validate the GLM-5.3 Anthropic-compatible Messages gateway with one
+  API-only response and a small H100 CUDA search before running matched MCTS
+  or sequential ablations. The adapter and GPU-free tests are documented in
+  `docs/messages-gateway.md`. On 2026-10-26, both the adapter and exact curl
+  request returned HTTP 401 with the `.bashrc` key after export; gateway
+  authorization or the key must be corrected before the GPU smoke.
 - [ ] Independently classify sequential source transitions against declared
   strategy IDs. Version and test catalog additions only for recurring useful
   edits that are absent or prohibited by current strategy wording. Seed-0

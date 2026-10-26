@@ -38,6 +38,8 @@ from .generation import (
     proposal_budget_kind,
 )
 from .llm_generation import LLMKernelGenerator
+from .llm import LLMClient
+from .messages_client import MessagesClient, MessagesConfig
 from .nebius import NebiusConfig, create_nebius_provider
 from .openai_client import OpenAIResponsesClient, OpenAIResponsesConfig
 from .orchestration import run_mcts_search, run_sequential_search
@@ -256,12 +258,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tuned-best-output", type=Path)
     parser.add_argument(
         "--generator",
-        choices=("smoke", "openai", "cute-mutation", "cute-mixed"),
+        choices=("smoke", "openai", "messages", "cute-mutation", "cute-mixed"),
         default="smoke",
     )
     parser.add_argument("--model")
     parser.add_argument("--strategies", type=Path)
     parser.add_argument("--openai-api-key-env", default="OPENAI_API_KEY")
+    parser.add_argument("--messages-url", default=os.environ.get("ENMAAS_URL"))
+    parser.add_argument("--messages-api-key-env", default="ENMAAS_KEY")
+    parser.add_argument("--messages-api-version", default="2023-06-01")
     parser.add_argument("--reasoning-effort", default="medium")
     parser.add_argument("--max-output-tokens", type=int, default=16_384)
     parser.add_argument("--llm-timeout", type=float, default=180.0)
@@ -358,10 +363,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--c-puct must be positive")
     if arguments.omit_parent_profile and arguments.include_incoming_profile_delta:
         parser.error("--omit-parent-profile conflicts with --include-incoming-profile-delta")
-    if arguments.include_compiler_summary and (arguments.generator != "openai" or arguments.backend != "cuda_cpp"):
-        parser.error("--include-compiler-summary requires --generator=openai and --backend=cuda_cpp")
-    if arguments.dataflow_prompt_view != "none" and (arguments.generator != "openai" or arguments.backend != "cuda_cpp"):
-        parser.error("--dataflow-prompt-view requires --generator=openai and --backend=cuda_cpp")
+    if arguments.include_compiler_summary and (arguments.generator not in {"openai", "messages"} or arguments.backend != "cuda_cpp"):
+        parser.error("--include-compiler-summary requires a CUDA LLM generator")
+    if arguments.dataflow_prompt_view != "none" and (arguments.generator not in {"openai", "messages"} or arguments.backend != "cuda_cpp"):
+        parser.error("--dataflow-prompt-view requires a CUDA LLM generator")
     if arguments.best_output is not None and arguments.best_output.exists():
         parser.error(
             f"refusing to overwrite existing best output: {arguments.best_output}"
@@ -402,6 +407,12 @@ def main(argv: list[str] | None = None) -> int:
         ),
         "backend": arguments.backend,
     }
+    if arguments.generator == "messages":
+        provenance["model_provider"] = "anthropic_messages_compatible"
+        provenance["messages_endpoint_sha256"] = hashlib.sha256(
+            arguments.messages_url.encode("utf-8")
+        ).hexdigest()
+        provenance["messages_api_version"] = arguments.messages_api_version
     if arguments.algorithm == "sequential":
         assert isinstance(generator, SequentialKernelGenerator)
         provenance["sequential_strategy_choice"] = generator.choice_provenance
@@ -529,6 +540,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     generator_label = {
         "openai": "OpenAI",
+        "messages": "Messages",
         "smoke": "Smoke",
         "cute-mutation": "CuTe mutation",
         "cute-mixed": "CuTe mixed",
@@ -621,11 +633,55 @@ def _root_program(
     return load_bf16_gemm_root()
 
 
+def _validate_llm_connection(
+    parser: argparse.ArgumentParser, arguments: argparse.Namespace,
+) -> None:
+    if arguments.generator == "messages":
+        if not arguments.messages_url:
+            parser.error("--messages-url or ENMAAS_URL is required with --generator=messages")
+        key_env = arguments.messages_api_key_env
+    else:
+        key_env = arguments.openai_api_key_env
+    if not os.environ.get(key_env):
+        parser.error(f"environment variable {key_env!r} is not set")
+
+
+def _cuda_llm_client(
+    arguments: argparse.Namespace, *, instructions: str | None = None,
+    history_turns: int = 0,
+) -> LLMClient:
+    if arguments.generator == "messages":
+        values = {
+            "model": arguments.model,
+            "url": arguments.messages_url,
+            "max_output_tokens": arguments.max_output_tokens,
+            "timeout_seconds": arguments.llm_timeout,
+            "api_key_env": arguments.messages_api_key_env,
+            "api_version": arguments.messages_api_version,
+            "history_turns": history_turns,
+        }
+        if instructions is not None:
+            values["instructions"] = instructions
+        return MessagesClient(MessagesConfig(**values))
+    values = {
+        "model": arguments.model,
+        "reasoning_effort": arguments.reasoning_effort,
+        "max_output_tokens": arguments.max_output_tokens,
+        "timeout_seconds": arguments.llm_timeout,
+        "api_key_env": arguments.openai_api_key_env,
+        "store": False,
+        "history_turns": history_turns,
+    }
+    if instructions is not None:
+        values["instructions"] = instructions
+    return OpenAIResponsesClient(OpenAIResponsesConfig(**values))
+
+
 def _sequential_components(
     parser: argparse.ArgumentParser, arguments: argparse.Namespace,
 ) -> tuple[KernelGenerator, str, SequentialConfig]:
-    if arguments.backend != "cuda_cpp" or arguments.generator != "openai":
-        parser.error("sequential search requires --backend=cuda_cpp --generator=openai")
+    if arguments.backend != "cuda_cpp" or arguments.generator not in {"openai", "messages"}:
+        parser.error("sequential search requires --backend=cuda_cpp and a CUDA LLM generator")
     if arguments.generation_budget < 1 or arguments.mutation_budget:
         parser.error("sequential search requires a positive generation budget and no mutation budget")
     if not arguments.model:
@@ -641,8 +697,7 @@ def _sequential_components(
         or arguments.include_compiler_summary or arguments.dataflow_prompt_view != "none"
     ):
         parser.error("use --sequential-* context flags with sequential search")
-    if not os.environ.get(arguments.openai_api_key_env):
-        parser.error(f"environment variable {arguments.openai_api_key_env!r} is not set")
+    _validate_llm_connection(parser, arguments)
     menu: tuple[str, ...] = ()
     strategy_ids: tuple[str, ...] = ()
     catalog_sha256: str | None = None
@@ -658,14 +713,10 @@ def _sequential_components(
             f"{item.id}: {item.description}; {item.prompt_for('cuda_cpp')}"
             for item in catalog
         )
-    client = OpenAIResponsesClient(OpenAIResponsesConfig(
-        model=arguments.model, reasoning_effort=arguments.reasoning_effort,
-        max_output_tokens=arguments.max_output_tokens,
-        timeout_seconds=arguments.llm_timeout,
-        api_key_env=arguments.openai_api_key_env, store=False,
-        instructions=SEQUENTIAL_INSTRUCTIONS,
+    client = _cuda_llm_client(
+        arguments, instructions=SEQUENTIAL_INSTRUCTIONS,
         history_turns=arguments.session_history_turns,
-    ))
+    )
     generator = SequentialKernelGenerator(
         client, strategy_menu=menu, strategy_ids=strategy_ids,
         catalog_sha256=catalog_sha256,
@@ -740,9 +791,9 @@ def _search_components(
             _mcts_config(arguments, max_repairs=0),
         )
 
-    if arguments.generator == "openai" and arguments.backend != "cuda_cpp":
-        parser.error("--generator=openai requires --backend=cuda_cpp")
-    if arguments.generator == "openai" and arguments.cute_strategy:
+    if arguments.generator in {"openai", "messages"} and arguments.backend != "cuda_cpp":
+        parser.error("CUDA LLM generators require --backend=cuda_cpp")
+    if arguments.generator in {"openai", "messages"} and arguments.cute_strategy:
         parser.error("--cute-strategy requires a CuTe generator")
     if arguments.generator == "cute-mixed" and arguments.backend != "cute_dsl":
         parser.error("--generator=cute-mixed requires --backend=cute_dsl")
@@ -752,12 +803,9 @@ def _search_components(
         parser.error("the mixed CuTe run requires a positive --mutation-budget")
     if not arguments.model:
         parser.error(f"--model is required with --generator={arguments.generator}")
-    if arguments.generator == "openai" and arguments.strategies is None:
-        parser.error("--strategies is required with --generator=openai")
-    if not os.environ.get(arguments.openai_api_key_env):
-        parser.error(
-            f"environment variable {arguments.openai_api_key_env!r} is not set"
-        )
+    if arguments.generator in {"openai", "messages"} and arguments.strategies is None:
+        parser.error("--strategies is required with a CUDA LLM generator")
+    _validate_llm_connection(parser, arguments)
     strategies = (
         _selected_cute_strategies(parser, arguments)
         if arguments.generator == "cute-mixed"
@@ -765,18 +813,7 @@ def _search_components(
     )
     if not strategies:
         parser.error("strategy configuration must contain at least one strategy")
-    generator = LLMKernelGenerator(
-        OpenAIResponsesClient(
-            OpenAIResponsesConfig(
-                model=arguments.model,
-                reasoning_effort=arguments.reasoning_effort,
-                max_output_tokens=arguments.max_output_tokens,
-                timeout_seconds=arguments.llm_timeout,
-                api_key_env=arguments.openai_api_key_env,
-                store=False,
-            )
-        )
-    )
+    generator = LLMKernelGenerator(_cuda_llm_client(arguments))
     routed_generator = (
         MutationFirstGenerator(
             CuteMutationGenerator(),

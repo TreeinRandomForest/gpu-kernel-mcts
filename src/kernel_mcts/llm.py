@@ -4,6 +4,12 @@ from dataclasses import dataclass, field
 from typing import Mapping, Protocol
 
 
+DEFAULT_GENERATION_INSTRUCTIONS = (
+    "Return only the complete replacement kernel source. "
+    "Do not use Markdown fences or explanatory prose."
+)
+
+
 @dataclass(frozen=True, slots=True)
 class LLMCompletion:
     response_id: str

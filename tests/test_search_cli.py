@@ -23,6 +23,8 @@ from kernel_mcts.provenance import RepositoryState
 from kernel_mcts.search_cli import (
     ProgressKernelGenerator,
     SearchCLIProgress,
+    _search_components,
+    _sequential_components,
     build_parser,
     main,
 )
@@ -884,3 +886,117 @@ def test_progress_generator_reports_start_and_evaluation_handoff() -> None:
         "Starting proposal call 1: strategy=coalescing",
         "Proposal call 1 returned; evaluating proposal",
     ]
+
+
+def test_messages_generator_wires_mcts_and_sequential_without_openai_key(
+    tmp_path, monkeypatch,
+) -> None:
+    strategies = tmp_path / "strategies.json"
+    strategies.write_text(json.dumps({"strategies": [{
+        "id": "coalescing", "description": "Coalesce loads",
+        "prompts": {"cuda_cpp": "Coalesce global loads."},
+    }]}))
+    monkeypatch.setenv("TEST_ENMAAS_KEY", "test-secret")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    configs = []
+
+    class FakeMessagesClient:
+        def __init__(self, config):
+            configs.append(config)
+
+    monkeypatch.setattr("kernel_mcts.search_cli.MessagesClient", FakeMessagesClient)
+    base = [
+        "--image", "worker:v1", "--trace", str(tmp_path / "trace.sqlite"),
+        "--generator", "messages", "--model", "rits/zai-org/glm-5-3",
+        "--messages-url", "https://gateway.example/v1/messages",
+        "--messages-api-key-env", "TEST_ENMAAS_KEY",
+        "--strategies", str(strategies),
+    ]
+    parser = build_parser()
+    mcts = parser.parse_args(base + ["--include-compiler-summary",
+                                     "--dataflow-prompt-view", "paths"])
+    catalog, generator, model, config = _search_components(parser, mcts)
+    assert [item.id for item in catalog] == ["coalescing"]
+    assert isinstance(generator, LLMKernelGenerator)
+    assert model == "rits/zai-org/glm-5-3"
+    assert config.include_compiler_summary
+    assert config.dataflow_prompt_view == "paths"
+    assert configs[-1].history_turns == 0
+    assert configs[-1].api_key_env == "TEST_ENMAAS_KEY"
+
+    sequential = parser.parse_args(base + [
+        "--algorithm", "sequential", "--session-history-turns", "2",
+        "--sequential-strategy-menu",
+    ])
+    generator, model, config = _sequential_components(parser, sequential)
+    assert model == "rits/zai-org/glm-5-3"
+    assert generator.choice_provenance["menu_enabled"] is True
+    assert config.dataflow_view == "paths"
+    assert configs[-1].history_turns == 2
+    assert "selected_strategy_id" in configs[-1].instructions
+
+
+def test_messages_generator_requires_url_and_key(tmp_path, monkeypatch, capsys) -> None:
+    strategies = tmp_path / "strategies.json"
+    strategies.write_text(json.dumps({"strategies": [{
+        "id": "coalescing", "description": "Coalesce",
+        "prompts": {"cuda_cpp": "Coalesce."},
+    }]}))
+    monkeypatch.delenv("ENMAAS_URL", raising=False)
+    monkeypatch.delenv("MISSING_ENMAAS_KEY", raising=False)
+    parser = build_parser()
+    args = parser.parse_args([
+        "--image", "worker:v1", "--trace", "trace.sqlite",
+        "--generator", "messages", "--model", "glm",
+        "--strategies", str(strategies),
+        "--messages-api-key-env", "MISSING_ENMAAS_KEY",
+    ])
+    with pytest.raises(SystemExit):
+        _search_components(parser, args)
+    assert "--messages-url or ENMAAS_URL" in capsys.readouterr().err
+    args.messages_url = "https://gateway.example/v1/messages"
+    with pytest.raises(SystemExit):
+        _search_components(parser, args)
+    assert "MISSING_ENMAAS_KEY" in capsys.readouterr().err
+
+
+def test_messages_main_records_provider_without_key_or_url(tmp_path, monkeypatch) -> None:
+    strategies = tmp_path / "strategies.json"
+    strategies.write_text(json.dumps({"strategies": [{
+        "id": "coalescing", "description": "Coalesce",
+        "prompts": {"cuda_cpp": "Coalesce."},
+    }]}))
+    captured = {}
+    url = "https://gateway.example/v1/messages"
+    monkeypatch.setenv("TEST_ENMAAS_KEY", "test-secret")
+    monkeypatch.setenv("RUNPOD_API_KEY", "test-runpod-key")
+    monkeypatch.setattr("kernel_mcts.search_cli.MessagesClient", lambda config: object())
+    monkeypatch.setattr("kernel_mcts.search_cli.resolve_reusable_volume",
+                        lambda *args: ("volume-1", "EUR-IS-3"))
+    monkeypatch.setattr("kernel_mcts.search_cli.create_runpod_provider",
+                        lambda *args, **kwargs: object())
+
+    def fake_search(**values):
+        captured.update(values)
+        node = SimpleNamespace(program=KernelProgram("source"), reward=0.5)
+        return SimpleNamespace(run_id="messages-run", tuning=None,
+                               result=SimpleNamespace(root=node, best=node,
+                                                      nodes=(node,), iterations=1,
+                                                      generations=1, mutations=0,
+                                                      prior_calls=0, profile_calls=1,
+                                                      drift_probe_calls=0))
+
+    monkeypatch.setattr("kernel_mcts.search_cli.run_mcts_search", fake_search)
+    assert main([
+        "--image", "worker:v1", "--trace", str(tmp_path / "trace.sqlite"),
+        "--generator", "messages", "--model", "rits/zai-org/glm-5-3",
+        "--messages-url", url, "--messages-api-key-env", "TEST_ENMAAS_KEY",
+        "--strategies", str(strategies), "--network-volume-id", "volume-1",
+        "--data-center-id", "EUR-IS-3", "--confirm-create-and-terminate",
+    ]) == 0
+    metadata = captured["run_metadata"]
+    assert metadata["model_provider"] == "anthropic_messages_compatible"
+    assert metadata["messages_endpoint_sha256"] == hashlib.sha256(url.encode()).hexdigest()
+    assert metadata["reasoning_effort"] == "not_applicable"
+    assert "test-secret" not in repr(metadata)
+    assert url not in repr(metadata)

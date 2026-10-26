@@ -38,7 +38,9 @@ before comparing runs.
 
 Use `python -m kernel_mcts.search_cli --algorithm sequential` with the normal
 worker, image, model, and trace flags. This mode requires
-`--generator openai --backend cuda_cpp` and a positive `--generation-budget`.
+`--backend cuda_cpp`, either `--generator openai` or `--generator messages`,
+and a positive `--generation-budget`. The
+[Messages gateway guide](../messages-gateway.md) describes the GLM adapter.
 The existing `--confirm-create-and-terminate` gate applies when launching a
 billable worker.
 
