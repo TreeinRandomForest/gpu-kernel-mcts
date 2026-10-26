@@ -1,0 +1,1 @@
+Read AGENTS.md, spec.md, and docs/cuda-first-next-direction.md before doing anything else. Treat spec.md as the source of truth and the CUDA-first document as the current research direction. Then inspect TODO.md, git status, and the relevant implementation and tests. Do not modify files, provision GPUs, make API calls, commit, or push until I ask.
