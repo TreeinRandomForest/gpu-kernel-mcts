@@ -7,13 +7,15 @@ import shutil
 import subprocess
 import threading
 import hmac
+from importlib.metadata import PackageNotFoundError, version
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Callable
 
-from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
+from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root, load_triton_bf16_gemm_root
 from .cuda_backend import CudaBackendConfig, CudaCppBackend
+from .triton_backend import TritonBackendConfig, TritonH100Backend
 from .cute_backend import CuteBackendConfig, CuTeDSLBackend
 from .cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM
 from .cute_independent import make_independent_cute_gemm
@@ -68,7 +70,11 @@ def build_application(
         context=EvaluationContext(
             worker_id=worker_id,
             environment_manifest_id=manifest.manifest_id,
-            launch_config=BF16_GEMM_WORKLOAD.metadata["abi"]["launch"],
+            launch_config=(
+                {"dynamic": True, "entry_point": "launch"}
+                if backend_name == "triton_h100"
+                else BF16_GEMM_WORKLOAD.metadata["abi"]["launch"]
+            ),
             hardware_toolchain={
                 "gpu_model": manifest.gpu_model,
                 "compute_capability": manifest.compute_capability,
@@ -142,6 +148,15 @@ def _build_backend(environment, manifest):
             root_program = PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
         else:
             raise RuntimeError(f"unsupported CuTe root kind {root_kind!r}")
+    elif backend_name == "triton_h100":
+        backend = TritonH100Backend(
+            TritonBackendConfig(
+                artifact_root=artifact_root,
+                architecture=architecture,
+                ncu_version=manifest.profiler_versions.get("ncu"),
+            )
+        )
+        root_program = load_triton_bf16_gemm_root()
     else:
         raise RuntimeError(f"unsupported worker backend {backend_name!r}")
     return backend_name, backend, root_program
@@ -223,6 +238,12 @@ def capture_environment_manifest(environ=None) -> EnvironmentManifest:
         "cuda_toolkit": environment.get("CUDA_VERSION", "unknown"),
         "cutlass": environment.get("CUTLASS_VERSION", "unknown"),
     }
+    if environment.get("KERNEL_MCTS_BACKEND") == "triton_h100":
+        for package in ("torch", "triton"):
+            try:
+                toolchains[package] = version(package)
+            except PackageNotFoundError as error:
+                raise RuntimeError(f"required Triton worker package {package!r} is missing") from error
     profilers = {}
     ncu_version = _optional_command(["ncu", "--version"])
     if ncu_version:

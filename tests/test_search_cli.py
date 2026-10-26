@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
+from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root, load_triton_bf16_gemm_root
 from kernel_mcts.domain import KernelProgram, Strategy
 from kernel_mcts.generation import (
     GenerationRequest,
@@ -15,6 +15,7 @@ from kernel_mcts.generation import (
     MutationFirstGenerator,
 )
 from kernel_mcts.llm_generation import LLMKernelGenerator
+from kernel_mcts.llm_generation import build_generation_prompt
 from kernel_mcts.cute_mutations import CuteMutationGenerator
 from kernel_mcts.cute_generation import CuteTypedLLMGenerator
 from kernel_mcts.cute_independent_program import independent_cute_gemm_from_source
@@ -24,11 +25,12 @@ from kernel_mcts.search_cli import (
     ProgressKernelGenerator,
     SearchCLIProgress,
     _search_components,
+    _root_program,
     _sequential_components,
     build_parser,
     main,
 )
-from kernel_mcts.smoke import SmokeKernelGenerator
+from kernel_mcts.smoke import SmokeKernelGenerator, TritonSmokeKernelGenerator
 
 
 def test_smoke_generator_is_deterministic_and_one_shot() -> None:
@@ -49,6 +51,43 @@ def test_smoke_generator_is_deterministic_and_one_shot() -> None:
     assert result.metadata == {"generator": "deterministic-smoke", "llm_call": False}
     with pytest.raises(RuntimeError, match="exactly one"):
         generator.generate(request)
+
+
+def test_triton_smoke_generator_produces_a_distinct_source() -> None:
+    generator = TritonSmokeKernelGenerator()
+    request = GenerationRequest(
+        parent=load_triton_bf16_gemm_root(),
+        strategy=Strategy("smoke", "smoke", {"triton_h100": "smoke"}),
+        workload=BF16_GEMM_WORKLOAD, hardware={"gpu_model": "H100"}, profile=None,
+    )
+    result = generator.generate(request)
+    assert result.program.backend == "triton_h100"
+    assert "bm, bn, bk = 64, 64, 32" in result.program.source
+    assert result.program != request.parent
+    with pytest.raises(RuntimeError, match="exactly one"):
+        generator.generate(request)
+
+
+def test_triton_cli_selects_root_and_strategy_catalog(monkeypatch) -> None:
+    parser = build_parser()
+    arguments = parser.parse_args([
+        "--image", "worker:triton", "--trace", "trace.sqlite",
+        "--backend", "triton_h100", "--generator", "openai", "--model", "test",
+        "--strategies", "configs/triton_h100_strategies.json",
+    ])
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    root = _root_program(parser, arguments)
+    strategies, generator, _, config = _search_components(parser, arguments)
+    assert root.backend == "triton_h100"
+    assert len(strategies) == 4
+    assert all(strategy.prompt_for("triton_h100") for strategy in strategies)
+    assert isinstance(generator, LLMKernelGenerator)
+    assert config.max_repairs == 1
+    prompt = build_generation_prompt(GenerationRequest(
+        parent=root, strategy=strategies[0], workload=BF16_GEMM_WORKLOAD,
+        hardware={"gpu_model": "H100"}, profile=None,
+    ))
+    assert "Define launch(A, B, C, M, N, K)" in prompt
 
 
 def test_search_cli_rejects_non_smoke_generation_budget(capsys) -> None:

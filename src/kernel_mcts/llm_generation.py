@@ -72,6 +72,14 @@ def build_generation_prompt(request: GenerationRequest) -> str:
         ],
         "attempt": request.attempt,
     }
+    if request.parent.backend == "triton_h100":
+        payload["constraints"] = [
+            "Return a complete Python Triton source file without Markdown.",
+            "Define launch(A, B, C, M, N, K) and return its CompiledKernel.",
+            "A is row-major BF16 [M,K]; B is column-major BF16 [K,N]; C is row-major BF16 [M,N].",
+            "Preserve FP32 accumulation and the fixed correctness tolerance.",
+            "Keep the JIT kernel name bf16_gemm_triton for NCU selection.",
+        ]
     if request.parent.backend == "cute_dsl":
         from .cute_independent_program import (
             REPRESENTATION_NAME as INDEPENDENT_REPRESENTATION_NAME,

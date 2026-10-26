@@ -3355,3 +3355,166 @@ prior. Sequential menu versus freeform results motivate this experiment but
 do not by themselves isolate the cause of an MCTS-versus-sequential gap:
 sequential acceptance, history policy, profiling frequency, and action
 selection differ.
+
+# 49. Experimental Triton/ROCm Block32 Linear Workload
+
+This section defines a separate, opt-in research track for AMD Instinct MI355X.
+It does not expand Milestone A or B completion criteria or change the search
+invariants in Sections 9–24 and 48. The initial source workload is the fused
+quantization and block32 GEMM path in [vLLM PR #63179](https://github.com/vllm-project/vllm/pull/63179),
+inspected at PR head `6636dae0b05503e4f86e65c3b917bf2fbdaea30e`. Pin the vLLM
+revision used for every run because the PR may change.
+
+## 49.1 Target and root validation
+
+The target is MI355X (`gfx950`, CDNA4), matching the PR's tested hardware.
+[AMD's architecture comparison](https://rocm.docs.amd.com/en/docs-7.2.4/how-to/rocm-for-ai/inference-optimization/workload.html)
+lists native MXFP8 throughput for MI355X. The PR's fused tests require
+`supports_mx()` and skip MI300X (`gfx942`, CDNA3); MI300X results cannot stand
+in for this experiment.
+
+The search root is the PR's fused Triton quantization-plus-block32-GEMM
+implementation together with the launch configuration and dispatch wrapper
+needed to reproduce the operation. Pin a ROCm/PyTorch/Triton/vLLM image and
+revalidate this root on the selected MI355X worker before search. Record the
+device target, `supports_mx()` result, compilation/JIT result, correctness,
+dispatch taken, and baseline timings. A root that does not compile, execute,
+and pass the contract below is not a valid search root. The PR's published
+MI355X timings are historical references, not substitutes for a same-worker
+root measurement.
+
+## 49.2 Operation and workload matrix
+
+The searchable operation is `rocm_mxfp8_block32_gemm_quant`, computing
+`Y = X @ W.T`. The eligible fused path takes contiguous row-major raw BF16 or
+FP16 activations `X[M, K]`, packed e4m3 weights `W[N, K]`, compact E8M0 weight
+scales `[N/32, K/32]` for 32-by-32 weight blocks, and an output dtype. The
+primary contract uses BF16 input and output. The fused Triton K loop quantizes
+each activation 32-element block to e4m3 with an E8M0 scale and feeds the
+packed block32 GEMM. The stock reference runs activation quantization and GEMM
+as separate dispatches. Only packed configurations with `1 <= M <= 8` and a
+contiguous BF16/FP16 activation qualify for fusion; other cases take the stock
+path. Preserve layout, scale semantics, output shape/dtype, and fallback
+behavior. Treat the operation, including any split-K reduction, as the unit of
+correctness and latency comparison.
+
+The PR's mandatory serving-shape correctness matrix is the cross product of
+`M in {1, 5, 8}` with the following `(N, K)` pairs:
+
+| PR case | N | K | Coverage |
+| --- | ---: | ---: | --- |
+| `shared_gate_up_tp4` | 1152 | 5120 | Multi-band K and in-launch split-K |
+| `fused_wqa_wkv` | 1792 | 5120 | Second long-K tier |
+| `wq_b_tp4` | 8192 | 1280 | Masked K tail |
+| `shared_down_tp4` | 5120 | 576 | Small-K tile |
+| `default_config` | 1024 | 2048 | Draft-model default configuration |
+
+The PR's fused tuning table also names `(N, K)` pairs `(4096, 1280)`,
+`(5120, 2048)`, and `(768, 1536)`. Include these in an expanded benchmark
+matrix after the mandatory cases. Record the exact table, M values, seeds,
+input distributions, strides, output dtype, and per-case weights in a
+versioned workload contract before comparing candidates. Do not silently
+replace the PR's shape set with a single GEMM shape or treat an untested shape
+as a validated serving case. Report each case as well as an aggregate. Unless
+a measured serving-frequency weighting is pinned in advance, use the
+Section 18 mean log-speedup over the fixed cases.
+
+Use BF16 activation and BF16 output for the primary fifteen cases, matching
+the PR's serving-shape tests. Exercise FP16 activation as an eligible-format
+extension only after its reference behavior is established on the target GPU.
+Exercise FP32 activation as a fallback check, not a fused-format benchmark.
+Version any further weight format or output dtype extension separately; the PR
+does not establish a general multi-format fastpath.
+
+## 49.3 Correctness and dispatch
+
+For each eligible case, check that the intended fused dispatch was taken,
+repeated outputs are deterministic, and outputs are bit-exact against the
+same-revision stock separate-quantization path on the same hardware. Also compare
+against an independent dequantize-then-FP32-matmul reference; the PR uses
+relative norm error below `5e-3`. Keep the quantization reference independent
+of the GEMM implementation under test. Test zero blocks, denormals, very large
+values, negative values, masked K, split-K, and graph capture/replay with both
+warm and cold split-K state.
+
+Test non-contiguous activations, FP32 activations, `M > 8`, `M = 0`, the
+per-row-scale path, and the fused-path kill switch as separate fallback cases.
+They must not be reported as fused speedups. Incorrect candidates and candidates
+that miss required dispatches are invalid; locally slower but correct candidates
+remain eligible search nodes under the existing search rules.
+
+## 49.4 Measurement and integration
+
+On MI355X, measure the stock separate-quantization operation and every valid
+candidate with identical inputs and a pinned warmup, sample count,
+synchronization, and HIP event/graph timing policy. Exclude JIT and compilation
+from runtime; record them separately. Preserve per-shape median and spread,
+full-operation latency,
+number of launches, correctness outcome, and whether graph replay changed the
+path. Establish a same-worker baseline before GPU search. Profile selected
+dispatches with ROCm tooling, keeping measured counters separate from static
+Triton IR and AMDGPU ISA summaries. Profiler replay timing is diagnostic, not
+the benchmark reward.
+
+The PR also changes a BF16 `lm_head` skinny-GEMM dispatch guard in
+`layers/utils.py`. It is a separate optimization, not a Triton candidate in
+this initial workload. Hold its state fixed while evaluating the fused
+operation; report it separately in any vLLM serving validation. The PR's
+MI355X tensor-parallel-4 end-to-end result combines both changes and cannot
+be attributed to the fused kernel alone. If an MI355X kernel improvement is
+found, validate it in the pinned vLLM revision with the relevant kernel tests,
+dispatch logs, and a separate serving-level A/B experiment where feasible.
+
+## 49.5 Implementation boundaries and evidence
+
+Add a `triton_rocm` kernel backend for normalization, JIT compilation,
+correctness, timing, compiler artifacts, and optional ROCm profiling. Add a
+versioned workload harness for the matrix above. Select an MI355X provider
+after confirming available capacity, access, image support, profiler access,
+and lifecycle API; do not assume HotAisle offers MI355X. Add that provider
+behind the existing GPU worker interface. Provider credentials stay outside
+worker payloads and traces. The search controller,
+MCTS tree policy, generation accounting, reward semantics, and SQLite node
+validity rules remain backend- and provider-independent. Triton strategies
+must be versioned and checked against the MI355X compiler/resource limits;
+the PR's tuned tile table is a baseline observation, not a strategy
+catalog. Record source revision, image digest, GPU identity, ROCm and Triton
+versions, shape matrix, strategy catalog, compiler artifacts, profile scope,
+and timing contract with every run.
+
+# 50. Experimental Triton H100 Integration Milestone
+
+This is a bounded, opt-in precursor to Section 49. It validates the reusable
+Triton search path on an available H100, using the existing
+`bf16_gemm_4096_h100` shape, layouts, BF16 output, and correctness tolerance.
+The root is a packaged Triton BF16 GEMM; it is measured independently of the
+CUDA C++ root. Do not compare reward curves without accounting for their
+different measured roots. The vLLM block32 workload and MI355X validation
+remain Section 49 work.
+
+The `triton_h100` backend accepts complete Python source defining
+`launch(A, B, C, M, N, K)`. A is row-major `[M,K]`, B is column-major
+`[K,N]`, and C is row-major `[M,N]`. `launch` invokes a Triton JIT kernel
+named `bf16_gemm_triton` and returns the compiled kernel. The backend JITs
+and saves the cubin/PTX when available, checks output against same-worker
+cuBLAS through PyTorch, and times the operation with CUDA events after
+warmup. A candidate is a node only after compile, correctness, and timing.
+Source contributes to the binary fingerprint because launcher grid changes
+may leave cubin bytes unchanged. NCU `lightweight_v1` is collected lazily
+on expansion; profiler replay timing is not the reward.
+
+The initial H100 Triton action catalog is versioned separately from the
+CUDA C++ catalog and covers output tiles, K tile/pipeline, warps, and
+column-major B access. The controller, MCTS selection, progressive widening,
+generation/repair budget, valid-node rule, reward, and SQLite trace semantics
+are unchanged. CUDA C++ compiler/dataflow prompt views and CUDA autotuning
+do not apply to this backend. Compiler artifacts are stored on the worker;
+bounded Triton compiler summaries and dataflow views are later, separate
+experiments.
+
+Exit this integration milestone after a same-worker root and cuBLAS/CUTLASS
+calibration, a valid deterministic distinct candidate, one small LLM search,
+and one NCU profile in the trace. Record image digest, source revision,
+Torch/Triton/CUDA/NCU versions, root timing, candidate timing, correctness,
+and profiler status. Hardware validation is required before claiming the
+milestone complete; local tests only validate wiring and failure handling.

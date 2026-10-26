@@ -86,7 +86,7 @@ class NebiusConfig:
             raise ValueError("Nebius disk size and worker port must be positive")
         if self.startup_timeout_seconds <= 0 or self.poll_interval_seconds <= 0:
             raise ValueError("Nebius timeouts must be positive")
-        if self.backend not in {"cuda_cpp", "cute_dsl"}:
+        if self.backend not in {"cuda_cpp", "cute_dsl", "triton_h100"}:
             raise ValueError("unsupported worker backend")
         if self.cute_root_kind not in {"pinned", "independent"}:
             raise ValueError("unsupported CuTe root kind")

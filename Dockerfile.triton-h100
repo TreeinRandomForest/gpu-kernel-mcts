@@ -1,0 +1,23 @@
+FROM nvidia/cuda:12.8.2-devel-ubuntu24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/opt/venv/bin:$PATH
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates git python3 python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch v4.5.1 https://github.com/NVIDIA/cutlass.git /opt/cutlass \
+    && rm -rf /opt/cutlass/.git
+ENV CUTLASS_PATH=/opt/cutlass CUTLASS_VERSION=v4.5.1
+RUN python3 -m venv /opt/venv
+RUN python -m pip install --no-cache-dir torch==2.7.1 --index-url https://download.pytorch.org/whl/cu128
+
+WORKDIR /opt/kernel-mcts
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN python -m pip install --no-cache-dir .
+
+EXPOSE 8000
+CMD ["python", "-m", "kernel_mcts.worker_service"]

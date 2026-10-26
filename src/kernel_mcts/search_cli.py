@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Mapping, TextIO
 
 from .autotuning import TuningConfig
-from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root
+from .benchmarks import BF16_GEMM_WORKLOAD, load_bf16_gemm_root, load_triton_bf16_gemm_root
 from .config import load_data, parse_strategies
 from .cute_mutations import (
     CUTE_MUTATION_STRATEGIES,
@@ -52,7 +52,7 @@ from .runpod import create_runpod_provider
 from .runpod_cli import ReadinessProgress
 from .runpod_volume import resolve_reusable_volume
 from .search import MCTSConfig
-from .smoke import SmokeKernelGenerator
+from .smoke import SmokeKernelGenerator, TritonSmokeKernelGenerator
 from .sequential import SequentialConfig
 from .sequential_generation import SEQUENTIAL_INSTRUCTIONS, SequentialKernelGenerator
 
@@ -211,7 +211,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--trace", type=Path, required=True)
     parser.add_argument("--algorithm", choices=("mcts", "sequential"), default="mcts")
     parser.add_argument(
-        "--backend", choices=("cuda_cpp", "cute_dsl"), default="cuda_cpp"
+        "--backend", choices=("cuda_cpp", "cute_dsl", "triton_h100"), default="cuda_cpp"
     )
     parser.add_argument("--provider", choices=("runpod", "nebius"), default="runpod")
     parser.add_argument("--api-key-env", default="RUNPOD_API_KEY")
@@ -367,6 +367,15 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--include-compiler-summary requires a CUDA LLM generator")
     if arguments.dataflow_prompt_view != "none" and (arguments.generator not in {"openai", "messages"} or arguments.backend != "cuda_cpp"):
         parser.error("--dataflow-prompt-view requires a CUDA LLM generator")
+    if arguments.backend == "triton_h100":
+        if arguments.algorithm != "mcts" or arguments.generator not in {"openai", "messages", "smoke"}:
+            parser.error("Triton H100 currently requires MCTS with an LLM or smoke generator")
+        if arguments.include_compiler_summary or arguments.dataflow_prompt_view != "none":
+            parser.error("CUDA compiler/dataflow prompt views are unsupported for Triton H100")
+        if arguments.autotune:
+            parser.error("CUDA autotuning is unsupported for Triton H100")
+        if arguments.profile_metric_set != "lightweight_v1":
+            parser.error("Triton H100 currently supports --profile-metric-set=lightweight_v1")
     if arguments.best_output is not None and arguments.best_output.exists():
         parser.error(
             f"refusing to overwrite existing best output: {arguments.best_output}"
@@ -630,6 +639,8 @@ def _root_program(
             parser.error(str(error))
     if arguments.backend == "cute_dsl":
         return PinnedCuteGemmRenderer().render(REFERENCE_CUTE_GEMM)
+    if arguments.backend == "triton_h100":
+        return load_triton_bf16_gemm_root()
     return load_bf16_gemm_root()
 
 
@@ -742,8 +753,8 @@ def _search_components(
     if arguments.generator == "smoke":
         if arguments.cute_strategy:
             parser.error("--cute-strategy requires a CuTe generator")
-        if arguments.backend != "cuda_cpp":
-            parser.error("--generator=smoke requires --backend=cuda_cpp")
+        if arguments.backend not in {"cuda_cpp", "triton_h100"}:
+            parser.error("--generator=smoke requires --backend=cuda_cpp or triton_h100")
         if arguments.generation_budget != 1:
             parser.error("the deterministic smoke run requires --generation-budget=1")
         if arguments.mutation_budget != 0:
@@ -753,10 +764,10 @@ def _search_components(
                 Strategy(
                     "deterministic_smoke",
                     "Generate the fixed orchestration smoke candidate",
-                    {"cuda_cpp": "fixed smoke candidate"},
+                    {arguments.backend: "fixed smoke candidate"},
                 ),
             ),
-            SmokeKernelGenerator(),
+            TritonSmokeKernelGenerator() if arguments.backend == "triton_h100" else SmokeKernelGenerator(),
             None,
             MCTSConfig(
                 c_puct=arguments.c_puct,
@@ -791,8 +802,8 @@ def _search_components(
             _mcts_config(arguments, max_repairs=0),
         )
 
-    if arguments.generator in {"openai", "messages"} and arguments.backend != "cuda_cpp":
-        parser.error("CUDA LLM generators require --backend=cuda_cpp")
+    if arguments.generator in {"openai", "messages"} and arguments.backend not in {"cuda_cpp", "triton_h100"}:
+        parser.error("LLM generators require --backend=cuda_cpp or triton_h100")
     if arguments.generator in {"openai", "messages"} and arguments.cute_strategy:
         parser.error("--cute-strategy requires a CuTe generator")
     if arguments.generator == "cute-mixed" and arguments.backend != "cute_dsl":

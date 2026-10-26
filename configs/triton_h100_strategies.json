@@ -1,0 +1,24 @@
+{
+  "strategies": [
+    {
+      "id": "change_tile_shape",
+      "description": "Change output tile shape to balance reuse and occupancy",
+      "prompts": {"triton_h100": "Change BM and BN together with the launch grid. Preserve complete output coverage, masks, and BF16 output."}
+    },
+    {
+      "id": "change_k_tile_pipeline",
+      "description": "Change K tile and software pipeline settings",
+      "prompts": {"triton_h100": "Adjust BK and num_stages to trade operand reuse against registers and shared memory. Preserve FP32 accumulation."}
+    },
+    {
+      "id": "change_warp_count",
+      "description": "Change CTA warp count and work assignment",
+      "prompts": {"triton_h100": "Adjust num_warps and tile dimensions together, keeping the dot layout legal and each output element written once."}
+    },
+    {
+      "id": "improve_b_layout_access",
+      "description": "Improve loads and reuse for column-major B",
+      "prompts": {"triton_h100": "Optimize the B load and reuse pattern using its fixed [K,N] column-major strides (1,K), while preserving A/C row-major layouts."}
+    }
+  ]
+}

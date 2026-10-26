@@ -4,6 +4,77 @@
 and validation status. Checked implementation items have automated coverage; any
 completed hardware validation is identified explicitly.
 
+## Bounded Triton H100 integration track
+
+Section 50 of `spec.md` defines this precursor to the MI355X workload.
+
+- [x] Add a packaged Triton root, fixed BF16 GEMM launcher contract, worker
+  backend, provider selection, versioned strategies, deterministic smoke
+  candidate, and a pinned Torch/Triton image recipe.
+- [x] Add local tests for compile/correctness/timing/profile wiring and backend
+  selection without changing MCTS selection or generation accounting.
+- [ ] Build and pin the Triton H100 worker image digest; verify Torch, Triton,
+  CUDA, NCU, and CUTLASS versions on a real H100 worker.
+- [ ] Run a root and deterministic one-candidate smoke; inspect cuBLAS/CUTLASS
+  calibration, correctness, candidate timing, and trace records.
+- [ ] Run a small LLM search with `configs/triton_h100_strategies.json` and
+  confirm a lazily collected `lightweight_v1` NCU profile on a selected node.
+- [ ] Reuse the validated Triton plumbing for the separate MI355X Section 49
+  workload, then add ROCm-specific JIT, profiling, and shape coverage.
+
+## Experimental Triton/ROCm MI355X track
+
+Section 49 of `spec.md` defines the workload and preserved search behavior.
+Complete the first seven items before a source-only LLM search. Add the ROCm
+profiler before profile-informed search; compiler, hardware, and dataflow views
+are separate context ablations rather than prerequisites for a measured root.
+
+- [ ] Pin the vLLM PR revision and a ROCm/PyTorch/Triton worker image. Record the
+  exact fused kernel, launch configuration, dispatch wrapper, stock reference,
+  tool versions, image digest, and `gfx950` identity.
+- [ ] Add an attach-to-existing-GPU SSH worker option for a personally supplied
+  endpoint (`ssh://user@host:port` or equivalent), key, optional jump host, and
+  tunnel to the existing worker protocol. Validate host identity and hardware;
+  keep credentials and private endpoint details out of traces. Add vendor
+  provisioning only when a provider with usable MI355X capacity is selected.
+- [ ] Build an MI355X ROCm worker image and startup manifest. Verify container
+  GPU access, `supports_mx()`, Triton JIT, `amd-smi`, profiler availability,
+  and the requested worker environment before evaluation.
+- [ ] Add the PR fused operation as a `triton_rocm` root/backend, including its
+  launcher and split-K behavior. Keep the stock separate-quantization operation
+  as a comparison reference, not a search node. Define candidate source/config
+  boundaries and backend-specific state identity.
+- [ ] Implement the versioned block32 workload harness: the fifteen primary
+  `(M,N,K)` cases, expanded shapes and formats only after reference validation,
+  independent QDQ correctness, bit-exact stock comparison, fallback/edge cases,
+  dispatch checks, graph replay, and full-operation HIP timing. Persist every
+  case's result, aggregate reward, noise, and root/stock baselines.
+- [ ] Wire `triton_rocm` and the workload into the worker, controller CLI,
+  generation/repair prompts, SQLite trace, and artifact export without changing
+  MCTS tree policy or `B_gen` accounting. Run a root-only GPU smoke before search.
+- [ ] Define versioned Triton semantic strategies and applicability/legality
+  checks for tile, K packing, split-K, warps, stages, waves, fusion, and memory
+  movement. Keep the PR's MI355X tuning table as baseline evidence; test
+  strategy prompts and invalid-proposal handling before budgeted MCTS runs.
+- [ ] Add profiler selection by backend/hardware: retain NCU for NVIDIA and use
+  `rocprofv3`/ROCm Compute Profiler for AMD. Probe counter access on the actual
+  VM/container, distinguish tracing from hardware counters, version metric sets,
+  and keep profiler replay timing out of the reward.
+- [ ] Capture bounded Triton compiler evidence (TTIR/TTGIR, LLVM IR, AMDGPU ISA,
+  resource usage and code-object identity). Persist raw artifacts separately from
+  prompt summaries; add summary levels as explicit context ablations.
+- [ ] Add an MI355X/CDNA4 resource model with documented capacities and
+  compiler-reported VGPR/SGPR/LDS/occupancy constraints. Calibrate traffic and
+  bandwidth edges only against measured ROCm counters; distinguish estimates
+  from measurements in traces and prompts.
+- [ ] Extract a bounded dataflow graph from Triton source and lowered IR for each
+  valid node, including quantization, scale, load/store, dot, split-K, and
+  reduction paths. Validate claims against code and available profiling evidence;
+  compare graph summary, paths, subgraphs, and adjacency prompt views later.
+- [ ] Validate optimized candidates in pinned vLLM tests and a separately
+  controlled serving A/B. Hold the PR's `lm_head` guard fixed when attributing
+  an effect to the fused Triton operation.
+
 ## Implemented
 
 - [x] MCTS search with PUCT strategy selection, progressive widening, and UCB realization selection.

@@ -9,6 +9,7 @@ from kernel_mcts import cute_entrypoint
 from kernel_mcts.cute_backend import CuTeDSLBackend
 from kernel_mcts.cute_independent_program import independent_cute_gemm_from_source
 from kernel_mcts.cuda_backend import CudaCppBackend
+from kernel_mcts.triton_backend import TritonH100Backend
 from kernel_mcts.providers import EnvironmentManifest
 
 
@@ -119,6 +120,12 @@ def test_worker_builds_backend_selected_by_environment(tmp_path) -> None:
     assert isinstance(cuda_backend, CudaCppBackend)
     assert cute_name == cute_root.backend == "cute_dsl"
     assert isinstance(cute_backend, CuTeDSLBackend)
+
+    triton_name, triton_backend, triton_root = _build_backend(
+        {**common, "KERNEL_MCTS_BACKEND": "triton_h100"}, manifest
+    )
+    assert triton_name == triton_root.backend == "triton_h100"
+    assert isinstance(triton_backend, TritonH100Backend)
 
     _, _, independent_root = _build_backend(
         {

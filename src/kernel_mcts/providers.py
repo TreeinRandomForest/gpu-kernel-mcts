@@ -159,7 +159,7 @@ class RunPodConfig:
             raise ValueError("RunPod worker protocol must be 'http' or 'tcp'")
         if self.cloud_type not in {"SECURE", "COMMUNITY", "ALL"}:
             raise ValueError("unsupported RunPod cloud type")
-        if self.backend not in {"cuda_cpp", "cute_dsl"}:
+        if self.backend not in {"cuda_cpp", "cute_dsl", "triton_h100"}:
             raise ValueError("unsupported worker backend")
         if self.cute_root_kind not in {"pinned", "independent"}:
             raise ValueError("unsupported CuTe root kind")
