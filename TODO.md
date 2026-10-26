@@ -13,12 +13,15 @@ Section 50 of `spec.md` defines this precursor to the MI355X workload.
   candidate, and a pinned Torch/Triton image recipe.
 - [x] Add local tests for compile/correctness/timing/profile wiring and backend
   selection without changing MCTS selection or generation accounting.
-- [ ] Build and pin the Triton H100 worker image digest; verify Torch, Triton,
+- [x] Build and pin the Triton H100 worker image digest; verify Torch, Triton,
   CUDA, NCU, and CUTLASS versions on a real H100 worker.
-- [ ] Run a root and deterministic one-candidate smoke; inspect cuBLAS/CUTLASS
-  calibration, correctness, candidate timing, and trace records.
-- [ ] Run a small LLM search with `configs/triton_h100_strategies.json` and
+- [x] Run a root and deterministic one-candidate smoke; execute cuBLAS/CUTLASS
+  calibration and inspect correctness, candidate timing, and trace records.
+- [x] Run a small LLM search with `configs/triton_h100_strategies.json` and
   confirm a lazily collected `lightweight_v1` NCU profile on a selected node.
+- [ ] Persist the worker's cuBLAS/CUTLASS calibration payload into the SQLite
+  run record; startup computes it, but the controller currently does not retain
+  the calibration values after worker release.
 - [ ] Reuse the validated Triton plumbing for the separate MI355X Section 49
   workload, then add ROCm-specific JIT, profiling, and shape coverage.
 

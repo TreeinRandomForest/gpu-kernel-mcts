@@ -218,6 +218,7 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Local search traces
+/.aws
 *.sqlite
 *.sqlite-journal
 /search*.dot
@@ -227,6 +228,7 @@ __marimo__/
 /cutedsl-*-best.py
 /nebius-best*.cu
 /nebius-*-best*.cu
+/triton-h100-*-best.py
 /log-nebius-*
 /*.ncu-rep
 *.swp
