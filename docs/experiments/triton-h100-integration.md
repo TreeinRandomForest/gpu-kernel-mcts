@@ -49,6 +49,11 @@ The image recipe pins Torch 2.7.1 with CUDA 12.8 and CUTLASS 4.5.1; Torch
 pins its Triton dependency. Pin the built image by digest for the actual
 experiment. The local test suite uses a fake GPU process; it cannot validate
 Triton lowering, H100 correctness, benchmark latency, or NCU counter access.
+Read the published digest from the registry, for example with
+`skopeo inspect --format '{{.Digest}}' docker://REGISTRY/gpu-kernel-mcts:TAG`;
+Podman's local image digest can differ from the registry manifest digest.
+The image includes Python development headers because Triton compiles a CUDA
+helper against `Python.h` during its first JIT invocation.
 
 ## Exit evidence
 

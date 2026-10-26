@@ -438,7 +438,10 @@ class NebiusCLIClient:
                 timeout=min(15.0, max(1.0, deadline - self._monotonic())),
             )
         if result.returncode != 0:
-            raise NebiusError("Nebius worker container failed to start")
+            raise NebiusError(
+                "Nebius worker container failed to start; "
+                + _command_error_message(result)
+            )
 
         local_port = self._port_factory()
         tunnel = self._tunnel_factory(
@@ -854,12 +857,25 @@ def _worker_status(address: str, token: str) -> str | None:
     try:
         with urllib.request.urlopen(request, timeout=5.0) as response:
             payload = json.loads(response.read())
-    except (OSError, TimeoutError, urllib.error.HTTPError, json.JSONDecodeError):
+    except urllib.error.HTTPError as error:
+        if error.code not in {500, 503}:
+            return None
+        try:
+            payload = json.loads(error.read())
+        except (OSError, json.JSONDecodeError):
+            return None
+    except (OSError, TimeoutError, json.JSONDecodeError):
         return None
     status = payload.get("status") if isinstance(payload, Mapping) else None
     if status == "starting":
         stage = payload.get("stage")
         return str(stage) if isinstance(stage, str) else "starting"
     if status == "failed":
+        stage = payload.get("stage")
+        error_code = payload.get("error_code")
+        if isinstance(stage, str) and isinstance(error_code, str):
+            raise NebiusError(
+                f"Nebius worker initialization failed at {stage}: {error_code}"
+            )
         raise NebiusError("Nebius worker initialization failed")
     return "ready" if status == "ready" else None

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import io
 import subprocess
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from kernel_mcts.nebius import (
     NebiusError,
     NebiusInstance,
     NebiusProvider,
+    _worker_status,
 )
 from kernel_mcts.providers import EnvironmentManifest, HardwareSpec, WorkerEndpoint
 
@@ -411,6 +413,38 @@ def test_cli_client_starts_privileged_worker_behind_ssh_tunnel(tmp_path) -> None
         command[1:4] == ["compute", "instance", "delete"]
         for command, _, _ in runner.calls
     )
+
+
+def test_cli_client_reports_redacted_docker_startup_failure(tmp_path) -> None:
+    class DockerFailureRunner(RecordingRunner):
+        def __call__(self, command, *, input=None, timeout=None):
+            if "docker" in command:
+                return subprocess.CompletedProcess(
+                    command, 125, "", "pull denied token=super-secret"
+                )
+            return super().__call__(command, input=input, timeout=timeout)
+
+    client = NebiusCLIClient(config(tmp_path), runner=DockerFailureRunner())
+    with pytest.raises(NebiusError) as caught:
+        client.wait_until_ready(
+            NebiusInstance("instance-1", "disk-1", "203.0.113.2"), 30.0
+        )
+    assert "pull denied" in str(caught.value)
+    assert "super-secret" not in str(caught.value)
+
+
+def test_worker_status_reports_failed_bootstrap_on_http_500(monkeypatch) -> None:
+    from urllib.error import HTTPError
+
+    def failed(*args, **kwargs):
+        raise HTTPError(
+            "http://127.0.0.1:8000/health", 500, "failed", {},
+            io.BytesIO(b'{"status":"failed","stage":"root_compile","error_code":"RuntimeError"}'),
+        )
+
+    monkeypatch.setattr("kernel_mcts.nebius.urllib.request.urlopen", failed)
+    with pytest.raises(NebiusError, match="root_compile: RuntimeError"):
+        _worker_status("http://127.0.0.1:8000", "test-token")
 
 
 def test_cli_client_retries_ssh_timeout_until_worker_is_ready(tmp_path) -> None:
