@@ -19,9 +19,16 @@ Section 50 of `spec.md` defines this precursor to the MI355X workload.
   calibration and inspect correctness, candidate timing, and trace records.
 - [x] Run a small LLM search with `configs/triton_h100_strategies.json` and
   confirm a lazily collected `lightweight_v1` NCU profile on a selected node.
-- [ ] Persist the worker's cuBLAS/CUTLASS calibration payload into the SQLite
-  run record; startup computes it, but the controller currently does not retain
-  the calibration values after worker release.
+- [x] Persist the worker's cuBLAS/CUTLASS calibration payload as a SQLite
+  `worker_calibration` event before generation, and give Triton prompts the
+  launcher ABI, parent timing, and correctness-passing cuBLAS reference.
+  Local tests cover this wiring; a new H100 run will validate the recorded values.
+- [x] Run a small H100 smoke with the verified Messages-compatible GLM-5.3 endpoint,
+  inspect the exact Triton prompt and recorded calibration. The `B_gen=3`
+  run with reasoning disabled reached 199.712 µs; see
+  `docs/experiments/triton-h100-glm53-smoke-2026-10-28.md`.
+- [ ] Use GLM-5.3 throughout equal-budget context ablations so model choice
+  stays fixed; record the Messages thinking mode in each arm.
 - [ ] Reuse the validated Triton plumbing for the separate MI355X Section 49
   workload, then add ROCm-specific JIT, profiling, and shape coverage.
 
@@ -384,12 +391,11 @@ are separate context ablations rather than prerequisites for a measured root.
 - [ ] Extend the same paired comparison to two-turn/graph and
   full-history/graph-off and graph-on cells. Keep `lightweight_v1` collection
   fixed for this factorial study; test diagnostic NCU as a later factor.
-- [ ] Validate the GLM-5.3 Anthropic-compatible Messages gateway with one
-  API-only response and a small H100 CUDA search before running matched MCTS
-  or sequential ablations. The adapter and GPU-free tests are documented in
-  `docs/messages-gateway.md`. On 2026-10-26, both the adapter and exact curl
-  request returned HTTP 401 with the `.bashrc` key after export; gateway
-  authorization or the key must be corrected before the GPU smoke.
+- [x] Validate the GLM-5.3 gateway with an API-only request. The key from
+  `~/.bashrc` works on the configured company Messages endpoint: the
+  repository's `MessagesClient` returned `OK`, model ID, and token usage.
+  The older dogfood host rejected the same key with HTTP 401. Use the verified
+  Messages endpoint for the H100 smoke above; see `docs/messages-gateway.md`.
 - [ ] Independently classify sequential source transitions against declared
   strategy IDs. Version and test catalog additions only for recurring useful
   edits that are absent or prohibited by current strategy wording. Seed-0

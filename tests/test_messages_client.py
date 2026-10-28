@@ -80,6 +80,29 @@ def test_messages_client_replays_only_bounded_visible_turns(monkeypatch) -> None
     assert third.metadata["history_turns"] == 1
 
 
+def test_messages_client_can_disable_thinking(monkeypatch) -> None:
+    monkeypatch.setenv("TEST_ENMAAS_KEY", "test-secret")
+    payloads = []
+
+    def send(request, _timeout):
+        payloads.append(json.loads(request.data))
+        return json.dumps({
+            "id": "msg-1", "content": [{"type": "text", "text": "source"}],
+        }).encode()
+
+    client = MessagesClient(MessagesConfig(
+        model="glm", url="https://gateway.example/v1/messages",
+        api_key_env="TEST_ENMAAS_KEY", thinking_mode="disabled",
+    ), send=send)
+    result = client.complete("optimize")
+    assert payloads[0]["thinking"] == {"type": "disabled"}
+    assert result.output_text == "source"
+    assert result.metadata["thinking_mode"] == "disabled"
+    with pytest.raises(ValueError, match="thinking_mode"):
+        MessagesConfig(model="glm", url="https://gateway.example/v1/messages",
+                       thinking_mode="invalid")
+
+
 def test_messages_client_does_not_expose_http_error_body(monkeypatch) -> None:
     monkeypatch.setenv("TEST_ENMAAS_KEY", "test-secret")
 

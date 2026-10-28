@@ -26,6 +26,7 @@ from kernel_mcts.search_cli import (
     SearchCLIProgress,
     _search_components,
     _root_program,
+    _cuda_llm_client,
     _sequential_components,
     build_parser,
     main,
@@ -88,6 +89,52 @@ def test_triton_cli_selects_root_and_strategy_catalog(monkeypatch) -> None:
         hardware={"gpu_model": "H100"}, profile=None,
     ))
     assert "Define launch(A, B, C, M, N, K)" in prompt
+
+
+def test_triton_prompt_uses_launcher_abi_and_measured_references() -> None:
+    request = GenerationRequest(
+        parent=load_triton_bf16_gemm_root(),
+        strategy=Strategy("tile", "tile", {"triton_h100": "Change the tile"}),
+        workload=BF16_GEMM_WORKLOAD,
+        hardware={"gpu_model": "H100"},
+        profile=None,
+        current_benchmark={"median_us": 220.0, "timings_us": [219.0, 221.0], "warmup_count": 10},
+        reference_baselines={"cublas": {"median_us": 110.0, "role": "performance reference only"}},
+    )
+
+    payload = json.loads(build_generation_prompt(request))
+
+    assert payload["workload"]["metadata"]["entry_point"] == "launch"
+    assert payload["workload"]["metadata"]["abi"] == {
+        "parameters": ["A", "B", "C", "M", "N", "K"],
+        "launch": {"dynamic": True, "entry_point": "launch"},
+    }
+    assert "__nv_bfloat16" not in json.dumps(payload["workload"])
+    assert payload["parent_timing"]["median_us"] == 220.0
+    assert payload["parent_timing"]["sample_count"] == 2
+    assert payload["performance_references"]["cublas"]["median_us"] == 110.0
+    assert BF16_GEMM_WORKLOAD.metadata["abi"]["launch"]["block"] == [16, 16, 1]
+
+
+def test_responses_gateway_cli_routes_model_key_and_base_url(monkeypatch) -> None:
+    captured = {}
+    monkeypatch.setenv("TEST_ENMAAS_KEY", "test-secret")
+    monkeypatch.setattr(
+        "kernel_mcts.search_cli.OpenAIResponsesClient",
+        lambda config: captured.setdefault("config", config),
+    )
+    arguments = build_parser().parse_args([
+        "--image", "worker:test", "--trace", "trace.sqlite",
+        "--generator", "openai", "--model", "rits/zai-org/glm-5-3",
+        "--openai-api-key-env", "TEST_ENMAAS_KEY",
+        "--openai-base-url", "https://gateway.example/v1",
+    ])
+
+    _cuda_llm_client(arguments)
+
+    assert captured["config"].model == "rits/zai-org/glm-5-3"
+    assert captured["config"].api_key_env == "TEST_ENMAAS_KEY"
+    assert captured["config"].base_url == "https://gateway.example/v1"
 
 
 def test_search_cli_rejects_non_smoke_generation_budget(capsys) -> None:
@@ -949,6 +996,7 @@ def test_messages_generator_wires_mcts_and_sequential_without_openai_key(
         "--generator", "messages", "--model", "rits/zai-org/glm-5-3",
         "--messages-url", "https://gateway.example/v1/messages",
         "--messages-api-key-env", "TEST_ENMAAS_KEY",
+        "--messages-thinking", "disabled",
         "--strategies", str(strategies),
     ]
     parser = build_parser()
@@ -962,6 +1010,7 @@ def test_messages_generator_wires_mcts_and_sequential_without_openai_key(
     assert config.dataflow_prompt_view == "paths"
     assert configs[-1].history_turns == 0
     assert configs[-1].api_key_env == "TEST_ENMAAS_KEY"
+    assert configs[-1].thinking_mode == "disabled"
 
     sequential = parser.parse_args(base + [
         "--algorithm", "sequential", "--session-history-turns", "2",
@@ -982,6 +1031,7 @@ def test_messages_generator_requires_url_and_key(tmp_path, monkeypatch, capsys) 
         "prompts": {"cuda_cpp": "Coalesce."},
     }]}))
     monkeypatch.delenv("ENMAAS_URL", raising=False)
+    monkeypatch.delenv("ENMAAS_BASE_URL", raising=False)
     monkeypatch.delenv("MISSING_ENMAAS_KEY", raising=False)
     parser = build_parser()
     args = parser.parse_args([
@@ -992,11 +1042,26 @@ def test_messages_generator_requires_url_and_key(tmp_path, monkeypatch, capsys) 
     ])
     with pytest.raises(SystemExit):
         _search_components(parser, args)
-    assert "--messages-url or ENMAAS_URL" in capsys.readouterr().err
+    assert "--messages-url, ENMAAS_URL, or ENMAAS_BASE_URL" in capsys.readouterr().err
     args.messages_url = "https://gateway.example/v1/messages"
     with pytest.raises(SystemExit):
         _search_components(parser, args)
     assert "MISSING_ENMAAS_KEY" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("base, expected", [
+    ("https://gateway.example/v1", "https://gateway.example/v1/messages"),
+    ("https://gateway.example/v1/messages", "https://gateway.example/v1/messages"),
+    ("https://gateway.example/v1/", "https://gateway.example/v1/messages"),
+])
+def test_messages_url_defaults_from_enmaas_base_url(monkeypatch, base, expected) -> None:
+    monkeypatch.delenv("ENMAAS_URL", raising=False)
+    monkeypatch.setenv("ENMAAS_BASE_URL", base)
+    arguments = build_parser().parse_args(["--image", "worker:test", "--trace", "trace.sqlite"])
+    assert arguments.messages_url == expected
+    monkeypatch.setenv("ENMAAS_URL", "https://override.example/v1/messages")
+    arguments = build_parser().parse_args(["--image", "worker:test", "--trace", "trace.sqlite"])
+    assert arguments.messages_url == "https://override.example/v1/messages"
 
 
 def test_messages_main_records_provider_without_key_or_url(tmp_path, monkeypatch) -> None:
@@ -1030,11 +1095,13 @@ def test_messages_main_records_provider_without_key_or_url(tmp_path, monkeypatch
         "--image", "worker:v1", "--trace", str(tmp_path / "trace.sqlite"),
         "--generator", "messages", "--model", "rits/zai-org/glm-5-3",
         "--messages-url", url, "--messages-api-key-env", "TEST_ENMAAS_KEY",
+        "--messages-thinking", "disabled",
         "--strategies", str(strategies), "--network-volume-id", "volume-1",
         "--data-center-id", "EUR-IS-3", "--confirm-create-and-terminate",
     ]) == 0
     metadata = captured["run_metadata"]
     assert metadata["model_provider"] == "anthropic_messages_compatible"
+    assert metadata["messages_thinking"] == "disabled"
     assert metadata["messages_endpoint_sha256"] == hashlib.sha256(url.encode()).hexdigest()
     assert metadata["reasoning_effort"] == "not_applicable"
     assert "test-secret" not in repr(metadata)

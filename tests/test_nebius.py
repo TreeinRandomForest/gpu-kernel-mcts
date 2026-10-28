@@ -96,6 +96,9 @@ class FakeTransport:
     def get_environment_manifest(self):
         return self.observed
 
+    def get_calibration(self):
+        return {"benchmark_id": "mock", "backend": "cuda_cpp"}
+
     def evaluate(self, evaluation_id, program, workload, profile_level):
         self.evaluations.append(evaluation_id)
         return EvaluationResult(ProposalStatus.VALID, program, "key", 1.0)
@@ -130,12 +133,14 @@ def test_provider_reuses_one_vm_and_deletes_vm_then_disk(tmp_path) -> None:
     first = worker.evaluate("one", KernelProgram("one"), WORKLOAD, "tier0")
     second = worker.evaluate("two", KernelProgram("two"), WORKLOAD, "tier0")
     worker.profile("one", "lightweight")
+    calibration = worker.get_calibration()
     provider.release_worker(worker)
     provider.release_worker(worker)
 
     assert client.created == 1
     assert transport.evaluations == ["one", "two"]
     assert transport.profiles == ["one"]
+    assert calibration["benchmark_id"] == "mock"
     assert first.worker_id == second.worker_id == "instance-1"
     assert progress == [("ready", 1.0)]
     assert transport.closed == 1

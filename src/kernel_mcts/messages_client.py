@@ -28,6 +28,7 @@ class MessagesConfig:
     api_version: str = "2023-06-01"
     instructions: str = DEFAULT_GENERATION_INSTRUCTIONS
     history_turns: int = 0
+    thinking_mode: str = "default"
 
     def __post_init__(self) -> None:
         parsed = urlsplit(self.url)
@@ -39,6 +40,8 @@ class MessagesConfig:
             raise ValueError("Messages token limit and timeout must be positive")
         if self.history_turns < 0:
             raise ValueError("history_turns cannot be negative")
+        if self.thinking_mode not in {"default", "disabled"}:
+            raise ValueError("thinking_mode must be default or disabled")
         if not self.api_key_env or not self.api_version:
             raise ValueError("Messages key environment variable and API version are required")
 
@@ -68,6 +71,8 @@ class MessagesClient:
             "system": self.config.instructions,
             "messages": messages,
         }
+        if self.config.thinking_mode == "disabled":
+            payload["thinking"] = {"type": "disabled"}
         request = Request(
             self.config.url,
             data=json.dumps(payload).encode("utf-8"),
@@ -120,6 +125,7 @@ class MessagesClient:
                 "provider": "messages",
                 "stop_reason": response.get("stop_reason"),
                 "max_output_tokens": self.config.max_output_tokens,
+                "thinking_mode": self.config.thinking_mode,
                 "history_turns": len(history),
                 "cached_input_tokens": usage.get("cache_read_input_tokens"),
                 "cache_write_input_tokens": usage.get("cache_creation_input_tokens"),

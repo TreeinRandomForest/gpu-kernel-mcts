@@ -168,6 +168,9 @@ class FakeTransport:
         self.manifest_calls += 1
         return self.environment
 
+    def get_calibration(self):
+        return {"benchmark_id": "mock", "backend": "cuda_cpp"}
+
     def evaluate(self, evaluation_id, program, workload, profile_level):
         self.evaluations.append((evaluation_id, program, workload, profile_level))
         if self.evaluation_error is not None:
@@ -231,6 +234,7 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
     first = worker.evaluate("evaluation-1", KernelProgram("one"), WORKLOAD, "tier0")
     second = worker.evaluate("evaluation-2", KernelProgram("two"), WORKLOAD, "tier0")
     profile = worker.profile("evaluation-1", "lightweight")
+    calibration = worker.get_calibration()
     runpod.release_worker(worker)
     runpod.release_worker(worker)
 
@@ -247,6 +251,7 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
         ("evaluation-1", "lightweight", "lightweight_v1")
     ]
     assert profile["profiler"] == "ncu"
+    assert calibration["benchmark_id"] == "mock"
     assert first.worker_id == second.worker_id == "worker-1"
     assert first.environment_manifest_id == manifest().manifest_id
     assert transport.close_calls == 1
@@ -256,6 +261,8 @@ def test_runpod_acquires_once_reuses_worker_and_releases_idempotently() -> None:
         worker.evaluate("evaluation-3", KernelProgram("three"), WORKLOAD, "tier0")
     with pytest.raises(RuntimeError, match="released"):
         worker.profile("evaluation-1", "lightweight")
+    with pytest.raises(RuntimeError, match="released"):
+        worker.get_calibration()
 
 
 def test_runpod_forwards_optional_readiness_progress() -> None:

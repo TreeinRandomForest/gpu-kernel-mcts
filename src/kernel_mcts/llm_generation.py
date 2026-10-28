@@ -53,11 +53,21 @@ class LLMKernelGenerator:
 
 
 def build_generation_prompt(request: GenerationRequest) -> str:
+    workload = serialize_workload(request.workload)
+    if request.parent.backend == "triton_h100":
+        workload["metadata"] = {
+            **workload["metadata"],
+            "entry_point": "launch",
+            "abi": {
+                "parameters": ["A", "B", "C", "M", "N", "K"],
+                "launch": {"dynamic": True, "entry_point": "launch"},
+            },
+        }
     payload: dict[str, Any] = {
         "task": "Produce a complete replacement GPU kernel preserving the workload contract.",
         "backend": request.parent.backend,
         "target_hardware": _json_value(request.hardware),
-        "workload": serialize_workload(request.workload),
+        "workload": workload,
         "strategy": {
             "id": request.strategy.id,
             "description": request.strategy.description,
@@ -73,6 +83,10 @@ def build_generation_prompt(request: GenerationRequest) -> str:
         "attempt": request.attempt,
     }
     if request.parent.backend == "triton_h100":
+        if request.current_benchmark is not None:
+            payload["parent_timing"] = _prompt_timing(request.current_benchmark)
+        if request.reference_baselines:
+            payload["performance_references"] = _json_value(request.reference_baselines)
         payload["constraints"] = [
             "Return a complete Python Triton source file without Markdown.",
             "Define launch(A, B, C, M, N, K) and return its CompiledKernel.",
@@ -80,6 +94,10 @@ def build_generation_prompt(request: GenerationRequest) -> str:
             "Preserve FP32 accumulation and the fixed correctness tolerance.",
             "Keep the JIT kernel name bf16_gemm_triton for NCU selection.",
         ]
+        if request.reference_baselines:
+            payload["constraints"].append(
+                "Treat cuBLAS timing as a reference target; search reward is measured against the Triton root."
+            )
     if request.parent.backend == "cute_dsl":
         from .cute_independent_program import (
             REPRESENTATION_NAME as INDEPENDENT_REPRESENTATION_NAME,
@@ -141,6 +159,16 @@ def extract_kernel_source(raw_output: str) -> str | None:
         if len(lines) >= 3:
             source = "\n".join(lines[1:-1]).strip()
     return source or None
+
+
+def _prompt_timing(benchmark: Mapping[str, object]) -> dict[str, object]:
+    samples = benchmark.get("timings_us")
+    return {
+        "median_us": benchmark["median_us"],
+        "sample_count": len(samples) if isinstance(samples, (list, tuple)) else None,
+        "warmup_count": benchmark.get("warmup_count"),
+        "measurement": "CUDA events",
+    }
 
 
 def _repair_evidence(result: EvaluationResult | None) -> Mapping[str, object] | None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -74,6 +75,8 @@ def test_responses_client_makes_independent_unstored_request() -> None:
         ({"model": ""}, "model"),
         ({"model": "test", "max_output_tokens": 0}, "max_output_tokens"),
         ({"model": "test", "timeout_seconds": 0}, "timeout_seconds"),
+        ({"model": "test", "base_url": "http://gateway.example/v1"}, "HTTPS"),
+        ({"model": "test", "base_url": "https://user:pass@gateway.example/v1"}, "HTTPS"),
     ],
 )
 def test_openai_config_rejects_invalid_values(values, message) -> None:
@@ -91,6 +94,30 @@ def test_client_requires_configured_api_key(monkeypatch) -> None:
                 api_key_env="MISSING_TEST_OPENAI_KEY",
             )
         )
+
+
+def test_client_uses_custom_responses_gateway_without_exposing_key(monkeypatch) -> None:
+    captured = {}
+
+    class FakeOpenAI:
+        def __init__(self, **options):
+            captured.update(options)
+            self.responses = FakeResponses()
+
+    monkeypatch.setenv("TEST_ENMAAS_KEY", "test-secret")
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
+    subject = OpenAIResponsesClient(OpenAIResponsesConfig(
+        model="rits/zai-org/glm-5-3",
+        api_key_env="TEST_ENMAAS_KEY",
+        base_url="https://gateway.example/v1",
+    ))
+
+    result = subject.complete("test prompt")
+
+    assert captured["api_key"] == "test-secret"
+    assert captured["base_url"] == "https://gateway.example/v1"
+    assert result.metadata["provider"] == "openai_compatible"
+    assert "test-secret" not in repr(result.metadata)
 
 
 def test_bounded_local_conversation_replays_only_recent_text_turn():

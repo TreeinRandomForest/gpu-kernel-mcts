@@ -21,6 +21,7 @@ class GenerationRequest:
     previous_program: KernelProgram | None = None #track for repair
     previous_result: EvaluationResult | None = None #track for repair
     current_benchmark: Mapping[str, object] | None = None
+    reference_baselines: Mapping[str, object] | None = None
     recent_feedback: Mapping[str, object] | None = None
     best_so_far: Mapping[str, object] | None = None
     hardware_resource_graph: Mapping[str, object] | None = None

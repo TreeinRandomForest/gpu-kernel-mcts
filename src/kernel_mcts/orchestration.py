@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import asdict, dataclass, replace
 from time import perf_counter
 from typing import Callable, Mapping, Protocol, Sequence
@@ -323,6 +324,12 @@ def run_mcts_search(
     try:
         worker = provider.acquire_worker(hardware)
         trace.emit("environment_manifest", worker.get_environment_manifest().as_dict())
+        calibration = worker.get_calibration()
+        if calibration.get("benchmark_id") != workload.benchmark_id:
+            raise RuntimeError("worker calibration does not match the search workload")
+        if calibration.get("backend") != root_program.backend:
+            raise RuntimeError("worker calibration does not match the root backend")
+        trace.emit("worker_calibration", calibration)
         worker_evaluator = WorkerKernelEvaluator(worker, resolved_run_id, trace)
         def record_root_attempt(attempt: int, result: EvaluationResult) -> None:
             nonlocal root_attempts
@@ -374,6 +381,7 @@ def run_mcts_search(
             dataflow_provider=(
                 trace.get_node_dataflow if mcts_config.dataflow_prompt_view != "none" else None
             ),
+            reference_baselines=_calibrated_cublas_reference(calibration),
             profiler=WorkerNodeProfiler(
                 worker,
                 resolved_run_id,
@@ -411,6 +419,38 @@ def run_mcts_search(
     finally:
         if worker is not None:
             provider.release_worker(worker)
+
+
+def _calibrated_cublas_reference(
+    calibration: Mapping[str, object] | None,
+) -> Mapping[str, object] | None:
+    if calibration is None:
+        return None
+    vendors = calibration.get("vendor_baselines")
+    if not isinstance(vendors, Mapping):
+        return None
+    cublas = vendors.get("cublas")
+    if not isinstance(cublas, Mapping):
+        return None
+    correctness = cublas.get("correctness")
+    benchmark = cublas.get("benchmark")
+    if not isinstance(correctness, Mapping) or correctness.get("success") is not True:
+        return None
+    if not isinstance(benchmark, Mapping):
+        return None
+    median = benchmark.get("median_us")
+    if not isinstance(median, (int, float)) or not math.isfinite(median) or median <= 0:
+        return None
+    samples = benchmark.get("timings_us")
+    return {
+        "cublas": {
+            "median_us": median,
+            "sample_count": len(samples) if isinstance(samples, (list, tuple)) else None,
+            "warmup_count": benchmark.get("warmup_count"),
+            "measurement": "same-worker CUDA events",
+            "role": "performance reference only",
+        }
+    }
 
 
 def run_sequential_search(

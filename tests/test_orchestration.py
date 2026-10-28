@@ -25,6 +25,7 @@ from kernel_mcts.llm import LLMCompletion
 from kernel_mcts.llm_generation import LLMKernelGenerator
 from kernel_mcts.orchestration import (
     WorkerKernelEvaluator,
+    _calibrated_cublas_reference,
     run_candidate_evaluation,
     run_mcts_search,
     run_sequential_search,
@@ -183,6 +184,10 @@ class MockWorker:
     def get_environment_manifest(self):
         return MANIFEST
 
+    def get_calibration(self):
+        return {"benchmark_id": WORKLOAD.benchmark_id, "backend": "cuda_cpp",
+                "vendor_baselines": {}}
+
     def evaluate(self, evaluation_id, program, workload, profile_level):
         self.calls.append((evaluation_id, program.source, workload, profile_level))
         self.attempts[evaluation_id] = self.attempts.get(evaluation_id, 0) + 1
@@ -284,6 +289,66 @@ class FailedRootWorker(MockWorker):
             ProposalStatus.INFRASTRUCTURE_FAILURE,
             metadata={"error_type": "WorkerProtocolError"},
         )
+
+
+def test_triton_search_records_calibration_and_passes_measured_context(tmp_path) -> None:
+    calibration = {
+        "benchmark_id": WORKLOAD.benchmark_id,
+        "backend": "triton_h100",
+        "benchmark": {"median_us": 80.0},
+        "vendor_baselines": {
+            "cublas": {
+                "correctness": {"success": True},
+                "benchmark": {"median_us": 10.0, "timings_us": [9.0, 11.0], "warmup_count": 3},
+            }
+        },
+    }
+
+    class CalibratedWorker(MockWorker):
+        def get_calibration(self):
+            return calibration
+
+    class CaptureGenerator:
+        def __init__(self):
+            self.requests = []
+
+        def generate(self, request):
+            self.requests.append(request)
+            return GenerationResult(
+                "triton-generation", "triton-candidate",
+                KernelProgram("triton-candidate", backend="triton_h100"), "prompt-hash",
+            )
+
+    generator = CaptureGenerator()
+    database = tmp_path / "triton.sqlite"
+    with SQLiteTraceStore(database) as trace:
+        run_mcts_search(
+            provider=MockProvider(CalibratedWorker()), hardware=HARDWARE,
+            workload=WORKLOAD,
+            root_program=KernelProgram("triton-root", backend="triton_h100"),
+            strategies=(Strategy("tile", "tile", {"triton_h100": "tile"}),),
+            generator=generator, prior_provider=UniformStrategyPrior(),
+            generation_budget=1, trace=trace, mcts_config=MCTSConfig(max_repairs=0),
+        )
+
+    assert generator.requests[0].current_benchmark["median_us"] == pytest.approx(100 / 3)
+    assert generator.requests[0].reference_baselines["cublas"]["median_us"] == 10.0
+    with sqlite3.connect(database) as connection:
+        row = connection.execute(
+            "SELECT payload_json FROM search_events WHERE event_type = 'worker_calibration'"
+        ).fetchone()
+    assert json.loads(row[0]) == calibration
+
+
+def test_cublas_reference_requires_valid_correctness_and_timing() -> None:
+    calibration = {"vendor_baselines": {"cublas": {
+        "correctness": {"success": False},
+        "benchmark": {"median_us": 10.0},
+    }}}
+    assert _calibrated_cublas_reference(calibration) is None
+    calibration["vendor_baselines"]["cublas"]["correctness"]["success"] = True
+    calibration["vendor_baselines"]["cublas"]["benchmark"]["median_us"] = float("nan")
+    assert _calibrated_cublas_reference(calibration) is None
 
 
 def test_mock_run_wires_worker_search_budget_and_sqlite(tmp_path) -> None:

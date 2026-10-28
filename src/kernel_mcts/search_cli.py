@@ -203,6 +203,17 @@ class ProgressKernelGenerator:
         self._stream.flush()
 
 
+def _default_messages_url() -> str | None:
+    explicit = os.environ.get("ENMAAS_URL")
+    if explicit:
+        return explicit
+    base = os.environ.get("ENMAAS_BASE_URL")
+    if not base:
+        return None
+    base = base.rstrip("/")
+    return base if base.endswith("/messages") else f"{base}/messages"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run MCTS or sequential CUDA refinement on an H100 worker."
@@ -264,9 +275,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model")
     parser.add_argument("--strategies", type=Path)
     parser.add_argument("--openai-api-key-env", default="OPENAI_API_KEY")
-    parser.add_argument("--messages-url", default=os.environ.get("ENMAAS_URL"))
+    parser.add_argument("--openai-base-url", help="HTTPS base URL for an OpenAI-compatible Responses gateway")
+    parser.add_argument("--messages-url", default=_default_messages_url())
     parser.add_argument("--messages-api-key-env", default="ENMAAS_KEY")
     parser.add_argument("--messages-api-version", default="2023-06-01")
+    parser.add_argument("--messages-thinking", choices=("default", "disabled"), default="default")
     parser.add_argument("--reasoning-effort", default="medium")
     parser.add_argument("--max-output-tokens", type=int, default=16_384)
     parser.add_argument("--llm-timeout", type=float, default=180.0)
@@ -418,10 +431,16 @@ def main(argv: list[str] | None = None) -> int:
     }
     if arguments.generator == "messages":
         provenance["model_provider"] = "anthropic_messages_compatible"
+        provenance["messages_thinking"] = arguments.messages_thinking
         provenance["messages_endpoint_sha256"] = hashlib.sha256(
             arguments.messages_url.encode("utf-8")
         ).hexdigest()
         provenance["messages_api_version"] = arguments.messages_api_version
+    if arguments.generator in {"openai", "cute-mixed"} and arguments.openai_base_url:
+        provenance["model_provider"] = "openai_responses_compatible"
+        provenance["responses_endpoint_sha256"] = hashlib.sha256(
+            arguments.openai_base_url.encode("utf-8")
+        ).hexdigest()
     if arguments.algorithm == "sequential":
         assert isinstance(generator, SequentialKernelGenerator)
         provenance["sequential_strategy_choice"] = generator.choice_provenance
@@ -649,7 +668,7 @@ def _validate_llm_connection(
 ) -> None:
     if arguments.generator == "messages":
         if not arguments.messages_url:
-            parser.error("--messages-url or ENMAAS_URL is required with --generator=messages")
+            parser.error("--messages-url, ENMAAS_URL, or ENMAAS_BASE_URL is required with --generator=messages")
         key_env = arguments.messages_api_key_env
     else:
         key_env = arguments.openai_api_key_env
@@ -670,6 +689,7 @@ def _cuda_llm_client(
             "api_key_env": arguments.messages_api_key_env,
             "api_version": arguments.messages_api_version,
             "history_turns": history_turns,
+            "thinking_mode": arguments.messages_thinking,
         }
         if instructions is not None:
             values["instructions"] = instructions
@@ -680,6 +700,7 @@ def _cuda_llm_client(
         "max_output_tokens": arguments.max_output_tokens,
         "timeout_seconds": arguments.llm_timeout,
         "api_key_env": arguments.openai_api_key_env,
+        "base_url": arguments.openai_base_url,
         "store": False,
         "history_turns": history_turns,
     }

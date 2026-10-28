@@ -924,6 +924,15 @@ Provide only:
 8. explicit instruction to preserve semantics,
 9. compiler/language constraints if needed.
 
+For the experimental `triton_h100` backend, the workload shown to the LLM
+must describe the Triton launcher ABI, not the CUDA C++ root's pointer ABI or
+fixed launch grid. Also provide the parent's measured CUDA-event median latency
+with units and sample count. A same-worker, correctness-passing cuBLAS median
+may be shown as a labeled performance reference when calibration is available.
+These measurements are context only: the MCTS reward remains normalized to
+the independently measured Triton root, and cuBLAS does not affect selection,
+backup, node admission, or any search budget.
+
 Conceptually:
 
 ```text
@@ -3511,6 +3520,11 @@ are unchanged. CUDA C++ compiler/dataflow prompt views and CUDA autotuning
 do not apply to this backend. Compiler artifacts are stored on the worker;
 bounded Triton compiler summaries and dataflow views are later, separate
 experiments.
+
+Persist the worker's root and vendor calibration in the run's SQLite trace
+before generation, including correctness and timing evidence. The Triton
+generation prompt uses the dynamic launcher ABI, the measured parent timing,
+and the calibrated cuBLAS timing only when that reference passed correctness.
 
 Exit this integration milestone after a same-worker root and cuBLAS/CUTLASS
 calibration, a valid deterministic distinct candidate, one small LLM search,

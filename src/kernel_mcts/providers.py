@@ -100,6 +100,8 @@ class GPUWorker(Protocol):
 
     def get_environment_manifest(self) -> EnvironmentManifest: ...
 
+    def get_calibration(self) -> Mapping[str, object]: ...
+
     def evaluate(
         self,
         evaluation_id: str,
@@ -226,6 +228,8 @@ class RunPodClientFactory(Protocol):
 class WorkerTransport(Protocol):
     def get_environment_manifest(self) -> EnvironmentManifest: ...
 
+    def get_calibration(self) -> Mapping[str, object]: ...
+
     def evaluate(
         self,
         evaluation_id: str,
@@ -281,6 +285,11 @@ class RunPodWorker:
 
     def get_environment_manifest(self) -> EnvironmentManifest:
         return self._manifest
+
+    def get_calibration(self) -> Mapping[str, object]:
+        if self._released:
+            raise RuntimeError("cannot fetch calibration from a released RunPod worker")
+        return self._transport.get_calibration()
 
     def evaluate(
         self,

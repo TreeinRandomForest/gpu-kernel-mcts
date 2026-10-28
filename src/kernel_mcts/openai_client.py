@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Any
+from urllib.parse import urlsplit
 
 from .llm import DEFAULT_GENERATION_INSTRUCTIONS, LLMCompletion
 
@@ -18,6 +19,7 @@ class OpenAIResponsesConfig:
     max_output_tokens: int = 16_384
     timeout_seconds: float = 180.0
     api_key_env: str = "OPENAI_API_KEY"
+    base_url: str | None = None
     store: bool = False
     instructions: str = OPENAI_GENERATION_INSTRUCTIONS
     history_turns: int = 0
@@ -31,6 +33,10 @@ class OpenAIResponsesConfig:
             raise ValueError("timeout_seconds must be positive")
         if self.history_turns < 0:
             raise ValueError("history_turns cannot be negative")
+        if self.base_url is not None:
+            parsed = urlsplit(self.base_url)
+            if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+                raise ValueError("Responses base URL must be HTTPS without embedded credentials")
 
 
 class OpenAIResponsesClient:
@@ -55,7 +61,13 @@ class OpenAIResponsesClient:
                 raise RuntimeError(
                     "OpenAI generation requires the 'llm' optional dependency"
                 ) from error
-            client = OpenAI(api_key=api_key, timeout=config.timeout_seconds)
+            options: dict[str, Any] = {
+                "api_key": api_key,
+                "timeout": config.timeout_seconds,
+            }
+            if config.base_url is not None:
+                options["base_url"] = config.base_url
+            client = OpenAI(**options)
         self._client = client
         self._history: list[tuple[str, str]] = []
 
@@ -89,7 +101,7 @@ class OpenAIResponsesClient:
             output_tokens=getattr(usage, "output_tokens", None),
             latency_seconds=latency,
             metadata={
-                "provider": "openai",
+                "provider": "openai_compatible" if self.config.base_url else "openai",
                 "status": str(getattr(response, "status", "unknown")),
                 "reasoning_effort": self.config.reasoning_effort,
                 "max_output_tokens": self.config.max_output_tokens,

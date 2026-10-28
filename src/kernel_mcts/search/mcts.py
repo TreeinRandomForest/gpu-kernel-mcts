@@ -22,6 +22,7 @@ from ..profiling import PROFILE_METRIC_SET_IDS
 from ..proposals import GenerationAttempt, run_proposal
 from ..serialization import (
     serialize_evaluation,
+    serialize_benchmark,
     serialize_generation,
     serialize_profile,
     serialize_workload,
@@ -136,6 +137,7 @@ class MCTS:
         drift_monitor: MeasurementDriftMonitor | None = None,
         events: EventSink | None = None,
         dataflow_provider: Callable[[str], Mapping[str, object] | None] | None = None,
+        reference_baselines: Mapping[str, object] | None = None,
     ) -> None:
         if not strategies:
             raise ValueError("at least one strategy is required")
@@ -156,6 +158,7 @@ class MCTS:
         if config.dataflow_prompt_view != "none" and dataflow_provider is None:
             raise ValueError("dataflow prompt view requires a node dataflow provider")
         self.dataflow_provider = dataflow_provider
+        self.reference_baselines = reference_baselines
         self._dataflow_prompt_cache: dict[str, Mapping[str, object]] = {}
         self.nodes = TranspositionTable()
         self.prior_calls = 0
@@ -546,6 +549,14 @@ class MCTS:
             workload=self.workload,
             hardware=self.hardware,
             profile=parent.profile if self.config.include_parent_profile else None,
+            current_benchmark=(
+                serialize_benchmark(parent.evaluation.benchmark)
+                if parent.program.backend == "triton_h100" else None
+            ),
+            reference_baselines=(
+                self.reference_baselines
+                if parent.program.backend == "triton_h100" else None
+            ),
             compiler_summary=(
                 prompt_compiler_summary(parent.evaluation.metadata.get("compiler_context"))
                 if self.config.include_compiler_summary and parent.program.backend == "cuda_cpp"

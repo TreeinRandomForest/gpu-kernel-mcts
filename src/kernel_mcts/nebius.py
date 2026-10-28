@@ -594,6 +594,11 @@ class NebiusWorker:
     def get_environment_manifest(self) -> EnvironmentManifest:
         return self._manifest
 
+    def get_calibration(self) -> Mapping[str, object]:
+        if self._released:
+            raise RuntimeError("cannot fetch calibration from a released Nebius worker")
+        return self._transport.get_calibration()
+
     def evaluate(
         self,
         evaluation_id: str,
