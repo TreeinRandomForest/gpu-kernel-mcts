@@ -9,7 +9,9 @@ deleted after the run; Nebius listed no remaining instance.
 
 - Source: `d0db3502135fb97ad4cd7f18493fc06f86953a20` on
   `feature/triton-h100`, with uncommitted Messages thinking-mode wiring
-  (`dirty_tree=1`). Focused local tests: 38 passed.
+  (`dirty_tree=1`). This pre-amend commit ID is retained in the SQLite trace;
+  the later branch commit `bff7a05` includes the wiring. Focused local tests:
+  38 passed.
 - Worker image: `docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469`.
 - Run ID: `f99195e4-0940-42a3-8635-337b999b6baa`; trace:
   `triton-h100-glm53-bgen3-thinking-disabled.sqlite` (Git-ignored).
@@ -29,6 +31,8 @@ deleted after the run; Nebius listed no remaining instance.
 The best node is 4.11× faster than this run's measured Triton root. It is
 12.7% slower than the same-worker cuBLAS reference. This is one sampled tree,
 not evidence that GLM or a particular strategy wins an ablation.
+The exact winning source is saved as
+[triton-h100-glm53-bgen3-best.py](triton-h100-glm53-bgen3-best.py).
 
 The run recorded four nodes, three generation calls, three lazy NCU profiles,
 four PTX artifacts, and one `worker_calibration` event. Generation 1 and 2

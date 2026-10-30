@@ -1,6 +1,6 @@
 # Research log
 
-Updated 2026-10-23. This is a living account of why the project changed direction and what the recorded experiments found. It summarizes completed work; [the specification](spec.md) remains the source of truth for search behavior, [the CUDA-first direction](docs/cuda-first-next-direction.md) states the current research priority, and [TODO.md](TODO.md) tracks unfinished work. Links below point to reports with configuration, trace, and measurement detail. Latencies are saved-kernel medians in microseconds unless stated otherwise; lower is better. The crossover table explicitly uses the mean of four run medians.
+Updated 2026-10-30. This is a living account of why the project changed direction and what the recorded experiments found. It summarizes completed work; [the specification](spec.md) remains the source of truth for search behavior, [the CUDA-first direction](docs/cuda-first-next-direction.md) states the current research priority, and [TODO.md](TODO.md) tracks unfinished work. Links below point to reports with configuration, trace, and measurement detail. Latencies are saved-kernel medians in microseconds unless stated otherwise; lower is better. The crossover table explicitly uses the mean of four run medians.
 
 ## The question that shaped the project
 
@@ -117,6 +117,44 @@ We then made a **2×2 CTA-placement × cache-policy crossover** from the freefor
 
 On this freeform source family, compact placement saved 28.784 µs with `.ca` and 27.812 µs with `.cg`; `.ca` saved 15.408 µs with compact placement and 14.436 µs with sparse placement. The estimated interaction was about 0.972 µs, below the variation among four rounds. Both intermediate variants improved over sparse-`.cg`, so this crossover does **not** show a performance valley that requires the two choices to be made jointly. A joint proposal might still save `B_gen`; that is a search-efficiency hypothesis, not a benchmark result. The controlled compact-`.ca` versus sparse-`.cg` difference of 43.220 µs resembles the earlier 43.408 µs freeform/catalog gap, but other code differences prevent assigning the historical gap to only these two factors. The catalog's opposite `.ca` response also shows that cache policy remains kernel-specific. [Crossover details](docs/experiments/sequential-cta-cache-crossover/README.md)
 
+## October 26–28: validate Triton H100 search with GLM-5.3
+
+The separate Section 50 integration track added a packaged Triton BF16 GEMM
+root, H100 worker backend, versioned Triton strategies, and durable PTX
+artifacts. A deterministic smoke and a Sol `B_gen=3` MCTS run established the
+pipeline on the pinned H100 image; Sol's best was 224.048 µs from an 822.448
+µs Triton root. This is a different source backend and root from the earlier
+CUDA C++ searches. [Triton validation](docs/experiments/triton-h100-validation-2026-10-26.md)
+
+We then fixed the Triton prompt's launcher ABI, added the measured parent
+latency and correctness-passing cuBLAS reference, and persisted worker
+calibration in SQLite. The first GLM-5.3 Messages attempt reached a valid root
+and NCU profile but timed out on generation. A GPU-free replay of its exact
+prompt showed that default model reasoning spent 16,384 output tokens without
+returning source. The gateway accepted an explicit disabled-thinking mode;
+with that mode the same prompt produced source promptly. The option and its
+provenance are now in the controller. [Gateway guide](docs/messages-gateway.md)
+
+The successful GLM-5.3 `B_gen=3` MCTS smoke used seed 0, the same pinned
+worker image, `lightweight_v1` NCU, and the Triton strategy catalog. All three
+generated candidates passed compile and correctness. The measured search root
+was 820.672 µs; the best child was **199.712 µs**, versus same-worker cuBLAS
+177.184 µs and CUTLASS 308.800 µs. The best is 4.11× faster than its root and
+12.7% slower than cuBLAS in this one run. The trace has four nodes, three lazy
+profiles, four PTX artifacts, exact generation prompts, and calibration. The
+winning source is exported with the report. These results do not isolate model,
+prompt, or strategy effects across the Sol and GLM runs. [GLM smoke report and
+source](docs/experiments/triton-h100-glm53-smoke-2026-10-28.md)
+
+As of 2026-10-30, `feature/triton-h100` is the active branch. Section 50
+supports Triton MCTS with source, parent timing, and NCU in the prompt; it does
+not yet expose Triton compiler/dataflow/hardware graph prompt views or a
+Triton sequential loop. The next H100 measurement is a fresh, repeated
+same-worker replay of the exported winner against the root and vendor
+references. Then specify and implement the desired context/search ablations
+before a multi-seed GLM comparison. The MI355X vLLM operation remains the
+separate Section 49 track. [Next-session sequence](TODO.md)
+
 ## Current interpretation and next discriminating tests
 
 1. **Search representation is consequential.** Typed CuTe reached near cuBLAS on this GEMM, but its validated transformation space was expensive to build and remains specialized. CUDA generation is open-ended and improved far beyond the scalar root; the best logged CUDA C++ search result is now 647.008 µs, still much slower than the separately measured vendor reference. [Direction](docs/cuda-first-next-direction.md)
@@ -124,6 +162,7 @@ On this freeform source family, compact placement saved 28.784 µs with `.ca` an
 3. **Context must be accurate and bounded.** Compiler resources and static PTX dependencies are useful evidence to test, but the present graph cannot assign dynamic bytes or measured time to individual edges. Full adjacency can cost substantially more tokens without a better outcome in a single run. [Trace analysis](docs/experiments/ptx-dataflow-view-trace-analysis-seed0.md)
 4. **A single best-of-run latency is a noisy estimator of prompt value.** Compare multiple seeds, best-so-far curves, validity, profiles, actual edits, and token cost. For causal insight, replay identical parent/strategy situations with repeated model samples. [Study](docs/experiments/terra-sol-prompt-context-bgen50.md) · [PTX analysis](docs/experiments/ptx-dataflow-view-trace-analysis-seed0.md)
 5. **The next controlled sequential tests** are repeated matched freeform/catalog seeds, after fixing the response-label protocol; then the planned graph and history-depth cells and one-factor ablations for compiler detail, dataflow view, and NCU visibility. The 655.856 µs run's call-34/call-44 remapping replay remains a separate historical check; the completed crossover tested the newer 647.008 µs source family. The graph's measured-traffic overlay and PTX/SASS/NCU path reconciliation remain research tasks. [TODO](TODO.md)
+6. **Triton H100 is a new, separately measured track.** The GLM smoke's 199.712 µs best is close to its same-worker cuBLAS reference, but it is one tree. Replaying that source and then comparing matched seeds and context arms is required before attributing the gain to GLM or the Triton strategy catalog. [Report](docs/experiments/triton-h100-glm53-smoke-2026-10-28.md)
 
 ## Reading and updating this log
 

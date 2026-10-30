@@ -4,6 +4,30 @@
 and validation status. Checked implementation items have automated coverage; any
 completed hardware validation is identified explicitly.
 
+## Next-session sequence (2026-10-30)
+
+The active branch is `feature/triton-h100`. The latest completed search is the
+GLM-5.3 Triton H100 `B_gen=3` smoke documented in
+`docs/experiments/triton-h100-glm53-smoke-2026-10-28.md`; its best source is
+exported beside that report. Its local SQLite trace is Git-ignored. Keep the
+EnMaaS URL and key in the shell environment, not in committed documentation.
+
+- [ ] Remeasure the exported 199.712 µs winner against the packaged Triton root,
+  cuBLAS, and CUTLASS on one fresh H100 worker, with repeated timing rounds and
+  correctness checks. Compare medians and spread before treating the 12.7%
+  cuBLAS gap as stable.
+- [ ] Specify the next Triton H100 ablation matrix in `spec.md` before adding
+  search behavior: MCTS versus sequential if desired, source/profile context,
+  bounded compiler summaries, dataflow views, and optional H100 resource graph.
+  Section 50 currently permits Triton MCTS and stores PTX, but the CUDA-only
+  compiler/dataflow prompt flags and sequential Triton flow are unsupported.
+- [ ] Implement the selected Triton context views with exact prompt/trace
+  provenance and tests, then run equal-`B_gen`, multi-seed GLM-5.3 ablations.
+  Hold the worker image, root, workload, profile policy, and Messages thinking
+  mode fixed across arms.
+- [ ] Continue the separate MI355X Section 49 workload once the target GPU,
+  pinned vLLM revision, ROCm image, and profiler access are available.
+
 ## Bounded Triton H100 integration track
 
 Section 50 of `spec.md` defines this precursor to the MI355X workload.
@@ -22,7 +46,7 @@ Section 50 of `spec.md` defines this precursor to the MI355X workload.
 - [x] Persist the worker's cuBLAS/CUTLASS calibration payload as a SQLite
   `worker_calibration` event before generation, and give Triton prompts the
   launcher ABI, parent timing, and correctness-passing cuBLAS reference.
-  Local tests cover this wiring; a new H100 run will validate the recorded values.
+  Local tests and the GLM-5.3 H100 smoke validate the recorded values.
 - [x] Run a small H100 smoke with the verified Messages-compatible GLM-5.3 endpoint,
   inspect the exact Triton prompt and recorded calibration. The `B_gen=3`
   run with reasoning disabled reached 199.712 µs; see
