@@ -1,0 +1,113 @@
+{
+  "benchmark_id": "bf16_gemm_4096_h100",
+  "dram_note": "total DRAM traffic is not spill-attributed",
+  "local_sector_note": "local memory includes spills and other thread-private data",
+  "metric_scope": "whole_kernel_NCU_replay",
+  "observations": [
+    {
+      "compiler_resources": {
+        "registers_per_thread": 255,
+        "spills": 256,
+        "static_shared_memory_bytes": 147456
+      },
+      "median_us": 1768.5279846191406,
+      "metrics": {
+        "dram_bytes_read_total": 209474560.0,
+        "dram_bytes_written_total": 764534272.0,
+        "l2_sector_hit_rate_total_pct": 97.11,
+        "local_load_sectors": 134389760.0,
+        "local_store_sectors": 134791168.0
+      },
+      "report_sha256": "24cb5ff9532690c763ce52c5b9e889dfc06f5e020d9e32960795e8ea56cec19b",
+      "sass_local_load_sites": 213,
+      "sass_local_store_sites": 262,
+      "source_correlated": true,
+      "source_sha256": "7de57d55870b0e8015817416ef451986eb62a1391fc372df8617f2dbf3101fde",
+      "top_local_source_lines": [
+        {
+          "executed_local_instructions": 16777216,
+          "line": 38,
+          "load_sites": 64,
+          "source": "acc = tl.dot(a, b, acc)",
+          "store_sites": 64
+        },
+        {
+          "executed_local_instructions": 16666624,
+          "line": 33,
+          "load_sites": 64,
+          "source": "(row[:, None] < M) & (k * BK + kk[None, :] < K),",
+          "store_sites": 73
+        },
+        {
+          "executed_local_instructions": 444416,
+          "line": 31,
+          "load_sites": 75,
+          "source": "for k in range(0, tl.cdiv(K, BK)):",
+          "store_sites": 79
+        },
+        {
+          "executed_local_instructions": 51200,
+          "line": 19,
+          "load_sites": 0,
+          "source": "pid_n = (pid % num_pid_in_group) // group_size_m",
+          "store_sites": 25
+        },
+        {
+          "executed_local_instructions": 20480,
+          "line": 44,
+          "load_sites": 10,
+          "source": "(row[:, None] < M) & (col[None, :] < N))",
+          "store_sites": 0
+        },
+        {
+          "executed_local_instructions": 14336,
+          "line": 21,
+          "load_sites": 0,
+          "source": "row = pid_m * BM + tl.arange(0, BM)",
+          "store_sites": 7
+        },
+        {
+          "executed_local_instructions": 14336,
+          "line": 36,
+          "load_sites": 0,
+          "source": "(k * BK + kk[:, None] < K) & (col[None, :] < N),",
+          "store_sites": 7
+        },
+        {
+          "executed_local_instructions": 6144,
+          "line": 15,
+          "load_sites": 0,
+          "source": "group_id = pid // num_pid_in_group",
+          "store_sites": 3
+        }
+      ],
+      "variant": "grouped_bn256_w4"
+    },
+    {
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "median_us": 201.53599977493286,
+      "metrics": {
+        "dram_bytes_read_total": 186661376.0,
+        "dram_bytes_written_total": 28752640.0,
+        "l2_sector_hit_rate_total_pct": 70.98,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0
+      },
+      "report_sha256": "d0c4b42d4084f6bea7ffc8a75b5ad5f8a185936bf83ee2069f31391a3ef66d62",
+      "sass_local_load_sites": 0,
+      "sass_local_store_sites": 0,
+      "source_correlated": true,
+      "source_sha256": "bf940261a000a4a0b7b19c97530f02a7750df554ac7091923d4fe60f62c1f870",
+      "top_local_source_lines": [],
+      "variant": "grouped_bn256_w8"
+    }
+  ],
+  "run_id": "7b59ac4e-6809-40f0-85e2-2ff28700fa66",
+  "schema_version": 1,
+  "source_site_note": "static SASS sites and executed instructions are distinct",
+  "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+}

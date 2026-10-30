@@ -193,9 +193,9 @@ class TritonH100Backend:
     def lightweight_profile(self, artifact: TritonArtifact,
                             workload: WorkloadContract,
                             metric_set: str = "lightweight_v1") -> Mapping[str, object]:
-        if metric_set not in {"lightweight_v1", "diagnostic_v2"}:
+        if metric_set not in {"lightweight_v1", "diagnostic_v2", "spill_v1"}:
             raise EvaluationInfrastructureError(
-                "Triton H100 supports lightweight_v1 and diagnostic_v2 NCU metrics"
+                "unsupported Triton H100 NCU metric set"
             )
         try:
             definition = resolve_profile_metric_set(metric_set, self.config.architecture,
@@ -220,7 +220,7 @@ class TritonH100Backend:
             _ncu_csv_output(result.stdout, result.stderr, definition.metrics), definition.metrics
         )
         summary = {alias: metrics[name]["value"] for name, alias in definition.aliases.items()}
-        if metric_set == "diagnostic_v2":
+        if metric_set in {"diagnostic_v2", "spill_v1"}:
             resources = self._compiler_resources.get(artifact.artifact_id)
             if resources is not None:
                 summary["compiler_spills"] = resources.get("spills")

@@ -1,0 +1,6 @@
+{
+  "base_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+  "dirty_tree": true,
+  "execution": "current source overlay in separate Python process",
+  "repo_commit": "2eedd4d2f091f8803d399a6e1f6d4f51678a48cb"
+}

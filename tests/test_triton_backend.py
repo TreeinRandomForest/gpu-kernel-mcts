@@ -7,7 +7,10 @@ from pathlib import Path
 from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD, load_triton_bf16_gemm_root
 from kernel_mcts.domain import BenchmarkResult, KernelProgram
 from kernel_mcts.evaluation import BackendKernelEvaluator, EvaluationContext
-from kernel_mcts.profiling import LIGHTWEIGHT_V1_METRICS, DIAGNOSTIC_V2_ADDITIONAL_METRICS
+from kernel_mcts.profiling import (
+    LIGHTWEIGHT_V1_METRICS, DIAGNOSTIC_V2_ADDITIONAL_METRICS,
+    SPILL_V1_ADDITIONAL_METRICS,
+)
 from kernel_mcts.triton_backend import TritonBackendConfig, TritonH100Backend
 
 
@@ -93,6 +96,17 @@ def test_triton_diagnostic_profile_exposes_local_traffic_and_compiler_spills(tmp
     assert profile["summary"]["compiler_static_shared_memory_bytes"] == 2048
     assert set(runner.calls[-1][0][runner.calls[-1][0].index("--metrics") + 1].split(",")) == (
         set(LIGHTWEIGHT_V1_METRICS) | set(DIAGNOSTIC_V2_ADDITIONAL_METRICS)
+    )
+
+    spill_profile = backend.lightweight_profile(
+        compilation.artifact, BF16_GEMM_WORKLOAD, "spill_v1"
+    )
+    assert spill_profile["summary"]["local_load_l1_hit_sectors"] == 1.0
+    assert spill_profile["summary"]["local_load_l1_miss_sectors"] == 1.0
+    assert spill_profile["summary"]["compiler_spills"] == 0
+    assert set(runner.calls[-1][0][runner.calls[-1][0].index("--metrics") + 1].split(",")) == (
+        set(LIGHTWEIGHT_V1_METRICS) | set(DIAGNOSTIC_V2_ADDITIONAL_METRICS)
+        | set(SPILL_V1_ADDITIONAL_METRICS)
     )
 
 

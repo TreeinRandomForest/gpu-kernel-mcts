@@ -314,6 +314,13 @@ def test_triton_cli_parses_diagnostic_profile() -> None:
     ])
     assert arguments.profile_metric_set == "diagnostic_v2"
 
+    spill = build_parser().parse_args([
+        "--image", "worker:v1", "--trace", "trace.sqlite",
+        "--backend", "triton_h100", "--generator", "smoke",
+        "--profile-metric-set", "spill_v1",
+    ])
+    assert spill.profile_metric_set == "spill_v1"
+
 
 def test_search_cli_parser_accepts_optional_post_search_tuning() -> None:
     arguments = build_parser().parse_args(

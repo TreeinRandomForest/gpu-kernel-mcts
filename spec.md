@@ -3515,9 +3515,14 @@ H100 Triton runs to expose local-memory sectors and related counters. The
 diagnostic profile also carries Triton's compiled spill count alongside the
 measured counters. Local-memory sectors are not labeled as spill bytes, since
 other thread-private storage can use local memory. Profiler replay timing is
-not the reward. Instruction-correlated NCU Source reports, when added, should
-be collected only for selected nodes and kept distinct from aggregate prompt
-metrics; source-line correlation depends on compiled debug/line information.
+not the reward. Instruction-correlated NCU Source reports are collected by a
+separate selected-node tool, not during ordinary MCTS visits, and kept
+distinct from aggregate prompt metrics; source-line correlation depends on
+compiled debug/line information. A bounded, line-labeled summary can be
+derived from the report but is not automatically inserted into MCTS prompts.
+An opt-in `spill_v1` H100/NCU 2025.1 or 2025.2 set extends `diagnostic_v2` with local
+load L1 hit and miss sectors after device-metric availability is checked.
+These are local-memory counters, not exclusively spill-attributed bytes.
 
 The initial H100 Triton action catalog is versioned separately from the
 CUDA C++ catalog and covers output tiles, K tile/pipeline, warps, and

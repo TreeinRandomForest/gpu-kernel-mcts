@@ -1091,6 +1091,11 @@ function renderEvidence(side) {
       summary: evidence.profile.summary,
       raw_metrics: evidence.profile.metrics,
     }, null, 2) : "No NCU profile recorded for this node.";
+  } else if (layer === "source-report") {
+    note.textContent = "Selected-node NCU Source evidence from a separate worker. SASS sites are static; local-memory sectors are whole-kernel replay counts and are not exclusively spills. Source lines are compiler correlations.";
+    content.textContent = evidence.source_report
+      ? JSON.stringify(evidence.source_report, null, 2)
+      : "No source-matched NCU Source summary is available for this node.";
   } else if (layer === "hardware") {
     const result = state.evidence.hardware[side];
     if (!result || result.key !== `${evidence.trace_id}\u0000${evidence.run_id}`) {

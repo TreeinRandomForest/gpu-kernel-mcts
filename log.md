@@ -183,8 +183,23 @@ round-to-round scale. [Crossover report and raw samples](docs/experiments/triton
 The next profiling implementation step enabled opt-in `diagnostic_v2` for
 Triton H100. Its existing local-memory sector counters and Triton's compiled
 spill count now appear together in the parent profile shown on expansion.
-Instruction-correlated NCU Source reports remain a selected-node follow-up;
-they have not yet been captured or validated for Triton source mapping.
+An H100 follow-up captured selected-node NCU Source reports for the slow and
+fast `BN=256` kernels. The slow four-warp variant had 213 `LDL` and 262 `STL`
+SASS sites, 134.39 million local-load sectors and 134.79 million local-store
+sectors in a diagnostic replay; the eight-warp variant had zero of each.
+Triton source correlation was present, with local instructions clustered
+around the dot and load-mask lines. A bounded summary and raw report hashes
+are in the [Source report study](docs/experiments/triton-h100-source-report/README.md).
+An opt-in `spill_v1` metric set now includes H100 local-load L1 hit/miss
+counters. A model-free, one-generation H100 MCTS validation ran the current
+package overlaid on the pinned worker image: the slow four-warp parent had
+134,389,700 local-load L1 miss sectors and 60 hit sectors; the eight-warp
+child had no local traffic. Both profiles persisted in SQLite, and the exact
+parent values appeared in the generation prompt. The trace browser now joins
+separate Source summaries to matching Triton nodes by source hash and
+benchmark, with provenance visible in Artifact reconciliation. The
+[validation report](docs/experiments/triton-h100-spill-v1-validation/README.md)
+records the counters and image-overlay caveat.
 
 ## Current interpretation and next discriminating tests
 

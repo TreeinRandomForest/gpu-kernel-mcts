@@ -230,7 +230,8 @@ __marimo__/
 /nebius-*-best*.cu
 /triton-h100-*-best.py
 /log-nebius-*
-/*.ncu-rep
+*.ncu-rep
+docs/experiments/triton-h100-source-report/*.csv
 *.swp
 *-tuned-*.cu
 /ablation-results/

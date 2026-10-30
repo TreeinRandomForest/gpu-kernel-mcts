@@ -118,6 +118,39 @@ def test_catalog_lists_runs_and_graph_without_source(tmp_path) -> None:
     assert "program_text" not in graph["nodes"][0]
 
 
+def test_evidence_matches_selected_source_report_by_source_and_workload(tmp_path) -> None:
+    path = _browser_trace(tmp_path)
+    source = "import triton\n# selected source\n"
+    source_sha = hashlib.sha256(source.encode()).hexdigest()
+    with sqlite3.connect(path) as connection:
+        connection.execute("UPDATE search_runs SET benchmark_id = ? WHERE run_id = 'run-1'",
+                           ("bf16_gemm_4096_h100",))
+        connection.execute("UPDATE nodes SET backend_type = ?, program_text = ? "
+                           "WHERE run_id = 'run-1' AND node_id = 'right'",
+                           ("triton_h100", source))
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "analysis.json").write_text(json.dumps({
+        "schema_version": 1, "benchmark_id": "bf16_gemm_4096_h100",
+        "worker_image": "worker:test", "metric_scope": "whole_kernel_NCU_replay",
+        "observations": [{
+            "variant": "selected", "source_sha256": source_sha,
+            "report_sha256": "a" * 64, "sass_local_load_sites": 3,
+            "sass_local_store_sites": 2, "metrics": {"local_load_sectors": 80},
+            "top_local_source_lines": [{"line": 4, "source": "tl.dot", "load_sites": 3}],
+        }],
+    }))
+    catalog = TraceCatalog(tmp_path, reports)
+    trace_id = catalog.list_traces()[0]["trace_id"]
+    before = path.stat().st_mtime_ns
+    selected = catalog.evidence(trace_id, "run-1", "right")["source_report"]
+    assert selected["provenance"] == "separate_selected_node_measurement"
+    assert selected["sass_local_load_sites"] == 3
+    assert selected["metrics"]["local_load_sectors"] == 80
+    assert catalog.evidence(trace_id, "run-1", "left")["source_report"] is None
+    assert path.stat().st_mtime_ns == before
+
+
 def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> None:
     path = _browser_trace(tmp_path)
     manifest = {

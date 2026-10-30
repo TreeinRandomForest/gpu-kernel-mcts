@@ -79,6 +79,16 @@ DIAGNOSTIC_V2_ADDITIONAL_ALIASES = {
     ),
 }
 
+SPILL_V1_ADDITIONAL_METRICS = (
+    "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum",
+    "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum",
+)
+
+SPILL_V1_ADDITIONAL_ALIASES = {
+    "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum": "local_load_l1_hit_sectors",
+    "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum": "local_load_l1_miss_sectors",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class ProfileMetricSet:
@@ -107,9 +117,19 @@ _METRIC_SETS = {
         LIGHTWEIGHT_V1_METRICS + DIAGNOSTIC_V2_ADDITIONAL_METRICS,
         {**LIGHTWEIGHT_V1_ALIASES, **DIAGNOSTIC_V2_ADDITIONAL_ALIASES},
     ),
+    ("spill_v1", "sm_90"): ProfileMetricSet(
+        "spill_v1",
+        1,
+        "sm_90",
+        ("2025.1", "2025.2"),
+        LIGHTWEIGHT_V1_METRICS + DIAGNOSTIC_V2_ADDITIONAL_METRICS
+        + SPILL_V1_ADDITIONAL_METRICS,
+        {**LIGHTWEIGHT_V1_ALIASES, **DIAGNOSTIC_V2_ADDITIONAL_ALIASES,
+         **SPILL_V1_ADDITIONAL_ALIASES},
+    ),
 }
 
-PROFILE_METRIC_SET_IDS = ("lightweight_v1", "diagnostic_v2")
+PROFILE_METRIC_SET_IDS = ("lightweight_v1", "diagnostic_v2", "spill_v1")
 
 
 def resolve_profile_metric_set(

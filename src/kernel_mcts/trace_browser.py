@@ -80,10 +80,53 @@ def _row_value(row: sqlite3.Row, column: str, default: object = None) -> object:
 class TraceCatalog:
     """Discovers and queries trace databases beneath one allowed directory."""
 
-    def __init__(self, trace_dir: str | Path) -> None:
+    def __init__(self, trace_dir: str | Path, source_report_dir: str | Path | None = None) -> None:
         self.trace_dir = Path(trace_dir).resolve()
         if not self.trace_dir.is_dir():
             raise TraceBrowserError(f"trace directory does not exist: {self.trace_dir}")
+        self.source_report_dir = (
+            Path(source_report_dir).resolve() if source_report_dir is not None
+            else self.trace_dir
+        )
+        if not self.source_report_dir.is_dir():
+            raise TraceBrowserError(f"source report directory does not exist: {self.source_report_dir}")
+
+    def _source_report(self, source: str, benchmark_id: str, backend: str) -> dict[str, object] | None:
+        if backend != "triton_h100":
+            return None
+        source_sha256 = hashlib.sha256(source.encode("utf-8")).hexdigest()
+        for path in sorted(self.source_report_dir.rglob("analysis.json")):
+            if not path.resolve().is_relative_to(self.source_report_dir) or path.stat().st_size > 1_000_000:
+                continue
+            try:
+                report = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if not isinstance(report, dict) or report.get("schema_version") != 1 \
+                    or report.get("benchmark_id") != benchmark_id:
+                continue
+            observations = report.get("observations")
+            if not isinstance(observations, list):
+                continue
+            for observation in observations:
+                if not isinstance(observation, dict) or observation.get("source_sha256") != source_sha256:
+                    continue
+                return {
+                    "provenance": "separate_selected_node_measurement",
+                    "variant": observation.get("variant"),
+                    "source_sha256": source_sha256,
+                    "report_sha256": observation.get("report_sha256"),
+                    "worker_image": report.get("worker_image"),
+                    "metric_scope": report.get("metric_scope"),
+                    "compiler_resources": observation.get("compiler_resources"),
+                    "sass_local_load_sites": observation.get("sass_local_load_sites"),
+                    "sass_local_store_sites": observation.get("sass_local_store_sites"),
+                    "top_local_source_lines": observation.get("top_local_source_lines", [])[:8],
+                    "metrics": observation.get("metrics"),
+                    "notes": [report.get("local_sector_note"), report.get("dram_note"),
+                              report.get("source_site_note")],
+                }
+        return None
 
     def list_traces(self) -> list[dict[str, object]]:
         entries: list[dict[str, object]] = []
@@ -461,6 +504,9 @@ class TraceCatalog:
                 "launch": _json_value(row["launch_config_json"], {}),
                 "compiler": context, "ptx": ptx,
                 "profile": _json_value(row["profile_json"]),
+                "source_report": self._source_report(
+                    row["program_text"], str(run["benchmark_id"]), row["backend_type"]
+                ),
                 "dataflow": {"source": graph_source, "template": graph.get("template") if graph else None,
                              "summary": graph.get("summary") if graph else None,
                              "compiled_ptx": graph.get("compiled_ptx") if graph else None,
@@ -1303,6 +1349,8 @@ class TraceBrowserHandler(BaseHTTPRequestHandler):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Browse local MCTS SQLite traces.")
     parser.add_argument("--trace-dir", type=Path, default=Path.cwd())
+    parser.add_argument("--source-report-dir", type=Path,
+                        help="read bounded selected-node NCU analysis.json files from this directory")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--open", action="store_true", dest="open_browser")
@@ -1311,7 +1359,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
-    catalog = TraceCatalog(arguments.trace_dir)
+    catalog = TraceCatalog(arguments.trace_dir, arguments.source_report_dir)
     handler = type("ConfiguredTraceBrowserHandler", (TraceBrowserHandler,), {"catalog": catalog})
     server = ThreadingHTTPServer((arguments.host, arguments.port), handler)
     url = f"http://{arguments.host}:{server.server_port}/"

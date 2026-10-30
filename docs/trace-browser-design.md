@@ -96,6 +96,15 @@ has possible links and architectural limits, but it does not assign measured byt
 or latency to a path. Missing artifacts remain explicit; the browser does not
 recompile, reprofile, or write to SQLite.
 
+The **NCU Source summary** layer can also show bounded selected-node reports
+from `analysis.json` files beneath `--trace-dir` or an explicit
+`--source-report-dir`. It matches an exact source SHA-256 and benchmark ID, then
+labels the result as a separate-worker measurement. It shows compiler spill
+metadata, SASS local instruction sites, whole-kernel local-memory counters,
+and the top correlated source lines. The large `.ncu-rep` and CSV exports stay
+outside SQLite; the browser remains read-only. A matching source does not
+imply that the separate report shares the trace node's timing conditions.
+
 ## Testing
 
 Keep database discovery, SQL queries, graph traversal, and diff construction independent

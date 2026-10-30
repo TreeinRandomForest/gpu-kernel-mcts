@@ -1,0 +1,263 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-10-30T21:36:49.401197+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-df9755db-6464-5522-6396-7e78b9382686",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "cba3a84e647df6989e3c07fa5a111e8ea522e2540933e7e4e2f8ae487b0025bb",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00kj281775pk0pahd",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "2eedd4d2f091f8803d399a6e1f6d4f51678a48cb",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.3.1"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00kj281775pk0pahd"
+  },
+  "git_commit": "2eedd4d2f091f8803d399a6e1f6d4f51678a48cb",
+  "image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+  "local_metric_availability": {
+    "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": true,
+    "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum": true,
+    "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum": true,
+    "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": true
+  },
+  "observations": [
+    {
+      "compiler_resources": {
+        "registers_per_thread": 255,
+        "spills": 256,
+        "static_shared_memory_bytes": 147456
+      },
+      "median_us": 1768.5279846191406,
+      "source_report": {
+        "kernel_regex": ".*bf16_gemm_triton.*",
+        "report_sha256": "24cb5ff9532690c763ce52c5b9e889dfc06f5e020d9e32960795e8ea56cec19b",
+        "report_size_bytes": 2284135,
+        "sass_local_load_sites": 213,
+        "sass_local_store_sites": 262,
+        "schema_version": 1,
+        "source_correlated": true,
+        "source_views": {
+          "cuda_sass": "captured",
+          "ptx": "captured",
+          "sass": "captured"
+        }
+      },
+      "source_sha256": "7de57d55870b0e8015817416ef451986eb62a1391fc372df8617f2dbf3101fde",
+      "variant": "grouped_bn256_w4"
+    },
+    {
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "median_us": 201.53599977493286,
+      "source_report": {
+        "kernel_regex": ".*bf16_gemm_triton.*",
+        "report_sha256": "d0c4b42d4084f6bea7ffc8a75b5ad5f8a185936bf83ee2069f31391a3ef66d62",
+        "report_size_bytes": 1254255,
+        "sass_local_load_sites": 0,
+        "sass_local_store_sites": 0,
+        "schema_version": 1,
+        "source_correlated": true,
+        "source_views": {
+          "cuda_sass": "captured",
+          "ptx": "captured",
+          "sass": "captured"
+        }
+      },
+      "source_sha256": "bf940261a000a4a0b7b19c97530f02a7750df554ac7091923d4fe60f62c1f870",
+      "variant": "grouped_bn256_w8"
+    }
+  ],
+  "run_id": "7b59ac4e-6809-40f0-85e2-2ff28700fa66",
+  "startup_calibration": {
+    "backend": "triton_h100",
+    "benchmark": {
+      "gpu_operating_state": {},
+      "max_us": 830.2080035209656,
+      "mean_us": 823.2415994008383,
+      "median_us": 823.199987411499,
+      "min_us": 818.1120157241821,
+      "per_shape_median_us": {},
+      "stddev_us": 3.255198271762222,
+      "timings_us": [
+        830.2080035209656,
+        828.7360072135925,
+        826.1439800262451,
+        826.0800242424011,
+        818.336009979248,
+        824.5440125465393,
+        819.2639946937561,
+        820.7679986953735,
+        823.4879970550537,
+        821.9839930534363,
+        823.4239816665649,
+        824.7039914131165,
+        826.9760012626648,
+        818.1120157241821,
+        818.6879754066467,
+        822.9759931564331,
+        824.0640163421631,
+        821.9199776649475,
+        819.8400139808655,
+        826.0480165481567,
+        828.7680149078369,
+        820.1599717140198,
+        823.743999004364,
+        827.9359936714172,
+        821.6320276260376,
+        823.8720297813416,
+        821.9199776649475,
+        819.0400004386902,
+        821.6959834098816,
+        822.1759796142578
+      ],
+      "warmup_count": 10
+    },
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "compile": {
+      "artifact_id": "d26126013dd5b0145465a7c3d7c2746becaa5a1ec10236cfd7dcabc409141560",
+      "duration_seconds": 2.6070098330000064,
+      "success": true
+    },
+    "correctness": {
+      "failed_test_id": null,
+      "maximum_error": 0.0,
+      "mean_error": 0.0,
+      "reference_metadata": {
+        "implementation": "torch.matmul/cuBLAS",
+        "seed": 0
+      },
+      "success": true
+    },
+    "vendor_baselines": {
+      "cublas": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 181.248001,
+          "mean_us": 177.84640043333332,
+          "median_us": 177.472,
+          "min_us": 176.0,
+          "per_shape_median_us": {},
+          "stddev_us": 1.2770671799951814,
+          "timings_us": [
+            181.248001,
+            176.671997,
+            180.063995,
+            178.655991,
+            176.768005,
+            177.472,
+            177.184006,
+            177.824005,
+            178.432007,
+            176.608002,
+            178.81601,
+            177.952011,
+            176.832001,
+            179.199997,
+            177.056,
+            177.440002,
+            177.472,
+            176.159988,
+            180.127991,
+            177.919998,
+            176.608002,
+            176.992004,
+            176.608002,
+            177.824005,
+            179.488007,
+            176.0,
+            177.119995,
+            178.016006,
+            177.215988,
+            179.615997
+          ],
+          "warmup_count": 10
+        },
+        "correctness": {
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "success": true
+        }
+      },
+      "cutlass": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 313.18399,
+          "mean_us": 309.7418631,
+          "median_us": 309.631989,
+          "min_us": 307.583984,
+          "per_shape_median_us": {},
+          "stddev_us": 1.0911835708358555,
+          "timings_us": [
+            313.18399,
+            310.272003,
+            308.608002,
+            309.439972,
+            309.279999,
+            309.503998,
+            309.343994,
+            310.112,
+            308.671997,
+            310.623993,
+            308.800018,
+            308.35199,
+            310.048004,
+            310.880005,
+            309.279999,
+            309.76001,
+            310.623993,
+            308.287994,
+            310.815979,
+            308.416016,
+            309.631989,
+            309.536011,
+            309.951996,
+            309.536011,
+            311.104004,
+            309.631989,
+            309.823975,
+            307.583984,
+            311.423981,
+            309.727997
+          ],
+          "warmup_count": 10
+        },
+        "correctness": {
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "success": true
+        }
+      }
+    }
+  }
+}

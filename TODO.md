@@ -30,11 +30,26 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
 - [x] Add opt-in Triton `diagnostic_v2` local-memory counters and the compiled
   spill count to the parent profile. Existing lightweight runs keep their
   current prompt and metric set; local sectors are not labeled spill bytes.
-- [ ] Capture NCU Source reports for selected NVIDIA nodes, validate Triton
-  source/PTX/SASS correlation on H100, and expose a bounded, evidence-labeled
-  summary rather than a full report in the prompt. Keep report collection out
-  of every leaf. Check available local L1 hit/miss and L2-origin counters on
-  the pinned NCU version before adding a new metric-set version.
+- [x] Capture NCU Source reports for selected NVIDIA nodes and validate
+  Triton source/PTX/SASS correlation on H100. The slow four-warp kernel has
+  213 SASS `LDL` and 262 `STL` sites, versus zero for eight warps; local
+  load/store sector counters also diverge. Save a bounded, evidence-labeled
+  line summary separately from the large reports. See
+  `docs/experiments/triton-h100-source-report/README.md`.
+- [x] Validate `spill_v1` end-to-end on H100 with the current package overlaid
+  on the pinned worker container. The four-warp root had 134,389,700 local
+  L1 miss sectors and 60 hit sectors; the eight-warp child had no local
+  traffic. Two profiles persisted in SQLite, and the root's values appeared
+  in the generation prompt. See
+  `docs/experiments/triton-h100-spill-v1-validation/README.md`.
+- [x] Show bounded Source summaries in the read-only trace browser, matched
+  by source hash and benchmark and labeled as separate-worker evidence. The
+  new H100 validation trace displays both selected sources in Artifact
+  reconciliation → NCU Source summary.
+- [ ] Compare a bounded Source-summary prompt arm after reviewing line
+  correlation semantics. The browser visualization does not inject these
+  separate-worker reports into MCTS prompts. Build and publish a new worker
+  image before treating `spill_v1` as a reproducible deployment configuration.
 - [ ] Specify the next Triton H100 ablation matrix in `spec.md` before adding
   search behavior: MCTS versus sequential if desired, source/profile context,
   bounded compiler summaries, dataflow views, and optional H100 resource graph.
