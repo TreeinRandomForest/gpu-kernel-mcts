@@ -97,7 +97,9 @@ def test_triton_prompt_uses_launcher_abi_and_measured_references() -> None:
         strategy=Strategy("tile", "tile", {"triton_h100": "Change the tile"}),
         workload=BF16_GEMM_WORKLOAD,
         hardware={"gpu_model": "H100"},
-        profile=None,
+        profile={"metric_set": "diagnostic_v2", "summary": {
+            "local_load_sectors": 10, "compiler_spills": 256,
+        }},
         current_benchmark={"median_us": 220.0, "timings_us": [219.0, 221.0], "warmup_count": 10},
         reference_baselines={"cublas": {"median_us": 110.0, "role": "performance reference only"}},
     )
@@ -113,6 +115,8 @@ def test_triton_prompt_uses_launcher_abi_and_measured_references() -> None:
     assert payload["parent_timing"]["median_us"] == 220.0
     assert payload["parent_timing"]["sample_count"] == 2
     assert payload["performance_references"]["cublas"]["median_us"] == 110.0
+    assert payload["parent_profile"]["summary"]["compiler_spills"] == 256
+    assert payload["parent_profile"]["summary"]["local_load_sectors"] == 10
     assert BF16_GEMM_WORKLOAD.metadata["abi"]["launch"]["block"] == [16, 16, 1]
 
 
@@ -299,6 +303,15 @@ def test_search_cli_parser_accepts_diagnostic_profile_metric_set() -> None:
         ]
     )
 
+    assert arguments.profile_metric_set == "diagnostic_v2"
+
+
+def test_triton_cli_parses_diagnostic_profile() -> None:
+    arguments = build_parser().parse_args([
+        "--image", "worker:v1", "--trace", "trace.sqlite",
+        "--backend", "triton_h100", "--generator", "smoke",
+        "--profile-metric-set", "diagnostic_v2",
+    ])
     assert arguments.profile_metric_set == "diagnostic_v2"
 
 

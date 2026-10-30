@@ -1,0 +1,703 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-10-30T20:15:55.264312+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-df9755db-6464-5522-6396-7e78b9382686",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "55dd11e4bf194eff8384de17f5b93f3c29fa61a182840f76556770ee8911b40b",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00x2w1b88wg9zb7cz",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d06e2347aa7fee93b7a4c9cc6b9290892daac5ca",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.3.1"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00x2w1b88wg9zb7cz"
+  },
+  "git_commit": "d06e2347aa7fee93b7a4c9cc6b9290892daac5ca",
+  "image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+  "observations": [
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 236.60799860954285,
+        "mean_us": 224.88320072491965,
+        "median_us": 224.41600263118744,
+        "min_us": 216.0319983959198,
+        "per_shape_median_us": {},
+        "stddev_us": 4.685121734526587,
+        "timings_us": [
+          230.9119999408722,
+          226.0800004005432,
+          224.92800652980804,
+          225.3440022468567,
+          228.2560020685196,
+          228.44800353050232,
+          223.23200106620789,
+          230.97600042819977,
+          223.90399873256683,
+          231.87200725078583,
+          230.0799936056137,
+          236.60799860954285,
+          222.88000583648682,
+          218.59200298786163,
+          222.17600047588348,
+          223.61600399017334,
+          219.58400309085846,
+          226.81599855422974,
+          223.13599288463593,
+          216.0319983959198,
+          223.4559953212738,
+          219.67999637126923,
+          216.95999801158905,
+          219.7760045528412,
+          219.90400552749634,
+          227.52000391483307,
+          229.40799593925476,
+          223.7440049648285,
+          227.03999280929565,
+          225.53600370883942
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "backend": "triton_h100",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/triton-artifact-ii1q9s7b/kernel.ptx",
+              "sha256": "8ffb69f8d9f6d2d17c82e5dca0f8a9f01e546a16af2ab7c25ffdec1ea3b52718",
+              "size_bytes": 56872,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "resources": {
+          "registers_per_thread": 232,
+          "spills": 0,
+          "static_shared_memory_bytes": 98304
+        },
+        "sass": {
+          "status": "unavailable"
+        },
+        "schema_version": 1
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "evaluation_id": "triton-warp-cliff-grouped_bn128_w4-392d48d1-c2ce-4a08-823c-f1dc83fea802",
+      "profile": {
+        "artifact_id": "618f4e273d135f0c8019b4c08a7b41d29aff2fcf33f8d0dede9cd6017fc524f1",
+        "metric_set": "lightweight_v1",
+        "metrics": {
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 29.49
+          },
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 73.12
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 232.0
+          },
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 77.01
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 89.85
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 87.52
+          },
+          "sm__warps_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 12.13
+          },
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.4
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 47902720.0
+          }
+        },
+        "profiler": "ncu",
+        "resolved_metrics": [
+          "launch__registers_per_thread",
+          "sm__warps_active.avg.pct_of_peak_sustained_active",
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+          "l1tex__throughput.avg.pct_of_peak_sustained_active",
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+          "smsp__inst_executed.sum"
+        ],
+        "schema_version": 1,
+        "summary": {
+          "achieved_occupancy_pct": 12.13,
+          "dram_throughput_pct": 29.49,
+          "instructions_executed": 47902720.0,
+          "l1tex_throughput_pct": 73.12,
+          "l2_throughput_pct": 77.01,
+          "long_scoreboard_warps_per_issue": 0.4,
+          "registers_per_thread": 232.0,
+          "sm_throughput_pct": 87.52,
+          "tensor_pipe_utilization_pct": 89.85
+        },
+        "target": {
+          "architecture": "sm_90",
+          "ncu_version": "2025.1"
+        }
+      },
+      "ptx_instruction_sites": {
+        "cp_async": 56,
+        "ld_local": 0,
+        "st_local": 0,
+        "wgmma": 12
+      },
+      "status": "VALID",
+      "variant": "grouped_bn128_w4"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 1792.7360534667969,
+        "mean_us": 1778.3552050590515,
+        "median_us": 1777.2959470748901,
+        "min_us": 1764.7360563278198,
+        "per_shape_median_us": {},
+        "stddev_us": 7.034208446223889,
+        "timings_us": [
+          1785.9840393066406,
+          1777.9840230941772,
+          1775.5520343780518,
+          1784.5120429992676,
+          1775.7760286331177,
+          1783.4880352020264,
+          1780.351996421814,
+          1788.0959510803223,
+          1769.7279453277588,
+          1780.511975288391,
+          1789.5679473876953,
+          1792.7360534667969,
+          1784.5120429992676,
+          1777.4399518966675,
+          1775.871992111206,
+          1771.3600397109985,
+          1785.5360507965088,
+          1770.8799839019775,
+          1776.1600017547607,
+          1782.2400331497192,
+          1784.6399545669556,
+          1766.9119834899902,
+          1773.3759880065918,
+          1774.5920419692993,
+          1771.2639570236206,
+          1770.4960107803345,
+          1764.7360563278198,
+          1777.1519422531128,
+          1786.8160009384155,
+          1772.3840475082397
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "backend": "triton_h100",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/triton-artifact-te1ngt4g/kernel.ptx",
+              "sha256": "31e7b4c6bf10d4466046882c7695791166e8ec5b01f786158ddfbf470cbb2066",
+              "size_bytes": 95276,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "resources": {
+          "registers_per_thread": 255,
+          "spills": 256,
+          "static_shared_memory_bytes": 147456
+        },
+        "sass": {
+          "status": "unavailable"
+        },
+        "schema_version": 1
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "evaluation_id": "triton-warp-cliff-grouped_bn256_w4-04de44c9-e357-4983-bcc9-ef3a795703f5",
+      "profile": {
+        "artifact_id": "dc8a518c2884d47cceeb716a51a9d976d05411576e4e562a2bd7aa15eaa709b4",
+        "metric_set": "lightweight_v1",
+        "metrics": {
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 16.01
+          },
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 52.72
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 255.0
+          },
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 69.88
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 10.68
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 11.39
+          },
+          "sm__warps_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 6.28
+          },
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 3.4
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 76615680.0
+          }
+        },
+        "profiler": "ncu",
+        "resolved_metrics": [
+          "launch__registers_per_thread",
+          "sm__warps_active.avg.pct_of_peak_sustained_active",
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+          "l1tex__throughput.avg.pct_of_peak_sustained_active",
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+          "smsp__inst_executed.sum"
+        ],
+        "schema_version": 1,
+        "summary": {
+          "achieved_occupancy_pct": 6.28,
+          "dram_throughput_pct": 16.01,
+          "instructions_executed": 76615680.0,
+          "l1tex_throughput_pct": 52.72,
+          "l2_throughput_pct": 69.88,
+          "long_scoreboard_warps_per_issue": 3.4,
+          "registers_per_thread": 255.0,
+          "sm_throughput_pct": 11.39,
+          "tensor_pipe_utilization_pct": 10.68
+        },
+        "target": {
+          "architecture": "sm_90",
+          "ncu_version": "2025.1"
+        }
+      },
+      "ptx_instruction_sites": {
+        "cp_async": 80,
+        "ld_local": 0,
+        "st_local": 0,
+        "wgmma": 12
+      },
+      "status": "VALID",
+      "variant": "grouped_bn256_w4"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 210.24000644683838,
+        "mean_us": 201.70773367087045,
+        "median_us": 201.27999782562256,
+        "min_us": 197.88800179958344,
+        "per_shape_median_us": {},
+        "stddev_us": 2.4803002589057996,
+        "timings_us": [
+          210.24000644683838,
+          205.21600544452667,
+          202.4639993906021,
+          199.8720020055771,
+          203.36000621318817,
+          202.4639993906021,
+          204.44799959659576,
+          202.4960070848465,
+          201.21599733829498,
+          204.0639966726303,
+          201.34399831295013,
+          198.97599518299103,
+          200.25600492954254,
+          202.84800231456757,
+          199.68000054359436,
+          201.75999402999878,
+          204.3199986219406,
+          199.93600249290466,
+          203.0400037765503,
+          200.6399929523468,
+          199.77599382400513,
+          199.3280053138733,
+          203.77600193023682,
+          198.71999323368073,
+          200.06400346755981,
+          199.0080028772354,
+          197.88800179958344,
+          202.68799364566803,
+          200.6720006465912,
+          200.6720006465912
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "compiler_context": {
+        "architecture": "sm_90",
+        "backend": "triton_h100",
+        "ptx": {
+          "artifacts": [
+            {
+              "path": "/tmp/kernel-mcts-artifacts/triton-artifact-tnl5dnv8/kernel.ptx",
+              "sha256": "592a78f5c1bd5da3934a0b4f1104c65524c0318cd5ff6748a23745171586d8b3",
+              "size_bytes": 47728,
+              "storage_status": "eligible"
+            }
+          ],
+          "status": "captured"
+        },
+        "resources": {
+          "registers_per_thread": 213,
+          "spills": 0,
+          "static_shared_memory_bytes": 147456
+        },
+        "sass": {
+          "status": "unavailable"
+        },
+        "schema_version": 1
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "correctness_status": "PASS",
+      "evaluation_id": "triton-warp-cliff-grouped_bn256_w8-b9f824cd-2a12-4b47-a254-e5feb2b6afee",
+      "profile": {
+        "artifact_id": "38328284d238774f31ac607a15338badf630b4f183772b0bbee584b396af1cf6",
+        "metric_set": "lightweight_v1",
+        "metrics": {
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 30.27
+          },
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 62.96
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 213.0
+          },
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 48.72
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 91.59
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 87.14
+          },
+          "sm__warps_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 12.48
+          },
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 1.26
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 39968768.0
+          }
+        },
+        "profiler": "ncu",
+        "resolved_metrics": [
+          "launch__registers_per_thread",
+          "sm__warps_active.avg.pct_of_peak_sustained_active",
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+          "l1tex__throughput.avg.pct_of_peak_sustained_active",
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+          "smsp__inst_executed.sum"
+        ],
+        "schema_version": 1,
+        "summary": {
+          "achieved_occupancy_pct": 12.48,
+          "dram_throughput_pct": 30.27,
+          "instructions_executed": 39968768.0,
+          "l1tex_throughput_pct": 62.96,
+          "l2_throughput_pct": 48.72,
+          "long_scoreboard_warps_per_issue": 1.26,
+          "registers_per_thread": 213.0,
+          "sm_throughput_pct": 87.14,
+          "tensor_pipe_utilization_pct": 91.59
+        },
+        "target": {
+          "architecture": "sm_90",
+          "ncu_version": "2025.1"
+        }
+      },
+      "ptx_instruction_sites": {
+        "cp_async": 44,
+        "ld_local": 0,
+        "st_local": 0,
+        "wgmma": 8
+      },
+      "status": "VALID",
+      "variant": "grouped_bn256_w8"
+    }
+  ],
+  "run_id": "3e305149-32b7-4cb1-a99a-ed6cce620a13",
+  "startup_calibration": {
+    "backend": "triton_h100",
+    "benchmark": {
+      "gpu_operating_state": {},
+      "max_us": 832.5120210647583,
+      "mean_us": 822.2592035929362,
+      "median_us": 821.2479948997498,
+      "min_us": 816.9280290603638,
+      "per_shape_median_us": {},
+      "stddev_us": 4.122942158815799,
+      "timings_us": [
+        831.2960267066956,
+        832.5120210647583,
+        820.1280236244202,
+        829.7920227050781,
+        818.7519907951355,
+        819.167971611023,
+        823.7760066986084,
+        824.832022190094,
+        823.5520124435425,
+        816.9280290603638,
+        821.727991104126,
+        818.015992641449,
+        819.8720216751099,
+        818.1759715080261,
+        817.791998386383,
+        821.9519853591919,
+        819.2319869995117,
+        825.3440260887146,
+        817.9839849472046,
+        822.2399950027466,
+        823.8720297813416,
+        822.6879835128784,
+        820.7679986953735,
+        828.2240033149719,
+        817.5359964370728,
+        820.6080198287964,
+        818.9759850502014,
+        826.5600204467773,
+        824.7359991073608,
+        820.7359910011292
+      ],
+      "warmup_count": 10
+    },
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "compile": {
+      "artifact_id": "03befbf968ed1be6737c0ff972cb6291733eeaa76910d48218e2224865ee02b3",
+      "duration_seconds": 2.604931098999998,
+      "success": true
+    },
+    "correctness": {
+      "failed_test_id": null,
+      "maximum_error": 0.0,
+      "mean_error": 0.0,
+      "reference_metadata": {
+        "implementation": "torch.matmul/cuBLAS",
+        "seed": 0
+      },
+      "success": true
+    },
+    "vendor_baselines": {
+      "cublas": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 180.895996,
+          "mean_us": 177.7621312,
+          "median_us": 177.664001,
+          "min_us": 176.416,
+          "per_shape_median_us": {},
+          "stddev_us": 0.9141010394265436,
+          "timings_us": [
+            180.895996,
+            178.080002,
+            178.048004,
+            178.335999,
+            177.311996,
+            178.048004,
+            178.240005,
+            177.791992,
+            176.863998,
+            176.576004,
+            177.599991,
+            177.215988,
+            178.528,
+            177.791992,
+            176.543991,
+            177.664001,
+            178.304001,
+            177.119995,
+            178.175995,
+            177.279999,
+            177.503998,
+            177.151993,
+            176.735992,
+            179.104004,
+            177.279999,
+            176.416,
+            177.184006,
+            177.664001,
+            179.423996,
+            177.983994
+          ],
+          "warmup_count": 10
+        },
+        "correctness": {
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "success": true
+        }
+      },
+      "cutlass": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 315.328003,
+          "mean_us": 308.8213339,
+          "median_us": 308.3679965,
+          "min_us": 306.559998,
+          "per_shape_median_us": {},
+          "stddev_us": 1.838005628363481,
+          "timings_us": [
+            315.328003,
+            308.703979,
+            313.216003,
+            308.768005,
+            307.040009,
+            308.192017,
+            312.959991,
+            309.855988,
+            307.455994,
+            308.447998,
+            307.936005,
+            307.455994,
+            307.680023,
+            309.056,
+            307.711975,
+            307.808014,
+            308.223999,
+            308.384003,
+            308.35199,
+            308.384003,
+            308.416016,
+            307.776001,
+            308.735992,
+            308.223999,
+            308.192017,
+            307.967987,
+            308.928009,
+            306.559998,
+            309.279999,
+            309.600006
+          ],
+          "warmup_count": 10
+        },
+        "correctness": {
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "success": true
+        }
+      }
+    }
+  },
+  "variants": {
+    "grouped_bn128_w4": {
+      "bn": 128,
+      "grouped": true,
+      "source_sha256": "51f6fc3473548f54909cbfc33c4959f0eba71d311be50137e8714ca5b4eb9cbd",
+      "warps": 4
+    },
+    "grouped_bn256_w4": {
+      "bn": 256,
+      "grouped": true,
+      "source_sha256": "7de57d55870b0e8015817416ef451986eb62a1391fc372df8617f2dbf3101fde",
+      "warps": 4
+    },
+    "grouped_bn256_w8": {
+      "bn": 256,
+      "grouped": true,
+      "source_sha256": "bf940261a000a4a0b7b19c97530f02a7750df554ac7091923d4fe60f62c1f870",
+      "warps": 8
+    }
+  }
+}

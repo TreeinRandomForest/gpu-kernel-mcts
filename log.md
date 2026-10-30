@@ -155,6 +155,37 @@ references. Then specify and implement the desired context/search ablations
 before a multi-seed GLM comparison. The MI355X vLLM operation remains the
 separate Section 49 track. [Next-session sequence](TODO.md)
 
+On October 30, a fresh H100 worker re-evaluated the exported GLM winner,
+packaged Triton root, cuBLAS, and CUTLASS in four rotated rounds with 30
+timing samples per implementation per round. All 16 checks passed. The mean
+of round medians was **202.056 µs** for the winner, **179.696 µs** for
+cuBLAS, **311.172 µs** for CUTLASS, and **821.424 µs** for the Triton root.
+The winner-to-cuBLAS gap was 20.672–24.032 µs in each paired round. This
+reproduces the roughly 200 µs winner and a 12.44% same-worker cuBLAS gap;
+it does not establish cross-worker variance. [Remeasurement report and raw
+samples](docs/experiments/triton-h100-winner-remeasure/README.md)
+
+A follow-up 2×2×2 crossover varied output width (`BN=128/256`), warp count
+(4/8), and grouped scheduling in the saved Triton winner's source family.
+All 32 evaluations passed on one H100. For grouped scheduling with eight
+warps, `BN=128 → 256` improved the four-round mean from 238.480 to
+200.220 µs, matching the direction and magnitude of the last MCTS step.
+The strategy selected at that step was `change_warp_count`, but the source
+changed `BN` only. Both four-warp `BN=256` variants instead took about 1.77
+ms. A follow-up compiler and lightweight NCU check found 255 registers/thread
+and Triton `n_spills=256` for grouped `BN=256`, four warps, versus 213 and
+zero spills at eight warps. Tensor-pipe activity fell from 91.59% to 10.68%,
+strongly implicating register pressure and spills; direct spill traffic was
+not measured. [Resource and profile report](docs/experiments/triton-h100-warp-cliff/README.md)
+Ungrouped `BN=256`, eight warps reached 199.816 µs, indistinguishable from the grouped winner at this
+round-to-round scale. [Crossover report and raw samples](docs/experiments/triton-h100-winner-crossover/README.md)
+
+The next profiling implementation step enabled opt-in `diagnostic_v2` for
+Triton H100. Its existing local-memory sector counters and Triton's compiled
+spill count now appear together in the parent profile shown on expansion.
+Instruction-correlated NCU Source reports remain a selected-node follow-up;
+they have not yet been captured or validated for Triton source mapping.
+
 ## Current interpretation and next discriminating tests
 
 1. **Search representation is consequential.** Typed CuTe reached near cuBLAS on this GEMM, but its validated transformation space was expensive to build and remains specialized. CUDA generation is open-ended and improved far beyond the scalar root; the best logged CUDA C++ search result is now 647.008 µs, still much slower than the separately measured vendor reference. [Direction](docs/cuda-first-next-direction.md)

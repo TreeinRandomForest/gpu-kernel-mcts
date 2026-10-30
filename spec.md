@@ -3510,7 +3510,14 @@ cuBLAS through PyTorch, and times the operation with CUDA events after
 warmup. A candidate is a node only after compile, correctness, and timing.
 Source contributes to the binary fingerprint because launcher grid changes
 may leave cubin bytes unchanged. NCU `lightweight_v1` is collected lazily
-on expansion; profiler replay timing is not the reward.
+on expansion by default; `diagnostic_v2` may be selected explicitly for
+H100 Triton runs to expose local-memory sectors and related counters. The
+diagnostic profile also carries Triton's compiled spill count alongside the
+measured counters. Local-memory sectors are not labeled as spill bytes, since
+other thread-private storage can use local memory. Profiler replay timing is
+not the reward. Instruction-correlated NCU Source reports, when added, should
+be collected only for selected nodes and kept distinct from aggregate prompt
+metrics; source-line correlation depends on compiled debug/line information.
 
 The initial H100 Triton action catalog is versioned separately from the
 CUDA C++ catalog and covers output tiles, K tile/pipeline, warps, and

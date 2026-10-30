@@ -12,10 +12,29 @@ GLM-5.3 Triton H100 `B_gen=3` smoke documented in
 exported beside that report. Its local SQLite trace is Git-ignored. Keep the
 EnMaaS URL and key in the shell environment, not in committed documentation.
 
-- [ ] Remeasure the exported 199.712 µs winner against the packaged Triton root,
+- [x] Remeasure the exported 199.712 µs winner against the packaged Triton root,
   cuBLAS, and CUTLASS on one fresh H100 worker, with repeated timing rounds and
-  correctness checks. Compare medians and spread before treating the 12.7%
-  cuBLAS gap as stable.
+  correctness checks. Four rounds reproduced a 202.056 µs mean winner median
+  versus 179.696 µs cuBLAS (12.44% gap); see
+  `docs/experiments/triton-h100-winner-remeasure/README.md`.
+- [x] Run a bounded `BN × warps × grouped-scheduling` crossover around the
+  exported winner. All 32 evaluations passed; the grouped 8-warp `BN=128 →
+  256` edit saved 38.260 µs, while `BN=256` with four warps hit a repeatable
+  roughly 1.77 ms cliff. See
+  `docs/experiments/triton-h100-winner-crossover/README.md`.
+- [x] Capture compiler resource and NCU evidence for the 4-warp `BN=256`
+  cliff. The slow variant hits 255 registers/thread with Triton `n_spills=256`,
+  versus 213 registers/thread and zero spills at eight warps; tensor-pipe
+  activity falls from 91.59% to 10.68%. See
+  `docs/experiments/triton-h100-warp-cliff/README.md`.
+- [x] Add opt-in Triton `diagnostic_v2` local-memory counters and the compiled
+  spill count to the parent profile. Existing lightweight runs keep their
+  current prompt and metric set; local sectors are not labeled spill bytes.
+- [ ] Capture NCU Source reports for selected NVIDIA nodes, validate Triton
+  source/PTX/SASS correlation on H100, and expose a bounded, evidence-labeled
+  summary rather than a full report in the prompt. Keep report collection out
+  of every leaf. Check available local L1 hit/miss and L2-origin counters on
+  the pinned NCU version before adding a new metric-set version.
 - [ ] Specify the next Triton H100 ablation matrix in `spec.md` before adding
   search behavior: MCTS versus sequential if desired, source/profile context,
   bounded compiler summaries, dataflow views, and optional H100 resource graph.

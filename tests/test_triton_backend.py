@@ -7,7 +7,7 @@ from pathlib import Path
 from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD, load_triton_bf16_gemm_root
 from kernel_mcts.domain import BenchmarkResult, KernelProgram
 from kernel_mcts.evaluation import BackendKernelEvaluator, EvaluationContext
-from kernel_mcts.profiling import LIGHTWEIGHT_V1_METRICS
+from kernel_mcts.profiling import LIGHTWEIGHT_V1_METRICS, DIAGNOSTIC_V2_ADDITIONAL_METRICS
 from kernel_mcts.triton_backend import TritonBackendConfig, TritonH100Backend
 
 
@@ -22,7 +22,7 @@ class FakeRunner:
         if command[0] == "ncu":
             lines = ['"ID","Kernel Name","Metric Name","Metric Unit","Metric Value"']
             lines += [f'0,"bf16_gemm_triton","{name}","%","1.0"'
-                      for name in LIGHTWEIGHT_V1_METRICS]
+                      for name in command[command.index("--metrics") + 1].split(",")]
             return subprocess.CompletedProcess(command, 0, "\n".join(lines), "")
         mode = command[command.index("--mode") + 1]
         if mode == "compile":
@@ -72,6 +72,28 @@ def test_triton_valid_candidate_keeps_artifacts_and_profiles_lazily(tmp_path) ->
     assert runner.calls[-1][0][0] == "ncu"
     assert "regex:.*bf16_gemm_triton.*" in runner.calls[-1][0]
     assert "RUNPOD_API_KEY" not in runner.calls[0][2]
+
+
+def test_triton_diagnostic_profile_exposes_local_traffic_and_compiler_spills(tmp_path) -> None:
+    runner = FakeRunner()
+    backend = TritonH100Backend(
+        TritonBackendConfig(artifact_root=tmp_path, python="python", ncu="ncu",
+                            ncu_version="2025.1.1.0", measurement_count=3), runner=runner
+    )
+    compilation = backend.compile(load_triton_bf16_gemm_root(), BF16_GEMM_WORKLOAD)
+
+    profile = backend.lightweight_profile(
+        compilation.artifact, BF16_GEMM_WORKLOAD, "diagnostic_v2"
+    )
+
+    assert profile["metric_set"] == "diagnostic_v2"
+    assert profile["summary"]["local_load_sectors"] == 1.0
+    assert profile["summary"]["local_store_sectors"] == 1.0
+    assert profile["summary"]["compiler_spills"] == 0
+    assert profile["summary"]["compiler_static_shared_memory_bytes"] == 2048
+    assert set(runner.calls[-1][0][runner.calls[-1][0].index("--metrics") + 1].split(",")) == (
+        set(LIGHTWEIGHT_V1_METRICS) | set(DIAGNOSTIC_V2_ADDITIONAL_METRICS)
+    )
 
 
 def test_triton_compile_and_correctness_failures_do_not_make_nodes(tmp_path) -> None:

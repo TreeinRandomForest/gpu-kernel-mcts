@@ -387,8 +387,6 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("CUDA compiler/dataflow prompt views are unsupported for Triton H100")
         if arguments.autotune:
             parser.error("CUDA autotuning is unsupported for Triton H100")
-        if arguments.profile_metric_set != "lightweight_v1":
-            parser.error("Triton H100 currently supports --profile-metric-set=lightweight_v1")
     if arguments.best_output is not None and arguments.best_output.exists():
         parser.error(
             f"refusing to overwrite existing best output: {arguments.best_output}"

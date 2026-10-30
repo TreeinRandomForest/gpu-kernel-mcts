@@ -95,6 +95,7 @@ class TritonH100Backend:
         self.config = config
         self._runner = runner or _run_command
         self._kernel_names: dict[str, str] = {}
+        self._compiler_resources: dict[str, dict[str, object]] = {}
 
     def normalize_program(self, program: KernelProgram) -> str:
         # Python indentation and line breaks carry semantics.
@@ -157,6 +158,7 @@ class TritonH100Backend:
                     "artifacts": ptx_artifacts},
             "sass": {"status": "unavailable"},
         }
+        self._compiler_resources[artifact_id] = dict(context["resources"])
         return TritonCompilationResult(True, artifact, result.stdout[-2000:],
                                        result.stderr[-2000:], duration, compiler_context=context)
 
@@ -191,9 +193,9 @@ class TritonH100Backend:
     def lightweight_profile(self, artifact: TritonArtifact,
                             workload: WorkloadContract,
                             metric_set: str = "lightweight_v1") -> Mapping[str, object]:
-        if metric_set != "lightweight_v1":
+        if metric_set not in {"lightweight_v1", "diagnostic_v2"}:
             raise EvaluationInfrastructureError(
-                "Triton H100 currently supports only lightweight_v1 NCU metrics"
+                "Triton H100 supports lightweight_v1 and diagnostic_v2 NCU metrics"
             )
         try:
             definition = resolve_profile_metric_set(metric_set, self.config.architecture,
@@ -217,13 +219,21 @@ class TritonH100Backend:
         metrics = _parse_ncu_csv(
             _ncu_csv_output(result.stdout, result.stderr, definition.metrics), definition.metrics
         )
+        summary = {alias: metrics[name]["value"] for name, alias in definition.aliases.items()}
+        if metric_set == "diagnostic_v2":
+            resources = self._compiler_resources.get(artifact.artifact_id)
+            if resources is not None:
+                summary["compiler_spills"] = resources.get("spills")
+                summary["compiler_static_shared_memory_bytes"] = resources.get(
+                    "static_shared_memory_bytes"
+                )
         return {
             "schema_version": definition.schema_version, "profiler": "ncu",
             "metric_set": definition.id,
             "target": {"architecture": self.config.architecture,
                        "ncu_version": normalize_ncu_version(self.config.ncu_version)},
             "resolved_metrics": list(definition.metrics), "artifact_id": artifact.artifact_id,
-            "summary": {alias: metrics[name]["value"] for name, alias in definition.aliases.items()},
+            "summary": summary,
             "metrics": metrics,
         }
 
