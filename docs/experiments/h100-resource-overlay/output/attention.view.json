@@ -1,0 +1,102 @@
+{
+  "candidate_link_sites": {
+    "hbm_l2": 20,
+    "l1_registers": 4,
+    "l2_l1": 4,
+    "l2_shared_cp_async": 16,
+    "registers_scalar": 585,
+    "registers_tensor": 32,
+    "registers_warp_exchange": 20,
+    "shared_registers": 64,
+    "tensor_registers": 32
+  },
+  "interpretation": "Class links count original PTX edges, not traversable paths between all members of a class. Candidate hardware links are static site annotations, not measured traffic or cache outcomes.",
+  "observed_class_edge_pairs": [
+    {
+      "edge_count": 4,
+      "source_class": "parameter",
+      "target_class": "parameter_load"
+    },
+    {
+      "edge_count": 5,
+      "source_class": "parameter_load",
+      "target_class": "scalar_or_vector_compute"
+    },
+    {
+      "edge_count": 40,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "async_copy"
+    },
+    {
+      "edge_count": 596,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "scalar_or_vector_compute"
+    },
+    {
+      "edge_count": 10,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "shared_read"
+    },
+    {
+      "edge_count": 10,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "shared_write"
+    },
+    {
+      "edge_count": 32,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "tensor_compute"
+    },
+    {
+      "edge_count": 18,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "warp_exchange"
+    },
+    {
+      "edge_count": 192,
+      "source_class": "shared_read",
+      "target_class": "tensor_compute"
+    },
+    {
+      "edge_count": 16,
+      "source_class": "tensor_compute",
+      "target_class": "scalar_or_vector_compute"
+    },
+    {
+      "edge_count": 96,
+      "source_class": "tensor_compute",
+      "target_class": "tensor_compute"
+    },
+    {
+      "edge_count": 20,
+      "source_class": "warp_exchange",
+      "target_class": "scalar_or_vector_compute"
+    }
+  ],
+  "operation_classes": {
+    "async_copy": 16,
+    "control": 2,
+    "global_read": 2,
+    "global_write": 2,
+    "parameter": 5,
+    "parameter_load": 4,
+    "scalar_or_vector_compute": 585,
+    "shared_read": 36,
+    "shared_write": 28,
+    "synchronization": 18,
+    "tensor_compute": 32,
+    "warp_exchange": 20
+  },
+  "path_gaps": {},
+  "proven_edge_count": 1039,
+  "ptx_sha256": "315447f271c42d88e4f15fea5f9ecbb2d84917ab1576c723788fc7b35d88cbbe",
+  "ptx_uncertainty": [
+    "control_flow_join_or_loop",
+    "memory_alias_or_runtime_path_unknown",
+    "predicated_instruction"
+  ],
+  "schema_version": 1,
+  "site_count": 750,
+  "sites_without_proven_edges": 69,
+  "source_sha256": "8d742329489fa2db341c54394f6d10685e20d32f417c8e28d98a57af94e03a44"
+}

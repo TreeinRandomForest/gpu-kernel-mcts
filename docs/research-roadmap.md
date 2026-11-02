@@ -126,6 +126,9 @@ transformations.
 
 ### Overlay with a calibrated GPU resource graph
 
+The current H100 graph, its evidence, open values, and update procedure are
+tracked in [H100 hardware model: current state](h100-hardware-model.md).
+
 Overlay the computation/schedule graph with a separate model of GPU resources and
 movement paths. Hardware nodes may represent HBM, L2, shared memory, register files,
 TMA engines, tensor cores, CUDA cores, SMs, CTAs, warp groups, and clusters. Edges
@@ -167,6 +170,13 @@ using it as prompt context or an MCTS prior. Keep the core operation/path
 schema independent of GEMM tiling or BF16, and repeat the validation on a
 representative attention kernel whose reductions, softmax, and reuse expose
 different dataflow.
+
+The first compiled causal-attention validation exposed missing diagnostic
+routes for L1-bypassing `cp.async.cg`, register-fed `mma.sync`, and warp
+shuffles. These routes now exist with unknown costs. Parsing `ldmatrix`
+register results recovered proven local def-use edges, but shared-memory
+aliases and loop-carried values remain unresolved. This is representation
+coverage, not a calibrated performance model or evidence that prompt use helps.
 
 Candidate uses include resource validation, bottleneck explanations, strategy
 prompts, and optional priors. Predicted performance must not become a hard pruning

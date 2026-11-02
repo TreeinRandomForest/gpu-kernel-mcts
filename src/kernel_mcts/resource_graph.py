@@ -7,6 +7,7 @@ from typing import Mapping
 
 
 SCHEMA_VERSION = 2
+TOPOLOGY_REVISION = 2
 HOPPER_GUIDE = "https://docs.nvidia.com/cuda/hopper-tuning-guide/index.html"
 CUDA_CAPABILITIES = (
     "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/"
@@ -157,9 +158,16 @@ def h100_sxm_resource_graph(
                 4, "tensor cores", "published_nominal", HOPPER_ARCHITECTURE
             ),
         },
+        {
+            "id": "warp_exchange",
+            "kind": "cross_lane_communication",
+            "scope": "per_warp",
+            "units": _evidence(None, "shuffle units", "uncharacterized"),
+        },
     ]
     return {
         "schema_version": SCHEMA_VERSION,
+        "topology_revision": TOPOLOGY_REVISION,
         "architecture": "sm_90",
         "model": "H100 SXM 80 GB",
         "manifest_id": manifest_id,
@@ -169,12 +177,20 @@ def h100_sxm_resource_graph(
             _link("hbm_l2", "hbm", "l2", "memory_fabric", peak_bytes_per_second=3_350_000_000_000),
             _link("l2_l1", "l2", "l1", "cache_fill"),
             _link("l1_registers", "l1", "registers", "global_load_store"),
+            _link("l2_registers", "l2", "registers", "l1_bypassing_global_load",
+                  direction="forward"),
             _link("l1_shared", "l1", "shared", "async_copy"),
             _link("l2_shared", "l2", "shared", "tma"),
+            _link("l2_shared_cp_async", "l2", "shared", "l1_bypassing_async_copy",
+                  direction="forward"),
             _link("shared_registers", "shared", "registers", "shared_load_store"),
             _link("registers_scalar", "registers", "scalar_compute", "operands"),
             _link("shared_tensor", "shared", "tensor_compute", "operands", direction="forward"),
+            _link("registers_tensor", "registers", "tensor_compute", "operands",
+                  direction="forward"),
             _link("tensor_registers", "tensor_compute", "registers", "accumulators", direction="forward"),
+            _link("registers_warp_exchange", "registers", "warp_exchange",
+                  "cross_lane_operands"),
         ],
         "constraints": [
             {
@@ -270,6 +286,7 @@ def prompt_h100_resource_graph(graph: Mapping[str, object]) -> dict[str, object]
 
     return {
         "schema_version": SCHEMA_VERSION,
+        "topology_revision": graph.get("topology_revision", 1),
         "model": graph["model"],
         "manifest_id": graph.get("manifest_id"),
         "purpose": "diagnostic_architectural_context",

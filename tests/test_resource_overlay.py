@@ -9,11 +9,13 @@ from kernel_mcts.resource_overlay import overlay_ptx_dataflow
 
 LINKS = ("hbm_l2", "l2_l1", "l1_registers", "shared_registers",
          "l1_shared", "l2_shared", "registers_scalar", "shared_tensor",
-         "tensor_registers")
+         "tensor_registers", "l2_registers", "l2_shared_cp_async",
+         "registers_tensor", "registers_warp_exchange")
 
 
 def _hardware() -> dict:
     return {"purpose": "diagnostic_only", "manifest_id": "test-h100",
+            "topology_revision": 2,
             "links": [{"id": link} for link in LINKS]}
 
 
@@ -45,9 +47,11 @@ def test_attention_style_operations_keep_paths_and_uncertainty():
                                "ncu": {"dram_bytes": 100}}
     )
     by_id = {node["id"]: node["hardware"] for node in result["nodes"]}
-    assert by_id["q"]["path_gap"] == "l1_bypass_load_route_not_modeled"
+    assert by_id["q"]["candidate_graph_links"] == ["hbm_l2", "l2_registers"]
+    assert by_id["q"]["path_gap"] is None
     assert by_id["score"]["candidate_graph_links"] == ["registers_scalar"]
     assert by_id["reduce"]["operation_class"] == "warp_exchange"
+    assert by_id["reduce"]["candidate_graph_links"] == ["registers_warp_exchange"]
     assert by_id["shared"]["candidate_graph_links"] == ["shared_registers"]
     assert by_id["matrix_store"]["operation_class"] == "shared_write"
     assert by_id["mma"]["candidate_graph_links"] == ["shared_tensor", "tensor_registers"]
@@ -57,6 +61,24 @@ def test_attention_style_operations_keep_paths_and_uncertainty():
     assert result["ptx_uncertainty"] == ["control_flow_join_or_loop"]
     assert result["binding"] == "per_node"
     assert result["source_sha256"] == "source-hash"
+    assert result["hardware_graph_topology_revision"] == 2
+
+
+def test_attention_copy_and_register_tensor_paths_do_not_claim_l1_or_shared_operand():
+    graph = {
+        "status": "partial", "nodes": [
+            {"id": "copy", "kind": "async_copy",
+             "opcode": "cp.async.cg.shared.global"},
+            {"id": "mma", "kind": "tensor",
+             "opcode": "mma.sync.aligned.m16n8k16.row.col.f32.bf16.bf16.f32"},
+        ], "edges": [],
+    }
+    result = overlay_ptx_dataflow(graph, _hardware(), source_sha256="source-hash")
+    by_id = {node["id"]: node["hardware"] for node in result["nodes"]}
+    assert by_id["copy"]["candidate_graph_links"] == ["hbm_l2", "l2_shared_cp_async"]
+    assert "l1_shared" not in by_id["copy"]["candidate_graph_links"]
+    assert by_id["mma"]["candidate_graph_links"] == ["registers_tensor", "tensor_registers"]
+    assert "shared_tensor" not in by_id["mma"]["candidate_graph_links"]
 
 
 def test_overlay_rejects_site_scoped_ncu_evidence():

@@ -104,6 +104,7 @@ def main() -> None:
         "schema_version": 1,
         "status": "partial_diagnostic",
         "hardware_graph_manifest_id": hardware["manifest_id"],
+        "hardware_graph_topology_revision": hardware["topology_revision"],
         "worker_image": run["image"],
         "variants": summary,
         "limitations": (

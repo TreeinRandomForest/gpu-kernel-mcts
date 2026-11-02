@@ -101,18 +101,28 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   traffic/cache counters to establish which levels participated before
   calibrating graph links. Keep unmeasured links unknown rather than assigning
   end-to-end throughput to one edge.
+- [ ] Maintain `docs/h100-hardware-model.md` whenever a new kernel or probe
+  changes the graph, its evidence, or its known gaps. Record the revision,
+  exact artifacts and conditions, what remains unknown, and any effect on
+  prompt/trace compatibility.
 - [x] Build a first, generic PTX-def-use→H100 candidate-resource overlay from
   three saved Triton crossover kernels. Keep PTX edges and uncertainty, NCU
   whole-kernel counters, and separate-worker SASS evidence distinct. The slow
   spill case has 255 registers/thread, 256 compiled spills, 134.4 million
   measured local-load sectors, and 213 SASS local-load sites despite zero
   textual PTX local-load sites. See `docs/experiments/h100-resource-overlay/`.
-- [ ] Validate the same overlay schema on a real compiled attention kernel
-  with reductions, softmax, and distinct reuse; inspect any unmodeled opcodes
-  and resource paths. Then compare exact fast B/slow D PTX/NCU artifacts and
-  add symbolic byte/lifetime estimates where justified. Keep the schema
-  independent of GEMM tile shapes and BF16, and validate against held-out NCU
-  counters and timings before using the overlay in prompts or priors.
+- [x] Validate the same overlay schema on a real compiled causal-attention
+  kernel with tiled QK, online softmax, and V accumulation. The H100 run passed
+  the higher-precision reference; 750 PTX sites yielded 1,039 proven edges.
+  Add distinct diagnostic routes for L1-bypassing `cp.async.cg`, register-fed
+  `mma.sync`, and warp shuffles, and parse `ldmatrix` register results. Its
+  topology gaps are closed, while shared-memory aliases, loops, and predication
+  remain partial. The NCU L2 hit-rate field of 101.2% is invalid and flagged.
+  See `docs/experiments/h100-resource-overlay/`.
+- [ ] Compare exact fast B/slow D PTX/NCU artifacts and add symbolic
+  byte/lifetime estimates where justified. Validate against held-out NCU
+  counters and timings before using the overlay in prompts or priors. Extend
+  the same schema to longer attention, other dtypes, and non-GEMM operations.
 - [ ] Specify and implement per-valid-node overlay persistence for Triton MCTS.
   Bind static PTX/resource annotations to run/node ID, source hash, PTX hash,
   and binary fingerprint after compile/correctness/timing; attach NCU

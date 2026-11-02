@@ -223,8 +223,8 @@ def test_hardware_view_reads_persisted_graph_and_profile_overlay(tmp_path) -> No
     trace_id = catalog.list_traces()[0]["trace_id"]
     hardware = catalog.hardware(trace_id, "run-1")
     assert hardware["source"] == "persisted"
-    assert len(hardware["graph"]["nodes"]) == 8
-    assert len(hardware["graph"]["links"]) == 9
+    assert len(hardware["graph"]["nodes"]) == 9
+    assert len(hardware["graph"]["links"]) == 13
     assert hardware["observations"][0]["node_id"] == "right"
     assert hardware["observations"][0]["observations"][0]["value"] == 1.4
     right = next(row for row in hardware["kernels"] if row["node_id"] == "right")

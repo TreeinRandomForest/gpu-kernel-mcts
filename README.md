@@ -100,6 +100,11 @@ source of truth for Milestone A behavior and architecture and for the searchable
 CuTe DSL backend introduced in Milestone B. Longer-term research ideas are tracked in
 [docs/research-roadmap.md](docs/research-roadmap.md).
 
+The [H100 hardware model inventory](docs/h100-hardware-model.md) records the
+current resource graph, measurements, unknowns, and revision history. Update it
+whenever a new kernel or probe changes the model or its evidence; the standing
+reminder is also in [TODO.md](TODO.md).
+
 The current post-slide research handoff prioritizes a CUDA-first optimizer enriched
 with compiler, profiling, dataflow, and hardware context while preserving CuTe as a
 structured-search case study. See
@@ -132,7 +137,8 @@ Use this opening prompt when continuing work in a new session:
 
 > Read `AGENTS.md`, `spec.md`, `TODO.md`, and all files under `docs/` before
 > making changes. Treat `spec.md` as the Milestone A and Milestone B source of truth, then
-> read `docs/cuda-first-next-direction.md` for the current research priority. Inspect
+> read `docs/cuda-first-next-direction.md` for the current research priority and
+> `docs/h100-hardware-model.md` before changing H100 graph assumptions. Inspect
 > `git status` and the relevant implementation and tests before proposing the next
 > small change. Do not resume broad CuTe language expansion by default, and do not
 > commit or push unless explicitly asked.

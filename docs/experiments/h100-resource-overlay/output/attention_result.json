@@ -1,0 +1,27 @@
+{
+  "causal": true,
+  "compiler_resources": {
+    "registers_per_thread": 119,
+    "spills": 0,
+    "static_shared_memory_bytes": 24576
+  },
+  "correctness": {
+    "max_absolute_error": 0.005181670188903809,
+    "mean_absolute_error": 0.00026703724870458245,
+    "tolerance_atol": 0.025,
+    "tolerance_rtol": 0.03
+  },
+  "device_name": "NVIDIA H100 80GB HBM3",
+  "dtype": "bfloat16",
+  "kernel": "causal_attention_probe",
+  "ptx_bytes": 46443,
+  "schema_version": 1,
+  "shape": {
+    "head_dimension": 64,
+    "key_block": 64,
+    "query_block": 32,
+    "sequence": 256
+  },
+  "torch_version": "2.7.1+cu128",
+  "triton_version": "3.3.1"
+}

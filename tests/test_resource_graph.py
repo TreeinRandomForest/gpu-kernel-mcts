@@ -24,6 +24,7 @@ def test_h100_graph_separates_observed_nominal_and_unknown_values() -> None:
     graph = h100_sxm_resource_graph(MANIFEST)
     assert graph is not None
     assert graph["schema_version"] == 2
+    assert graph["topology_revision"] == 2
     assert graph["purpose"] == "diagnostic_only"
     nodes = {node["id"]: node for node in graph["nodes"]}
     assert nodes["hbm"]["capacity"]["value"] == 85_520_809_984
@@ -44,7 +45,12 @@ def test_h100_graph_separates_observed_nominal_and_unknown_values() -> None:
     assert links["hbm_l2"]["published_peak_bandwidth"]["value"] == 3_350_000_000_000
     assert links["hbm_l2"]["sustainable_bandwidth"]["value"] is None
     assert all(link["latency"]["value"] is None for link in links.values())
-    assert {"l2_shared", "l1_shared", "shared_registers"} <= links.keys()
+    assert {"l2_shared", "l1_shared", "shared_registers", "l2_registers",
+            "l2_shared_cp_async", "registers_tensor",
+            "registers_warp_exchange"} <= links.keys()
+    assert links["l2_shared_cp_async"]["pathway"] == "l1_bypassing_async_copy"
+    assert links["registers_tensor"]["sustainable_bandwidth"]["value"] is None
+    assert nodes["warp_exchange"]["units"]["value"] is None
 
 
 def test_h100_graph_rejects_other_devices_and_mig() -> None:
@@ -60,6 +66,7 @@ def test_h100_prompt_view_preserves_limits_and_unknown_link_properties() -> None
     assert graph is not None
     view = prompt_h100_resource_graph(graph)
     assert view["schema_version"] == graph["schema_version"]
+    assert view["topology_revision"] == graph["topology_revision"]
     assert view["manifest_id"] == MANIFEST["manifest_id"]
     assert {row["id"] for row in view["nodes"]} == {row["id"] for row in graph["nodes"]}
     assert {row["id"] for row in view["links"]} == {row["id"] for row in graph["links"]}

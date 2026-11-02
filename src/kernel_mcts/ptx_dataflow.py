@@ -76,6 +76,10 @@ def _family(opcode: str) -> tuple[str, str | None]:
         return "synchronization", None
     if opcode.startswith("cp.async"):
         return "async_copy", "shared"
+    if opcode.startswith("ldmatrix."):
+        return "load", "shared"
+    if opcode.startswith("stmatrix."):
+        return "store", "shared"
     if opcode.startswith(("ld.", "st.")):
         space = next((s for s in ("global", "shared", "local", "const") if f".{s}" in opcode), None)
         return ("load" if opcode.startswith("ld.") else "store"), space

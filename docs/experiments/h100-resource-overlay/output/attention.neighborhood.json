@@ -1,0 +1,300 @@
+{
+  "anchor_id": "site_285",
+  "edges": [
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%r244",
+      "source": "site_265",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%r245",
+      "source": "site_265",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%r246",
+      "source": "site_265",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%r247",
+      "source": "site_265",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%r248",
+      "source": "site_274",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%r249",
+      "source": "site_274",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f87",
+      "source": "site_281",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f88",
+      "source": "site_282",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f89",
+      "source": "site_283",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f90",
+      "source": "site_284",
+      "target": "site_285"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%r272",
+      "source": "site_274",
+      "target": "site_301"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%r273",
+      "source": "site_274",
+      "target": "site_301"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f87",
+      "source": "site_285",
+      "target": "site_301"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f88",
+      "source": "site_285",
+      "target": "site_301"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f89",
+      "source": "site_285",
+      "target": "site_301"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f90",
+      "source": "site_285",
+      "target": "site_301"
+    }
+  ],
+  "hops": 1,
+  "interpretation": "Only original PTX edges are shown; omitted nodes are not implied paths.",
+  "nodes": [
+    {
+      "address_space": "shared",
+      "block": 2,
+      "hardware": {
+        "attribution": "explicit_ptx_memory_space",
+        "candidate_graph_links": [
+          "shared_registers"
+        ],
+        "operation_class": "shared_read",
+        "path_gap": null,
+        "resource_candidates": [
+          "shared",
+          "registers"
+        ]
+      },
+      "id": "site_265",
+      "kind": "load",
+      "line": 342,
+      "opcode": "ldmatrix.sync.aligned.m8n8.x4.shared.b16",
+      "predicated": false,
+      "resource_class": "shared"
+    },
+    {
+      "address_space": "shared",
+      "block": 2,
+      "hardware": {
+        "attribution": "explicit_ptx_memory_space",
+        "candidate_graph_links": [
+          "shared_registers"
+        ],
+        "operation_class": "shared_read",
+        "path_gap": null,
+        "resource_candidates": [
+          "shared",
+          "registers"
+        ]
+      },
+      "id": "site_274",
+      "kind": "load",
+      "line": 368,
+      "opcode": "ldmatrix.sync.aligned.m8n8.x4.shared.b16",
+      "predicated": false,
+      "resource_class": "shared"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_281",
+      "kind": "arithmetic",
+      "line": 383,
+      "opcode": "mov.f32",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_282",
+      "kind": "arithmetic",
+      "line": 384,
+      "opcode": "mov.f32",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_283",
+      "kind": "arithmetic",
+      "line": 385,
+      "opcode": "mov.f32",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_284",
+      "kind": "arithmetic",
+      "line": 386,
+      "opcode": "mov.f32",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_tensor",
+          "tensor_registers"
+        ],
+        "operation_class": "tensor_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "tensor_compute"
+        ]
+      },
+      "id": "site_285",
+      "kind": "tensor",
+      "line": 388,
+      "opcode": "mma.sync.aligned.m16n8k16.row.col.f32.bf16.bf16.f32",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_tensor",
+          "tensor_registers"
+        ],
+        "operation_class": "tensor_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "tensor_compute"
+        ]
+      },
+      "id": "site_301",
+      "kind": "tensor",
+      "line": 412,
+      "opcode": "mma.sync.aligned.m16n8k16.row.col.f32.bf16.bf16.f32",
+      "predicated": false,
+      "resource_class": "compute"
+    }
+  ],
+  "truncated": false
+}

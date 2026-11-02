@@ -56,6 +56,25 @@ def test_async_copy_is_direct_site_without_invented_register_value() -> None:
     assert not any(e["source"] == transfer["id"] for e in result["edges"])
 
 
+def test_ldmatrix_register_fragment_reaches_mma_without_inventing_shared_alias():
+    result = graph(
+        "ld.param.u64 %rd1, [p0];\n"
+        "ldmatrix.sync.aligned.m8n8.x4.shared.b16 "
+        "{%r1, %r2, %r3, %r4}, [%rd1];\n"
+        "mma.sync.aligned.m16n8k16.row.col.f32.bf16.bf16.f32 "
+        "{%f1, %f2, %f3, %f4}, {%r1, %r2, %r3, %r4}, "
+        "{%r1, %r2}, {%f1, %f2, %f3, %f4};\nret;"
+    )
+    load = next(node for node in result["nodes"] if node.get("opcode", "").startswith("ldmatrix."))
+    mma = next(node for node in result["nodes"] if node.get("opcode", "").startswith("mma.sync"))
+    assert load["kind"] == "load" and load["address_space"] == "shared"
+    assert {edge["register"] for edge in result["edges"]
+            if edge["source"] == load["id"] and edge["target"] == mma["id"]} == {
+        "%r1", "%r2", "%r3", "%r4"
+    }
+    assert "memory_alias_or_runtime_path_unknown" in result["uncertainty"]
+
+
 def test_predication_and_control_flow_do_not_create_false_dependencies() -> None:
     result = graph("ld.param.u64 %rd1, [p0];\nmov.u32 %r1, 1;\n"
                    "@%p1\tmov.u32 %r1, 2;\nadd.u32 %r2, %r1, 1;\n"

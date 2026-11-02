@@ -28,7 +28,7 @@ def annotate_operation(node: Mapping[str, object], available_links: set[str]) ->
         "path_gap": None,
         "attribution": "static_candidate_only",
     }
-    if opcode.startswith(("stmatrix.", "ldmatrix.")) and ".shared" in opcode:
+    if kind == "unsupported" and opcode.startswith(("stmatrix.", "ldmatrix.")) and ".shared" in opcode:
         result["operation_class"] = (
             "shared_write" if opcode.startswith("stmatrix.") else "shared_read"
         )
@@ -40,8 +40,11 @@ def annotate_operation(node: Mapping[str, object], available_links: set[str]) ->
         result["operation_class"] = "global_read"
         if ".cg." in opcode or opcode.endswith(".cg"):
             result["resource_candidates"] = ["hbm", "l2", "registers"]
-            result["candidate_graph_links"] = _present(available_links, "hbm_l2")
-            result["path_gap"] = "l1_bypass_load_route_not_modeled"
+            result["candidate_graph_links"] = _present(
+                available_links, "hbm_l2", "l2_registers"
+            )
+            if "l2_registers" not in available_links:
+                result["path_gap"] = "l1_bypass_load_route_not_modeled"
         else:
             result["resource_candidates"] = ["hbm", "l2", "l1", "registers"]
             result["candidate_graph_links"] = _present(
@@ -71,6 +74,13 @@ def annotate_operation(node: Mapping[str, object], available_links: set[str]) ->
         if opcode.startswith("cp.async.bulk.tensor"):
             result["resource_candidates"] = ["hbm", "l2", "shared"]
             result["candidate_graph_links"] = _present(available_links, "l2_shared")
+        elif opcode.startswith("cp.async.cg."):
+            result["resource_candidates"] = ["hbm", "l2", "shared"]
+            result["candidate_graph_links"] = _present(
+                available_links, "hbm_l2", "l2_shared_cp_async"
+            )
+            if "l2_shared_cp_async" not in available_links:
+                result["path_gap"] = "l1_bypass_async_copy_route_not_modeled"
         else:
             result["resource_candidates"] = ["l1", "shared"]
             result["candidate_graph_links"] = _present(available_links, "l1_shared")
@@ -85,6 +95,14 @@ def annotate_operation(node: Mapping[str, object], available_links: set[str]) ->
             result["candidate_graph_links"] = _present(
                 available_links, "shared_tensor", "tensor_registers"
             )
+        elif opcode.startswith(("mma.sync", "wmma.mma")):
+            result["operation_class"] = "tensor_compute"
+            result["resource_candidates"] = ["registers", "tensor_compute"]
+            result["candidate_graph_links"] = _present(
+                available_links, "registers_tensor", "tensor_registers"
+            )
+            if "registers_tensor" not in available_links:
+                result["path_gap"] = "register_tensor_operand_route_not_modeled"
         else:
             result["operation_class"] = "tensor_compute"
             result["resource_candidates"] = ["tensor_compute", "registers"]
@@ -93,8 +111,12 @@ def annotate_operation(node: Mapping[str, object], available_links: set[str]) ->
     if kind == "arithmetic":
         if opcode.startswith(("shfl.", "vote.")):
             result["operation_class"] = "warp_exchange"
-            result["resource_candidates"] = ["registers", "sm"]
-            result["path_gap"] = "warp_exchange_route_not_modeled"
+            result["resource_candidates"] = ["registers", "warp_exchange"]
+            result["candidate_graph_links"] = _present(
+                available_links, "registers_warp_exchange"
+            )
+            if "registers_warp_exchange" not in available_links:
+                result["path_gap"] = "warp_exchange_route_not_modeled"
         else:
             result["operation_class"] = "scalar_or_vector_compute"
             result["resource_candidates"] = ["registers", "scalar_compute"]
@@ -149,6 +171,7 @@ def overlay_ptx_dataflow(
         "node_id": node_id,
         "binding": "per_node" if node_id is not None else "standalone_artifact",
         "hardware_graph_manifest_id": hardware_graph.get("manifest_id"),
+        "hardware_graph_topology_revision": hardware_graph.get("topology_revision", 1),
         "nodes": nodes,
         "edges": list(ptx_graph.get("edges", [])),
         "static_operation_counts": dict(sorted(classes.items())),

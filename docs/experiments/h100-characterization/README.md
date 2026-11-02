@@ -1,5 +1,9 @@
 # Standalone H100 characterization, phase 1
 
+The maintained inventory that separates this experiment's path observations
+from graph-link properties is
+[H100 hardware model: current state](../../h100-hardware-model.md).
+
 This experiment runs outside MCTS and makes no model API calls. It starts a
 versioned, evidence-labeled H100 measurement set with **global-copy path**
 timing across payload sizes. The existing nominal H100 graph keeps physical

@@ -1,10 +1,11 @@
 {
   "candidate_link_sites": {
-    "hbm_l2": 32,
+    "hbm_l2": 104,
     "l1_registers": 32,
-    "l1_shared": 72,
     "l2_l1": 32,
+    "l2_shared_cp_async": 72,
     "registers_scalar": 1524,
+    "registers_warp_exchange": 1,
     "shared_registers": 160,
     "shared_tensor": 8,
     "tensor_registers": 8
@@ -55,9 +56,7 @@
     "tensor_compute": 8,
     "warp_exchange": 1
   },
-  "path_gaps": {
-    "warp_exchange_route_not_modeled": 1
-  },
+  "path_gaps": {},
   "proven_edge_count": 2485,
   "ptx_sha256": "31e7b4c6bf10d4466046882c7695791166e8ec5b01f786158ddfbf470cbb2066",
   "ptx_uncertainty": [

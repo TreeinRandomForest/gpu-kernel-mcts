@@ -1,5 +1,6 @@
 {
   "hardware_graph_manifest_id": "55dd11e4bf194eff8384de17f5b93f3c29fa61a182840f76556770ee8911b40b",
+  "hardware_graph_topology_revision": 2,
   "limitations": "PTX def-use is partial and static; cache destinations, memory aliases, dynamic loop counts, and per-site traffic are unresolved. Source-report NCU/SASS evidence came from a separate worker. No whole-kernel metric is attached to an individual PTX site.",
   "schema_version": 1,
   "status": "partial_diagnostic",
@@ -52,9 +53,7 @@
         "spills": 0,
         "static_shared_memory_bytes": 98304
       },
-      "path_gaps": {
-        "warp_exchange_route_not_modeled": 1
-      },
+      "path_gaps": {},
       "ptx_dataflow_status": "partial",
       "ptx_edge_count": 1440,
       "ptx_node_count": 1078,
@@ -142,9 +141,7 @@
         "spills": 256,
         "static_shared_memory_bytes": 147456
       },
-      "path_gaps": {
-        "warp_exchange_route_not_modeled": 1
-      },
+      "path_gaps": {},
       "ptx_dataflow_status": "partial",
       "ptx_edge_count": 2485,
       "ptx_node_count": 1825,
@@ -241,19 +238,16 @@
         "spills": 0,
         "static_shared_memory_bytes": 147456
       },
-      "path_gaps": {
-        "warp_exchange_route_not_modeled": 1
-      },
+      "path_gaps": {},
       "ptx_dataflow_status": "partial",
-      "ptx_edge_count": 1312,
+      "ptx_edge_count": 1439,
       "ptx_node_count": 904,
       "ptx_sha256": "592a78f5c1bd5da3934a0b4f1104c65524c0318cd5ff6748a23745171586d8b3",
       "ptx_uncertainty": [
         "control_flow_join_or_loop",
         "memory_alias_or_runtime_path_unknown",
         "predicated_instruction",
-        "unparsed_instruction",
-        "unsupported_instruction"
+        "unparsed_instruction"
       ],
       "separate_worker_sass_local_sites": {
         "load": 0,

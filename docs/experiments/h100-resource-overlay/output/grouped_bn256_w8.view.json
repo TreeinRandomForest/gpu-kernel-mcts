@@ -1,10 +1,11 @@
 {
   "candidate_link_sites": {
-    "hbm_l2": 16,
+    "hbm_l2": 52,
     "l1_registers": 16,
-    "l1_shared": 36,
     "l2_l1": 16,
+    "l2_shared_cp_async": 36,
     "registers_scalar": 789,
+    "registers_warp_exchange": 1,
     "shared_registers": 32,
     "shared_tensor": 4,
     "tensor_registers": 4
@@ -22,7 +23,7 @@
       "target_class": "async_copy"
     },
     {
-      "edge_count": 789,
+      "edge_count": 836,
       "source_class": "scalar_or_vector_compute",
       "target_class": "scalar_or_vector_compute"
     },
@@ -30,6 +31,11 @@
       "edge_count": 16,
       "source_class": "scalar_or_vector_compute",
       "target_class": "shared_read"
+    },
+    {
+      "edge_count": 80,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "shared_write"
     },
     {
       "edge_count": 12,
@@ -55,20 +61,17 @@
     "tensor_compute": 4,
     "warp_exchange": 1
   },
-  "path_gaps": {
-    "warp_exchange_route_not_modeled": 1
-  },
-  "proven_edge_count": 1312,
+  "path_gaps": {},
+  "proven_edge_count": 1439,
   "ptx_sha256": "592a78f5c1bd5da3934a0b4f1104c65524c0318cd5ff6748a23745171586d8b3",
   "ptx_uncertainty": [
     "control_flow_join_or_loop",
     "memory_alias_or_runtime_path_unknown",
     "predicated_instruction",
-    "unparsed_instruction",
-    "unsupported_instruction"
+    "unparsed_instruction"
   ],
   "schema_version": 1,
   "site_count": 904,
-  "sites_without_proven_edges": 143,
+  "sites_without_proven_edges": 48,
   "source_sha256": "bf940261a000a4a0b7b19c97530f02a7750df554ac7091923d4fe60f62c1f870"
 }
