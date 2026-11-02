@@ -1,0 +1,73 @@
+{
+  "candidate_link_sites": {
+    "hbm_l2": 16,
+    "l1_registers": 16,
+    "l1_shared": 48,
+    "l2_l1": 16,
+    "registers_scalar": 897,
+    "shared_registers": 80,
+    "shared_tensor": 8,
+    "tensor_registers": 8
+  },
+  "interpretation": "Class links count original PTX edges, not traversable paths between all members of a class. Candidate hardware links are static site annotations, not measured traffic or cache outcomes.",
+  "observed_class_edge_pairs": [
+    {
+      "edge_count": 3,
+      "source_class": "parameter",
+      "target_class": "parameter_load"
+    },
+    {
+      "edge_count": 144,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "async_copy"
+    },
+    {
+      "edge_count": 869,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "scalar_or_vector_compute"
+    },
+    {
+      "edge_count": 16,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "shared_read"
+    },
+    {
+      "edge_count": 24,
+      "source_class": "scalar_or_vector_compute",
+      "target_class": "tensor_compute"
+    },
+    {
+      "edge_count": 384,
+      "source_class": "tensor_compute",
+      "target_class": "tensor_compute"
+    }
+  ],
+  "operation_classes": {
+    "async_copy": 48,
+    "control": 2,
+    "global_write": 16,
+    "parameter": 4,
+    "parameter_load": 3,
+    "scalar_or_vector_compute": 897,
+    "shared_read": 16,
+    "shared_write": 64,
+    "synchronization": 19,
+    "tensor_compute": 8,
+    "warp_exchange": 1
+  },
+  "path_gaps": {
+    "warp_exchange_route_not_modeled": 1
+  },
+  "proven_edge_count": 1440,
+  "ptx_sha256": "8ffb69f8d9f6d2d17c82e5dca0f8a9f01e546a16af2ab7c25ffdec1ea3b52718",
+  "ptx_uncertainty": [
+    "control_flow_join_or_loop",
+    "memory_alias_or_runtime_path_unknown",
+    "predicated_instruction",
+    "unparsed_instruction"
+  ],
+  "schema_version": 1,
+  "site_count": 1078,
+  "sites_without_proven_edges": 257,
+  "source_sha256": "51f6fc3473548f54909cbfc33c4959f0eba71d311be50137e8714ca5b4eb9cbd"
+}

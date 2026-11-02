@@ -1,0 +1,536 @@
+{
+  "cases": [
+    {
+      "kind": "ca",
+      "label": "l1_ca_4k",
+      "measurement_scope": "dependent_read_chain",
+      "median_cycles_per_hop": 40.608642578,
+      "median_nanoseconds_per_hop": 20.35546875,
+      "p10_nanoseconds_per_hop": 20.35546875,
+      "p90_nanoseconds_per_hop": 20.35546875,
+      "physical_link_attribution": "unverified",
+      "raw_cycles_per_hop": [
+        40.609741211,
+        40.608520508,
+        40.608276367,
+        40.608520508,
+        40.608642578,
+        40.608276367,
+        40.608886719,
+        40.609008789,
+        40.609375,
+        40.609008789,
+        40.608886719,
+        40.608520508,
+        40.608276367,
+        40.608642578,
+        40.608764648
+      ],
+      "raw_nanoseconds_per_hop": [
+        20.35546875,
+        20.35546875,
+        20.35546875,
+        20.359375,
+        20.35546875,
+        20.35546875,
+        20.35546875,
+        20.35546875,
+        20.35546875,
+        20.3515625,
+        20.35546875,
+        20.35546875,
+        20.35546875,
+        20.35546875,
+        20.35546875
+      ],
+      "steps": 8192,
+      "working_set_bytes": 4096
+    },
+    {
+      "kind": "cg",
+      "label": "l2_cg_4k",
+      "measurement_scope": "dependent_read_chain",
+      "median_cycles_per_hop": 283.556030273,
+      "median_nanoseconds_per_hop": 142.13671875,
+      "p10_nanoseconds_per_hop": 142.12109375,
+      "p90_nanoseconds_per_hop": 142.14453125,
+      "physical_link_attribution": "unverified",
+      "raw_cycles_per_hop": [
+        283.528320312,
+        283.529296875,
+        283.55090332,
+        283.535888672,
+        283.531005859,
+        283.564331055,
+        283.5703125,
+        283.552001953,
+        283.561157227,
+        283.559936523,
+        283.56652832,
+        283.579223633,
+        283.556030273,
+        283.589111328,
+        283.526489258
+      ],
+      "raw_nanoseconds_per_hop": [
+        142.12109375,
+        142.12109375,
+        142.1328125,
+        142.125,
+        142.1171875,
+        142.13671875,
+        142.140625,
+        142.1328125,
+        142.140625,
+        142.13671875,
+        142.140625,
+        142.14453125,
+        142.13671875,
+        142.1484375,
+        142.12109375
+      ],
+      "steps": 8192,
+      "working_set_bytes": 4096
+    },
+    {
+      "kind": "cg",
+      "label": "l2_cg_1m",
+      "measurement_scope": "dependent_read_chain",
+      "median_cycles_per_hop": 284.697998047,
+      "median_nanoseconds_per_hop": 142.70703125,
+      "p10_nanoseconds_per_hop": 142.69921875,
+      "p90_nanoseconds_per_hop": 142.921875,
+      "physical_link_attribution": "unverified",
+      "raw_cycles_per_hop": [
+        285.12902832,
+        285.099365234,
+        285.111938477,
+        285.142700195,
+        285.079345703,
+        284.692871094,
+        284.68737793,
+        284.709838867,
+        284.686279297,
+        284.673583984,
+        284.688476562,
+        284.686645508,
+        284.696655273,
+        284.709472656,
+        284.697998047
+      ],
+      "raw_nanoseconds_per_hop": [
+        142.921875,
+        142.91015625,
+        142.91015625,
+        142.9296875,
+        142.8984375,
+        142.703125,
+        142.69921875,
+        142.7109375,
+        142.69921875,
+        142.69140625,
+        142.703125,
+        142.703125,
+        142.70703125,
+        142.7109375,
+        142.703125
+      ],
+      "steps": 8192,
+      "working_set_bytes": 1048576
+    },
+    {
+      "kind": "cg",
+      "label": "l2_cg_8m",
+      "measurement_scope": "dependent_read_chain",
+      "median_cycles_per_hop": 284.558074951,
+      "median_nanoseconds_per_hop": 142.635742188,
+      "p10_nanoseconds_per_hop": 142.631347656,
+      "p90_nanoseconds_per_hop": 142.638183594,
+      "physical_link_attribution": "unverified",
+      "raw_cycles_per_hop": [
+        284.559570312,
+        284.557769775,
+        284.561187744,
+        284.551147461,
+        284.560012817,
+        284.542388916,
+        284.557678223,
+        284.560653687,
+        284.552902222,
+        284.554931641,
+        284.568099976,
+        284.562896729,
+        284.558547974,
+        284.558074951,
+        284.549545288
+      ],
+      "raw_nanoseconds_per_hop": [
+        142.636230469,
+        142.635742188,
+        142.637207031,
+        142.631835938,
+        142.636230469,
+        142.627929688,
+        142.635253906,
+        142.637207031,
+        142.633300781,
+        142.634277344,
+        142.640625,
+        142.638183594,
+        142.635742188,
+        142.635742188,
+        142.631347656
+      ],
+      "steps": 65536,
+      "working_set_bytes": 8388608
+    },
+    {
+      "kind": "cg",
+      "label": "hbm_cg_128m",
+      "measurement_scope": "dependent_read_chain",
+      "median_cycles_per_hop": 691.623657227,
+      "median_nanoseconds_per_hop": 346.678527832,
+      "p10_nanoseconds_per_hop": 346.65032959,
+      "p90_nanoseconds_per_hop": 346.705657959,
+      "physical_link_attribution": "unverified",
+      "raw_cycles_per_hop": [
+        691.64146328,
+        691.567386627,
+        691.592806816,
+        691.607925415,
+        691.688305855,
+        691.553874016,
+        691.624896049,
+        691.608848572,
+        691.631303787,
+        691.583078384,
+        691.638062477,
+        691.623657227,
+        691.621519089,
+        691.677736282,
+        691.631248474
+      ],
+      "raw_nanoseconds_per_hop": [
+        346.687438965,
+        346.65032959,
+        346.66305542,
+        346.670654297,
+        346.7109375,
+        346.643554688,
+        346.679138184,
+        346.671112061,
+        346.682342529,
+        346.658172607,
+        346.685760498,
+        346.678527832,
+        346.677459717,
+        346.705657959,
+        346.682342529
+      ],
+      "steps": 1048576,
+      "working_set_bytes": 134217728
+    },
+    {
+      "kind": "shared",
+      "label": "shared_4k",
+      "measurement_scope": "dependent_read_chain",
+      "median_cycles_per_hop": 28.597167969,
+      "median_nanoseconds_per_hop": 14.3359375,
+      "p10_nanoseconds_per_hop": 14.33203125,
+      "p90_nanoseconds_per_hop": 14.3359375,
+      "physical_link_attribution": "unverified",
+      "raw_cycles_per_hop": [
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969,
+        28.597167969
+      ],
+      "raw_nanoseconds_per_hop": [
+        14.3359375,
+        14.3359375,
+        14.33203125,
+        14.33203125,
+        14.3359375,
+        14.33203125,
+        14.33203125,
+        14.3359375,
+        14.3359375,
+        14.3359375,
+        14.33203125,
+        14.3359375,
+        14.33203125,
+        14.3359375,
+        14.3359375
+      ],
+      "steps": 8192,
+      "working_set_bytes": 4096
+    },
+    {
+      "kind": "register",
+      "label": "register_8k",
+      "measurement_scope": "dependent_read_chain",
+      "median_cycles_per_hop": 4.468261719,
+      "median_nanoseconds_per_hop": 2.23828125,
+      "p10_nanoseconds_per_hop": 2.23828125,
+      "p90_nanoseconds_per_hop": 2.2421875,
+      "physical_link_attribution": "unverified",
+      "raw_cycles_per_hop": [
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719,
+        4.468261719
+      ],
+      "raw_nanoseconds_per_hop": [
+        2.2421875,
+        2.23828125,
+        2.23828125,
+        2.23828125,
+        2.23828125,
+        2.23828125,
+        2.23828125,
+        2.23828125,
+        2.23828125,
+        2.2421875,
+        2.23828125,
+        2.2421875,
+        2.2421875,
+        2.2421875,
+        2.2421875
+      ],
+      "steps": 8192,
+      "working_set_bytes": 0
+    },
+    {
+      "kind": "register",
+      "label": "register_64k",
+      "measurement_scope": "dependent_read_chain",
+      "median_cycles_per_hop": 4.441345215,
+      "median_nanoseconds_per_hop": 2.226074219,
+      "p10_nanoseconds_per_hop": 2.226074219,
+      "p90_nanoseconds_per_hop": 2.2265625,
+      "physical_link_attribution": "unverified",
+      "raw_cycles_per_hop": [
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215,
+        4.441345215
+      ],
+      "raw_nanoseconds_per_hop": [
+        2.226074219,
+        2.2265625,
+        2.226074219,
+        2.226074219,
+        2.2265625,
+        2.226074219,
+        2.226074219,
+        2.2265625,
+        2.2265625,
+        2.226074219,
+        2.2265625,
+        2.2265625,
+        2.2265625,
+        2.226074219,
+        2.226074219
+      ],
+      "steps": 65536,
+      "working_set_bytes": 0
+    },
+    {
+      "kind": "register",
+      "label": "register_1m",
+      "measurement_scope": "dependent_read_chain",
+      "median_cycles_per_hop": 4.437740326,
+      "median_nanoseconds_per_hop": 2.22442627,
+      "p10_nanoseconds_per_hop": 2.22442627,
+      "p90_nanoseconds_per_hop": 2.224456787,
+      "physical_link_attribution": "unverified",
+      "raw_cycles_per_hop": [
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326,
+        4.437740326
+      ],
+      "raw_nanoseconds_per_hop": [
+        2.224456787,
+        2.22442627,
+        2.22442627,
+        2.22442627,
+        2.22442627,
+        2.22442627,
+        2.22442627,
+        2.22442627,
+        2.22442627,
+        2.224456787,
+        2.22442627,
+        2.22442627,
+        2.224456787,
+        2.224456787,
+        2.22442627
+      ],
+      "steps": 1048576,
+      "working_set_bytes": 0
+    }
+  ],
+  "device_name": "NVIDIA H100 80GB HBM3",
+  "limitations": "Per-hop time includes dependent load, address calculation, loop branch, and timer overhead. Random HBM traversal also includes address-translation effects. NCU runs separately from timing. Neither cycles/hop nor ns/hop is an isolated physical-link latency.",
+  "physical_link_calibrations": {},
+  "profile_checks": {
+    "latency_hbm_cg_128m_dram": {
+      "counter_warnings": [],
+      "metric": {
+        "unit": "byte",
+        "value": 70565376.0
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "latency_hbm_cg_128m_l2": {
+      "counter_warnings": [],
+      "metric": {
+        "unit": "%",
+        "value": 49.04
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "latency_l1_ca_4k_dram": {
+      "counter_warnings": [],
+      "metric": {
+        "unit": "byte",
+        "value": 0.0
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "latency_l1_ca_4k_l1": {
+      "counter_warnings": [],
+      "metric": {
+        "unit": "%",
+        "value": 99.6
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "latency_l2_cg_1m_dram": {
+      "counter_warnings": [],
+      "metric": {
+        "unit": "byte",
+        "value": 0.0
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "latency_l2_cg_1m_l2": {
+      "counter_warnings": [
+        "hit_rate_outside_0_100"
+      ],
+      "metric": {
+        "unit": "%",
+        "value": 107.14
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "latency_l2_cg_8m_dram": {
+      "counter_warnings": [],
+      "metric": {
+        "unit": "byte",
+        "value": 0.0
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "latency_shared_4k_wavefronts": {
+      "counter_warnings": [],
+      "metric": {
+        "unit": "",
+        "value": 8192.0
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    }
+  },
+  "sass_evidence": {
+    "static_opcode_sites": {
+      "ca": {
+        "LDG": 29,
+        "LDG_STRONG_GPU": 0,
+        "LDG_STRONG_SM": 29,
+        "LDS": 0,
+        "STG": 3,
+        "STS": 0
+      },
+      "cg": {
+        "LDG": 29,
+        "LDG_STRONG_GPU": 29,
+        "LDG_STRONG_SM": 0,
+        "LDS": 0,
+        "STG": 3,
+        "STS": 0
+      },
+      "register": {
+        "LDG": 0,
+        "LDG_STRONG_GPU": 0,
+        "LDG_STRONG_SM": 0,
+        "LDS": 0,
+        "STG": 3,
+        "STS": 0
+      },
+      "shared": {
+        "LDG": 0,
+        "LDG_STRONG_GPU": 0,
+        "LDG_STRONG_SM": 0,
+        "LDS": 29,
+        "STG": 3,
+        "STS": 1024
+      }
+    },
+    "status": "measured"
+  },
+  "schema_version": 1,
+  "timer": "clock64 cycles and globaltimer nanoseconds inside one thread"
+}

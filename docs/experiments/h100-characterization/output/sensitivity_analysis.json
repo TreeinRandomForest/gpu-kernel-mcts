@@ -1,0 +1,236 @@
+{
+  "case_summary": [
+    {
+      "access_pattern": "contiguous",
+      "grid_programs": 132,
+      "max_sweep_median_us": 3.221499966457486,
+      "median_of_sweep_medians_us": 3.2164999283850193,
+      "min_sweep_median_us": 3.203500062227249,
+      "payload_bytes": 8388608,
+      "sweep_medians_us": [
+        3.203500062227249,
+        3.221499966457486,
+        3.2164999283850193
+      ]
+    },
+    {
+      "access_pattern": "stride_32_words",
+      "grid_programs": 132,
+      "max_sweep_median_us": 17.344500869512558,
+      "median_of_sweep_medians_us": 17.331499606370926,
+      "min_sweep_median_us": 17.224999144673347,
+      "payload_bytes": 8388608,
+      "sweep_medians_us": [
+        17.224999144673347,
+        17.344500869512558,
+        17.331499606370926
+      ]
+    },
+    {
+      "access_pattern": "contiguous",
+      "grid_programs": 528,
+      "max_sweep_median_us": 2.641000086441636,
+      "median_of_sweep_medians_us": 2.6390000712126493,
+      "min_sweep_median_us": 2.6324999053031206,
+      "payload_bytes": 8388608,
+      "sweep_medians_us": [
+        2.641000086441636,
+        2.6324999053031206,
+        2.6390000712126493
+      ]
+    },
+    {
+      "access_pattern": "stride_32_words",
+      "grid_programs": 528,
+      "max_sweep_median_us": 17.604000866413116,
+      "median_of_sweep_medians_us": 17.594000324606895,
+      "min_sweep_median_us": 17.342999577522278,
+      "payload_bytes": 8388608,
+      "sweep_medians_us": [
+        17.342999577522278,
+        17.604000866413116,
+        17.594000324606895
+      ]
+    },
+    {
+      "access_pattern": "contiguous",
+      "grid_programs": 2112,
+      "max_sweep_median_us": 2.5420000310987234,
+      "median_of_sweep_medians_us": 2.54100002348423,
+      "min_sweep_median_us": 2.4075000546872616,
+      "payload_bytes": 8388608,
+      "sweep_medians_us": [
+        2.4075000546872616,
+        2.5420000310987234,
+        2.54100002348423
+      ]
+    },
+    {
+      "access_pattern": "stride_32_words",
+      "grid_programs": 2112,
+      "max_sweep_median_us": 17.923999577760696,
+      "median_of_sweep_medians_us": 17.921000719070435,
+      "min_sweep_median_us": 17.558500170707703,
+      "payload_bytes": 8388608,
+      "sweep_medians_us": [
+        17.921000719070435,
+        17.923999577760696,
+        17.558500170707703
+      ]
+    },
+    {
+      "access_pattern": "contiguous",
+      "grid_programs": 132,
+      "max_sweep_median_us": 229.9090027809143,
+      "median_of_sweep_medians_us": 229.7694981098175,
+      "min_sweep_median_us": 229.7534942626953,
+      "payload_bytes": 268435456,
+      "sweep_medians_us": [
+        229.7534942626953,
+        229.7694981098175,
+        229.9090027809143
+      ]
+    },
+    {
+      "access_pattern": "stride_32_words",
+      "grid_programs": 132,
+      "max_sweep_median_us": 1405.4679870605469,
+      "median_of_sweep_medians_us": 1399.9725580215454,
+      "min_sweep_median_us": 1399.9429941177368,
+      "payload_bytes": 268435456,
+      "sweep_medians_us": [
+        1399.9725580215454,
+        1405.4679870605469,
+        1399.9429941177368
+      ]
+    },
+    {
+      "access_pattern": "contiguous",
+      "grid_programs": 528,
+      "max_sweep_median_us": 93.88600289821625,
+      "median_of_sweep_medians_us": 93.80199760198593,
+      "min_sweep_median_us": 93.48999708890915,
+      "payload_bytes": 268435456,
+      "sweep_medians_us": [
+        93.48999708890915,
+        93.88600289821625,
+        93.80199760198593
+      ]
+    },
+    {
+      "access_pattern": "stride_32_words",
+      "grid_programs": 528,
+      "max_sweep_median_us": 1448.752999305725,
+      "median_of_sweep_medians_us": 1448.4895467758179,
+      "min_sweep_median_us": 1440.5134916305542,
+      "payload_bytes": 268435456,
+      "sweep_medians_us": [
+        1448.4895467758179,
+        1448.752999305725,
+        1440.5134916305542
+      ]
+    },
+    {
+      "access_pattern": "contiguous",
+      "grid_programs": 2112,
+      "max_sweep_median_us": 87.36299723386765,
+      "median_of_sweep_medians_us": 86.89499646425247,
+      "min_sweep_median_us": 86.86850219964981,
+      "payload_bytes": 268435456,
+      "sweep_medians_us": [
+        86.86850219964981,
+        87.36299723386765,
+        86.89499646425247
+      ]
+    },
+    {
+      "access_pattern": "stride_32_words",
+      "grid_programs": 2112,
+      "max_sweep_median_us": 1143.3215141296387,
+      "median_of_sweep_medians_us": 1138.7665271759033,
+      "min_sweep_median_us": 1138.4320259094238,
+      "payload_bytes": 268435456,
+      "sweep_medians_us": [
+        1138.4320259094238,
+        1138.7665271759033,
+        1143.3215141296387
+      ]
+    }
+  ],
+  "device_name": "NVIDIA H100 80GB HBM3",
+  "gpu_state_by_sweep": [
+    {
+      "after": {
+        "query": "--query-gpu=name,uuid,clocks.sm,clocks.mem,power.draw,temperature.gpu",
+        "raw": "NVIDIA H100 80GB HBM3, GPU-6053d15e-20e6-0202-433f-492251bed2bc, 1980, 2619, 388.15, 43",
+        "status": "available"
+      },
+      "before": {
+        "query": "--query-gpu=name,uuid,clocks.sm,clocks.mem,power.draw,temperature.gpu",
+        "raw": "NVIDIA H100 80GB HBM3, GPU-6053d15e-20e6-0202-433f-492251bed2bc, 345, 2619, 70.12, 36",
+        "status": "available"
+      }
+    },
+    {
+      "after": {
+        "query": "--query-gpu=name,uuid,clocks.sm,clocks.mem,power.draw,temperature.gpu",
+        "raw": "NVIDIA H100 80GB HBM3, GPU-6053d15e-20e6-0202-433f-492251bed2bc, 1980, 2619, 388.69, 44",
+        "status": "available"
+      },
+      "before": {
+        "query": "--query-gpu=name,uuid,clocks.sm,clocks.mem,power.draw,temperature.gpu",
+        "raw": "NVIDIA H100 80GB HBM3, GPU-6053d15e-20e6-0202-433f-492251bed2bc, 1980, 2619, 388.15, 43",
+        "status": "available"
+      }
+    },
+    {
+      "after": {
+        "query": "--query-gpu=name,uuid,clocks.sm,clocks.mem,power.draw,temperature.gpu",
+        "raw": "NVIDIA H100 80GB HBM3, GPU-6053d15e-20e6-0202-433f-492251bed2bc, 1980, 2619, 390.20, 46",
+        "status": "available"
+      },
+      "before": {
+        "query": "--query-gpu=name,uuid,clocks.sm,clocks.mem,power.draw,temperature.gpu",
+        "raw": "NVIDIA H100 80GB HBM3, GPU-6053d15e-20e6-0202-433f-492251bed2bc, 1980, 2619, 388.69, 44",
+        "status": "available"
+      }
+    }
+  ],
+  "limitations": "Grid count changes work per program and occupancy; access pattern changes coalescing and memory traffic. Timings include reduction and launch. These are sensitivity curves for end-to-end read paths, not physical link rates. NCU profiles are separate from timing.",
+  "physical_link_calibrations": {},
+  "profile_checks": {
+    "sensitivity_hbm_contiguous_dram": {
+      "metric": {
+        "unit": "byte",
+        "value": 268450560.0
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "sensitivity_hbm_strided_dram": {
+      "metric": {
+        "unit": "byte",
+        "value": 4179297792.0
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "sensitivity_l2_contiguous_dram": {
+      "metric": {
+        "unit": "byte",
+        "value": 0.0
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    },
+    "sensitivity_l2_strided_dram": {
+      "metric": {
+        "unit": "byte",
+        "value": 0.0
+      },
+      "scope": "separate single-metric NCU application replay",
+      "status": "measured"
+    }
+  },
+  "schema_version": 1
+}

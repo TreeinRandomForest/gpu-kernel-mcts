@@ -1,0 +1,71 @@
+{
+  "dirty_tree": true,
+  "experiment": "standalone_h100_read_sensitivity_v1",
+  "ncu_profiles": [
+    {
+      "label": "sensitivity_l2_contiguous_dram",
+      "metric": "dram__bytes_read.sum",
+      "replay_mode": "application"
+    },
+    {
+      "label": "sensitivity_l2_strided_dram",
+      "metric": "dram__bytes_read.sum",
+      "replay_mode": "application"
+    },
+    {
+      "label": "sensitivity_hbm_contiguous_dram",
+      "metric": "dram__bytes_read.sum",
+      "replay_mode": "application"
+    },
+    {
+      "label": "sensitivity_hbm_strided_dram",
+      "metric": "dram__bytes_read.sum",
+      "replay_mode": "application"
+    }
+  ],
+  "repo_commit": "7700af5ba20cc484d2f9c3065c96a9dc4c5c92e8",
+  "source_sha256": {
+    "bench_inside.py": "92efb98f862ab5b8d5f96c010e49e51aec8acf5e7bec4f4a76b5a1b3051440ec",
+    "sensitivity_inside.py": "b1fdf2ef7c4e3c7d2256966d4724385a1f2c2e960dfdd5f99e4f1113d37557db"
+  },
+  "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+  "worker_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-02T18:14:49.263793+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-6053d15e-20e6-0202-433f-492251bed2bc",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "32cdd7d1e06aa5944b8ebea662af453e3a77269dd3d3aa5415f87f3ca31ad175",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00m94rmecvtqw7s88",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "7700af5ba20cc484d2f9c3065c96a9dc4c5c92e8",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.3.1"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00m94rmecvtqw7s88"
+  }
+}

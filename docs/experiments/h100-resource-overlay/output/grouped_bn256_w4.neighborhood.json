@@ -1,0 +1,1048 @@
+{
+  "anchor_id": "site_815",
+  "edges": [
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%rd186",
+      "source": "site_809",
+      "target": "site_815"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%rd187",
+      "source": "site_813",
+      "target": "site_815"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%p61",
+      "source": "site_814",
+      "target": "site_815"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%p61",
+      "source": "site_814",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3598",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3599",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3600",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3601",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3602",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3603",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3604",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3605",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3606",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3607",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3608",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3609",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3610",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3611",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3612",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3613",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3614",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3615",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3616",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3617",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3618",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3619",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3620",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3621",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3622",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3623",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3624",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3625",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3626",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3627",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3628",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3629",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3630",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3631",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3632",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3633",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3634",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3635",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3636",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3637",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3638",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3639",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3640",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3641",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3642",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3643",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3644",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3645",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3646",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3647",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3648",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3649",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3650",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3651",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3652",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3653",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3654",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3655",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3656",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3657",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3658",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3659",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3660",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3661",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3662",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3663",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3664",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3665",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3666",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3667",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3668",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3669",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3670",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3671",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3672",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3673",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3674",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3675",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3676",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3677",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3678",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3679",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3680",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3681",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3682",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3683",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3684",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3685",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3686",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3687",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3688",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3689",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3690",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3691",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3692",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3693",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3694",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3695",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3696",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3697",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3698",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3699",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3700",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3701",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3702",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3703",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3704",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3705",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3706",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3707",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3708",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3709",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3710",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3711",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3712",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3713",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3714",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3715",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3716",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3717",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3718",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3719",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3720",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3721",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3722",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3723",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3724",
+      "source": "site_815",
+      "target": "site_818"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f3725",
+      "source": "site_815",
+      "target": "site_818"
+    }
+  ],
+  "hops": 1,
+  "interpretation": "Only original PTX edges are shown; omitted nodes are not implied paths.",
+  "nodes": [
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_809",
+      "kind": "arithmetic",
+      "line": 971,
+      "opcode": "or.b64",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_813",
+      "kind": "arithmetic",
+      "line": 975,
+      "opcode": "or.b64",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_814",
+      "kind": "arithmetic",
+      "line": 976,
+      "opcode": "mov.pred",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "shared_tensor",
+          "tensor_registers"
+        ],
+        "operation_class": "tensor_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "shared",
+          "tensor_compute",
+          "registers"
+        ]
+      },
+      "id": "site_815",
+      "kind": "tensor",
+      "line": 978,
+      "opcode": "wgmma.mma_async.sync.aligned.m64n256k16.f32.bf16.bf16",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "shared_tensor",
+          "tensor_registers"
+        ],
+        "operation_class": "tensor_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "shared",
+          "tensor_compute",
+          "registers"
+        ]
+      },
+      "id": "site_818",
+      "kind": "tensor",
+      "line": 983,
+      "opcode": "wgmma.mma_async.sync.aligned.m64n256k16.f32.bf16.bf16",
+      "predicated": false,
+      "resource_class": "compute"
+    }
+  ],
+  "truncated": false
+}

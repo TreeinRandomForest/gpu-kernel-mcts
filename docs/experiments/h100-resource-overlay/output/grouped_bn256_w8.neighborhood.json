@@ -1,0 +1,1048 @@
+{
+  "anchor_id": "site_457",
+  "edges": [
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%rd98",
+      "source": "site_451",
+      "target": "site_457"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%rd99",
+      "source": "site_455",
+      "target": "site_457"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%p13",
+      "source": "site_456",
+      "target": "site_457"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%p13",
+      "source": "site_456",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1806",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1807",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1808",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1809",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1810",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1811",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1812",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1813",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1814",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1815",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1816",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1817",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1818",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1819",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1820",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1821",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1822",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1823",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1824",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1825",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1826",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1827",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1828",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1829",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1830",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1831",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1832",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1833",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1834",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1835",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1836",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1837",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1838",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1839",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1840",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1841",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1842",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1843",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1844",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1845",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1846",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1847",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1848",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1849",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1850",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1851",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1852",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1853",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1854",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1855",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1856",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1857",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1858",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1859",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1860",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1861",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1862",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1863",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1864",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1865",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1866",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1867",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1868",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1869",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1870",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1871",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1872",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1873",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1874",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1875",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1876",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1877",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1878",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1879",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1880",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1881",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1882",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1883",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1884",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1885",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1886",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1887",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1888",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1889",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1890",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1891",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1892",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1893",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1894",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1895",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1896",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1897",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1898",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1899",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1900",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1901",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1902",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1903",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1904",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1905",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1906",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1907",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1908",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1909",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1910",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1911",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1912",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1913",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1914",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1915",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1916",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1917",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1918",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1919",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1920",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1921",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1922",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1923",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1924",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1925",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1926",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1927",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1928",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1929",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1930",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1931",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1932",
+      "source": "site_457",
+      "target": "site_460"
+    },
+    {
+      "kind": "ptx_def_use",
+      "measured_link_bytes": null,
+      "register": "%f1933",
+      "source": "site_457",
+      "target": "site_460"
+    }
+  ],
+  "hops": 1,
+  "interpretation": "Only original PTX edges are shown; omitted nodes are not implied paths.",
+  "nodes": [
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_451",
+      "kind": "arithmetic",
+      "line": 564,
+      "opcode": "or.b64",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_455",
+      "kind": "arithmetic",
+      "line": 568,
+      "opcode": "or.b64",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "registers_scalar"
+        ],
+        "operation_class": "scalar_or_vector_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "registers",
+          "scalar_compute"
+        ]
+      },
+      "id": "site_456",
+      "kind": "arithmetic",
+      "line": 569,
+      "opcode": "mov.pred",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "shared_tensor",
+          "tensor_registers"
+        ],
+        "operation_class": "tensor_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "shared",
+          "tensor_compute",
+          "registers"
+        ]
+      },
+      "id": "site_457",
+      "kind": "tensor",
+      "line": 571,
+      "opcode": "wgmma.mma_async.sync.aligned.m64n256k16.f32.bf16.bf16",
+      "predicated": false,
+      "resource_class": "compute"
+    },
+    {
+      "address_space": null,
+      "block": 2,
+      "hardware": {
+        "attribution": "static_candidate_only",
+        "candidate_graph_links": [
+          "shared_tensor",
+          "tensor_registers"
+        ],
+        "operation_class": "tensor_compute",
+        "path_gap": null,
+        "resource_candidates": [
+          "shared",
+          "tensor_compute",
+          "registers"
+        ]
+      },
+      "id": "site_460",
+      "kind": "tensor",
+      "line": 576,
+      "opcode": "wgmma.mma_async.sync.aligned.m64n256k16.f32.bf16.bf16",
+      "predicated": false,
+      "resource_class": "compute"
+    }
+  ],
+  "truncated": false
+}

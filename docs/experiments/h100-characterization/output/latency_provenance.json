@@ -1,0 +1,90 @@
+{
+  "dirty_tree": true,
+  "experiment": "standalone_h100_dependent_read_latency_v1",
+  "gpu_state_after": "1980, 2619, 122.04, 30",
+  "gpu_state_before": "345, 2619, 70.15, 28",
+  "ncu_profiles": [
+    {
+      "label": "latency_l1_ca_4k_l1",
+      "metric": "l1tex__t_sector_hit_rate.pct",
+      "replay_mode": "application"
+    },
+    {
+      "label": "latency_l1_ca_4k_dram",
+      "metric": "dram__bytes_read.sum",
+      "replay_mode": "application"
+    },
+    {
+      "label": "latency_l2_cg_1m_l2",
+      "metric": "lts__t_sector_hit_rate.pct",
+      "replay_mode": "application"
+    },
+    {
+      "label": "latency_l2_cg_1m_dram",
+      "metric": "dram__bytes_read.sum",
+      "replay_mode": "application"
+    },
+    {
+      "label": "latency_l2_cg_8m_dram",
+      "metric": "dram__bytes_read.sum",
+      "replay_mode": "application"
+    },
+    {
+      "label": "latency_hbm_cg_128m_dram",
+      "metric": "dram__bytes_read.sum",
+      "replay_mode": "application"
+    },
+    {
+      "label": "latency_hbm_cg_128m_l2",
+      "metric": "lts__t_sector_hit_rate.pct",
+      "replay_mode": "application"
+    },
+    {
+      "label": "latency_shared_4k_wavefronts",
+      "metric": "l1tex__data_pipe_lsu_wavefronts_mem_shared_op_ld.sum",
+      "replay_mode": "application"
+    }
+  ],
+  "repo_commit": "7700af5ba20cc484d2f9c3065c96a9dc4c5c92e8",
+  "source_sha256": "f335f83935c0b7821f1732e470ebd45006584159a68c14482d809af0506a8027",
+  "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+  "worker_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-02T18:05:41.590338+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-452ae30d-3f47-9286-8bac-82dac1a1cd04",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "7dc97aa3ce3d064aff5be2279d8e992a9a073a9e00f55c0cd144d8f2eaab8771",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00wn696cwqe4gr65b",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "7700af5ba20cc484d2f9c3065c96a9dc4c5c92e8",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.3.1"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00wn696cwqe4gr65b"
+  }
+}

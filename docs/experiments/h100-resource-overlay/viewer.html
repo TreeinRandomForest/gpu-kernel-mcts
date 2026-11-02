@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PTX resource overlay explorer</title>
+<style>
+  body { font: 15px/1.45 system-ui, sans-serif; color: #17202a; background: #fff; margin: 24px auto; padding: 0 20px; max-width: 1250px; }
+  h1 { margin-bottom: 4px; } h2 { font-size: 1.2rem; margin: 0 0 12px; }
+  p { margin: 6px 0 16px; } small, .muted { color: #52606d; }
+  .notice { border-left: 4px solid #9a6700; padding: 8px 12px; background: #fff8e4; }
+  .grid { display: grid; grid-template-columns: minmax(250px, 1fr) minmax(360px, 2fr); gap: 20px; align-items: start; }
+  .panel { border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; min-width: 0; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  input, select, button { font: inherit; padding: 6px 8px; }
+  button { cursor: pointer; color: #174ea6; background: #f4f8ff; border: 1px solid #c7d7f3; border-radius: 5px; }
+  button:hover, button:focus { background: #e3efff; }
+  .site-list { max-height: 520px; overflow: auto; }
+  .site-list button, .neighbors button { display: block; text-align: left; width: 100%; margin: 3px 0; overflow-wrap: anywhere; }
+  .selected { background: #dbeafe; font-weight: 700; }
+  .detail { display: grid; grid-template-columns: 160px 1fr; gap: 6px 10px; overflow-wrap: anywhere; }
+  .detail dt { color: #52606d; } .detail dd { margin: 0; }
+  .neighbors { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .path { overflow-wrap: anywhere; line-height: 2.1; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 400px; overflow: auto; background: #f4f6f8; padding: 10px; }
+  code { font-size: .9em; background: #f4f6f8; padding: 2px 4px; }
+  @media (max-width: 760px) { .grid, .neighbors { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>PTX resource overlay explorer</h1>
+<p>Open a <code>*.overlay.json</code> file. The complete overlay stays in memory while you inspect exact sites and recorded edges.</p>
+<div class="controls"><label>Overlay JSON <input id="file" type="file" accept=".json,application/json"></label><span id="status" class="muted">No file loaded</span></div>
+<p class="notice">This PTX graph is partial. An absent edge or path means the parser did not prove it; it does not prove the GPU lacks that dataflow. Hardware links are candidates, not measured traffic.</p>
+<div id="content" hidden>
+  <p id="identity" class="muted"></p>
+  <div class="grid">
+    <section class="panel">
+      <h2>Find a PTX site</h2>
+      <div class="controls"><label>Class <select id="class"></select></label><label>Search <input id="search" placeholder="ID, opcode, line"></label></div>
+      <p id="count" class="muted"></p>
+      <div id="sites" class="site-list"></div>
+    </section>
+    <div>
+      <section class="panel">
+        <h2 id="site-title">Site</h2>
+        <dl id="details" class="detail"></dl>
+        <details><summary>Original site and incident edge records</summary><pre id="raw"></pre></details>
+      </section>
+      <section class="panel" style="margin-top: 16px">
+        <h2>Exact one-hop edges</h2>
+        <div class="neighbors"><div><strong>Inputs</strong><div id="incoming"></div></div><div><strong>Outputs</strong><div id="outgoing"></div></div></div>
+      </section>
+      <section class="panel" style="margin-top: 16px">
+        <h2>Proven directed path</h2>
+        <div class="controls"><label>Target site ID <input id="target" placeholder="site_123"></label><button id="trace" type="button">Trace path</button></div>
+        <div id="path" class="path muted">Select a site and enter a target ID.</div>
+      </section>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let overlay = null, byId = new Map(), incoming = new Map(), outgoing = new Map(), selected = null;
+function el(tag, value, parent) { const node = document.createElement(tag); node.textContent = String(value ?? "—"); parent.appendChild(node); return node; }
+function siteLabel(site) { return `${site.id} · ${site.opcode || site.kind || "?"}${site.line == null ? "" : ` · line ${site.line}`}`; }
+function choose(id) { if (!byId.has(id)) return; selected = id; $("path").textContent = "Select a target ID to trace a proven path."; renderSites(); renderDetail(); }
+function renderSites() {
+  const className = $("class").value, term = $("search").value.toLowerCase().trim();
+  const matches = overlay.nodes.filter(site => (className === "all" || site.hardware.operation_class === className) &&
+    (!term || siteLabel(site).toLowerCase().includes(term)));
+  $("count").textContent = `${matches.length} matching sites; showing first 100. ${overlay.nodes.length} total sites.`;
+  const list = $("sites"); list.replaceChildren();
+  for (const site of matches.slice(0, 100)) {
+    const button = el("button", siteLabel(site), list); button.type = "button";
+    if (site.id === selected) button.className = "selected";
+    button.onclick = () => choose(site.id);
+  }
+}
+function detail(name, value) { el("dt", name, $("details")); el("dd", Array.isArray(value) ? value.join(", ") || "—" : value, $("details")); }
+function renderNeighbors(id, edges, reverse) {
+  const destination = $(id); destination.replaceChildren();
+  const groups = new Map();
+  for (const edge of edges) {
+    const other = reverse ? edge.source : edge.target;
+    const key = `${other} / ${edge.kind}`;
+    groups.set(key, (groups.get(key) || 0) + 1);
+  }
+  if (!groups.size) { el("p", "No proven edge", destination); return; }
+  for (const [key, count] of groups) {
+    const other = key.split(" / ")[0];
+    const button = el("button", `${siteLabel(byId.get(other))} · ${count} ${key.split(" / ")[1]} edge(s)`, destination);
+    button.type = "button"; button.onclick = () => choose(other);
+  }
+}
+function renderDetail() {
+  const site = byId.get(selected), hardware = site.hardware;
+  $("site-title").textContent = siteLabel(site);
+  $("details").replaceChildren();
+  detail("Operation class", hardware.operation_class);
+  detail("PTX opcode", site.opcode);
+  detail("PTX line / block", `${site.line ?? "—"} / ${site.block ?? "—"}`);
+  detail("Address space", site.address_space);
+  detail("Predicated", site.predicated == null ? "—" : site.predicated);
+  detail("Candidate resources", hardware.resource_candidates);
+  detail("Candidate H100 links", hardware.candidate_graph_links);
+  detail("Path gap", hardware.path_gap);
+  detail("Attribution", hardware.attribution);
+  renderNeighbors("incoming", incoming.get(selected), true);
+  renderNeighbors("outgoing", outgoing.get(selected), false);
+  $("raw").textContent = JSON.stringify({site, incoming: incoming.get(selected), outgoing: outgoing.get(selected)}, null, 2);
+}
+function tracePath() {
+  const target = $("target").value.trim(), display = $("path"); display.replaceChildren();
+  if (!byId.has(target)) { display.textContent = "Target ID is absent from this overlay."; return; }
+  const previous = new Map([[selected, null]]), queue = [selected];
+  for (let index = 0; index < queue.length && !previous.has(target); index++) {
+    for (const edge of outgoing.get(queue[index])) {
+      if (!previous.has(edge.target)) { previous.set(edge.target, queue[index]); queue.push(edge.target); }
+    }
+  }
+  if (!previous.has(target)) { display.textContent = "No directed path proven by this partial PTX graph."; return; }
+  const path = []; for (let at = target; at !== null; at = previous.get(at)) path.push(at); path.reverse();
+  path.forEach((id, index) => {
+    if (index) el("span", " → ", display);
+    const button = el("button", id, display); button.type = "button"; button.onclick = () => choose(id);
+  });
+}
+$("file").onchange = async event => {
+  const file = event.target.files[0]; if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!Array.isArray(data.nodes) || !Array.isArray(data.edges) || !data.nodes.every(node => node.id && node.hardware)) throw Error("Not a PTX resource overlay");
+    const ids = new Map(data.nodes.map(node => [node.id, node]));
+    if (ids.size !== data.nodes.length || data.edges.some(edge => !ids.has(edge.source) || !ids.has(edge.target))) throw Error("Overlay has duplicate IDs or dangling edges");
+    overlay = data; byId = ids; incoming = new Map(data.nodes.map(node => [node.id, []])); outgoing = new Map(data.nodes.map(node => [node.id, []]));
+    for (const edge of data.edges) { incoming.get(edge.target).push(edge); outgoing.get(edge.source).push(edge); }
+    const classes = [...new Set(data.nodes.map(node => node.hardware.operation_class))].sort();
+    $("class").replaceChildren(); const all = el("option", "All classes", $("class")); all.value = "all";
+    for (const value of classes) { const option = el("option", value, $("class")); option.value = value; }
+    $("class").value = "all"; $("search").value = "";
+    $("identity").textContent = `${file.name} · ${data.nodes.length} sites · ${data.edges.length} recorded edges · PTX ${data.ptx_sha256 || "unknown"} · uncertainties: ${(data.ptx_uncertainty || []).join(", ") || "none listed"}`;
+    $("status").textContent = "Loaded"; $("content").hidden = false;
+    choose(data.nodes.find(node => node.hardware.operation_class === "tensor_compute")?.id || data.nodes[0].id);
+  } catch (error) { $("status").textContent = `Could not load: ${error.message}`; $("content").hidden = true; }
+};
+$("class").onchange = renderSites; $("search").oninput = renderSites; $("trace").onclick = tracePath;
+</script>
+</body>
+</html>

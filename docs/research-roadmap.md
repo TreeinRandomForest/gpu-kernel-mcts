@@ -163,7 +163,10 @@ provide a complete tensor dataflow graph. Map static operations and symbolic
 values to candidate hardware nodes and paths, then overlay measured execution
 counts and traffic without claiming that PTX predicts cache hit destinations.
 Validate this overlay on fast/slow kernels and a spill-heavy kernel before
-using it as prompt context or an MCTS prior.
+using it as prompt context or an MCTS prior. Keep the core operation/path
+schema independent of GEMM tiling or BF16, and repeat the validation on a
+representative attention kernel whose reductions, softmax, and reuse expose
+different dataflow.
 
 Candidate uses include resource validation, bottleneck explanations, strategy
 prompts, and optional priors. Predicted performance must not become a hard pruning

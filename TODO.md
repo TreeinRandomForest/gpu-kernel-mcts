@@ -82,19 +82,43 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   shared-load wavefronts at 256 repeats versus zero in the control. Report
   effective path rates without assigning a graph-edge bandwidth. See
   `docs/experiments/h100-characterization/README.md`.
-- [ ] Continue the versioned H100 measurement set with controlled L2 and
-  shared/register latency estimates, tensor and scalar compute, and synchronization.
+- [x] Run dependent-read latency chains for L1-eligible `.ca`, L1-bypassing
+  L2-sized `.cg`, 128 MiB HBM-participating `.cg`, shared memory, and register
+  arithmetic control. The medians were 20.36, ~142.7, 346.68, 14.34, and
+  2.24 ns/hop respectively. SASS and NCU support the path labels; the 1 MiB
+  L2 hit percentage was invalid and is flagged. These are path costs, not
+  calibrated physical-link latencies. See the characterization README.
+- [x] Run three same-worker sensitivity sweeps over 8/256 MiB, contiguous
+  versus 32-word-strided reads, and 132/528/2,112 Triton programs. At 528
+  programs, striding was 6.7× slower for 8 MiB despite zero DRAM bytes and
+  15.4× slower for 256 MiB with 15.6× more DRAM traffic. Contiguous 256 MiB
+  also improved 2.6× from 132 to 2,112 programs. Preserve access order and
+  grid size as conditions rather than one generic bandwidth figure.
+- [ ] Continue the versioned H100 measurement set with tensor and scalar
+  compute, synchronization, and further concurrency/payload sweeps.
   Sweep payload/working-set sizes and record alignment, access pattern,
   concurrency, cache policy, clocks, raw samples, and uncertainty. Use NCU
   traffic/cache counters to establish which levels participated before
   calibrating graph links. Keep unmeasured links unknown rather than assigning
   end-to-end throughput to one edge.
-- [ ] Build a selected-kernel Triton→PTX/SASS→H100-resource overlay after the
-  first calibration. Use compiler PTX/cubin as artifacts, NCU Source correlation
-  and instruction counters as measured evidence, and explicit symbolic
-  operation/byte/lifetime estimates. Test on the fast B/slow D kernels and
-  the known four-warp spill case; validate against held-out NCU counters and
-  timings before using the overlay in prompts or priors.
+- [x] Build a first, generic PTX-def-use→H100 candidate-resource overlay from
+  three saved Triton crossover kernels. Keep PTX edges and uncertainty, NCU
+  whole-kernel counters, and separate-worker SASS evidence distinct. The slow
+  spill case has 255 registers/thread, 256 compiled spills, 134.4 million
+  measured local-load sectors, and 213 SASS local-load sites despite zero
+  textual PTX local-load sites. See `docs/experiments/h100-resource-overlay/`.
+- [ ] Validate the same overlay schema on a real compiled attention kernel
+  with reductions, softmax, and distinct reuse; inspect any unmodeled opcodes
+  and resource paths. Then compare exact fast B/slow D PTX/NCU artifacts and
+  add symbolic byte/lifetime estimates where justified. Keep the schema
+  independent of GEMM tile shapes and BF16, and validate against held-out NCU
+  counters and timings before using the overlay in prompts or priors.
+- [ ] Specify and implement per-valid-node overlay persistence for Triton MCTS.
+  Bind static PTX/resource annotations to run/node ID, source hash, PTX hash,
+  and binary fingerprint after compile/correctness/timing; attach NCU
+  whole-kernel evidence only on later expansion. Share the hardware model
+  across nodes, avoid GPU reevaluation on visits, and update `spec.md` before
+  changing search/trace behavior.
 - [ ] Compare a bounded Source-summary prompt arm after reviewing line
   correlation semantics. The browser visualization does not inject these
   separate-worker reports into MCTS prompts. Build and publish a new worker

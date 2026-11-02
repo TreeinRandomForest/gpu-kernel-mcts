@@ -221,8 +221,91 @@ source files. The raw SASS dump and NCU CSVs stay local and Git-ignored. Run
 with `run_paths_v3.py` followed by `analyze_paths_v3.py` in the same manner as
 the earlier commands above. No hardware-graph edge has a calibrated value yet.
 
-Next probes should estimate shared/register latency under controlled issue
-conditions, then tensor/scalar
-throughput, and synchronization under explicit conditions. A later selected-
-kernel overlay will relate PTX/SASS instructions and symbolic dataflow to
-these paths, validated against held-out profiler evidence.
+The next section adds serialized latency chains to these throughput paths.
+
+## Dependent-read latency paths
+
+A fourth run measures **serialized load chains**. Each global-memory pointer
+identifies the next pointer, spaced 128 bytes apart in a fixed-seed random
+ring. One thread traverses the complete ring; `.ca` requests all-level
+caching and `.cg` bypasses L1. A separate 4 KiB shared-memory chain and a
+register arithmetic chain provide on-chip comparisons. After three warmups,
+15 launches record `%clock64` cycles and `%globaltimer` nanoseconds **inside
+the kernel**, divided by dependent steps. The PTX source requests the cache
+operators; the SASS shows `LDG.E.STRONG.SM` for `.ca`,
+`LDG.E.STRONG.GPU` for `.cg`, and `LDS` in the shared chain. NVIDIA documents
+[`%clock64` and `%globaltimer`](https://docs.nvidia.com/cuda/parallel-thread-execution/)
+as a cycle counter and a target-specific nanosecond timer, respectively.
+
+| Chain | Working set | Median cycles/hop | Median ns/hop |
+| --- | ---: | ---: | ---: |
+| `.ca` global, L1-eligible | 4 KiB | 40.61 | 20.36 |
+| `.cg` global, L1 bypass | 4 KiB | 283.56 | 142.14 |
+| `.cg` global | 1 MiB | 284.70 | 142.71 |
+| `.cg` global | 8 MiB | 284.56 | 142.64 |
+| `.cg` global, DRAM participating | 128 MiB | 691.62 | 346.68 |
+| Shared-memory chain | 4 KiB | 28.60 | 14.34 |
+| Register arithmetic control | — | 4.47 | 2.24 |
+
+The 4 KiB `.ca` profile reported 99.6% L1 sector hits and zero DRAM reads.
+The 1 MiB and 8 MiB `.cg` profiles reported zero DRAM reads. The 128 MiB
+`.cg` profile reported 70.6 MB of DRAM reads and 49.04% L2 sector hits; it is
+an **HBM-participating random-read path**, not an HBM-only load latency. NCU
+counted 8,192 shared-load wavefronts in the shared chain, matching its step
+count. A separate 1 MiB L2 hit-rate pass reported an impossible 107.14%; the
+[analysis](output/latency_analysis.json) flags and excludes that percentage.
+
+These numbers include load issue, address translation, dependent instruction
+and loop costs. The random 128 MiB case can incur TLB effects. The register
+control measures arithmetic dependencies; subtracting it would not isolate a
+physical memory-link latency. SM clock snapshots were 345 MHz before the
+sweep and 1,980 MHz afterward, so the in-kernel nanosecond timer is preferable
+to converting cycles with a nominal clock. The
+[raw timing samples](output/latency_timings.json) and
+[provenance](output/latency_provenance.json) retain the conditions. Run the
+probe with `run_latency.py`, then `analyze_latency.py`; existing JSON artifacts
+must be preserved before a new run. Physical graph-link latencies remain
+unknown.
+
+## Access-pattern and grid-size sensitivity
+
+A fifth standalone run varies two generic read orders: contiguous and a
+bijection that places adjacent logical lanes **32 words apart** in physical
+memory. Every input element is read exactly once. It also varies the launch
+grid (132, 528, or 2,112 Triton programs) while holding the input at 8 MiB or
+256 MiB. The `.cg` read/reduce kernel checks the total output and records 15
+CUDA Graph timing rounds per case. Three complete sweeps use different
+randomized case orders on the same worker, with GPU clock/power snapshots at
+each sweep boundary.
+
+| Input | Programs | Access | Median of sweep medians | Across-sweep range |
+| --- | ---: | --- | ---: | ---: |
+| 8 MiB | 528 | Contiguous | 2.639 µs | 2.632–2.641 µs |
+| 8 MiB | 528 | Stride 32 words | 17.594 µs | 17.343–17.604 µs |
+| 256 MiB | 132 | Contiguous | 229.769 µs | 229.753–229.909 µs |
+| 256 MiB | 528 | Contiguous | 93.802 µs | 93.490–93.886 µs |
+| 256 MiB | 2,112 | Contiguous | 86.895 µs | 86.869–87.363 µs |
+| 256 MiB | 528 | Stride 32 words | 1,448.490 µs | 1,440.513–1,448.753 µs |
+
+At 528 programs, the strided case was 6.7× slower for 8 MiB and 15.4×
+slower for 256 MiB. Separate one-metric NCU application replays reported zero
+DRAM reads for both 8 MiB cases. For 256 MiB, contiguous reads caused 268.45
+MB of DRAM traffic, versus 4,179.30 MB for the strided read: **15.6× traffic
+amplification**. This makes access order a necessary condition on any useful
+bandwidth curve. With contiguous 256 MiB reads, changing the grid from 132 to
+2,112 programs reduced median time by about 2.6×; grid size changes work per
+program and scheduling, so this is not a pure occupancy measurement.
+
+The first sweep started with a 345 MHz SM-clock snapshot; subsequent sweep
+boundaries were at 1,980 MHz. The within- and across-sweep timing ranges are
+small for these cases, but the boundary snapshots are not per-case clock
+traces. The [sensitivity analysis](output/sensitivity_analysis.json) and
+[raw timings](output/sensitivity_timings.json) retain every case and sample;
+the [provenance](output/sensitivity_provenance.json) records the worker and
+source hashes. Run with `run_sensitivity.py`, then `analyze_sensitivity.py`.
+These are workload-path curves, not physical-link rates.
+
+Next characterization work should measure tensor/scalar throughput and
+synchronization. A selected-kernel overlay can relate PTX/SASS and symbolic
+dataflow to these paths; its core schema should work for attention as well as
+GEMM.

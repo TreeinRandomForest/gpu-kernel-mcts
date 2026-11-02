@@ -1,0 +1,298 @@
+{
+  "hardware_graph_manifest_id": "55dd11e4bf194eff8384de17f5b93f3c29fa61a182840f76556770ee8911b40b",
+  "limitations": "PTX def-use is partial and static; cache destinations, memory aliases, dynamic loop counts, and per-site traffic are unresolved. Source-report NCU/SASS evidence came from a separate worker. No whole-kernel metric is attached to an individual PTX site.",
+  "schema_version": 1,
+  "status": "partial_diagnostic",
+  "variants": [
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 236.60799860954285,
+        "mean_us": 224.88320072491965,
+        "median_us": 224.41600263118744,
+        "min_us": 216.0319983959198,
+        "per_shape_median_us": {},
+        "stddev_us": 4.685121734526587,
+        "timings_us": [
+          230.9119999408722,
+          226.0800004005432,
+          224.92800652980804,
+          225.3440022468567,
+          228.2560020685196,
+          228.44800353050232,
+          223.23200106620789,
+          230.97600042819977,
+          223.90399873256683,
+          231.87200725078583,
+          230.0799936056137,
+          236.60799860954285,
+          222.88000583648682,
+          218.59200298786163,
+          222.17600047588348,
+          223.61600399017334,
+          219.58400309085846,
+          226.81599855422974,
+          223.13599288463593,
+          216.0319983959198,
+          223.4559953212738,
+          219.67999637126923,
+          216.95999801158905,
+          219.7760045528412,
+          219.90400552749634,
+          227.52000391483307,
+          229.40799593925476,
+          223.7440049648285,
+          227.03999280929565,
+          225.53600370883942
+        ],
+        "warmup_count": 10
+      },
+      "compiler_resources": {
+        "registers_per_thread": 232,
+        "spills": 0,
+        "static_shared_memory_bytes": 98304
+      },
+      "path_gaps": {
+        "warp_exchange_route_not_modeled": 1
+      },
+      "ptx_dataflow_status": "partial",
+      "ptx_edge_count": 1440,
+      "ptx_node_count": 1078,
+      "ptx_sha256": "8ffb69f8d9f6d2d17c82e5dca0f8a9f01e546a16af2ab7c25ffdec1ea3b52718",
+      "ptx_uncertainty": [
+        "control_flow_join_or_loop",
+        "memory_alias_or_runtime_path_unknown",
+        "predicated_instruction",
+        "unparsed_instruction"
+      ],
+      "separate_worker_sass_local_sites": null,
+      "separate_worker_source_metrics": null,
+      "source_sha256": "51f6fc3473548f54909cbfc33c4959f0eba71d311be50137e8714ca5b4eb9cbd",
+      "static_operation_counts": {
+        "async_copy": 48,
+        "control": 2,
+        "global_write": 16,
+        "parameter": 4,
+        "parameter_load": 3,
+        "scalar_or_vector_compute": 897,
+        "shared_read": 16,
+        "shared_write": 64,
+        "synchronization": 19,
+        "tensor_compute": 8,
+        "warp_exchange": 1
+      },
+      "variant": "grouped_bn128_w4",
+      "whole_kernel_profile": {
+        "achieved_occupancy_pct": 12.13,
+        "dram_throughput_pct": 29.49,
+        "instructions_executed": 47902720.0,
+        "l1tex_throughput_pct": 73.12,
+        "l2_throughput_pct": 77.01,
+        "long_scoreboard_warps_per_issue": 0.4,
+        "registers_per_thread": 232.0,
+        "sm_throughput_pct": 87.52,
+        "tensor_pipe_utilization_pct": 89.85
+      }
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 1792.7360534667969,
+        "mean_us": 1778.3552050590515,
+        "median_us": 1777.2959470748901,
+        "min_us": 1764.7360563278198,
+        "per_shape_median_us": {},
+        "stddev_us": 7.034208446223889,
+        "timings_us": [
+          1785.9840393066406,
+          1777.9840230941772,
+          1775.5520343780518,
+          1784.5120429992676,
+          1775.7760286331177,
+          1783.4880352020264,
+          1780.351996421814,
+          1788.0959510803223,
+          1769.7279453277588,
+          1780.511975288391,
+          1789.5679473876953,
+          1792.7360534667969,
+          1784.5120429992676,
+          1777.4399518966675,
+          1775.871992111206,
+          1771.3600397109985,
+          1785.5360507965088,
+          1770.8799839019775,
+          1776.1600017547607,
+          1782.2400331497192,
+          1784.6399545669556,
+          1766.9119834899902,
+          1773.3759880065918,
+          1774.5920419692993,
+          1771.2639570236206,
+          1770.4960107803345,
+          1764.7360563278198,
+          1777.1519422531128,
+          1786.8160009384155,
+          1772.3840475082397
+        ],
+        "warmup_count": 10
+      },
+      "compiler_resources": {
+        "registers_per_thread": 255,
+        "spills": 256,
+        "static_shared_memory_bytes": 147456
+      },
+      "path_gaps": {
+        "warp_exchange_route_not_modeled": 1
+      },
+      "ptx_dataflow_status": "partial",
+      "ptx_edge_count": 2485,
+      "ptx_node_count": 1825,
+      "ptx_sha256": "31e7b4c6bf10d4466046882c7695791166e8ec5b01f786158ddfbf470cbb2066",
+      "ptx_uncertainty": [
+        "control_flow_join_or_loop",
+        "memory_alias_or_runtime_path_unknown",
+        "predicated_instruction",
+        "unparsed_instruction"
+      ],
+      "separate_worker_sass_local_sites": {
+        "load": 213,
+        "store": 262
+      },
+      "separate_worker_source_metrics": {
+        "dram_bytes_read_total": 209474560.0,
+        "dram_bytes_written_total": 764534272.0,
+        "l2_sector_hit_rate_total_pct": 97.11,
+        "local_load_sectors": 134389760.0,
+        "local_store_sectors": 134791168.0
+      },
+      "source_sha256": "7de57d55870b0e8015817416ef451986eb62a1391fc372df8617f2dbf3101fde",
+      "static_operation_counts": {
+        "async_copy": 72,
+        "control": 2,
+        "global_write": 32,
+        "parameter": 4,
+        "parameter_load": 3,
+        "scalar_or_vector_compute": 1524,
+        "shared_read": 32,
+        "shared_write": 128,
+        "synchronization": 19,
+        "tensor_compute": 8,
+        "warp_exchange": 1
+      },
+      "variant": "grouped_bn256_w4",
+      "whole_kernel_profile": {
+        "achieved_occupancy_pct": 6.28,
+        "dram_throughput_pct": 16.01,
+        "instructions_executed": 76615680.0,
+        "l1tex_throughput_pct": 52.72,
+        "l2_throughput_pct": 69.88,
+        "long_scoreboard_warps_per_issue": 3.4,
+        "registers_per_thread": 255.0,
+        "sm_throughput_pct": 11.39,
+        "tensor_pipe_utilization_pct": 10.68
+      }
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 210.24000644683838,
+        "mean_us": 201.70773367087045,
+        "median_us": 201.27999782562256,
+        "min_us": 197.88800179958344,
+        "per_shape_median_us": {},
+        "stddev_us": 2.4803002589057996,
+        "timings_us": [
+          210.24000644683838,
+          205.21600544452667,
+          202.4639993906021,
+          199.8720020055771,
+          203.36000621318817,
+          202.4639993906021,
+          204.44799959659576,
+          202.4960070848465,
+          201.21599733829498,
+          204.0639966726303,
+          201.34399831295013,
+          198.97599518299103,
+          200.25600492954254,
+          202.84800231456757,
+          199.68000054359436,
+          201.75999402999878,
+          204.3199986219406,
+          199.93600249290466,
+          203.0400037765503,
+          200.6399929523468,
+          199.77599382400513,
+          199.3280053138733,
+          203.77600193023682,
+          198.71999323368073,
+          200.06400346755981,
+          199.0080028772354,
+          197.88800179958344,
+          202.68799364566803,
+          200.6720006465912,
+          200.6720006465912
+        ],
+        "warmup_count": 10
+      },
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "path_gaps": {
+        "warp_exchange_route_not_modeled": 1
+      },
+      "ptx_dataflow_status": "partial",
+      "ptx_edge_count": 1312,
+      "ptx_node_count": 904,
+      "ptx_sha256": "592a78f5c1bd5da3934a0b4f1104c65524c0318cd5ff6748a23745171586d8b3",
+      "ptx_uncertainty": [
+        "control_flow_join_or_loop",
+        "memory_alias_or_runtime_path_unknown",
+        "predicated_instruction",
+        "unparsed_instruction",
+        "unsupported_instruction"
+      ],
+      "separate_worker_sass_local_sites": {
+        "load": 0,
+        "store": 0
+      },
+      "separate_worker_source_metrics": {
+        "dram_bytes_read_total": 186661376.0,
+        "dram_bytes_written_total": 28752640.0,
+        "l2_sector_hit_rate_total_pct": 70.98,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0
+      },
+      "source_sha256": "bf940261a000a4a0b7b19c97530f02a7750df554ac7091923d4fe60f62c1f870",
+      "static_operation_counts": {
+        "async_copy": 36,
+        "control": 2,
+        "global_write": 16,
+        "parameter": 4,
+        "parameter_load": 3,
+        "scalar_or_vector_compute": 789,
+        "shared_read": 16,
+        "shared_write": 16,
+        "synchronization": 17,
+        "tensor_compute": 4,
+        "warp_exchange": 1
+      },
+      "variant": "grouped_bn256_w8",
+      "whole_kernel_profile": {
+        "achieved_occupancy_pct": 12.48,
+        "dram_throughput_pct": 30.27,
+        "instructions_executed": 39968768.0,
+        "l1tex_throughput_pct": 62.96,
+        "l2_throughput_pct": 48.72,
+        "long_scoreboard_warps_per_issue": 1.26,
+        "registers_per_thread": 213.0,
+        "sm_throughput_pct": 87.14,
+        "tensor_pipe_utilization_pct": 91.59
+      }
+    }
+  ],
+  "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+}
