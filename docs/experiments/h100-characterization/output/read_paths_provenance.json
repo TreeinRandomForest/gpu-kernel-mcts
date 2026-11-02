@@ -1,0 +1,52 @@
+{
+  "dirty_tree": true,
+  "experiment": "standalone_h100_read_paths_v1",
+  "ncu_cache_control": "none",
+  "ncu_clock_control": "none",
+  "ncu_metrics": [
+    "dram__bytes_read.sum",
+    "dram__bytes_write.sum",
+    "lts__t_sector_hit_rate.pct"
+  ],
+  "repo_commit": "68736aeecf7b2805f8336053d156f67ee0651f85",
+  "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+  "worker_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-02T17:14:01.209435+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-4f1050d5-2b07-4d91-1e80-c5fe36bc2030",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "49c0bc8a855089273233ad3a7bb79c6e320ef89c4cf78a31e85d9df41f5b00e3",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00yd0046tv7sz5h8c",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "68736aeecf7b2805f8336053d156f67ee0651f85",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.3.1"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00yd0046tv7sz5h8c"
+  }
+}

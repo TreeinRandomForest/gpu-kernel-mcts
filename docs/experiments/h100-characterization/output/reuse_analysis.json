@@ -1,0 +1,295 @@
+{
+  "cases": [
+    {
+      "cache_modifier": ".cg",
+      "effective_requested_read_gb_per_s": 3201.147815422564,
+      "launches_per_graph_replay": 64,
+      "measurement_scope": "read_path_plus_address_arithmetic_reduction_and_output",
+      "median_us_per_launch": 2.620500046759844,
+      "p10_us_per_launch": 2.6080000679939985,
+      "p90_us_per_launch": 2.6499999221414328,
+      "payload_bytes": 8388608,
+      "physical_link_attribution": "unverified",
+      "probe": "in_kernel_repeated_read",
+      "ptx_global_load_lines": [
+        "ld.global.cg.v4.b32 { %r1, %r2, %r3, %r4 }, [ %rd1 + 0 ];",
+        "ld.global.cg.v4.b32 { %r5, %r6, %r7, %r8 }, [ %rd2 + 0 ];"
+      ],
+      "raw_us_per_launch": [
+        2.6499999221414328,
+        2.630000002682209,
+        2.6179999113082886,
+        2.6245000772178173,
+        2.6080000679939985,
+        2.6100000832229853,
+        2.606000052765012,
+        2.6259999722242355,
+        2.6255000848323107,
+        2.618999918922782,
+        2.615500008687377,
+        2.620500046759844,
+        2.6140001136809587,
+        2.6970000471919775,
+        2.6225000619888306
+      ],
+      "repeats": 1,
+      "requested_read_bytes_per_launch": 8388608,
+      "rounds": 15,
+      "working_set_bytes": 8388608,
+      "working_set_policy": "cyclic_block_shift_within_kernel"
+    },
+    {
+      "cache_modifier": ".cg",
+      "effective_requested_read_gb_per_s": 8968.176476846116,
+      "launches_per_graph_replay": 64,
+      "measurement_scope": "read_path_plus_address_arithmetic_reduction_and_output",
+      "median_us_per_launch": 3.7414999678730965,
+      "p10_us_per_launch": 3.7299999967217445,
+      "p90_us_per_launch": 3.766000038012862,
+      "payload_bytes": 8388608,
+      "physical_link_attribution": "unverified",
+      "probe": "in_kernel_repeated_read",
+      "ptx_global_load_lines": [
+        "ld.global.cg.v4.b32 { %r1, %r2, %r3, %r4 }, [ %rd1 + 0 ];",
+        "ld.global.cg.v4.b32 { %r5, %r6, %r7, %r8 }, [ %rd2 + 0 ];",
+        "ld.global.cg.v4.b32 { %r9, %r10, %r11, %r12 }, [ %rd3 + 0 ];",
+        "ld.global.cg.v4.b32 { %r13, %r14, %r15, %r16 }, [ %rd4 + 0 ];",
+        "ld.global.cg.v4.b32 { %r17, %r18, %r19, %r20 }, [ %rd5 + 0 ];",
+        "ld.global.cg.v4.b32 { %r21, %r22, %r23, %r24 }, [ %rd6 + 0 ];",
+        "ld.global.cg.v4.b32 { %r25, %r26, %r27, %r28 }, [ %rd7 + 0 ];",
+        "ld.global.cg.v4.b32 { %r29, %r30, %r31, %r32 }, [ %rd8 + 0 ];"
+      ],
+      "raw_us_per_launch": [
+        3.7845000624656677,
+        3.766000038012862,
+        3.7394999526441097,
+        3.7499999161809683,
+        3.7314998917281628,
+        3.750500036403537,
+        3.7440001033246517,
+        3.7414999678730965,
+        3.7410000804811716,
+        3.742000088095665,
+        3.7299999967217445,
+        3.7414999678730965,
+        3.732499899342656,
+        3.745000110939145,
+        3.7285001017153263
+      ],
+      "repeats": 4,
+      "requested_read_bytes_per_launch": 33554432,
+      "rounds": 15,
+      "working_set_bytes": 8388608,
+      "working_set_policy": "cyclic_block_shift_within_kernel"
+    },
+    {
+      "cache_modifier": ".cg",
+      "effective_requested_read_gb_per_s": 10381.539208645281,
+      "launches_per_graph_replay": 64,
+      "measurement_scope": "read_path_plus_address_arithmetic_reduction_and_output",
+      "median_us_per_launch": 12.928499840199947,
+      "p10_us_per_launch": 12.881999835371971,
+      "p90_us_per_launch": 12.973000295460224,
+      "payload_bytes": 8388608,
+      "physical_link_attribution": "unverified",
+      "probe": "in_kernel_repeated_read",
+      "ptx_global_load_lines": [
+        "ld.global.cg.v4.b32 { %r33, %r34, %r35, %r36 }, [ %rd4 + 0 ];",
+        "ld.global.cg.v4.b32 { %r37, %r38, %r39, %r40 }, [ %rd5 + 0 ];"
+      ],
+      "raw_us_per_launch": [
+        12.940499931573868,
+        12.973999604582787,
+        12.889999896287918,
+        12.90149986743927,
+        12.965500354766846,
+        12.88249995559454,
+        12.896000407636166,
+        12.928499840199947,
+        12.962999753654003,
+        12.942500412464142,
+        12.88249995559454,
+        12.968500144779682,
+        12.881999835371971,
+        12.873000465333462,
+        12.973000295460224
+      ],
+      "repeats": 16,
+      "requested_read_bytes_per_launch": 134217728,
+      "rounds": 15,
+      "working_set_bytes": 8388608,
+      "working_set_policy": "cyclic_block_shift_within_kernel"
+    },
+    {
+      "cache_modifier": ".cg",
+      "effective_requested_read_gb_per_s": 9374.055860223287,
+      "launches_per_graph_replay": 64,
+      "measurement_scope": "read_path_plus_address_arithmetic_reduction_and_output",
+      "median_us_per_launch": 57.27199837565422,
+      "p10_us_per_launch": 56.57799914479256,
+      "p90_us_per_launch": 57.78300017118454,
+      "payload_bytes": 8388608,
+      "physical_link_attribution": "unverified",
+      "probe": "in_kernel_repeated_read",
+      "ptx_global_load_lines": [
+        "ld.global.cg.v4.b32 { %r33, %r34, %r35, %r36 }, [ %rd4 + 0 ];",
+        "ld.global.cg.v4.b32 { %r37, %r38, %r39, %r40 }, [ %rd5 + 0 ];"
+      ],
+      "raw_us_per_launch": [
+        57.691000401973724,
+        57.112500071525574,
+        56.95150047540665,
+        56.93349987268448,
+        57.34049901366234,
+        57.25250020623207,
+        56.57799914479256,
+        57.55399912595749,
+        57.55750089883804,
+        57.270001620054245,
+        57.78300017118454,
+        58.07900056242943,
+        57.27199837565422,
+        56.50750175118446,
+        57.407498359680176
+      ],
+      "repeats": 64,
+      "requested_read_bytes_per_launch": 536870912,
+      "rounds": 15,
+      "working_set_bytes": 8388608,
+      "working_set_policy": "cyclic_block_shift_within_kernel"
+    },
+    {
+      "cache_modifier": ".cg",
+      "effective_requested_read_gb_per_s": 3116.1609188859466,
+      "launches_per_graph_replay": 64,
+      "measurement_scope": "read_path_plus_address_arithmetic_reduction_and_output",
+      "median_us_per_launch": 86.14300191402435,
+      "p10_us_per_launch": 86.05150133371353,
+      "p90_us_per_launch": 86.2094983458519,
+      "payload_bytes": 268435456,
+      "physical_link_attribution": "unverified",
+      "probe": "in_kernel_repeated_read",
+      "ptx_global_load_lines": [
+        "ld.global.cg.v4.b32 { %r1, %r2, %r3, %r4 }, [ %rd1 + 0 ];",
+        "ld.global.cg.v4.b32 { %r5, %r6, %r7, %r8 }, [ %rd2 + 0 ];"
+      ],
+      "raw_us_per_launch": [
+        86.21150255203247,
+        86.14899963140488,
+        86.0155001282692,
+        86.14300191402435,
+        86.12649887800217,
+        86.05150133371353,
+        86.1004963517189,
+        86.0544964671135,
+        86.16200089454651,
+        86.2094983458519,
+        86.11849695444107,
+        86.16200089454651,
+        86.07199788093567,
+        86.16650104522705,
+        86.15949749946594
+      ],
+      "repeats": 1,
+      "requested_read_bytes_per_launch": 268435456,
+      "rounds": 15,
+      "working_set_bytes": 268435456,
+      "working_set_policy": "cyclic_block_shift_within_kernel"
+    },
+    {
+      "cache_modifier": ".cg",
+      "effective_requested_read_gb_per_s": 9236.051879982937,
+      "launches_per_graph_replay": 64,
+      "measurement_scope": "read_path_plus_address_arithmetic_reduction_and_output",
+      "median_us_per_launch": 116.2554994225502,
+      "p10_us_per_launch": 116.17899686098099,
+      "p90_us_per_launch": 116.32700264453888,
+      "payload_bytes": 268435456,
+      "physical_link_attribution": "unverified",
+      "probe": "in_kernel_repeated_read",
+      "ptx_global_load_lines": [
+        "ld.global.cg.v4.b32 { %r1, %r2, %r3, %r4 }, [ %rd1 + 0 ];",
+        "ld.global.cg.v4.b32 { %r5, %r6, %r7, %r8 }, [ %rd2 + 0 ];",
+        "ld.global.cg.v4.b32 { %r9, %r10, %r11, %r12 }, [ %rd3 + 0 ];",
+        "ld.global.cg.v4.b32 { %r13, %r14, %r15, %r16 }, [ %rd4 + 0 ];",
+        "ld.global.cg.v4.b32 { %r17, %r18, %r19, %r20 }, [ %rd5 + 0 ];",
+        "ld.global.cg.v4.b32 { %r21, %r22, %r23, %r24 }, [ %rd6 + 0 ];",
+        "ld.global.cg.v4.b32 { %r25, %r26, %r27, %r28 }, [ %rd7 + 0 ];",
+        "ld.global.cg.v4.b32 { %r29, %r30, %r31, %r32 }, [ %rd8 + 0 ];"
+      ],
+      "raw_us_per_launch": [
+        116.32700264453888,
+        116.19450151920319,
+        116.16600304841995,
+        116.2945032119751,
+        116.2554994225502,
+        116.18249863386154,
+        116.17899686098099,
+        116.3645014166832,
+        116.2635013461113,
+        116.28600209951401,
+        116.24299734830856,
+        116.23849719762802,
+        116.32400006055832,
+        116.27250164747238,
+        116.24249815940857
+      ],
+      "repeats": 4,
+      "requested_read_bytes_per_launch": 1073741824,
+      "rounds": 15,
+      "working_set_bytes": 268435456,
+      "working_set_policy": "cyclic_block_shift_within_kernel"
+    }
+  ],
+  "device_name": "NVIDIA H100 80GB HBM3",
+  "limitations": "Changing repeat count changes both L2/HBM loads and loop/address arithmetic. Timing includes final reduction, output, and launch. Counter runs are separate application replays; an out-of-range L2 hit percentage flags inconsistent replay passes. No single physical link bandwidth or latency is inferred.",
+  "physical_link_calibrations": {},
+  "profile_checks": {
+    "reuse_cg_256m_x4": {
+      "cache_control": "none",
+      "counter_warnings": [],
+      "dram_read_fraction_of_requested_bytes": 0.2500171661376953,
+      "metrics": {
+        "dram__bytes_read.sum": {
+          "unit": "byte",
+          "value": 268453888.0
+        },
+        "dram__bytes_write.sum": {
+          "unit": "byte",
+          "value": 3144448.0
+        },
+        "lts__t_sector_hit_rate.pct": {
+          "unit": "%",
+          "value": 53.96
+        }
+      },
+      "scope": "separate application-replay NCU run",
+      "status": "measured"
+    },
+    "reuse_cg_8m_x64": {
+      "cache_control": "none",
+      "counter_warnings": [
+        "l2_hit_rate_outside_0_100"
+      ],
+      "dram_read_fraction_of_requested_bytes": 0.0,
+      "metrics": {
+        "dram__bytes_read.sum": {
+          "unit": "byte",
+          "value": 0.0
+        },
+        "dram__bytes_write.sum": {
+          "unit": "byte",
+          "value": 35328.0
+        },
+        "lts__t_sector_hit_rate.pct": {
+          "unit": "%",
+          "value": 101.51
+        }
+      },
+      "scope": "separate application-replay NCU run",
+      "status": "measured"
+    }
+  },
+  "schema_version": 1,
+  "timing_method": "CUDA events around CUDA Graph replay; no NCU during timing"
+}

@@ -56,6 +56,45 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   crossover. Seed 1 D stayed at `BN=128`; seed 0 D reached `BN=256` but had
   lower tensor-pipe activity than B despite the same tile, warp, and stage
   settings. Compare exact codegen/profile differences before changing prompts.
+- [x] Start standalone H100 SXM characterization with a global-copy path
+  sweep. The 11-case CUDA Graph timing set spans 4 KiB–256 MiB with repeated
+  and rotating buffers; separate NCU passes record DRAM traffic and L2 hit
+  rate. The 256 MiB path reaches 3.01 TB/s effective read+write throughput,
+  and the minimal graph-replay kernel takes 1.017 µs median. These remain
+  end-to-end path observations, not calibrated physical links. See
+  `docs/experiments/h100-characterization/README.md`.
+- [x] Add read-only `.cg`/`.ca` H100 probes with PTX verification, CUDA Graph
+  timing, and NCU traffic checks. Application replay observed zero DRAM read
+  bytes for 1 MiB and 8 MiB `.cg` cases, versus a full payload for 256 MiB;
+  kernel replay gave a conflicting 8 MiB result. These distinguish cache
+  regimes but do not yet isolate a physical-link bandwidth. See the same
+  experiment README and `read_paths_analysis.json`.
+- [x] Add an in-kernel 8 MiB `.cg` reuse sweep (1/4/16/64 reads per block).
+  The ×64 case requested 512 MiB and measured 9.37 TB/s of requested reads
+  with zero DRAM read bytes in a separate NCU pass. Its reported 101.51% L2
+  hit rate is invalid and flagged; the 256 MiB ×4 cyclic control also reuses
+  across blocks, so neither result is assigned to one graph edge.
+- [x] Run matched read controls on one H100: 8 MiB ×64 cyclic `.cg` requests
+  512 MiB with zero DRAM reads and 97.58% L2 hits; four disjoint 256 MiB
+  regions request 1 GiB and produce one input's worth of DRAM reads. Add an
+  explicit shared-load kernel and register arithmetic control: SASS shows
+  `LDS` only in the shared kernel, and NCU counts exactly 1,081,344 expected
+  shared-load wavefronts at 256 repeats versus zero in the control. Report
+  effective path rates without assigning a graph-edge bandwidth. See
+  `docs/experiments/h100-characterization/README.md`.
+- [ ] Continue the versioned H100 measurement set with controlled L2 and
+  shared/register latency estimates, tensor and scalar compute, and synchronization.
+  Sweep payload/working-set sizes and record alignment, access pattern,
+  concurrency, cache policy, clocks, raw samples, and uncertainty. Use NCU
+  traffic/cache counters to establish which levels participated before
+  calibrating graph links. Keep unmeasured links unknown rather than assigning
+  end-to-end throughput to one edge.
+- [ ] Build a selected-kernel Triton→PTX/SASS→H100-resource overlay after the
+  first calibration. Use compiler PTX/cubin as artifacts, NCU Source correlation
+  and instruction counters as measured evidence, and explicit symbolic
+  operation/byte/lifetime estimates. Test on the fast B/slow D kernels and
+  the known four-warp spill case; validate against held-out NCU counters and
+  timings before using the overlay in prompts or priors.
 - [ ] Compare a bounded Source-summary prompt arm after reviewing line
   correlation semantics. The browser visualization does not inject these
   separate-worker reports into MCTS prompts. Build and publish a new worker

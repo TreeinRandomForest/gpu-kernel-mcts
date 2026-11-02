@@ -232,6 +232,9 @@ __marimo__/
 /log-nebius-*
 *.ncu-rep
 docs/experiments/triton-h100-source-report/*.csv
+docs/experiments/h100-characterization/output/*.ncu.csv
+docs/experiments/h100-characterization/output/*.error.json
+docs/experiments/h100-characterization/output/*.sass.txt
 /docs/experiments/triton-h100-context-factorial/output/*
 !/docs/experiments/triton-h100-context-factorial/output/analysis.json
 *.swp

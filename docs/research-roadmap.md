@@ -147,6 +147,24 @@ then add roofline bounds, occupancy constraints, and pipeline-overlap estimates.
 Calibrate estimates against NCU and timings while retaining measured GPU latency as
 the search reward.
 
+Build the H100 calibration as a standalone experiment before connecting it to
+search. A measurement belongs to a workload path and conditions, not
+automatically to one physical link: record payload size, working-set size,
+access pattern and alignment, cache policy, concurrency, clock conditions,
+raw timing samples, and profiler traffic evidence. Store size-response curves
+with provenance and uncertainty. Assign a value to a graph link only when
+the probe and counters isolate that link sufficiently; otherwise retain an
+end-to-end path observation and leave the link uncalibrated.
+
+For a selected Triton kernel, use the compiler's PTX/cubin as the static
+artifacts. NCU Source reports can correlate high-level lines, PTX when
+available, executed SASS, and instruction metrics, but do not themselves
+provide a complete tensor dataflow graph. Map static operations and symbolic
+values to candidate hardware nodes and paths, then overlay measured execution
+counts and traffic without claiming that PTX predicts cache hit destinations.
+Validate this overlay on fast/slow kernels and a spill-heavy kernel before
+using it as prompt context or an MCTS prior.
+
 Candidate uses include resource validation, bottleneck explanations, strategy
 prompts, and optional priors. Predicted performance must not become a hard pruning
 rule unless it proves a launch or correctness impossibility. Compare graph-informed
