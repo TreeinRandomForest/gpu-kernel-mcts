@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from ..budget import GenerationBudget, MutationBudget
 from ..compiler_context import prompt_compiler_summary
+from ..triton_compiler_summary import prompt_triton_compiler_summary
 from ..dataflow_prompt import VIEWS as DATAFLOW_PROMPT_VIEWS, prompt_dataflow_view
 from ..domain import EvaluationResult, ProposalStatus, Strategy, WorkloadContract
 from ..generation import (
@@ -43,6 +44,7 @@ class MCTSConfig:
     max_infrastructure_retries: int = 1
     include_incoming_profile_delta: bool = False
     include_parent_profile: bool = True
+    profile_prompt_view: str = "full"
     include_compiler_summary: bool = False
     dataflow_prompt_view: str = "none"
     profile_metric_set: str = "lightweight_v1"
@@ -58,12 +60,33 @@ class MCTSConfig:
             raise ValueError("invalid progressive-widening configuration")
         if self.profile_metric_set not in PROFILE_METRIC_SET_IDS:
             raise ValueError("unknown profile metric set")
+        if self.profile_prompt_view not in {"full", "ncu_only"}:
+            raise ValueError("unknown profile prompt view")
         if self.dataflow_prompt_view not in DATAFLOW_PROMPT_VIEWS:
             raise ValueError("unknown dataflow prompt view")
         if not self.include_parent_profile and self.include_incoming_profile_delta:
             raise ValueError("incoming profile delta requires parent profile in prompts")
         if self.measurement_drift_interval < 0 or self.measurement_drift_threshold < 0:
             raise ValueError("measurement drift settings cannot be negative")
+
+
+def _profile_prompt_view(profile: Mapping[str, object] | None, view: str) -> Mapping[str, object] | None:
+    if profile is None or view == "full":
+        return profile
+    result = dict(profile)
+    summary = result.get("summary")
+    if isinstance(summary, Mapping):
+        result["summary"] = {key: value for key, value in summary.items()
+                             if not key.startswith("compiler_") and key != "registers_per_thread"}
+    metrics = result.get("metrics")
+    if isinstance(metrics, Mapping):
+        result["metrics"] = {key: value for key, value in metrics.items()
+                             if key != "launch__registers_per_thread"}
+    resolved = result.get("resolved_metrics")
+    if isinstance(resolved, (list, tuple)):
+        result["resolved_metrics"] = [metric for metric in resolved
+                                      if metric != "launch__registers_per_thread"]
+    return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -548,7 +571,10 @@ class MCTS:
             strategy=self.strategies[action.strategy_id],
             workload=self.workload,
             hardware=self.hardware,
-            profile=parent.profile if self.config.include_parent_profile else None,
+            profile=(
+                _profile_prompt_view(parent.profile, self.config.profile_prompt_view)
+                if self.config.include_parent_profile else None
+            ),
             current_benchmark=(
                 serialize_benchmark(parent.evaluation.benchmark)
                 if parent.program.backend == "triton_h100" else None
@@ -558,8 +584,10 @@ class MCTS:
                 if parent.program.backend == "triton_h100" else None
             ),
             compiler_summary=(
-                prompt_compiler_summary(parent.evaluation.metadata.get("compiler_context"))
-                if self.config.include_compiler_summary and parent.program.backend == "cuda_cpp"
+                (prompt_compiler_summary(parent.evaluation.metadata.get("compiler_context"))
+                 if parent.program.backend == "cuda_cpp"
+                 else prompt_triton_compiler_summary(parent.evaluation.metadata.get("compiler_context")))
+                if self.config.include_compiler_summary and parent.program.backend in {"cuda_cpp", "triton_h100"}
                 else None
             ),
             dataflow_view=dataflow_view,

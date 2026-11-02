@@ -943,6 +943,51 @@ def test_compiler_summary_prompt_ablation_keeps_parent_profile_independent() -> 
         assert result.profile_calls == 2  # root expansion and final best in both arms
 
 
+def test_triton_context_factors_mask_only_prompt_fields() -> None:
+    from kernel_mcts.triton_compiler_summary import ptx_instruction_sites
+
+    context = {
+        "schema_version": 1, "backend": "triton_h100", "architecture": "sm_90",
+        "resources": {"registers_per_thread": 255,
+                      "static_shared_memory_bytes": 4096, "spills": 256},
+        "ptx": {"status": "captured", "artifacts": [{"sha256": "a" * 64}],
+                "static_instruction_sites": ptx_instruction_sites("ld.local.u32 %r1, [%rd1];")},
+    }
+    evaluation = replace(valid_evaluation("0", "state:0", 0.0),
+                         program=KernelProgram("0", "triton_h100"),
+                         metadata={"compiler_context": context})
+    node = SearchNode("root", evaluation, profile={
+        "metric_set": "spill_v1", "summary": {
+            "local_load_sectors": 12, "compiler_spills": 256,
+            "compiler_static_shared_memory_bytes": 4096, "registers_per_thread": 255,
+        }, "metrics": {"launch__registers_per_thread": {"value": 255},
+                       "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": {"value": 12}},
+        "resolved_metrics": ["launch__registers_per_thread",
+                             "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum"],
+    })
+    strategy = Strategy("a", "increment", {"triton_h100": "increment"})
+    for profile_visible, compiler_visible in ((False, False), (True, False),
+                                               (False, True), (True, True)):
+        search = MCTS(
+            strategies=(strategy,), workload=WORKLOAD, generator=ToyGenerator(),
+            evaluator=ToyEvaluator(), prior_provider=UniformStrategyPrior(),
+            budget=GenerationBudget(1),
+            config=MCTSConfig(include_parent_profile=profile_visible,
+                              include_compiler_summary=compiler_visible,
+                              profile_prompt_view="ncu_only"),
+        )
+        request = search._proposal_request(node, StrategyEdge("a", 1.0))
+        assert (request.profile is not None) is profile_visible
+        assert (request.compiler_summary is not None) is compiler_visible
+        if profile_visible:
+            assert request.profile["summary"] == {"local_load_sectors": 12}
+            assert "launch__registers_per_thread" not in request.profile["metrics"]
+            assert "launch__registers_per_thread" not in request.profile["resolved_metrics"]
+        if compiler_visible:
+            assert request.compiler_summary["compiler_resources"]["spills"] == 256
+        assert node.profile["summary"]["compiler_spills"] == 256
+
+
 def test_mcts_rejects_unknown_profile_metric_set() -> None:
     with pytest.raises(ValueError, match="unknown profile metric set"):
         MCTSConfig(profile_metric_set="unknown")

@@ -46,6 +46,16 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   by source hash and benchmark and labeled as separate-worker evidence. The
   new H100 validation trace displays both selected sources in Artifact
   reconciliation → NCU Source summary.
+- [x] Run the paired Triton H100 compiler × NCU prompt factorial: four arms,
+  seeds 0/1/2, `B_gen=10`, one fixed GLM-5.3 Messages configuration.
+  The corrected 12-run audit found median best latencies of 201.808, 202.576,
+  203.152, and 228.784 µs for source, NCU, compiler, and combined arms.
+  See `docs/experiments/triton-h100-context-factorial/README.md`; the
+  earlier prompt-leak traces and gateway-interrupted runs are excluded.
+- [ ] Inspect the poor combined-context paths with a controlled source
+  crossover. Seed 1 D stayed at `BN=128`; seed 0 D reached `BN=256` but had
+  lower tensor-pipe activity than B despite the same tile, warp, and stage
+  settings. Compare exact codegen/profile differences before changing prompts.
 - [ ] Compare a bounded Source-summary prompt arm after reviewing line
   correlation semantics. The browser visualization does not inject these
   separate-worker reports into MCTS prompts. Build and publish a new worker

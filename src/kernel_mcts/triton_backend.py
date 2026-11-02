@@ -18,6 +18,7 @@ from .cuda_backend import _ncu_csv_output, _ncu_diagnostic, _parse_ncu_csv, _par
 from .domain import BenchmarkResult, KernelProgram, WorkloadContract
 from .evaluation import CandidateBenchmarkError, CandidateLaunchError, CandidateTimeoutError, EvaluationInfrastructureError
 from .profiling import normalize_ncu_version, resolve_profile_metric_set
+from .triton_compiler_summary import ptx_instruction_sites
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +133,7 @@ class TritonH100Backend:
         ptx = directory / "kernel.ptx"
         artifact = TritonArtifact(artifact_id, source, cubin, ptx if ptx.is_file() else None)
         ptx_artifacts = []
+        ptx_sites = None
         if artifact.ptx_path is not None:
             ptx_bytes = artifact.ptx_path.read_bytes()
             ptx_artifacts.append({
@@ -142,6 +144,8 @@ class TritonH100Backend:
                     "eligible" if len(ptx_bytes) <= MAX_PTX_ARTIFACT_BYTES else "too_large"
                 ),
             })
+            if len(ptx_bytes) <= MAX_PTX_ARTIFACT_BYTES:
+                ptx_sites = ptx_instruction_sites(ptx_bytes.decode("utf-8", errors="replace"))
         name = payload.get("kernel_name")
         if isinstance(name, str):
             self._kernel_names[artifact_id] = name
@@ -155,7 +159,7 @@ class TritonH100Backend:
                 "spills": payload.get("spills"),
             },
             "ptx": {"status": "captured" if ptx_artifacts else "unavailable",
-                    "artifacts": ptx_artifacts},
+                    "artifacts": ptx_artifacts, "static_instruction_sites": ptx_sites},
             "sass": {"status": "unavailable"},
         }
         self._compiler_resources[artifact_id] = dict(context["resources"])

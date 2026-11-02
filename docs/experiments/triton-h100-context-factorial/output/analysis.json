@@ -1,0 +1,493 @@
+{
+  "arms": {
+    "A": {
+      "best_latency_median_us": 201.80799812078476,
+      "total_generations": 30,
+      "valid_generations": 29
+    },
+    "B": {
+      "best_latency_median_us": 202.57599651813507,
+      "total_generations": 30,
+      "valid_generations": 27
+    },
+    "C": {
+      "best_latency_median_us": 203.15200090408325,
+      "total_generations": 30,
+      "valid_generations": 27
+    },
+    "D": {
+      "best_latency_median_us": 228.7839949131012,
+      "total_generations": 30,
+      "valid_generations": 27
+    }
+  },
+  "excluded_exploratory_traces": [
+    "factorial-b10-*.sqlite",
+    "factorial-retry-b10-*.sqlite"
+  ],
+  "runs": [
+    {
+      "arm": "A",
+      "best_compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 196608
+      },
+      "best_median_us": 201.85600221157074,
+      "best_profile_summary": {
+        "dram_bytes_read": 186700288.0,
+        "dram_bytes_written": 28753920.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.35
+      },
+      "best_source_hash": "64e010fa8c9f899daee1f60247cbdc76256cb9654e3645d5464d7ae09f9b2428",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 0,
+      "invalid_reasons": {},
+      "max_llm_latency_seconds": 11.290223988005891,
+      "profile_calls": 5,
+      "root_median_us": 818.2559907436371,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "a3a4b1b5-c519-40f4-8c69-2431f0ed33c1",
+      "seed": 0,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_tile_shape": 1,
+        "change_warp_count": 5,
+        "improve_b_layout_access": 4
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s0-A.sqlite",
+      "valid_generations": 10,
+      "worker_code_overlay_sha256": "e01e1edf0139fbf14db18513fc481fae81d72ca2aa35204f803eb11b599b6b83",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "B",
+      "best_compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "best_median_us": 202.92799919843674,
+      "best_profile_summary": {
+        "dram_bytes_read": 186686208.0,
+        "dram_bytes_written": 28661248.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.62
+      },
+      "best_source_hash": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 2,
+      "invalid_reasons": {
+        "COMPILE_FAILURE": 2
+      },
+      "max_llm_latency_seconds": 16.462953172973357,
+      "profile_calls": 5,
+      "root_median_us": 817.9680109024048,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "2bc83fc9-cbfb-429c-86fb-cc95eec074af",
+      "seed": 0,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_warp_count": 3,
+        "improve_b_layout_access": 7
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s0-B.sqlite",
+      "valid_generations": 8,
+      "worker_code_overlay_sha256": "e01e1edf0139fbf14db18513fc481fae81d72ca2aa35204f803eb11b599b6b83",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "C",
+      "best_compiler_resources": {
+        "registers_per_thread": 214,
+        "spills": 0,
+        "static_shared_memory_bytes": 196608
+      },
+      "best_median_us": 203.16800475120544,
+      "best_profile_summary": {
+        "dram_bytes_read": 186664704.0,
+        "dram_bytes_written": 28662016.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.29
+      },
+      "best_source_hash": "6d86a93f31691328ffb25636b2980d538de414549a7091b93dadbdd48028ac9d",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 3,
+      "invalid_reasons": {
+        "COMPILE_FAILURE": 2,
+        "CORRECTNESS_FAILURE": 1
+      },
+      "max_llm_latency_seconds": 16.473860629019327,
+      "profile_calls": 5,
+      "root_median_us": 816.1439895629883,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "b0bb6dd9-75bb-469c-ae7f-c0aa5e60f1e5",
+      "seed": 0,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_warp_count": 2,
+        "improve_b_layout_access": 8
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s0-C.sqlite",
+      "valid_generations": 7,
+      "worker_code_overlay_sha256": "e01e1edf0139fbf14db18513fc481fae81d72ca2aa35204f803eb11b599b6b83",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "D",
+      "best_compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "best_median_us": 228.7839949131012,
+      "best_profile_summary": {
+        "dram_bytes_read": 186684160.0,
+        "dram_bytes_written": 28730112.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 75.26
+      },
+      "best_source_hash": "270eb1e009823e43b5cea9198c9499592256b07264d774c955585154afe51279",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 0,
+      "invalid_reasons": {},
+      "max_llm_latency_seconds": 18.739723508013412,
+      "profile_calls": 5,
+      "root_median_us": 819.0560042858124,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "7abba942-118a-45d1-94f2-781fc1d096fe",
+      "seed": 0,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_k_tile_pipeline": 2,
+        "change_warp_count": 4,
+        "improve_b_layout_access": 4
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s0-D.sqlite",
+      "valid_generations": 10,
+      "worker_code_overlay_sha256": "e01e1edf0139fbf14db18513fc481fae81d72ca2aa35204f803eb11b599b6b83",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "A",
+      "best_compiler_resources": {
+        "registers_per_thread": 215,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "best_median_us": 201.664000749588,
+      "best_profile_summary": {
+        "dram_bytes_read": 174099968.0,
+        "dram_bytes_written": 28772864.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.68
+      },
+      "best_source_hash": "70771f34fc12c0f4264cedc3075cc533c7cdcc866648b111df83a0c0622ea479",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 1,
+      "invalid_reasons": {
+        "COMPILE_FAILURE": 1
+      },
+      "max_llm_latency_seconds": 17.527958691003732,
+      "profile_calls": 5,
+      "root_median_us": 818.6559975147247,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "e374cb02-e2bb-44e8-ae21-bc6f83a61af7",
+      "seed": 1,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_k_tile_pipeline": 4,
+        "change_tile_shape": 2,
+        "improve_b_layout_access": 4
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s1-A.sqlite",
+      "valid_generations": 9,
+      "worker_code_overlay_sha256": "e01e1edf0139fbf14db18513fc481fae81d72ca2aa35204f803eb11b599b6b83",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "B",
+      "best_compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "best_median_us": 201.23200118541718,
+      "best_profile_summary": {
+        "dram_bytes_read": 186686208.0,
+        "dram_bytes_written": 28703488.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.5
+      },
+      "best_source_hash": "28ee092196a91ba0203c2692c733395a7c496b450c01898f75a854d05de18f3f",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 1,
+      "invalid_reasons": {
+        "COMPILE_FAILURE": 1
+      },
+      "max_llm_latency_seconds": 13.715800315025263,
+      "profile_calls": 5,
+      "root_median_us": 820.2399909496307,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "b699e589-9d4f-4dfc-85e7-0ec4b8aa9655",
+      "seed": 1,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_k_tile_pipeline": 7,
+        "change_tile_shape": 1,
+        "improve_b_layout_access": 2
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s1-B.sqlite",
+      "valid_generations": 9,
+      "worker_code_overlay_sha256": "aaa51544628b1305cde3496261af9b96453797cc355a3242f744f1d5fa0b113b",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "C",
+      "best_compiler_resources": {
+        "registers_per_thread": 215,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "best_median_us": 200.22400468587875,
+      "best_profile_summary": {
+        "dram_bytes_read": 174101248.0,
+        "dram_bytes_written": 28661504.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.47
+      },
+      "best_source_hash": "84a87103fa19302a3ec1e8cfb3ca89e9137348ec0016ca8c036d0daadae36097",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 0,
+      "invalid_reasons": {},
+      "max_llm_latency_seconds": 17.935790693038143,
+      "profile_calls": 5,
+      "root_median_us": 821.2479948997498,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "aa0a6286-70b3-4b43-b76e-47e5605fa8b8",
+      "seed": 1,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_k_tile_pipeline": 6,
+        "change_tile_shape": 2,
+        "improve_b_layout_access": 2
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s1-C.sqlite",
+      "valid_generations": 10,
+      "worker_code_overlay_sha256": "aaa51544628b1305cde3496261af9b96453797cc355a3242f744f1d5fa0b113b",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "D",
+      "best_compiler_resources": {
+        "registers_per_thread": 122,
+        "spills": 0,
+        "static_shared_memory_bytes": 131072
+      },
+      "best_median_us": 234.80000346899033,
+      "best_profile_summary": {
+        "dram_bytes_read": 208577024.0,
+        "dram_bytes_written": 30732800.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 82.76
+      },
+      "best_source_hash": "2af2a58cdd5b5564a5515a9156a622e5cc32d6acfa4f677733039bfb63b7f40b",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 3,
+      "invalid_reasons": {
+        "COMPILE_FAILURE": 3
+      },
+      "max_llm_latency_seconds": 17.80299214902334,
+      "profile_calls": 5,
+      "root_median_us": 823.2159912586212,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "c7de37b1-ea21-4c71-8ca3-e3848f821a44",
+      "seed": 1,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_k_tile_pipeline": 5,
+        "change_tile_shape": 1,
+        "improve_b_layout_access": 4
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s1-D.sqlite",
+      "valid_generations": 7,
+      "worker_code_overlay_sha256": "51153abbf50455c00c09ed37110f734e46381f8dae1187dd8cc301574bfab253",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "A",
+      "best_compiler_resources": {
+        "registers_per_thread": 215,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "best_median_us": 201.80799812078476,
+      "best_profile_summary": {
+        "dram_bytes_read": 174075904.0,
+        "dram_bytes_written": 28717568.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.72
+      },
+      "best_source_hash": "b7db82f47fbb55b5e643c8555a833836dd8ed382c0480f27c4189257b55b820e",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 0,
+      "invalid_reasons": {},
+      "max_llm_latency_seconds": 10.373122863005847,
+      "profile_calls": 5,
+      "root_median_us": 820.6720054149628,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "a0383d24-5af0-48dc-a85b-b63b8495b61b",
+      "seed": 2,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_tile_shape": 6,
+        "change_warp_count": 4
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s2-A.sqlite",
+      "valid_generations": 10,
+      "worker_code_overlay_sha256": "51153abbf50455c00c09ed37110f734e46381f8dae1187dd8cc301574bfab253",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "B",
+      "best_compiler_resources": {
+        "registers_per_thread": 215,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "best_median_us": 202.57599651813507,
+      "best_profile_summary": {
+        "dram_bytes_read": 174100224.0,
+        "dram_bytes_written": 28699392.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.75
+      },
+      "best_source_hash": "d7e6dd77a1036df4392c080955535595216c8c1d54d229877d4024a1f0ccdd09",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 0,
+      "invalid_reasons": {},
+      "max_llm_latency_seconds": 9.031385106034577,
+      "profile_calls": 5,
+      "root_median_us": 819.2639946937561,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "da5f95dd-4519-4fb3-b494-baaee0da4a10",
+      "seed": 2,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_tile_shape": 6,
+        "change_warp_count": 4
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s2-B.sqlite",
+      "valid_generations": 10,
+      "worker_code_overlay_sha256": "51153abbf50455c00c09ed37110f734e46381f8dae1187dd8cc301574bfab253",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "C",
+      "best_compiler_resources": {
+        "registers_per_thread": 215,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "best_median_us": 203.15200090408325,
+      "best_profile_summary": {
+        "dram_bytes_read": 174110208.0,
+        "dram_bytes_written": 28520192.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.79
+      },
+      "best_source_hash": "c4a822d04c963035f94689d56120a6af8b8051480cdf5892d76bc60618d15ba7",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 0,
+      "invalid_reasons": {},
+      "max_llm_latency_seconds": 9.553448596037924,
+      "profile_calls": 5,
+      "root_median_us": 821.615993976593,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "8405f7a1-dfc6-4de6-8dd8-d40fb0a9773d",
+      "seed": 2,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_k_tile_pipeline": 2,
+        "change_tile_shape": 5,
+        "change_warp_count": 3
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s2-C.sqlite",
+      "valid_generations": 10,
+      "worker_code_overlay_sha256": "51153abbf50455c00c09ed37110f734e46381f8dae1187dd8cc301574bfab253",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    },
+    {
+      "arm": "D",
+      "best_compiler_resources": {
+        "registers_per_thread": 215,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "best_median_us": 202.59200036525726,
+      "best_profile_summary": {
+        "dram_bytes_read": 174082816.0,
+        "dram_bytes_written": 28669696.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "tensor_pipe_utilization_pct": 91.46
+      },
+      "best_source_hash": "40dd12f12538a2e433d3d64ae64360da9c3400e08cd559205debecb49a2a58c6",
+      "gateway_errors": {},
+      "generations": 10,
+      "invalid_generations": 0,
+      "invalid_reasons": {},
+      "max_llm_latency_seconds": 13.087494640029036,
+      "profile_calls": 5,
+      "root_median_us": 822.8960037231445,
+      "root_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+      "run_id": "c1f0caa6-0897-4e15-ace1-4f7a978a8935",
+      "seed": 2,
+      "stored_profiles": 5,
+      "strategies": {
+        "change_tile_shape": 6,
+        "change_warp_count": 4
+      },
+      "strategy_catalog_sha256": "2c54ee8dfc299eddd9c7c3efab193f2066738f0cbdac8a0768cd327b2a2bd5c9",
+      "trace": "corrected-b10-s2-D.sqlite",
+      "valid_generations": 10,
+      "worker_code_overlay_sha256": "51153abbf50455c00c09ed37110f734e46381f8dae1187dd8cc301574bfab253",
+      "worker_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469"
+    }
+  ],
+  "schema_version": 1
+}

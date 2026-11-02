@@ -232,6 +232,8 @@ __marimo__/
 /log-nebius-*
 *.ncu-rep
 docs/experiments/triton-h100-source-report/*.csv
+/docs/experiments/triton-h100-context-factorial/output/*
+!/docs/experiments/triton-h100-context-factorial/output/analysis.json
 *.swp
 *-tuned-*.cu
 /ablation-results/

@@ -326,9 +326,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="hide the parent NCU profile from generation prompts while still collecting it",
     )
     parser.add_argument(
+        "--profile-prompt-view", choices=("full", "ncu_only"), default="full",
+        help="show the full parent profile or mask compiler fields from its prompt summary",
+    )
+    parser.add_argument(
         "--include-compiler-summary",
         action="store_true",
-        help="include bounded parent ptxas resources and static SASS site counts in CUDA prompts",
+        help="include bounded CUDA or Triton parent compiler resources and static instruction counts",
     )
     parser.add_argument(
         "--dataflow-prompt-view",
@@ -376,15 +380,15 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--c-puct must be positive")
     if arguments.omit_parent_profile and arguments.include_incoming_profile_delta:
         parser.error("--omit-parent-profile conflicts with --include-incoming-profile-delta")
-    if arguments.include_compiler_summary and (arguments.generator not in {"openai", "messages"} or arguments.backend != "cuda_cpp"):
-        parser.error("--include-compiler-summary requires a CUDA LLM generator")
+    if arguments.include_compiler_summary and (arguments.generator not in {"openai", "messages"} or arguments.backend not in {"cuda_cpp", "triton_h100"}):
+        parser.error("--include-compiler-summary requires a CUDA or Triton LLM generator")
     if arguments.dataflow_prompt_view != "none" and (arguments.generator not in {"openai", "messages"} or arguments.backend != "cuda_cpp"):
         parser.error("--dataflow-prompt-view requires a CUDA LLM generator")
     if arguments.backend == "triton_h100":
         if arguments.algorithm != "mcts" or arguments.generator not in {"openai", "messages", "smoke"}:
             parser.error("Triton H100 currently requires MCTS with an LLM or smoke generator")
-        if arguments.include_compiler_summary or arguments.dataflow_prompt_view != "none":
-            parser.error("CUDA compiler/dataflow prompt views are unsupported for Triton H100")
+        if arguments.dataflow_prompt_view != "none":
+            parser.error("CUDA dataflow prompt views are unsupported for Triton H100")
         if arguments.autotune:
             parser.error("CUDA autotuning is unsupported for Triton H100")
     if arguments.best_output is not None and arguments.best_output.exists():
@@ -723,7 +727,8 @@ def _sequential_components(
     if arguments.sequential_strategy_menu and arguments.strategies is None:
         parser.error("--sequential-strategy-menu requires --strategies")
     if (
-        arguments.omit_parent_profile or arguments.include_incoming_profile_delta
+        arguments.omit_parent_profile or arguments.profile_prompt_view != "full"
+        or arguments.include_incoming_profile_delta
         or arguments.include_compiler_summary or arguments.dataflow_prompt_view != "none"
     ):
         parser.error("use --sequential-* context flags with sequential search")
@@ -798,6 +803,7 @@ def _search_components(
                     arguments.include_incoming_profile_delta
                 ),
                 include_parent_profile=not arguments.omit_parent_profile,
+                profile_prompt_view=arguments.profile_prompt_view,
                 include_compiler_summary=arguments.include_compiler_summary,
                 dataflow_prompt_view=arguments.dataflow_prompt_view,
                 profile_metric_set=arguments.profile_metric_set,
@@ -902,6 +908,7 @@ def _mcts_config(
         max_infrastructure_retries=arguments.max_infrastructure_retries,
         include_incoming_profile_delta=arguments.include_incoming_profile_delta,
         include_parent_profile=not arguments.omit_parent_profile,
+        profile_prompt_view=arguments.profile_prompt_view,
         include_compiler_summary=arguments.include_compiler_summary,
         dataflow_prompt_view=arguments.dataflow_prompt_view,
         profile_metric_set=arguments.profile_metric_set,

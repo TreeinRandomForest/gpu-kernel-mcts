@@ -201,6 +201,20 @@ benchmark, with provenance visible in Artifact reconciliation. The
 [validation report](docs/experiments/triton-h100-spill-v1-validation/README.md)
 records the counters and image-overlay caveat.
 
+The corrected Triton H100 prompt factorial then ran GLM-5.3 with Messages
+thinking disabled at `B_gen=10`, seeds 0/1/2, and four views: source only,
+NCU `spill_v1`, bounded Triton compiler summary, and both. All arms collected
+the same profile; only prompt visibility changed. Median best verified
+latencies across seeds were 201.808, 202.576, 203.152, and 228.784 µs,
+respectively, with 29/30, 27/30, 27/30, and 27/30 valid generation calls.
+The combined arm was much slower in two seeds and similar in the third.
+Its poor best kernels had lower tensor-pipe activity without spills; one
+kept `BN=128` while the other used the same tile/warp/stage settings as a
+faster arm but different loop and mask source. Three short sampled trees do
+not establish a general context ranking. The [factorial report and audited
+results](docs/experiments/triton-h100-context-factorial/README.md) separate
+corrected traces from the earlier prompt-leak and gateway-interrupted traces.
+
 ## Current interpretation and next discriminating tests
 
 1. **Search representation is consequential.** Typed CuTe reached near cuBLAS on this GEMM, but its validated transformation space was expensive to build and remains specialized. CUDA generation is open-ended and improved far beyond the scalar root; the best logged CUDA C++ search result is now 647.008 µs, still much slower than the separately measured vendor reference. [Direction](docs/cuda-first-next-direction.md)

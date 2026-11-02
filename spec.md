@@ -3530,8 +3530,24 @@ column-major B access. The controller, MCTS selection, progressive widening,
 generation/repair budget, valid-node rule, reward, and SQLite trace semantics
 are unchanged. CUDA C++ compiler/dataflow prompt views and CUDA autotuning
 do not apply to this backend. Compiler artifacts are stored on the worker;
-bounded Triton compiler summaries and dataflow views are later, separate
-experiments.
+bounded Triton compiler summaries and dataflow views are separate experiments.
+The first Triton compiler-summary experiment uses compiler-reported registers
+per thread, static shared-memory bytes, and Triton `n_spills`, plus bounded
+static PTX instruction-site counts for tensor, memory, barrier, and control
+families. PTX counts are not execution counts or a dataflow graph; SASS and
+NCU Source lines are excluded from this first view. The prompt records a
+versioned summary and PTX artifact hash. A 2-by-2 prompt ablation crosses
+NCU profile visibility with this compiler view while retaining identical
+`spill_v1` profile collection and complete SQLite records in every arm. In
+the NCU-only prompt view, compiler-derived fields, including NCU's
+`launch__registers_per_thread`, are masked from the profile summary, raw
+metrics, and resolved-metric list to keep the context factors distinct. The root, image, workload,
+strategy catalog, model settings, and `B_gen` stay fixed across arms.
+The initial comparison uses GLM-5.3 with Messages thinking disabled, three
+paired seeds (0, 1, 2), and `B_gen=10` per arm. Analyze best verified latency,
+valid-candidate rate, and strategy/edit patterns. Any Source-line, SASS,
+dataflow, or hardware-graph addition is a later arm, not part of this first
+2-by-2 comparison.
 
 Persist the worker's root and vendor calibration in the run's SQLite trace
 before generation, including correctness and timing evidence. The Triton
