@@ -1,0 +1,105 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-03T18:37:04.049181+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-48e7382e-7d73-2647-ae70-91eab4dce465",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "dddda3944f3a29ff99b8a2100226807c30462caceed85ff5ff312c1c9290c0fd",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00h310smx21zpmph9",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00h310smx21zpmph9"
+  },
+  "git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+  "harness_sha256": "d486fb038117af6b299d5f919af194cf3ce57c3a6ad8ef73dce5faf19733eb96",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "profiles": {
+    "cluster_pipeline_multicast": {
+      "arm": "cluster_pipeline_multicast",
+      "correctness": {
+        "exact": true,
+        "maximum_error": 0.0
+      },
+      "cubin_sha256": "f4bb0234acf612ad3f08cd54f9d0b244baf5eb6879a03fcfec112f1ce12c623c",
+      "ncu_report_sha256": "5bd358ccbbbecca4009d52ef0149152f456dacf6c9ec2a24387d7b83e86aa0a6",
+      "raw_csv_sha256": "8e148f33a2788e69d80d6ef829ab619bf8a5dde19b6771ae8d65886fe476e696",
+      "registers_per_thread": 154,
+      "sass_csv_sha256": "8fda57f92153c2757e0894822f424100a7d86a9a759eb0e4543bd320566e2b16",
+      "shared_memory_bytes": 98312,
+      "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd",
+      "spills": 0,
+      "status": "ok",
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    },
+    "cluster_pipeline_ordinary": {
+      "arm": "cluster_pipeline_ordinary",
+      "correctness": {
+        "exact": true,
+        "maximum_error": 0.0
+      },
+      "cubin_sha256": "7e0a4197860009d9b80e7a37de4c296ae4c1b8d7816a9159ccf8e1222bb5b6eb",
+      "ncu_report_sha256": "e17c69bf51b46485c4bf8c403ad994d7c23e3d150cec3e36b0f96d95f6cf8087",
+      "raw_csv_sha256": "f12e9908cfe7160c6031859c6ef127c274d544723bb059593962010debb922f7",
+      "registers_per_thread": 154,
+      "sass_csv_sha256": "8342f93bad9e57e2c5cdf3364578ff652b7dcd27932f22acaa62c3dafbe0c220",
+      "shared_memory_bytes": 98312,
+      "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd",
+      "spills": 0,
+      "status": "ok",
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    },
+    "single_pipeline": {
+      "arm": "single_pipeline",
+      "correctness": {
+        "exact": true,
+        "maximum_error": 0.0
+      },
+      "cubin_sha256": "63111c8d23f5ea3910ddfb2d47d0f90133f69abc17cc6d44d23ad684b3f1a01d",
+      "ncu_report_sha256": "73999f3e2e09a38c7e72bbabb9ad266fc5b9a99523d310dcb7b97be59533ce26",
+      "raw_csv_sha256": "1faa0e4ec0c1444f6d122c90460088a5e326406060a05e30085088b85983aab0",
+      "registers_per_thread": 154,
+      "sass_csv_sha256": "f0db7d255d49aace55678645df8985ee7d880c6270397d0580c581d16e389b6a",
+      "shared_memory_bytes": 98312,
+      "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd",
+      "spills": 0,
+      "status": "ok",
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    }
+  },
+  "run_id": "ef36894f-74f7-41d7-b644-e4897ab2de9c",
+  "schema_version": 1,
+  "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd"
+}

@@ -1,0 +1,301 @@
+{
+  "profiles": {
+    "cluster_pipeline_multicast": {
+      "cubin_sha256": "f4bb0234acf612ad3f08cd54f9d0b244baf5eb6879a03fcfec112f1ce12c623c",
+      "metrics": {
+        "dram__bytes_read.sum": {
+          "unit": "Mbyte",
+          "value": 174.085632
+        },
+        "dram__bytes_write.sum": {
+          "unit": "Mbyte",
+          "value": 28.648192
+        },
+        "gpu__time_duration.sum": {
+          "unit": "us",
+          "value": 345.632
+        },
+        "launch__block_size": {
+          "unit": "",
+          "value": 256.0
+        },
+        "launch__grid_size": {
+          "unit": "",
+          "value": 512.0
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 154.0
+        },
+        "launch__shared_mem_per_block": {
+          "unit": "Kbyte/block",
+          "value": 99.336
+        },
+        "launch__waves_per_multiprocessor": {
+          "unit": "",
+          "value": 3.88
+        },
+        "lts__t_sectors_srcunit_tex_op_read.sum": {
+          "unit": "sector",
+          "value": 32124080.0
+        },
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+          "unit": "sector",
+          "value": 8661800.0
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 51.991741
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 22216704.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_barrier": {
+          "unit": "warp",
+          "value": 4119.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+          "unit": "warp",
+          "value": 20843.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_wait": {
+          "unit": "warp",
+          "value": 1641.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+          "unit": "warp",
+          "value": 58.0
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 1056768,
+          "HGMMA": 1048576,
+          "UTMALDG": 262144,
+          "UTMALDG.2D.MULTICAST": 262144,
+          "UTMASTG": 4096,
+          "WARPGROUP": 528384
+        },
+        "stall_samples_at_sites": {
+          "BAR": 185,
+          "HGMMA": 718,
+          "UTMALDG": 120,
+          "UTMALDG.2D.MULTICAST": 409,
+          "UTMASTG": 4,
+          "WARPGROUP": 265
+        },
+        "static_sites": {
+          "BAR": 6,
+          "HGMMA": 4,
+          "UTMALDG": 1,
+          "UTMALDG.2D.MULTICAST": 1,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "warpgroup_wait_executions": 266240,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 251
+      }
+    },
+    "cluster_pipeline_ordinary": {
+      "cubin_sha256": "7e0a4197860009d9b80e7a37de4c296ae4c1b8d7816a9159ccf8e1222bb5b6eb",
+      "metrics": {
+        "dram__bytes_read.sum": {
+          "unit": "Mbyte",
+          "value": 174.076416
+        },
+        "dram__bytes_write.sum": {
+          "unit": "Mbyte",
+          "value": 28.673536
+        },
+        "gpu__time_duration.sum": {
+          "unit": "us",
+          "value": 477.664
+        },
+        "launch__block_size": {
+          "unit": "",
+          "value": 256.0
+        },
+        "launch__grid_size": {
+          "unit": "",
+          "value": 512.0
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 154.0
+        },
+        "launch__shared_mem_per_block": {
+          "unit": "Kbyte/block",
+          "value": 99.336
+        },
+        "launch__waves_per_multiprocessor": {
+          "unit": "",
+          "value": 3.88
+        },
+        "lts__t_sectors_srcunit_tex_op_read.sum": {
+          "unit": "sector",
+          "value": 25190808.0
+        },
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+          "unit": "sector",
+          "value": 8598112.0
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 38.676246
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 21889024.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_barrier": {
+          "unit": "warp",
+          "value": 17299.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+          "unit": "warp",
+          "value": 19512.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_wait": {
+          "unit": "warp",
+          "value": 1096.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+          "unit": "warp",
+          "value": 169.0
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 1056768,
+          "HGMMA": 1048576,
+          "UTMALDG": 524288,
+          "UTMALDG.2D.MULTICAST": 0,
+          "UTMASTG": 4096,
+          "WARPGROUP": 2097152
+        },
+        "stall_samples_at_sites": {
+          "BAR": 187,
+          "HGMMA": 544,
+          "UTMALDG": 432,
+          "UTMALDG.2D.MULTICAST": 0,
+          "UTMASTG": 12,
+          "WARPGROUP": 15063
+        },
+        "static_sites": {
+          "BAR": 6,
+          "HGMMA": 4,
+          "UTMALDG": 2,
+          "UTMALDG.2D.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 8
+        },
+        "warpgroup_wait_executions": 1048576,
+        "warpgroup_wait_sites": 4,
+        "warpgroup_wait_stall_samples": 14946
+      }
+    },
+    "single_pipeline": {
+      "cubin_sha256": "63111c8d23f5ea3910ddfb2d47d0f90133f69abc17cc6d44d23ad684b3f1a01d",
+      "metrics": {
+        "dram__bytes_read.sum": {
+          "unit": "Mbyte",
+          "value": 174.097664
+        },
+        "dram__bytes_write.sum": {
+          "unit": "Mbyte",
+          "value": 28.662016
+        },
+        "gpu__time_duration.sum": {
+          "unit": "us",
+          "value": 308.224
+        },
+        "launch__block_size": {
+          "unit": "",
+          "value": 256.0
+        },
+        "launch__grid_size": {
+          "unit": "",
+          "value": 512.0
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 154.0
+        },
+        "launch__shared_mem_per_block": {
+          "unit": "Kbyte/block",
+          "value": 99.336
+        },
+        "launch__waves_per_multiprocessor": {
+          "unit": "",
+          "value": 3.88
+        },
+        "lts__t_sectors_srcunit_tex_op_read.sum": {
+          "unit": "sector",
+          "value": 26828252.0
+        },
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+          "unit": "sector",
+          "value": 8676196.0
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 57.270568
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 20271104.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_barrier": {
+          "unit": "warp",
+          "value": 2394.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+          "unit": "warp",
+          "value": 20733.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_wait": {
+          "unit": "warp",
+          "value": 1297.0
+        },
+        "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+          "unit": "warp",
+          "value": 57.0
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 1060864,
+          "HGMMA": 1048576,
+          "UTMALDG": 524288,
+          "UTMALDG.2D.MULTICAST": 0,
+          "UTMASTG": 4096,
+          "WARPGROUP": 528384
+        },
+        "stall_samples_at_sites": {
+          "BAR": 861,
+          "HGMMA": 672,
+          "UTMALDG": 26,
+          "UTMALDG.2D.MULTICAST": 0,
+          "UTMASTG": 6,
+          "WARPGROUP": 313
+        },
+        "static_sites": {
+          "BAR": 7,
+          "HGMMA": 4,
+          "UTMALDG": 2,
+          "UTMALDG.2D.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "warpgroup_wait_executions": 266240,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 299
+      }
+    }
+  },
+  "run_id": "ef36894f-74f7-41d7-b644-e4897ab2de9c",
+  "schema_version": 1,
+  "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd"
+}

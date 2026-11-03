@@ -52,10 +52,110 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   203.152, and 228.784 µs for source, NCU, compiler, and combined arms.
   See `docs/experiments/triton-h100-context-factorial/README.md`; the
   earlier prompt-leak traces and gateway-interrupted runs are excluded.
-- [ ] Inspect the poor combined-context paths with a controlled source
-  crossover. Seed 1 D stayed at `BN=128`; seed 0 D reached `BN=256` but had
-  lower tensor-pipe activity than B despite the same tile, warp, and stage
-  settings. Compare exact codegen/profile differences before changing prompts.
+- [x] Inspect corrected seed-0 fast B/slow D with a controlled source
+  crossover. On one H100, changing only B's K-loop form raised the paired
+  median by 28.896 µs and tracked D's lower tensor-pipe activity; mask
+  hoisting alone changed the paired median by −0.256 µs. The crossover
+  identifies a source/codegen difference, not why the prompt selected it.
+  Seed-1 D's `BN=128` path remains a separate search-path question. See
+  `docs/experiments/triton-h100-bd-crossover/README.md`.
+- [x] Profile fast B and cuBLAS on one H100 with matched `diagnostic_v2`
+  counters and three paired timing rounds. The median paired gap was
+  24.176 µs; cuBLAS launched one 132-block, two-CTA-cluster wave and recorded
+  fewer total instructions and DRAM read bytes than B. The separate harnesses
+  use different random inputs, so this does not establish the causal
+  contribution of each counter. See
+  `docs/experiments/triton-h100-cublas-profile/README.md`.
+- [x] Compare fast B and the selected cuBLAS kernel's dynamically executed
+  SASS on identical inputs in one Python timing harness. The same cuBLAS
+  `nvjet_tst` kernel appeared. B uses `LDGSTS` async copies and many integer
+  predicate/address operations; cuBLAS uses TMA-family load/store operations
+  in a two-CTA cluster. The first two paired gaps were about 18.9 µs; cuBLAS
+  slowed in round 3. See
+  `docs/experiments/triton-h100-cublas-sass/README.md`.
+- [x] Test a standalone descriptor-based TMA-load replacement in pinned Triton
+  3.3.1 with fast B's tile shape, grouped schedule, dot, and output store held
+  fixed. On identical tensors, all outputs matched cuBLAS exactly; executed
+  SASS changed from `LDGSTS` to `UTMALDG`. The median paired improvement was
+  2.352 µs across three rounds, with 213 → 154 registers/thread and no
+  meaningful DRAM-read change. See
+  `docs/experiments/triton-h100-tma-load/README.md`.
+- [x] Reconcile the TMA/cuBLAS DRAM gap at the cache hierarchy and test CTA
+  order. Earlier full NCU exports showed similar L2 TEX read request totals
+  but fewer cuBLAS lookup misses. On one matched-input H100, changing only
+  `GROUP_M=8` to 1 reduced TMA DRAM reads from 186.686 to 170.973 MB; cuBLAS
+  read 150.821 MB. Cold/warm cache-control arms agreed on the traffic ranking.
+  See `docs/experiments/triton-h100-dram-reuse/README.md`.
+- [x] Test whether persistence alone reduces DRAM traffic. A 132-CTA
+  persistent TMA variant read 186.662 MB versus 186.659 MB for 512 CTAs at
+  fixed group 8; group-1 and group-32 traffic also retained their ordering.
+  See `docs/experiments/triton-h100-dram-persistent/README.md`.
+- [x] Test the same-area 256×128 TMA output tile against 128×256 with matched
+  inputs and CTA-order controls. At group 8, DRAM reads fell from 186.668 to
+  152.702 MB, within 1.858 MB of cuBLAS and closing 94.8% of the original
+  gap. The 256×128 variant was nevertheless 12.976 µs slower in median paired
+  timing; matching DRAM bytes does not close the latency gap. Aggregate L2
+  counters cannot assign saved bytes specifically to A or B. See
+  `docs/experiments/triton-h100-dram-tile/README.md`.
+- [x] Add a semantic Triton `improve_cross_cta_reuse` MCTS action that reasons
+  over tile aspect, CTA mapping, input strides, resources, and measured traffic
+  when available. Add opt-in `reuse_v1` on H100/NCU 2025.1 or 2025.2 as a
+  superset of `spill_v1` with L2 TEX read request/hit/miss sectors and L2 read
+  hit rate. Keep `lightweight_v1` as the default and CUDA-event latency as
+  reward. See `docs/experiments/triton-h100-dram-tile/README.md`.
+- [x] Validate `reuse_v1` end-to-end on pinned H100 and inspect the recorded
+  MCTS prompt. Run a matched two-seed, `B_gen=10` pilot of four versus five
+  actions. Best latencies were 198.224/199.088 µs for seed 0 and
+  201.280/200.448 µs for seed 1 (old/new); the reuse action was selected
+  only once. See `docs/experiments/triton-h100-reuse-strategy/README.md`.
+- [x] Profile the matched `128×256` versus `256×128` group-8 TMA tiles with
+  full NCU Source/SASS. The latter saved 33.836 MB DRAM reads but was
+  14.944 µs slower in median paired timing, with 20 more registers/thread
+  and 4.260M more executed warp instructions. See
+  `docs/experiments/triton-h100-latency-tile/README.md`.
+- [ ] Evaluate the reuse action at a larger budget or with an action-focused
+  diagnostic before judging its value: the first matched pilot selected it
+  only once across two five-action runs. Audit tile mapping and traffic of
+  any valid candidate alongside measured latency.
+- [x] Audit the four best MCTS sources and retained PTX, then test two isolated
+  TMA source simplifications. All four MCTS winners use pointer loads, not
+  descriptor TMA. Unmasked C store and constant grouped-CTA arithmetic made
+  only small, inconsistent latency changes; combining them was slower despite
+  fewer executed instructions. See
+  `docs/experiments/triton-h100-tma-address/README.md`.
+- [x] Check pinned Triton 3.3.1 two-CTA TMA feasibility before attributing
+  cluster reuse: the single-CTA control passed, while two descriptor-load
+  cluster configurations failed LLIR lowering and emitted no PTX. A larger
+  descriptor tile failed earlier in descriptor validation. No cluster latency
+  claim follows. See `docs/experiments/triton-h100-cluster-tma/README.md`.
+- [x] Run an explicit CuTe two-CTA B-multicast comparison with a matched
+  `(128,256)` CTA tile, same-worker correctness and paired timing against a
+  single-CTA control. Recovered SASS confirms `UTMALDG.3D.MULTICAST`; three
+  paired rounds saved 6.896 µs (3.54%) median. See
+  `docs/experiments/triton-h100-cluster-cute/README.md`.
+- [x] Build an explicit pure-Triton Gluon two-CTA source that assigns adjacent
+  M tiles and B multicast ownership. Triton 3.9.0 generated TMA multicast in
+  PTX and SASS and passed correctness. In three same-worker paired rounds, the
+  simple clustered kernel was 36.752 µs (7.40%) slower than its matched
+  single-CTA Gluon control. See
+  `docs/experiments/triton-h100-cluster-gluon/README.md`.
+- [x] Isolate cluster overhead from B multicast with a two-CTA ordinary-B-load
+  Gluon control and double-buffered mainloop. Three paired H100 rounds found
+  that multicast costs 22.992 µs in the serial cluster but saves 115.440 µs
+  in the double-buffered cluster; the latter remains 36.304 µs slower than
+  double-buffered one CTA. See
+  `docs/experiments/triton-h100-cluster-gluon-v2/README.md`.
+- [x] Profile the three double-buffered Gluon arms with matched NCU metrics.
+  The ordinary-B cluster has four executed warp-group waits per K step versus
+  one in the multicast cluster, 17,299 versus 4,119 barrier-stall samples,
+  and 38.68% versus 51.99% tensor-pipe activity; DRAM bytes are nearly
+  identical. See `docs/experiments/triton-h100-cluster-gluon-ncu/README.md`.
+- [ ] Make the ordinary-B clustered Gluon arm use the same one-wait WGMMA
+  schedule as the multicast arm without changing its B-load policy. Verify
+  exact correctness and paired H100 event timing to separate the compiler
+  schedule effect from multicast transfer.
+  Then carry the useful mechanism into a source derived from the optimized
+  Triton B kernel before attributing any cuBLAS-gap improvement.
 - [x] Start standalone H100 SXM characterization with a global-copy path
   sweep. The 11-case CUDA Graph timing set spans 4 KiB–256 MiB with repeated
   and rotating buffers; separate NCU passes record DRAM traffic and L2 hit
@@ -119,7 +219,7 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   topology gaps are closed, while shared-memory aliases, loops, and predication
   remain partial. The NCU L2 hit-rate field of 101.2% is invalid and flagged.
   See `docs/experiments/h100-resource-overlay/`.
-- [ ] Compare exact fast B/slow D PTX/NCU artifacts and add symbolic
+- [ ] Extend the exact fast B/slow D PTX/NCU crossover with symbolic
   byte/lifetime estimates where justified. Validate against held-out NCU
   counters and timings before using the overlay in prompts or priors. Extend
   the same schema to longer attention, other dtypes, and non-GEMM operations.
