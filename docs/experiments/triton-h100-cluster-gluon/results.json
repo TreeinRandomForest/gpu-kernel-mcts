@@ -1,0 +1,51 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-03T18:01:47.397800+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-48e7382e-7d73-2647-ae70-91eab4dce465",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "81ea52c774dba9c35376a47a1d2ffc2d9520265ae440ad0a6acc5d2498577f96",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00hxgnjjpdqpsp4zk",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00hxgnjjpdqpsp4zk"
+  },
+  "git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+  "harness_sha256": "e20e3f6262b70b69482092ff1231ff4aea90ec562f73870bb14b03ba3077a56a",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "paired_complete": true,
+  "remote_artifacts_sha256": "34dc8763daea34342580214d11af6ce764b36c7d4e59a1440b93864c0a5d4ef0",
+  "run_id": "e9286320-2acc-411b-8a6e-f37326f068b8",
+  "schema_version": 1,
+  "source_sha256": "a4f44e2841a3a865066c21ece7f50a56984371b6ec7d80336c315ea7101b1831"
+}

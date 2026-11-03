@@ -1,0 +1,4 @@
+FROM docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469
+
+# Keep this isolated from the repository's Triton 3.3.1 worker image.
+RUN python -m pip install --no-cache-dir --no-deps triton==3.9.0

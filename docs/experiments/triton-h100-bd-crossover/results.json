@@ -1,0 +1,2177 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-02T19:54:53.083336+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-58aa7574-d6cd-6d4d-eb42-1681ff899439",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "d57cf17f5e73800fbcab9cd594af53797e7f67befbf635d4c35b6dc3ae6becca",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00rj4g9w2189dc7n4",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.3.1"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00rj4g9w2189dc7n4"
+  },
+  "git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+  "image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+  "observations": [
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 212.44800090789795,
+        "mean_us": 200.3808006644249,
+        "median_us": 199.3279978632927,
+        "min_us": 197.63199985027313,
+        "per_shape_median_us": {},
+        "stddev_us": 3.0349367058996273,
+        "timings_us": [
+          212.44800090789795,
+          204.0960043668747,
+          205.08800446987152,
+          200.54399967193604,
+          198.7520009279251,
+          200.6720006465912,
+          203.3279985189438,
+          199.42399859428406,
+          199.16799664497375,
+          198.68800044059753,
+          198.2080042362213,
+          201.24800503253937,
+          200.06400346755981,
+          198.2399970293045,
+          197.91999459266663,
+          198.0160027742386,
+          202.14399695396423,
+          198.11199605464935,
+          203.23200523853302,
+          198.2080042362213,
+          203.2960057258606,
+          199.8399943113327,
+          199.42399859428406,
+          197.9839950799942,
+          197.63199985027313,
+          200.8640021085739,
+          198.7520009279251,
+          198.59200716018677,
+          198.2080042362213,
+          199.23199713230133
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "c1a7eb8456730039c7d9563b66cdf6dc90495f30427d0fea31f5a3e5e5843f91",
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r0-B_mask_only-284b9a5f-5be8-484e-903c-93ba67f5fea0",
+      "order": 0,
+      "profile": {
+        "artifact_id": "8022642f4ea5de365f7e76194c7479217f06ada1cbbbd07c9338d990f0ea3d11",
+        "metric_set": "spill_v1",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "byte",
+            "value": 186682880.0
+          },
+          "dram__bytes_write.sum": {
+            "unit": "byte",
+            "value": 28610048.0
+          },
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 28.76
+          },
+          "l1tex__data_bank_conflicts_pipe_lsu.sum": {
+            "unit": "",
+            "value": 1433.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 63.14
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 213.0
+          },
+          "lts__t_sector_hit_rate.pct": {
+            "unit": "%",
+            "value": 73.1
+          },
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 43.21
+          },
+          "sm__inst_executed_pipe_tensor.sum": {
+            "unit": "inst",
+            "value": 1048576.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 91.87
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 87.15
+          },
+          "sm__warps_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 12.51
+          },
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 1.7
+          },
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 1.25
+          },
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.2
+          },
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.32
+          },
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.04
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 39968768.0
+          },
+          "smsp__issue_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 27.34
+          },
+          "smsp__warps_eligible.avg.per_cycle_active": {
+            "unit": "warp",
+            "value": 0.36
+          }
+        },
+        "profiler": "ncu",
+        "resolved_metrics": [
+          "launch__registers_per_thread",
+          "sm__warps_active.avg.pct_of_peak_sustained_active",
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+          "l1tex__throughput.avg.pct_of_peak_sustained_active",
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+          "smsp__inst_executed.sum",
+          "dram__bytes_read.sum",
+          "dram__bytes_write.sum",
+          "lts__t_sector_hit_rate.pct",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum",
+          "smsp__warps_eligible.avg.per_cycle_active",
+          "smsp__issue_active.avg.pct_of_peak_sustained_active",
+          "l1tex__data_bank_conflicts_pipe_lsu.sum",
+          "sm__inst_executed_pipe_tensor.sum",
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum"
+        ],
+        "schema_version": 1,
+        "summary": {
+          "achieved_occupancy_pct": 12.51,
+          "barrier_stalled_warps_per_issue": 1.7,
+          "compiler_spills": 0,
+          "compiler_static_shared_memory_bytes": 147456,
+          "dram_bytes_read": 186682880.0,
+          "dram_bytes_written": 28610048.0,
+          "dram_throughput_pct": 28.76,
+          "eligible_warps_per_cycle": 0.36,
+          "instructions_executed": 39968768.0,
+          "issue_active_pct": 27.34,
+          "l1tex_throughput_pct": 63.14,
+          "l2_sector_hit_rate_pct": 73.1,
+          "l2_throughput_pct": 43.21,
+          "local_load_l1_hit_sectors": 0.0,
+          "local_load_l1_miss_sectors": 0.0,
+          "local_load_sectors": 0.0,
+          "local_store_sectors": 0.0,
+          "long_scoreboard_warps_per_issue": 1.25,
+          "math_pipe_throttle_warps_per_issue": 0.2,
+          "not_selected_warps_per_issue": 0.32,
+          "registers_per_thread": 213.0,
+          "shared_bank_conflicts": 1433.0,
+          "short_scoreboard_warps_per_issue": 0.04,
+          "sm_throughput_pct": 87.15,
+          "tensor_instructions_executed": 1048576.0,
+          "tensor_pipe_utilization_pct": 91.87
+        },
+        "target": {
+          "architecture": "sm_90",
+          "ncu_version": "2025.1"
+        }
+      },
+      "ptx_sha256": "78267a31d9a305a9d5e2cf7288d51e06d44698570cf5a9bddb2d4f46960c1cf4",
+      "round": 0,
+      "source_sha256": "4043f9e7edbc163c28f5b829aa25d49f8d8db38f3ba11d83b4a7115222cf3186",
+      "variant": "B_mask_only"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 212.12799847126007,
+        "mean_us": 200.64213325579962,
+        "median_us": 199.12000000476837,
+        "min_us": 197.66399264335632,
+        "per_shape_median_us": {},
+        "stddev_us": 3.1270618663826637,
+        "timings_us": [
+          212.12799847126007,
+          204.57600057125092,
+          202.04800367355347,
+          200.15999674797058,
+          198.43199849128723,
+          204.28800582885742,
+          198.7520009279251,
+          199.13600385189056,
+          197.79199361801147,
+          199.3280053138733,
+          202.36800611019135,
+          199.10399615764618,
+          200.25600492954254,
+          198.30399751663208,
+          202.7519941329956,
+          204.19199764728546,
+          198.2080042362213,
+          198.88000190258026,
+          197.66399264335632,
+          202.65600085258484,
+          202.01599597930908,
+          198.2399970293045,
+          198.81600141525269,
+          197.88800179958344,
+          205.56800067424774,
+          198.68800044059753,
+          197.9839950799942,
+          198.84799420833588,
+          201.1840045452118,
+          199.0080028772354
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "9d551dcbed618b386addc1741220d03276c5b86e79f7c9947d232431866af8ae",
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r0-B_exact-e7e27573-c64b-499d-aee5-059e2de69d3c",
+      "order": 1,
+      "profile": {
+        "artifact_id": "4bd52f42f60eb536e3aac58a0362a3aaa8718bfde4829731f6908ae7d220eb43",
+        "metric_set": "spill_v1",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "byte",
+            "value": 186683392.0
+          },
+          "dram__bytes_write.sum": {
+            "unit": "byte",
+            "value": 28634624.0
+          },
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 28.95
+          },
+          "l1tex__data_bank_conflicts_pipe_lsu.sum": {
+            "unit": "",
+            "value": 2540.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 63.15
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 213.0
+          },
+          "lts__t_sector_hit_rate.pct": {
+            "unit": "%",
+            "value": 65.28
+          },
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 44.06
+          },
+          "sm__inst_executed_pipe_tensor.sum": {
+            "unit": "inst",
+            "value": 1048576.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 91.89
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 86.87
+          },
+          "sm__warps_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 12.51
+          },
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 1.69
+          },
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 1.25
+          },
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.2
+          },
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.32
+          },
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.04
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 39968768.0
+          },
+          "smsp__issue_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 27.33
+          },
+          "smsp__warps_eligible.avg.per_cycle_active": {
+            "unit": "warp",
+            "value": 0.36
+          }
+        },
+        "profiler": "ncu",
+        "resolved_metrics": [
+          "launch__registers_per_thread",
+          "sm__warps_active.avg.pct_of_peak_sustained_active",
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+          "l1tex__throughput.avg.pct_of_peak_sustained_active",
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+          "smsp__inst_executed.sum",
+          "dram__bytes_read.sum",
+          "dram__bytes_write.sum",
+          "lts__t_sector_hit_rate.pct",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum",
+          "smsp__warps_eligible.avg.per_cycle_active",
+          "smsp__issue_active.avg.pct_of_peak_sustained_active",
+          "l1tex__data_bank_conflicts_pipe_lsu.sum",
+          "sm__inst_executed_pipe_tensor.sum",
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum"
+        ],
+        "schema_version": 1,
+        "summary": {
+          "achieved_occupancy_pct": 12.51,
+          "barrier_stalled_warps_per_issue": 1.69,
+          "compiler_spills": 0,
+          "compiler_static_shared_memory_bytes": 147456,
+          "dram_bytes_read": 186683392.0,
+          "dram_bytes_written": 28634624.0,
+          "dram_throughput_pct": 28.95,
+          "eligible_warps_per_cycle": 0.36,
+          "instructions_executed": 39968768.0,
+          "issue_active_pct": 27.33,
+          "l1tex_throughput_pct": 63.15,
+          "l2_sector_hit_rate_pct": 65.28,
+          "l2_throughput_pct": 44.06,
+          "local_load_l1_hit_sectors": 0.0,
+          "local_load_l1_miss_sectors": 0.0,
+          "local_load_sectors": 0.0,
+          "local_store_sectors": 0.0,
+          "long_scoreboard_warps_per_issue": 1.25,
+          "math_pipe_throttle_warps_per_issue": 0.2,
+          "not_selected_warps_per_issue": 0.32,
+          "registers_per_thread": 213.0,
+          "shared_bank_conflicts": 2540.0,
+          "short_scoreboard_warps_per_issue": 0.04,
+          "sm_throughput_pct": 86.87,
+          "tensor_instructions_executed": 1048576.0,
+          "tensor_pipe_utilization_pct": 91.89
+        },
+        "target": {
+          "architecture": "sm_90",
+          "ncu_version": "2025.1"
+        }
+      },
+      "ptx_sha256": "935e630c3ec43e86a83220370c521322b915aa4ed213e59fdfadc9965b76bd24",
+      "round": 0,
+      "source_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+      "variant": "B_exact"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 240.83200097084045,
+        "mean_us": 229.46346700191498,
+        "median_us": 228.65600138902664,
+        "min_us": 225.3119945526123,
+        "per_shape_median_us": {},
+        "stddev_us": 3.5639250839011827,
+        "timings_us": [
+          240.83200097084045,
+          234.8800003528595,
+          230.6240051984787,
+          228.5439968109131,
+          228.19200158119202,
+          231.4240038394928,
+          232.54400491714478,
+          230.0799936056137,
+          227.52000391483307,
+          230.9119999408722,
+          227.61599719524384,
+          225.3119945526123,
+          226.3679951429367,
+          228.7680059671402,
+          229.37600314617157,
+          229.5359969139099,
+          226.49599611759186,
+          230.04800081253052,
+          238.43200504779816,
+          226.1440008878708,
+          225.92000663280487,
+          228.7680059671402,
+          227.87199914455414,
+          226.30399465560913,
+          226.23999416828156,
+          233.50399732589722,
+          227.743998169899,
+          229.91999983787537,
+          227.2000014781952,
+          226.78400576114655
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "ad07459009bff607a8086f1cd260dae98528e44bee5cdeae881068d89d0cad1d",
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r0-D_exact-c443b044-ddfb-4152-84b6-1592d9dc739b",
+      "order": 2,
+      "profile": {
+        "artifact_id": "67298fe5171f9044650d900e131fc6a4af820a41ac63896ced63070285e1bdcd",
+        "metric_set": "spill_v1",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "byte",
+            "value": 186680320.0
+          },
+          "dram__bytes_write.sum": {
+            "unit": "byte",
+            "value": 28754176.0
+          },
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 25.06
+          },
+          "l1tex__data_bank_conflicts_pipe_lsu.sum": {
+            "unit": "",
+            "value": 8792.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 51.93
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 197.0
+          },
+          "lts__t_sector_hit_rate.pct": {
+            "unit": "%",
+            "value": 65.75
+          },
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 41.67
+          },
+          "sm__inst_executed_pipe_tensor.sum": {
+            "unit": "inst",
+            "value": 1048576.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 75.25
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 71.65
+          },
+          "sm__warps_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 12.48
+          },
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.79
+          },
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.99
+          },
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.42
+          },
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.31
+          },
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.04
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 43999232.0
+          },
+          "smsp__issue_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 24.68
+          },
+          "smsp__warps_eligible.avg.per_cycle_active": {
+            "unit": "warp",
+            "value": 0.32
+          }
+        },
+        "profiler": "ncu",
+        "resolved_metrics": [
+          "launch__registers_per_thread",
+          "sm__warps_active.avg.pct_of_peak_sustained_active",
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+          "l1tex__throughput.avg.pct_of_peak_sustained_active",
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+          "smsp__inst_executed.sum",
+          "dram__bytes_read.sum",
+          "dram__bytes_write.sum",
+          "lts__t_sector_hit_rate.pct",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum",
+          "smsp__warps_eligible.avg.per_cycle_active",
+          "smsp__issue_active.avg.pct_of_peak_sustained_active",
+          "l1tex__data_bank_conflicts_pipe_lsu.sum",
+          "sm__inst_executed_pipe_tensor.sum",
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum"
+        ],
+        "schema_version": 1,
+        "summary": {
+          "achieved_occupancy_pct": 12.48,
+          "barrier_stalled_warps_per_issue": 0.79,
+          "compiler_spills": 0,
+          "compiler_static_shared_memory_bytes": 147456,
+          "dram_bytes_read": 186680320.0,
+          "dram_bytes_written": 28754176.0,
+          "dram_throughput_pct": 25.06,
+          "eligible_warps_per_cycle": 0.32,
+          "instructions_executed": 43999232.0,
+          "issue_active_pct": 24.68,
+          "l1tex_throughput_pct": 51.93,
+          "l2_sector_hit_rate_pct": 65.75,
+          "l2_throughput_pct": 41.67,
+          "local_load_l1_hit_sectors": 0.0,
+          "local_load_l1_miss_sectors": 0.0,
+          "local_load_sectors": 0.0,
+          "local_store_sectors": 0.0,
+          "long_scoreboard_warps_per_issue": 0.99,
+          "math_pipe_throttle_warps_per_issue": 0.42,
+          "not_selected_warps_per_issue": 0.31,
+          "registers_per_thread": 197.0,
+          "shared_bank_conflicts": 8792.0,
+          "short_scoreboard_warps_per_issue": 0.04,
+          "sm_throughput_pct": 71.65,
+          "tensor_instructions_executed": 1048576.0,
+          "tensor_pipe_utilization_pct": 75.25
+        },
+        "target": {
+          "architecture": "sm_90",
+          "ncu_version": "2025.1"
+        }
+      },
+      "ptx_sha256": "825bd93e4b3b30eacc57693499bc8cdcaa592b82fb74c4134dad86619fd1cc23",
+      "round": 0,
+      "source_sha256": "270eb1e009823e43b5cea9198c9499592256b07264d774c955585154afe51279",
+      "variant": "D_exact"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 240.1600033044815,
+        "mean_us": 228.85546535253525,
+        "median_us": 227.80799865722656,
+        "min_us": 224.73600506782532,
+        "per_shape_median_us": {},
+        "stddev_us": 3.5586342029701883,
+        "timings_us": [
+          240.1600033044815,
+          230.81600666046143,
+          229.0239930152893,
+          232.92799293994904,
+          226.46400332450867,
+          228.06400060653687,
+          227.80799865722656,
+          230.97600042819977,
+          227.7120053768158,
+          226.623997092247,
+          227.13600099086761,
+          229.0560007095337,
+          226.81599855422974,
+          226.43199563026428,
+          227.1679937839508,
+          230.17600178718567,
+          238.304004073143,
+          227.80799865722656,
+          235.23199558258057,
+          229.08799350261688,
+          229.79199886322021,
+          226.55999660491943,
+          226.68799757957458,
+          228.03199291229248,
+          226.17599368095398,
+          225.37599503993988,
+          224.73600506782532,
+          228.60799729824066,
+          225.8239984512329,
+          226.0800004005432
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "c5e89ccce41efd1a9aa018bc2ae07fc72de76ee50da1204d673edeb856b9d24a",
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r0-B_both-6072c6f8-07b8-4bb3-ad6f-9d048d2af482",
+      "order": 3,
+      "profile": {
+        "artifact_id": "91873c93423d9c74399d273bd76d957497afefcd3b90f0365cdadf36221f511c",
+        "metric_set": "spill_v1",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "byte",
+            "value": 186702848.0
+          },
+          "dram__bytes_write.sum": {
+            "unit": "byte",
+            "value": 28696832.0
+          },
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 24.92
+          },
+          "l1tex__data_bank_conflicts_pipe_lsu.sum": {
+            "unit": "",
+            "value": 7654.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 51.95
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 197.0
+          },
+          "lts__t_sector_hit_rate.pct": {
+            "unit": "%",
+            "value": 66.95
+          },
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 36.62
+          },
+          "sm__inst_executed_pipe_tensor.sum": {
+            "unit": "inst",
+            "value": 1048576.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 75.27
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 71.59
+          },
+          "sm__warps_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 12.46
+          },
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.79
+          },
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.99
+          },
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.42
+          },
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.31
+          },
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.04
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 43999232.0
+          },
+          "smsp__issue_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 24.71
+          },
+          "smsp__warps_eligible.avg.per_cycle_active": {
+            "unit": "warp",
+            "value": 0.32
+          }
+        },
+        "profiler": "ncu",
+        "resolved_metrics": [
+          "launch__registers_per_thread",
+          "sm__warps_active.avg.pct_of_peak_sustained_active",
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+          "l1tex__throughput.avg.pct_of_peak_sustained_active",
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+          "smsp__inst_executed.sum",
+          "dram__bytes_read.sum",
+          "dram__bytes_write.sum",
+          "lts__t_sector_hit_rate.pct",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum",
+          "smsp__warps_eligible.avg.per_cycle_active",
+          "smsp__issue_active.avg.pct_of_peak_sustained_active",
+          "l1tex__data_bank_conflicts_pipe_lsu.sum",
+          "sm__inst_executed_pipe_tensor.sum",
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum"
+        ],
+        "schema_version": 1,
+        "summary": {
+          "achieved_occupancy_pct": 12.46,
+          "barrier_stalled_warps_per_issue": 0.79,
+          "compiler_spills": 0,
+          "compiler_static_shared_memory_bytes": 147456,
+          "dram_bytes_read": 186702848.0,
+          "dram_bytes_written": 28696832.0,
+          "dram_throughput_pct": 24.92,
+          "eligible_warps_per_cycle": 0.32,
+          "instructions_executed": 43999232.0,
+          "issue_active_pct": 24.71,
+          "l1tex_throughput_pct": 51.95,
+          "l2_sector_hit_rate_pct": 66.95,
+          "l2_throughput_pct": 36.62,
+          "local_load_l1_hit_sectors": 0.0,
+          "local_load_l1_miss_sectors": 0.0,
+          "local_load_sectors": 0.0,
+          "local_store_sectors": 0.0,
+          "long_scoreboard_warps_per_issue": 0.99,
+          "math_pipe_throttle_warps_per_issue": 0.42,
+          "not_selected_warps_per_issue": 0.31,
+          "registers_per_thread": 197.0,
+          "shared_bank_conflicts": 7654.0,
+          "short_scoreboard_warps_per_issue": 0.04,
+          "sm_throughput_pct": 71.59,
+          "tensor_instructions_executed": 1048576.0,
+          "tensor_pipe_utilization_pct": 75.27
+        },
+        "target": {
+          "architecture": "sm_90",
+          "ncu_version": "2025.1"
+        }
+      },
+      "ptx_sha256": "48db419ee02430e247869910d778011dd0206f64ae47a97b269bba58e7820d53",
+      "round": 0,
+      "source_sha256": "f86dc63ad87730f9ffccc8f7e351843ada1ea0b4caad0e0e43aa264c06fc616d",
+      "variant": "B_both"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 237.92000114917755,
+        "mean_us": 228.98666709661484,
+        "median_us": 228.01600396633148,
+        "min_us": 224.89599883556366,
+        "per_shape_median_us": {},
+        "stddev_us": 3.1276200927088214,
+        "timings_us": [
+          237.56800591945648,
+          231.58399760723114,
+          233.2479953765869,
+          227.9359996318817,
+          226.68799757957458,
+          228.5439968109131,
+          232.2240024805069,
+          231.04000091552734,
+          229.15199398994446,
+          227.9680073261261,
+          231.90400004386902,
+          226.6560047864914,
+          227.7120053768158,
+          227.00800001621246,
+          229.34399545192719,
+          228.60799729824066,
+          226.23999416828156,
+          227.77600586414337,
+          237.92000114917755,
+          228.44800353050232,
+          227.13600099086761,
+          224.89599883556366,
+          230.75200617313385,
+          225.47200322151184,
+          226.84800624847412,
+          225.8239984512329,
+          228.06400060653687,
+          229.91999983787537,
+          226.49599611759186,
+          226.623997092247
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "de0a46689a1fdcc087a12793c374d8ed898fcdf20a31299f31ec8d0c4aabf985",
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r0-B_loop_only-d70253a3-f030-4a29-a11b-66adcf13ce50",
+      "order": 4,
+      "profile": {
+        "artifact_id": "9744e7f06e28dc17315ac824c7778920207b7b449d0612a31015769543b217fa",
+        "metric_set": "spill_v1",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "byte",
+            "value": 186680064.0
+          },
+          "dram__bytes_write.sum": {
+            "unit": "byte",
+            "value": 28665600.0
+          },
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 24.57
+          },
+          "l1tex__data_bank_conflicts_pipe_lsu.sum": {
+            "unit": "",
+            "value": 7320.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": {
+            "unit": "sector",
+            "value": 0.0
+          },
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 51.94
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 197.0
+          },
+          "lts__t_sector_hit_rate.pct": {
+            "unit": "%",
+            "value": 65.42
+          },
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 37.67
+          },
+          "sm__inst_executed_pipe_tensor.sum": {
+            "unit": "inst",
+            "value": 1048576.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 75.28
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 71.66
+          },
+          "sm__warps_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 12.49
+          },
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.79
+          },
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.99
+          },
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.42
+          },
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.31
+          },
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio": {
+            "unit": "inst",
+            "value": 0.04
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 43999232.0
+          },
+          "smsp__issue_active.avg.pct_of_peak_sustained_active": {
+            "unit": "%",
+            "value": 24.7
+          },
+          "smsp__warps_eligible.avg.per_cycle_active": {
+            "unit": "warp",
+            "value": 0.32
+          }
+        },
+        "profiler": "ncu",
+        "resolved_metrics": [
+          "launch__registers_per_thread",
+          "sm__warps_active.avg.pct_of_peak_sustained_active",
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+          "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+          "l1tex__throughput.avg.pct_of_peak_sustained_active",
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+          "smsp__inst_executed.sum",
+          "dram__bytes_read.sum",
+          "dram__bytes_write.sum",
+          "lts__t_sector_hit_rate.pct",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum",
+          "smsp__warps_eligible.avg.per_cycle_active",
+          "smsp__issue_active.avg.pct_of_peak_sustained_active",
+          "l1tex__data_bank_conflicts_pipe_lsu.sum",
+          "sm__inst_executed_pipe_tensor.sum",
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio",
+          "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_hit.sum",
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld_lookup_miss.sum"
+        ],
+        "schema_version": 1,
+        "summary": {
+          "achieved_occupancy_pct": 12.49,
+          "barrier_stalled_warps_per_issue": 0.79,
+          "compiler_spills": 0,
+          "compiler_static_shared_memory_bytes": 147456,
+          "dram_bytes_read": 186680064.0,
+          "dram_bytes_written": 28665600.0,
+          "dram_throughput_pct": 24.57,
+          "eligible_warps_per_cycle": 0.32,
+          "instructions_executed": 43999232.0,
+          "issue_active_pct": 24.7,
+          "l1tex_throughput_pct": 51.94,
+          "l2_sector_hit_rate_pct": 65.42,
+          "l2_throughput_pct": 37.67,
+          "local_load_l1_hit_sectors": 0.0,
+          "local_load_l1_miss_sectors": 0.0,
+          "local_load_sectors": 0.0,
+          "local_store_sectors": 0.0,
+          "long_scoreboard_warps_per_issue": 0.99,
+          "math_pipe_throttle_warps_per_issue": 0.42,
+          "not_selected_warps_per_issue": 0.31,
+          "registers_per_thread": 197.0,
+          "shared_bank_conflicts": 7320.0,
+          "short_scoreboard_warps_per_issue": 0.04,
+          "sm_throughput_pct": 71.66,
+          "tensor_instructions_executed": 1048576.0,
+          "tensor_pipe_utilization_pct": 75.28
+        },
+        "target": {
+          "architecture": "sm_90",
+          "ncu_version": "2025.1"
+        }
+      },
+      "ptx_sha256": "9758733ba76575ed8b0e072cf6f59f739de11bddb0e6d959749df831ad349320",
+      "round": 0,
+      "source_sha256": "6332ba9b0e8822ba57cb8bde0b611e4d3c13798f1c55bdb6999ef9413cdbd7c5",
+      "variant": "B_loop_only"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 232.96000063419342,
+        "mean_us": 202.24746614694595,
+        "median_us": 201.10400021076202,
+        "min_us": 197.79199361801147,
+        "per_shape_median_us": {},
+        "stddev_us": 6.354100103691222,
+        "timings_us": [
+          210.62399446964264,
+          203.2639980316162,
+          232.96000063419342,
+          201.31200551986694,
+          199.16799664497375,
+          202.84800231456757,
+          204.6400010585785,
+          201.6959935426712,
+          201.34399831295013,
+          200.8959949016571,
+          199.5519995689392,
+          202.7519941329956,
+          199.68000054359436,
+          198.14400374889374,
+          198.94400238990784,
+          204.8639953136444,
+          201.31200551986694,
+          199.8720020055771,
+          198.08000326156616,
+          199.45600628852844,
+          202.39999890327454,
+          201.53599977493286,
+          200.1280039548874,
+          198.65599274635315,
+          198.59200716018677,
+          201.664000749588,
+          198.43199849128723,
+          199.64799284934998,
+          197.79199361801147,
+          207.16799795627594
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "9d551dcbed618b386addc1741220d03276c5b86e79f7c9947d232431866af8ae",
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r1-B_exact-033cbf51-e4d9-4d0d-9e80-fa46d3453879",
+      "order": 0,
+      "ptx_sha256": "935e630c3ec43e86a83220370c521322b915aa4ed213e59fdfadc9965b76bd24",
+      "round": 1,
+      "source_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+      "variant": "B_exact"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 238.81599307060242,
+        "mean_us": 228.42239886522293,
+        "median_us": 228.28800231218338,
+        "min_us": 224.7679978609085,
+        "per_shape_median_us": {},
+        "stddev_us": 3.166031252390675,
+        "timings_us": [
+          238.81599307060242,
+          232.2240024805069,
+          229.5359969139099,
+          226.9439995288849,
+          230.49600422382355,
+          228.06400060653687,
+          229.21599447727203,
+          228.5120040178299,
+          232.38399624824524,
+          228.86399924755096,
+          229.98400032520294,
+          226.75199806690216,
+          231.9359928369522,
+          225.79200565814972,
+          225.0239998102188,
+          227.4239957332611,
+          229.5359969139099,
+          225.63199698925018,
+          233.88800024986267,
+          224.7679978609085,
+          229.40799593925476,
+          224.89599883556366,
+          225.24799406528473,
+          225.055992603302,
+          227.29599475860596,
+          225.2800017595291,
+          225.600004196167,
+          225.47200322151184,
+          229.72799837589264,
+          228.89600694179535
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "c5e89ccce41efd1a9aa018bc2ae07fc72de76ee50da1204d673edeb856b9d24a",
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r1-B_both-0e428bc0-283b-4e90-8a80-21cbefbef81a",
+      "order": 1,
+      "ptx_sha256": "48db419ee02430e247869910d778011dd0206f64ae47a97b269bba58e7820d53",
+      "round": 1,
+      "source_sha256": "f86dc63ad87730f9ffccc8f7e351843ada1ea0b4caad0e0e43aa264c06fc616d",
+      "variant": "B_both"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 211.0079973936081,
+        "mean_us": 201.2266660730044,
+        "median_us": 200.4000023007393,
+        "min_us": 197.91999459266663,
+        "per_shape_median_us": {},
+        "stddev_us": 2.794552407327832,
+        "timings_us": [
+          211.0079973936081,
+          202.62399315834045,
+          201.92000269889832,
+          199.68000054359436,
+          203.16800475120544,
+          201.47199928760529,
+          201.21599733829498,
+          199.77599382400513,
+          199.71199333667755,
+          204.83200252056122,
+          200.47999918460846,
+          199.26400482654572,
+          200.32000541687012,
+          201.6959935426712,
+          203.74399423599243,
+          200.00000298023224,
+          199.0080028772354,
+          198.2080042362213,
+          207.42399990558624,
+          199.71199333667755,
+          198.94400238990784,
+          197.91999459266663,
+          202.59200036525726,
+          199.10399615764618,
+          199.072003364563,
+          201.02399587631226,
+          198.55999946594238,
+          203.2960057258606,
+          202.07999646663666,
+          198.94400238990784
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "c1a7eb8456730039c7d9563b66cdf6dc90495f30427d0fea31f5a3e5e5843f91",
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r1-B_mask_only-413525f8-1a29-41c2-80c2-115143e5d147",
+      "order": 2,
+      "ptx_sha256": "78267a31d9a305a9d5e2cf7288d51e06d44698570cf5a9bddb2d4f46960c1cf4",
+      "round": 1,
+      "source_sha256": "4043f9e7edbc163c28f5b829aa25d49f8d8db38f3ba11d83b4a7115222cf3186",
+      "variant": "B_mask_only"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 241.4720058441162,
+        "mean_us": 229.1328007976214,
+        "median_us": 227.90400683879852,
+        "min_us": 225.47200322151184,
+        "per_shape_median_us": {},
+        "stddev_us": 3.220570235806132,
+        "timings_us": [
+          241.4720058441162,
+          235.29599606990814,
+          230.46399652957916,
+          227.90400683879852,
+          227.61599719524384,
+          232.35200345516205,
+          227.90400683879852,
+          228.35199534893036,
+          227.77600586414337,
+          231.36000335216522,
+          227.9359996318817,
+          226.04799270629883,
+          227.61599719524384,
+          230.5919975042343,
+          227.00800001621246,
+          227.87199914455414,
+          226.4000028371811,
+          230.30400276184082,
+          232.28800296783447,
+          225.47200322151184,
+          226.81599855422974,
+          229.8240065574646,
+          228.32000255584717,
+          227.13600099086761,
+          227.23199427127838,
+          231.4240038394928,
+          227.32800245285034,
+          226.84800624847412,
+          225.8879989385605,
+          231.1359941959381
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "de0a46689a1fdcc087a12793c374d8ed898fcdf20a31299f31ec8d0c4aabf985",
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r1-B_loop_only-eb9e79a2-d652-4180-b84e-fe231e4728d4",
+      "order": 3,
+      "ptx_sha256": "9758733ba76575ed8b0e072cf6f59f739de11bddb0e6d959749df831ad349320",
+      "round": 1,
+      "source_sha256": "6332ba9b0e8822ba57cb8bde0b611e4d3c13798f1c55bdb6999ef9413cdbd7c5",
+      "variant": "B_loop_only"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 240.60800671577454,
+        "mean_us": 229.42186643679938,
+        "median_us": 228.68800163269043,
+        "min_us": 225.0880002975464,
+        "per_shape_median_us": {},
+        "stddev_us": 3.2068810527519673,
+        "timings_us": [
+          240.60800671577454,
+          232.67200589179993,
+          231.32799565792084,
+          231.48800432682037,
+          233.2800030708313,
+          230.46399652957916,
+          228.5439968109131,
+          229.69600558280945,
+          229.2799949645996,
+          226.59200429916382,
+          228.12800109386444,
+          231.36000335216522,
+          227.61599719524384,
+          226.59200429916382,
+          225.0880002975464,
+          233.98399353027344,
+          228.83200645446777,
+          227.9359996318817,
+          231.77599906921387,
+          226.23999416828156,
+          230.78399896621704,
+          228.28799486160278,
+          226.3679951429367,
+          225.2800017595291,
+          232.4800044298172,
+          227.00800001621246,
+          226.623997092247,
+          226.1440008878708,
+          230.0799936056137,
+          228.09599339962006
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "ad07459009bff607a8086f1cd260dae98528e44bee5cdeae881068d89d0cad1d",
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r1-D_exact-a35281dc-c5a8-409b-88d3-6edf023c4a87",
+      "order": 4,
+      "ptx_sha256": "825bd93e4b3b30eacc57693499bc8cdcaa592b82fb74c4134dad86619fd1cc23",
+      "round": 1,
+      "source_sha256": "270eb1e009823e43b5cea9198c9499592256b07264d774c955585154afe51279",
+      "variant": "D_exact"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 243.71199309825897,
+        "mean_us": 230.2431990702947,
+        "median_us": 229.08800095319748,
+        "min_us": 225.79200565814972,
+        "per_shape_median_us": {},
+        "stddev_us": 4.44627616875729,
+        "timings_us": [
+          240.48000574111938,
+          243.71199309825897,
+          229.312002658844,
+          229.34399545192719,
+          228.5120040178299,
+          239.1359955072403,
+          231.90400004386902,
+          229.312002658844,
+          228.60799729824066,
+          236.4480048418045,
+          231.1359941959381,
+          227.35999524593353,
+          227.58400440216064,
+          226.4000028371811,
+          230.880007147789,
+          229.63200509548187,
+          226.81599855422974,
+          228.86399924755096,
+          236.51200532913208,
+          227.10399329662323,
+          227.55199670791626,
+          227.10399329662323,
+          230.20799458026886,
+          226.20800137519836,
+          226.23999416828156,
+          225.79200565814972,
+          230.335995554924,
+          229.5359969139099,
+          228.09599339962006,
+          227.1679937839508
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "ad07459009bff607a8086f1cd260dae98528e44bee5cdeae881068d89d0cad1d",
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r2-D_exact-c2af47eb-3a5a-4312-9dd0-0c13693ca13d",
+      "order": 0,
+      "ptx_sha256": "825bd93e4b3b30eacc57693499bc8cdcaa592b82fb74c4134dad86619fd1cc23",
+      "round": 2,
+      "source_sha256": "270eb1e009823e43b5cea9198c9499592256b07264d774c955585154afe51279",
+      "variant": "D_exact"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 239.29600417613983,
+        "mean_us": 228.47786794106165,
+        "median_us": 227.50400006771088,
+        "min_us": 224.41600263118744,
+        "per_shape_median_us": {},
+        "stddev_us": 3.1838626084916983,
+        "timings_us": [
+          239.29600417613983,
+          233.69599878787994,
+          230.3680032491684,
+          227.52000391483307,
+          225.600004196167,
+          231.4240038394928,
+          227.9680073261261,
+          225.98400712013245,
+          228.0000001192093,
+          229.2799949645996,
+          227.48799622058868,
+          226.27200186252594,
+          226.30399465560913,
+          231.77599906921387,
+          228.5120040178299,
+          228.89600694179535,
+          225.95199942588806,
+          226.33600234985352,
+          235.61599850654602,
+          226.4000028371811,
+          226.81599855422974,
+          224.41600263118744,
+          229.37600314617157,
+          226.1440008878708,
+          225.50399601459503,
+          226.78400576114655,
+          229.312002658844,
+          226.623997092247,
+          229.2799949645996,
+          227.39200294017792
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "c5e89ccce41efd1a9aa018bc2ae07fc72de76ee50da1204d673edeb856b9d24a",
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r2-B_both-a137f5ae-06e3-4932-ac7a-c3dbd1f933d4",
+      "order": 1,
+      "ptx_sha256": "48db419ee02430e247869910d778011dd0206f64ae47a97b269bba58e7820d53",
+      "round": 2,
+      "source_sha256": "f86dc63ad87730f9ffccc8f7e351843ada1ea0b4caad0e0e43aa264c06fc616d",
+      "variant": "B_both"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 213.85599672794342,
+        "mean_us": 201.0037342707316,
+        "median_us": 199.5519995689392,
+        "min_us": 197.2160041332245,
+        "per_shape_median_us": {},
+        "stddev_us": 3.5976069656357,
+        "timings_us": [
+          213.85599672794342,
+          203.87199521064758,
+          202.4960070848465,
+          200.44800639152527,
+          199.45600628852844,
+          204.03200387954712,
+          199.13600385189056,
+          199.16799664497375,
+          199.23199713230133,
+          208.38400721549988,
+          200.1280039548874,
+          199.0399956703186,
+          200.25600492954254,
+          197.2160041332245,
+          201.37600600719452,
+          207.7759951353073,
+          199.13600385189056,
+          200.32000541687012,
+          198.94400238990784,
+          202.39999890327454,
+          198.81600141525269,
+          197.6960003376007,
+          199.13600385189056,
+          203.80799472332,
+          199.0399956703186,
+          198.14400374889374,
+          197.24799692630768,
+          198.65599274635315,
+          201.24800503253937,
+          199.64799284934998
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "9d551dcbed618b386addc1741220d03276c5b86e79f7c9947d232431866af8ae",
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r2-B_exact-527f6983-8c20-499d-ac40-1362c5ee210f",
+      "order": 2,
+      "ptx_sha256": "935e630c3ec43e86a83220370c521322b915aa4ed213e59fdfadc9965b76bd24",
+      "round": 2,
+      "source_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+      "variant": "B_exact"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 220.8320051431656,
+        "mean_us": 200.47893325487772,
+        "median_us": 199.2960050702095,
+        "min_us": 196.60800695419312,
+        "per_shape_median_us": {},
+        "stddev_us": 4.34728771982083,
+        "timings_us": [
+          220.8320051431656,
+          204.79999482631683,
+          202.4639993906021,
+          199.10399615764618,
+          198.81600141525269,
+          201.7280012369156,
+          199.3280053138733,
+          197.88800179958344,
+          201.02399587631226,
+          203.87199521064758,
+          199.26400482654572,
+          196.60800695419312,
+          198.08000326156616,
+          197.37599790096283,
+          201.27999782562256,
+          199.71199333667755,
+          197.91999459266663,
+          198.40000569820404,
+          204.48000729084015,
+          202.62399315834045,
+          198.7520009279251,
+          197.4720060825348,
+          198.08000326156616,
+          199.96799528598785,
+          200.6080001592636,
+          197.88800179958344,
+          198.17599654197693,
+          197.4399983882904,
+          200.28799772262573,
+          200.095996260643
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "c1a7eb8456730039c7d9563b66cdf6dc90495f30427d0fea31f5a3e5e5843f91",
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r2-B_mask_only-3c032fee-24d8-4558-8e0a-c622ef3aa9e0",
+      "order": 3,
+      "ptx_sha256": "78267a31d9a305a9d5e2cf7288d51e06d44698570cf5a9bddb2d4f46960c1cf4",
+      "round": 2,
+      "source_sha256": "4043f9e7edbc163c28f5b829aa25d49f8d8db38f3ba11d83b4a7115222cf3186",
+      "variant": "B_mask_only"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 238.5919988155365,
+        "mean_us": 229.83359942833582,
+        "median_us": 229.43999618291855,
+        "min_us": 226.1440008878708,
+        "per_shape_median_us": {},
+        "stddev_us": 3.1282985449150167,
+        "timings_us": [
+          238.5919988155365,
+          231.99999332427979,
+          230.9119999408722,
+          231.10400140285492,
+          231.29600286483765,
+          230.43200373649597,
+          228.2239943742752,
+          229.0239930152893,
+          230.3680032491684,
+          230.880007147789,
+          228.09599339962006,
+          226.55999660491943,
+          230.81600666046143,
+          228.41599583625793,
+          226.1440008878708,
+          227.48799622058868,
+          232.80000686645508,
+          228.09599339962006,
+          235.9360009431839,
+          226.3679951429367,
+          231.1999946832657,
+          227.2000014781952,
+          226.78400576114655,
+          227.10399329662323,
+          236.57600581645966,
+          229.8559993505478,
+          226.33600234985352,
+          226.9439995288849,
+          227.10399329662323,
+          232.35200345516205
+        ],
+        "warmup_count": 10
+      },
+      "binary_fingerprint": "de0a46689a1fdcc087a12793c374d8ed898fcdf20a31299f31ec8d0c4aabf985",
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "correctness": {
+        "failed_test_id": null,
+        "maximum_error": 0.0,
+        "mean_error": 0.0,
+        "reference_metadata": {
+          "implementation": "torch.matmul/cuBLAS",
+          "seed": 0
+        }
+      },
+      "evaluation_id": "bd-crossover-r2-B_loop_only-bd46ce00-3480-4ce9-b015-ab11cf21d688",
+      "order": 4,
+      "ptx_sha256": "9758733ba76575ed8b0e072cf6f59f739de11bddb0e6d959749df831ad349320",
+      "round": 2,
+      "source_sha256": "6332ba9b0e8822ba57cb8bde0b611e4d3c13798f1c55bdb6999ef9413cdbd7c5",
+      "variant": "B_loop_only"
+    }
+  ],
+  "rounds": 3,
+  "run_id": "fc171748-9223-4932-9e7b-eb73d6585351",
+  "schema_version": 1,
+  "source_bundle_sha256": "627dc94c054c1ae6da72c31606e0dbcec9704664aa27aada804469cacbb92501",
+  "sources": {
+    "B_both": {
+      "path": "B_both.py",
+      "sha256": "f86dc63ad87730f9ffccc8f7e351843ada1ea0b4caad0e0e43aa264c06fc616d"
+    },
+    "B_exact": {
+      "path": "B_exact.py",
+      "sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4"
+    },
+    "B_loop_only": {
+      "path": "B_loop_only.py",
+      "sha256": "6332ba9b0e8822ba57cb8bde0b611e4d3c13798f1c55bdb6999ef9413cdbd7c5"
+    },
+    "B_mask_only": {
+      "path": "B_mask_only.py",
+      "sha256": "4043f9e7edbc163c28f5b829aa25d49f8d8db38f3ba11d83b4a7115222cf3186"
+    },
+    "D_exact": {
+      "path": "D_exact.py",
+      "sha256": "270eb1e009823e43b5cea9198c9499592256b07264d774c955585154afe51279"
+    }
+  },
+  "startup_calibration": {
+    "backend": "triton_h100",
+    "benchmark": {
+      "gpu_operating_state": {},
+      "max_us": 832.2880268096924,
+      "mean_us": 819.7365383307139,
+      "median_us": 819.0720081329346,
+      "min_us": 815.168023109436,
+      "per_shape_median_us": {},
+      "stddev_us": 3.644702602395558,
+      "timings_us": [
+        832.2880268096924,
+        823.9359855651855,
+        816.6080117225647,
+        818.336009979248,
+        819.2960023880005,
+        817.7599906921387,
+        817.8880214691162,
+        822.5600123405457,
+        823.1679797172546,
+        818.4319734573364,
+        823.8080143928528,
+        815.3600096702576,
+        819.487988948822,
+        818.7839984893799,
+        817.6000118255615,
+        820.6080198287964,
+        815.8720135688782,
+        816.7679905891418,
+        817.3760175704956,
+        820.3200101852417,
+        815.9040212631226,
+        815.168023109436,
+        818.8480138778687,
+        827.5520205497742,
+        819.9040293693542,
+        822.1759796142578,
+        817.0560002326965,
+        819.5199966430664,
+        819.487988948822,
+        820.2239871025085
+      ],
+      "warmup_count": 10
+    },
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "compile": {
+      "artifact_id": "fd0e4cccbd0d12808cc877a1adb4be7ec6558e416f2b09fce3ce669e924b7ef4",
+      "duration_seconds": 2.1823446269999636,
+      "success": true
+    },
+    "correctness": {
+      "failed_test_id": null,
+      "maximum_error": 0.0,
+      "mean_error": 0.0,
+      "reference_metadata": {
+        "implementation": "torch.matmul/cuBLAS",
+        "seed": 0
+      },
+      "success": true
+    },
+    "vendor_baselines": {
+      "cublas": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 181.567993,
+          "mean_us": 177.5946665333333,
+          "median_us": 177.2479935,
+          "min_us": 175.264008,
+          "per_shape_median_us": {},
+          "stddev_us": 1.6258615603332836,
+          "timings_us": [
+            180.352005,
+            177.440002,
+            177.856003,
+            175.871994,
+            176.128006,
+            177.664001,
+            176.0,
+            178.975998,
+            176.287994,
+            176.223999,
+            176.512009,
+            178.720001,
+            177.215988,
+            176.447998,
+            175.264008,
+            176.0,
+            177.024002,
+            175.807999,
+            178.847992,
+            179.135986,
+            177.279999,
+            178.496002,
+            176.479996,
+            180.672012,
+            178.624008,
+            175.968002,
+            176.384003,
+            178.688004,
+            181.567993,
+            179.903992
+          ],
+          "warmup_count": 10
+        },
+        "correctness": {
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "success": true
+        }
+      },
+      "cutlass": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 313.664001,
+          "mean_us": 309.08160096666666,
+          "median_us": 308.5919955,
+          "min_us": 306.81601,
+          "per_shape_median_us": {},
+          "stddev_us": 1.5122009452883838,
+          "timings_us": [
+            313.664001,
+            309.087982,
+            307.296021,
+            309.024017,
+            308.160004,
+            311.231995,
+            308.256012,
+            308.928009,
+            309.056,
+            310.176025,
+            307.808014,
+            308.47998,
+            307.776001,
+            307.743988,
+            307.903992,
+            308.608002,
+            311.807983,
+            307.776001,
+            309.024017,
+            309.056,
+            311.488007,
+            308.575989,
+            307.967987,
+            306.81601,
+            310.880005,
+            310.431976,
+            308.575989,
+            308.223999,
+            310.368011,
+            308.256012
+          ],
+          "warmup_count": 10
+        },
+        "correctness": {
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "success": true
+        }
+      }
+    }
+  },
+  "trace_manifest": {
+    "arms": [
+      {
+        "arm": "B",
+        "binary_hash": "1be9bcdd2237a3039a7237a536860b4d684a2e4dc5ac715a5e81bda265386c86",
+        "compiler_resources": {
+          "registers_per_thread": 213,
+          "spills": 0,
+          "static_shared_memory_bytes": 147456
+        },
+        "environment_manifest_id": "2f4bd8e3b721b3fdf5d429612be91839a207672c529b33a00ad052e7d441244d",
+        "median_us": 202.92799919843674,
+        "node_id": "daccd671-9447-450c-ad79-e9fb7974754f",
+        "profile_summary": {
+          "achieved_occupancy_pct": 12.46,
+          "barrier_stalled_warps_per_issue": 1.69,
+          "compiler_spills": 0,
+          "compiler_static_shared_memory_bytes": 147456,
+          "dram_bytes_read": 186686208.0,
+          "dram_bytes_written": 28661248.0,
+          "dram_throughput_pct": 29.5,
+          "eligible_warps_per_cycle": 0.36,
+          "instructions_executed": 39968768.0,
+          "issue_active_pct": 27.35,
+          "l1tex_throughput_pct": 62.98,
+          "l2_sector_hit_rate_pct": 68.05,
+          "l2_throughput_pct": 46.53,
+          "local_load_l1_hit_sectors": 0.0,
+          "local_load_l1_miss_sectors": 0.0,
+          "local_load_sectors": 0.0,
+          "local_store_sectors": 0.0,
+          "long_scoreboard_warps_per_issue": 1.24,
+          "math_pipe_throttle_warps_per_issue": 0.2,
+          "not_selected_warps_per_issue": 0.31,
+          "registers_per_thread": 213.0,
+          "shared_bank_conflicts": 3346.0,
+          "short_scoreboard_warps_per_issue": 0.04,
+          "sm_throughput_pct": 86.84,
+          "tensor_instructions_executed": 1048576.0,
+          "tensor_pipe_utilization_pct": 91.62
+        },
+        "ptx_sha256": "4b9f1942b5d970ca91462de5743fd2121100a309ca60d3e4519f23ff1db0c9ca",
+        "run_id": "2bc83fc9-cbfb-429c-86fb-cc95eec074af",
+        "source_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+        "timing_samples_us": [
+          214.65599536895752,
+          205.79199492931366,
+          205.05599677562714,
+          203.0079960823059,
+          206.7839950323105,
+          204.25599813461304,
+          202.33599841594696,
+          202.84800231456757,
+          207.39200711250305,
+          202.04800367355347,
+          201.9840031862259,
+          200.47999918460846,
+          206.65599405765533,
+          205.24799823760986,
+          201.60000026226044,
+          208.00000429153442,
+          201.47199928760529,
+          211.32799983024597,
+          203.80799472332,
+          202.78400182724,
+          202.62399315834045,
+          200.1280039548874,
+          205.4080069065094,
+          202.17600464820862,
+          201.9840031862259,
+          211.45600080490112,
+          200.51200687885284,
+          205.34400641918182,
+          202.4639993906021,
+          202.43200659751892
+        ],
+        "trace": "docs/experiments/triton-h100-context-factorial/output/corrected-b10-s0-B.sqlite"
+      },
+      {
+        "arm": "D",
+        "binary_hash": "c9e837a105a1de7857e611c32e49a25cb62ff260183ca7ac8765b736c87230e1",
+        "compiler_resources": {
+          "registers_per_thread": 197,
+          "spills": 0,
+          "static_shared_memory_bytes": 147456
+        },
+        "environment_manifest_id": "2f4bd8e3b721b3fdf5d429612be91839a207672c529b33a00ad052e7d441244d",
+        "median_us": 228.7839949131012,
+        "node_id": "ac51d602-dea9-4735-b23e-6e3e24370a09",
+        "profile_summary": {
+          "achieved_occupancy_pct": 12.48,
+          "barrier_stalled_warps_per_issue": 0.79,
+          "compiler_spills": 0,
+          "compiler_static_shared_memory_bytes": 147456,
+          "dram_bytes_read": 186684160.0,
+          "dram_bytes_written": 28730112.0,
+          "dram_throughput_pct": 25.45,
+          "eligible_warps_per_cycle": 0.32,
+          "instructions_executed": 43999232.0,
+          "issue_active_pct": 24.71,
+          "l1tex_throughput_pct": 51.95,
+          "l2_sector_hit_rate_pct": 64.52,
+          "l2_throughput_pct": 40.85,
+          "local_load_l1_hit_sectors": 0.0,
+          "local_load_l1_miss_sectors": 0.0,
+          "local_load_sectors": 0.0,
+          "local_store_sectors": 0.0,
+          "long_scoreboard_warps_per_issue": 1.0,
+          "math_pipe_throttle_warps_per_issue": 0.42,
+          "not_selected_warps_per_issue": 0.31,
+          "registers_per_thread": 197.0,
+          "shared_bank_conflicts": 11169.0,
+          "short_scoreboard_warps_per_issue": 0.04,
+          "sm_throughput_pct": 71.63,
+          "tensor_instructions_executed": 1048576.0,
+          "tensor_pipe_utilization_pct": 75.26
+        },
+        "ptx_sha256": "128939f19aa06aa5890ec50a84e7857c1dc3018259970a1e04febce7e487f9a3",
+        "run_id": "7abba942-118a-45d1-94f2-781fc1d096fe",
+        "source_sha256": "270eb1e009823e43b5cea9198c9499592256b07264d774c955585154afe51279",
+        "timing_samples_us": [
+          238.46399784088135,
+          231.1359941959381,
+          231.1680018901825,
+          227.80799865722656,
+          226.01599991321564,
+          226.43199563026428,
+          229.5999974012375,
+          228.4799963235855,
+          229.37600314617157,
+          230.01599311828613,
+          230.56000471115112,
+          226.97600722312927,
+          228.5439968109131,
+          226.30399465560913,
+          229.0239930152893,
+          229.0239930152893,
+          227.90400683879852,
+          228.15999388694763,
+          237.5040054321289,
+          227.9359996318817,
+          227.743998169899,
+          227.7120053768158,
+          231.36000335216522,
+          227.29599475860596,
+          228.38400304317474,
+          231.90400004386902,
+          230.97600042819977,
+          230.9119999408722,
+          227.58400440216064,
+          229.5999974012375
+        ],
+        "trace": "docs/experiments/triton-h100-context-factorial/output/corrected-b10-s0-D.sqlite"
+      }
+    ],
+    "schema_version": 1,
+    "selection": "closed corrected seed-0 best nodes"
+  }
+}

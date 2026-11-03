@@ -1,0 +1,55 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-03T20:51:12.610717+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-bcc6a623-2eff-6537-bcea-664209b7c04c",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "1ce58f9ef34f3f7005b0327597200052bc17b874ec3558c55814bc9110f00692",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00cm4kh1nf7mrxp3v",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "99462efb75981277f3552086751baec8e3f6a9b7",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00cm4kh1nf7mrxp3v"
+  },
+  "git_commit": "99462efb75981277f3552086751baec8e3f6a9b7",
+  "harness_sha256": "87be54683aafdcec53888fd0317385c58236166550f273e95950ba3ff30dbc95",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "last_output": "round 1 reassembled_multicast: ok 321.9519853591919\nround 1 generated_ordinary: ok 431.4879924058914\nround 2 generated_ordinary: ok 430.89599907398224\nround 2 patched_ordinary: ok 310.12800335884094\nround 2 generated_multicast: ok 321.6640055179596\nround 2 reassembled_multicast: ok 318.88000667095184\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"create_make_tensor_descriptor\"\n - leaked function \"create_experimental_fpsan_embed\"\n - leaked function \"create_scaled_upcast_fp4\"\n - leaked function \"create_clc_load_result\"\n - leaked function \"create_fsub\"\n - leaked function \"get_double_ty\"\n - leaked function \"get_int1_ty\"\n - leaked function \"create_fcmpULE\"\n - leaked function \"get_int32\"\n - leaked function \"get_uint32\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+  "original_cubin_sha256": "376d8222775e025e7bfb39f5501ce8bdfa7fb920e2f093d7467ddd001bde65f7",
+  "paired_complete": true,
+  "patched_cubin_sha256": "e7a3d15536039b80092bb4b29f112ca853d0c702f6708f5584d8b469467bc9ab",
+  "remote_artifacts_sha256": "ae7de8e7ccca5758f1a462736e028b9b756c07f9997a30e6326cc3a631492476",
+  "remote_exit_code": 0,
+  "run_id": "17f0cc79-71eb-4395-9b86-8aefab82dc7d",
+  "schema_version": 1,
+  "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd"
+}

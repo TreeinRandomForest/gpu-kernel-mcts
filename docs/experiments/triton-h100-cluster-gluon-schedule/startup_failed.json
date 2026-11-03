@@ -1,0 +1,10 @@
+{
+  "complete": false,
+  "dirty_tree": true,
+  "git_commit": "99462efb75981277f3552086751baec8e3f6a9b7",
+  "harness_sha256": "46d5087665d3cf03c2678ea8ea49a7ae4f2309300d73ec330e8756da95511146",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "run_id": "8de77522-1c78-4eb5-8e13-efb64fe4d3ea",
+  "schema_version": 1,
+  "source_sha256": "2d782d6ed3633c23062e5a426ef9a4a4ae01fd368c01001bf24803105271b21c"
+}

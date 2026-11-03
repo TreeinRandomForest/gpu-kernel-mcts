@@ -1,0 +1,74 @@
+{
+  "arms": {
+    "generated_multicast": {
+      "median_round_us": 324.0160048007965,
+      "round_medians_us": [
+        324.2560029029846,
+        324.0160048007965,
+        321.6640055179596
+      ]
+    },
+    "generated_ordinary": {
+      "median_round_us": 431.4879924058914,
+      "round_medians_us": [
+        435.90399622917175,
+        431.4879924058914,
+        430.89599907398224
+      ]
+    },
+    "patched_ordinary": {
+      "median_round_us": 312.8319978713989,
+      "round_medians_us": [
+        313.31199407577515,
+        312.8319978713989,
+        310.12800335884094
+      ]
+    },
+    "reassembled_multicast": {
+      "median_round_us": 321.9519853591919,
+      "round_medians_us": [
+        322.79999554157257,
+        321.9519853591919,
+        318.88000667095184
+      ]
+    }
+  },
+  "complete": true,
+  "contrasts": {
+    "patched_vs_generated_ordinary": {
+      "median_paired_delta_us": -120.7679957151413,
+      "round_deltas_us": [
+        -122.5920021533966,
+        -118.65599453449249,
+        -120.7679957151413
+      ]
+    },
+    "patched_vs_reassembled_multicast": {
+      "median_paired_delta_us": -9.119987487792969,
+      "round_deltas_us": [
+        -9.488001465797424,
+        -9.119987487792969,
+        -8.7520033121109
+      ]
+    },
+    "reassembly_effect": {
+      "median_paired_delta_us": -2.0640194416046143,
+      "round_deltas_us": [
+        -1.4560073614120483,
+        -2.0640194416046143,
+        -2.7839988470077515
+      ]
+    }
+  },
+  "original_cubin_sha256": "376d8222775e025e7bfb39f5501ce8bdfa7fb920e2f093d7467ddd001bde65f7",
+  "patched_cubin_sha256": "e7a3d15536039b80092bb4b29f112ca853d0c702f6708f5584d8b469467bc9ab",
+  "ptx_sha256": "981b8c868288cb7962c2a9f81766aab420a735a6a6d77f1ba5a0a2120a66054a",
+  "reassembled_sass": {
+    "multicast_wait_sites": 2,
+    "ordinary_multicast_tma_sites": 0,
+    "ordinary_wait_sites": 2
+  },
+  "run_id": "17f0cc79-71eb-4395-9b86-8aefab82dc7d",
+  "schema_version": 1,
+  "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd"
+}

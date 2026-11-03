@@ -1,0 +1,99 @@
+{
+  "arms": {
+    "multicast_a_first": {
+      "b_first": false,
+      "clustered": true,
+      "cubin_sha256": "62db6eb24d01441f197a476dc70c100b8b7e4ad45711ab116eaaa47bd54a222f",
+      "median_round_us": 391.3760036230087,
+      "multicast": true,
+      "pipelined": true,
+      "ptx_multicast_sites": 1,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        391.3760036230087,
+        392.0480012893677,
+        386.54398918151855
+      ],
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 1,
+      "sass_warpgroup_wait_sites": 2,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    },
+    "ordinary_a_first": {
+      "b_first": false,
+      "clustered": true,
+      "cubin_sha256": "c832f144b12327cb8de92cf4274a61f541332757b8a613cf778b4afdcc5b23de",
+      "median_round_us": 505.2320063114166,
+      "multicast": false,
+      "pipelined": true,
+      "ptx_multicast_sites": 0,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        505.2320063114166,
+        505.3279995918274,
+        499.61599707603455
+      ],
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 0,
+      "sass_warpgroup_wait_sites": 4,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    },
+    "ordinary_b_first": {
+      "b_first": true,
+      "clustered": true,
+      "cubin_sha256": "1ba4a645c7ce5464d36c7d649e9fcc2ba5ae7f38fb5e77d6cb91ce519fc27ee9",
+      "median_round_us": 480.6399941444397,
+      "multicast": false,
+      "pipelined": true,
+      "ptx_multicast_sites": 0,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        482.7519953250885,
+        480.6399941444397,
+        471.0399955511093
+      ],
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 0,
+      "sass_warpgroup_wait_sites": 4,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    }
+  },
+  "contrasts": {
+    "multicast_vs_ordinary_a_first": {
+      "control": "ordinary_a_first",
+      "median_paired_delta_us": -113.27999830245972,
+      "round_deltas_us": [
+        -113.8560026884079,
+        -113.27999830245972,
+        -113.07200789451599
+      ],
+      "treatment": "multicast_a_first"
+    },
+    "multicast_vs_ordinary_b_first": {
+      "control": "ordinary_b_first",
+      "median_paired_delta_us": -88.59199285507202,
+      "round_deltas_us": [
+        -91.37599170207977,
+        -88.59199285507202,
+        -84.49600636959076
+      ],
+      "treatment": "multicast_a_first"
+    },
+    "request_order_effect": {
+      "control": "ordinary_a_first",
+      "median_paired_delta_us": -24.688005447387695,
+      "round_deltas_us": [
+        -22.480010986328125,
+        -24.688005447387695,
+        -28.576001524925232
+      ],
+      "treatment": "ordinary_b_first"
+    }
+  },
+  "schema_version": 1,
+  "source_sha256": "2d782d6ed3633c23062e5a426ef9a4a4ae01fd368c01001bf24803105271b21c",
+  "triton_version": "3.9.0"
+}

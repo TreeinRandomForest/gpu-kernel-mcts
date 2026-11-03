@@ -1,0 +1,187 @@
+{
+  "arms": {
+    "cluster_pipeline_multicast": {
+      "clustered": true,
+      "cubin_sha256": "f4bb0234acf612ad3f08cd54f9d0b244baf5eb6879a03fcfec112f1ce12c623c",
+      "median_round_us": 390.25600254535675,
+      "multicast": true,
+      "pipelined": true,
+      "ptx_multicast_sites": 1,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        391.3919925689697,
+        387.10400462150574,
+        390.25600254535675
+      ],
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 1,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    },
+    "cluster_pipeline_ordinary": {
+      "clustered": true,
+      "cubin_sha256": "7e0a4197860009d9b80e7a37de4c296ae4c1b8d7816a9159ccf8e1222bb5b6eb",
+      "median_round_us": 506.8320035934448,
+      "multicast": false,
+      "pipelined": true,
+      "ptx_multicast_sites": 0,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        506.8320035934448,
+        497.42400646209717,
+        507.29599595069885
+      ],
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 0,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    },
+    "cluster_serial_multicast": {
+      "clustered": true,
+      "cubin_sha256": "fb8b59eec3c00bb318728e7a098fdea6a12cf171518fa342aaaccddbdd9f5e3f",
+      "median_round_us": 531.279981136322,
+      "multicast": true,
+      "pipelined": false,
+      "ptx_multicast_sites": 1,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        533.6000025272369,
+        525.8080065250397,
+        531.279981136322
+      ],
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 1,
+      "shared_memory_bytes": 65536,
+      "spills": 0
+    },
+    "cluster_serial_ordinary": {
+      "clustered": true,
+      "cubin_sha256": "cc54f43d6c3cc969fdb87e684aad0338ff16ec329bd762d527b08d9525075a7b",
+      "median_round_us": 508.2879960536957,
+      "multicast": false,
+      "pipelined": false,
+      "ptx_multicast_sites": 0,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        508.59200954437256,
+        504.3039917945862,
+        508.2879960536957
+      ],
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 0,
+      "shared_memory_bytes": 65536,
+      "spills": 0
+    },
+    "single_pipeline": {
+      "clustered": false,
+      "cubin_sha256": "63111c8d23f5ea3910ddfb2d47d0f90133f69abc17cc6d44d23ad684b3f1a01d",
+      "median_round_us": 353.4240126609802,
+      "multicast": false,
+      "pipelined": true,
+      "ptx_multicast_sites": 0,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        353.4240126609802,
+        352.2399961948395,
+        353.95200550556183
+      ],
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 0,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    },
+    "single_serial": {
+      "clustered": false,
+      "cubin_sha256": "91290f0c57b79d8d8ec85b025d863c605240add331279d531c5a4f62c54774ac",
+      "median_round_us": 494.86400187015533,
+      "multicast": false,
+      "pipelined": false,
+      "ptx_multicast_sites": 0,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        494.86400187015533,
+        490.6719923019409,
+        495.7599937915802
+      ],
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 0,
+      "shared_memory_bytes": 65536,
+      "spills": 0
+    }
+  },
+  "contrasts": {
+    "cluster_pipeline_gain_with_multicast": {
+      "control": "cluster_serial_multicast",
+      "median_paired_delta_us": -141.02397859096527,
+      "round_deltas_us": [
+        -142.2080099582672,
+        -138.70400190353394,
+        -141.02397859096527
+      ],
+      "treatment": "cluster_pipeline_multicast"
+    },
+    "cluster_pipeline_gain_without_multicast": {
+      "control": "cluster_serial_ordinary",
+      "median_paired_delta_us": -1.7600059509277344,
+      "round_deltas_us": [
+        -1.7600059509277344,
+        -6.879985332489014,
+        -0.9920001029968262
+      ],
+      "treatment": "cluster_pipeline_ordinary"
+    },
+    "pipeline_multicast_increment": {
+      "control": "cluster_pipeline_ordinary",
+      "median_paired_delta_us": -115.4400110244751,
+      "round_deltas_us": [
+        -115.4400110244751,
+        -110.32000184059143,
+        -117.0399934053421
+      ],
+      "treatment": "cluster_pipeline_multicast"
+    },
+    "pipelined_cluster_gap": {
+      "control": "single_pipeline",
+      "median_paired_delta_us": 36.30399703979492,
+      "round_deltas_us": [
+        37.9679799079895,
+        34.86400842666626,
+        36.30399703979492
+      ],
+      "treatment": "cluster_pipeline_multicast"
+    },
+    "serial_cluster_cost_without_multicast": {
+      "control": "single_serial",
+      "median_paired_delta_us": 13.631999492645264,
+      "round_deltas_us": [
+        13.728007674217224,
+        13.631999492645264,
+        12.528002262115479
+      ],
+      "treatment": "cluster_serial_ordinary"
+    },
+    "serial_multicast_increment": {
+      "control": "cluster_serial_ordinary",
+      "median_paired_delta_us": 22.991985082626343,
+      "round_deltas_us": [
+        25.00799298286438,
+        21.50401473045349,
+        22.991985082626343
+      ],
+      "treatment": "cluster_serial_multicast"
+    },
+    "single_pipeline_gain": {
+      "control": "single_serial",
+      "median_paired_delta_us": -141.4399892091751,
+      "round_deltas_us": [
+        -141.4399892091751,
+        -138.43199610710144,
+        -141.80798828601837
+      ],
+      "treatment": "single_pipeline"
+    }
+  },
+  "schema_version": 1,
+  "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd",
+  "triton_version": "3.9.0"
+}

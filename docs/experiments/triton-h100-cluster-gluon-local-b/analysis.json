@@ -1,0 +1,64 @@
+{
+  "arms": {
+    "multicast_replicated": {
+      "b_first": false,
+      "b_local": false,
+      "clustered": true,
+      "cubin_sha256": "1bfd120fda1b06da2de3598a1022cfdd55b942c39f763d3d21f00850d34e3aa7",
+      "median_round_us": 392.39999651908875,
+      "multicast": true,
+      "pipelined": true,
+      "ptx_multicast_sites": 1,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        393.0879980325699,
+        392.1919912099838,
+        392.39999651908875
+      ],
+      "shared_memory_bytes": 98312,
+      "spills": 0,
+      "status": "ok"
+    },
+    "ordinary_local": {
+      "b_local": true,
+      "errors": [
+        "esc, c_desc, clustered, multicast, pipelined,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 375, in <lambda>\n    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 765, in run\n    kernel = self._do_compile(key, signature, device, constexprs, options, attrs, warmup)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 917, in _do_compile\n    kernel = self.compile(src, target=target, options=options.__dict__)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 307, in compile\n    module = src.make_ir(target, options, codegen_fns, module_map, context)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/experimental/gluon/_runtime.py\", line 46, in make_ir\n    module = ast_to_ttir(self.fn, self, context=context, options=options, codegen_fns=codegen_fns,\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: error encountered during parsing\n"
+      ],
+      "status": "failed"
+    },
+    "ordinary_replicated": {
+      "b_first": false,
+      "b_local": false,
+      "clustered": true,
+      "cubin_sha256": "aa06abd135940c02e50ec32c9ef2d16573f34aecd5f5c097cdab7f0b7f360d1d",
+      "median_round_us": 505.9199929237366,
+      "multicast": false,
+      "pipelined": true,
+      "ptx_multicast_sites": 0,
+      "registers_per_thread": 154,
+      "round_medians_us": [
+        503.88801097869873,
+        510.20798087120056,
+        505.9199929237366
+      ],
+      "shared_memory_bytes": 98312,
+      "spills": 0,
+      "status": "ok"
+    }
+  },
+  "contrasts": {
+    "multicast_vs_replicated": {
+      "control": "ordinary_replicated",
+      "median_paired_delta_us": -113.51999640464783,
+      "round_deltas_us": [
+        -110.80001294612885,
+        -118.01598966121674,
+        -113.51999640464783
+      ],
+      "treatment": "multicast_replicated"
+    }
+  },
+  "schema_version": 1,
+  "source_sha256": "2b4a37edecd9be8bc39754008d0a383eba21c9748077ded5c8db228c4eccf1b5",
+  "triton_version": "3.9.0"
+}

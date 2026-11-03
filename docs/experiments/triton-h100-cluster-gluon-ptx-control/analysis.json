@@ -1,0 +1,25 @@
+{
+  "attempt_ids": {
+    "grid_failed": "9bf2198f-fd2e-47af-9633-4a2694766bb1",
+    "runtime_hung": "5113577c-4162-45ef-a86a-6bd5f522f783"
+  },
+  "original_cubin_sha256": "376d8222775e025e7bfb39f5501ce8bdfa7fb920e2f093d7467ddd001bde65f7",
+  "original_ptx_sha256": "0f0affd5f371003848ae65bf875407aa736b84fdcfe72fd07eb27665ea582454",
+  "original_sass": {
+    "hgmma_sites": 4,
+    "multicast_tma_sites": 1,
+    "warpgroup_wait_sites": 2
+  },
+  "patched_cubin_sha256": "d09b6f89d82efe9e42d5e416a300ca11da0080360fc1cf21e71a7477c4a3577c",
+  "patched_ptx_sha256": "d96a5ebba5c948f7f1f4691015b2fcb5b2602ffc4ebbbde6087ceada38debf05",
+  "patched_sass": {
+    "hgmma_sites": 4,
+    "multicast_tma_sites": 0,
+    "ordinary_tma_sites": 2,
+    "warpgroup_wait_sites": 2
+  },
+  "runtime_correctness_established": false,
+  "runtime_latency_established": false,
+  "runtime_status": "patched arm did not return; terminated after over one minute",
+  "schema_version": 1
+}

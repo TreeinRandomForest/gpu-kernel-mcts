@@ -1,0 +1,10 @@
+{
+  "complete": false,
+  "dirty_tree": true,
+  "git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+  "harness_sha256": "ba21b63550b4de9948e1afb9aaf4d1d2dc8b678dc2d8719a194e326178a6b543",
+  "image": "docker.io/saarora/gpu-kernel-mcts@sha256:8d4eb8e3f9488f2d866b5021366b985c4411a7acad806bfa3494dbd83725b53e",
+  "run_id": "a19c5a44-b027-45c6-b229-f2ffdda752d8",
+  "schema_version": 1,
+  "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd"
+}

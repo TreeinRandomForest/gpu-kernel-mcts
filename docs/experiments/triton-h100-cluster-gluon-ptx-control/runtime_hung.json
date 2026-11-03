@@ -1,0 +1,51 @@
+{
+  "complete": false,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-03T19:21:41.913661+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-c2daaaf6-1c35-0424-e8ad-d2034082cc2e",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "dcf755309aa1f991c8d5440170deee9770022ef80a6a529b938b67e58a96c763",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00c2n1mhxjdqs3emj",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "99462efb75981277f3552086751baec8e3f6a9b7",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00c2n1mhxjdqs3emj"
+  },
+  "git_commit": "99462efb75981277f3552086751baec8e3f6a9b7",
+  "harness_sha256": "87be54683aafdcec53888fd0317385c58236166550f273e95950ba3ff30dbc95",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "original_cubin_sha256": "376d8222775e025e7bfb39f5501ce8bdfa7fb920e2f093d7467ddd001bde65f7",
+  "patched_cubin_sha256": "d09b6f89d82efe9e42d5e416a300ca11da0080360fc1cf21e71a7477c4a3577c",
+  "run_id": "5113577c-4162-45ef-a86a-6bd5f522f783",
+  "schema_version": 1,
+  "source_sha256": "d427c6814dce3bfaed98a57dee3352b4cf138268794213ca41151754e2003fdd"
+}

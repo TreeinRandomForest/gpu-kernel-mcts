@@ -1,0 +1,166 @@
+{
+  "counters": {
+    "achieved_occupancy_pct": {
+      "cublas": 14.65,
+      "triton": 12.48,
+      "triton_minus_cublas": -2.17,
+      "triton_over_cublas": 0.851877133105802
+    },
+    "barrier_stalled_warps_per_issue": {
+      "cublas": 6.15,
+      "triton": 1.7,
+      "triton_minus_cublas": -4.45,
+      "triton_over_cublas": 0.2764227642276422
+    },
+    "dram_bytes_read": {
+      "cublas": 150959616.0,
+      "triton": 186665216.0,
+      "triton_minus_cublas": 35705600.0,
+      "triton_over_cublas": 1.236524184057278
+    },
+    "dram_bytes_written": {
+      "cublas": 28617728.0,
+      "triton": 28641792.0,
+      "triton_minus_cublas": 24064.0,
+      "triton_over_cublas": 1.0008408773750312
+    },
+    "dram_throughput_pct": {
+      "cublas": 26.11,
+      "triton": 29.92,
+      "triton_minus_cublas": 3.8100000000000023,
+      "triton_over_cublas": 1.1459211030256609
+    },
+    "eligible_warps_per_cycle": {
+      "cublas": 0.13,
+      "triton": 0.36,
+      "triton_minus_cublas": 0.22999999999999998,
+      "triton_over_cublas": 2.769230769230769
+    },
+    "instructions_executed": {
+      "cublas": 16575186.0,
+      "triton": 39968768.0,
+      "triton_minus_cublas": 23393582.0,
+      "triton_over_cublas": 2.4113616583246786
+    },
+    "issue_active_pct": {
+      "cublas": 11.77,
+      "triton": 27.27,
+      "triton_minus_cublas": 15.5,
+      "triton_over_cublas": 2.316907391673747
+    },
+    "l1tex_throughput_pct": {
+      "cublas": 73.7,
+      "triton": 62.9,
+      "triton_minus_cublas": -10.800000000000004,
+      "triton_over_cublas": 0.8534599728629579
+    },
+    "l2_sector_hit_rate_pct": {
+      "cublas": 70.99,
+      "triton": 64.47,
+      "triton_minus_cublas": -6.519999999999996,
+      "triton_over_cublas": 0.9081560783208903
+    },
+    "l2_throughput_pct": {
+      "cublas": 49.16,
+      "triton": 47.21,
+      "triton_minus_cublas": -1.9499999999999957,
+      "triton_over_cublas": 0.9603336045565501
+    },
+    "local_load_sectors": {
+      "cublas": 0.0,
+      "triton": 0.0,
+      "triton_minus_cublas": 0.0,
+      "triton_over_cublas": null
+    },
+    "local_store_sectors": {
+      "cublas": 0.0,
+      "triton": 0.0,
+      "triton_minus_cublas": 0.0,
+      "triton_over_cublas": null
+    },
+    "long_scoreboard_warps_per_issue": {
+      "cublas": 3.86,
+      "triton": 1.26,
+      "triton_minus_cublas": -2.5999999999999996,
+      "triton_over_cublas": 0.32642487046632124
+    },
+    "math_pipe_throttle_warps_per_issue": {
+      "cublas": 0.27,
+      "triton": 0.2,
+      "triton_minus_cublas": -0.07,
+      "triton_over_cublas": 0.7407407407407407
+    },
+    "registers_per_thread": {
+      "cublas": 168.0,
+      "triton": 213.0,
+      "triton_minus_cublas": 45.0,
+      "triton_over_cublas": 1.2678571428571428
+    },
+    "shared_bank_conflicts": {
+      "cublas": 148742.0,
+      "triton": 2164.0,
+      "triton_minus_cublas": -146578.0,
+      "triton_over_cublas": 0.014548681609767248
+    },
+    "short_scoreboard_warps_per_issue": {
+      "cublas": 0.03,
+      "triton": 0.04,
+      "triton_minus_cublas": 0.010000000000000002,
+      "triton_over_cublas": 1.3333333333333335
+    },
+    "sm_throughput_pct": {
+      "cublas": 90.5,
+      "triton": 86.97,
+      "triton_minus_cublas": -3.530000000000001,
+      "triton_over_cublas": 0.9609944751381215
+    },
+    "tensor_instructions_executed": {
+      "cublas": 2097152.0,
+      "triton": 1048576.0,
+      "triton_minus_cublas": -1048576.0,
+      "triton_over_cublas": 0.5
+    },
+    "tensor_pipe_utilization_pct": {
+      "cublas": 95.24,
+      "triton": 91.51,
+      "triton_minus_cublas": -3.7299999999999898,
+      "triton_over_cublas": 0.9608357832843344
+    }
+  },
+  "cublas_kernel_name": "nvjet_tst_256x128_64x4_1x2_h_bz_coopA_TNT",
+  "cublas_launch": {
+    "Block Size": "(384, 1, 1)",
+    "Grid Size": "(2, 66, 1)",
+    "gpu__time_duration.sum": "205152",
+    "launch__cluster_size": "2",
+    "launch__registers_per_thread": "168",
+    "launch__shared_mem_per_block": "214212",
+    "launch__waves_per_multiprocessor": "1"
+  },
+  "limitations": "One diagnostic NCU application replay per implementation, separate from three CUDA-event timing rounds. Whole-kernel counters can be compared, but they do not identify the exact instruction-level cause of the latency gap. The Triton Python and cuBLAS C++ harnesses use different random-input distributions and setup paths. NCU replay duration is not reward timing.",
+  "median_of_round_medians_us": {
+    "cublas": 175.856003,
+    "triton": 200.41599869728088
+  },
+  "median_paired_delta_us": 24.176005427463537,
+  "paired_delta_us": [
+    25.327994094631208,
+    24.080000197280867,
+    24.176005427463537
+  ],
+  "round_medians_us": {
+    "cublas": [
+      175.856003,
+      176.33599850000002,
+      175.583992
+    ],
+    "triton": [
+      201.1839970946312,
+      200.41599869728088,
+      199.75999742746353
+    ]
+  },
+  "schema_version": 1,
+  "status": "same_worker_matched_metric_comparison",
+  "triton_source_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4"
+}

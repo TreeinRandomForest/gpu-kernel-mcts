@@ -1,0 +1,151 @@
+{
+  "arms": {
+    "cublas": {
+      "median_round_us": 177.776001393795,
+      "round_medians_us": [
+        177.776001393795,
+        176.92799866199493,
+        180.57599663734436
+      ]
+    },
+    "source_multicast": {
+      "median_round_us": 305.63201010227203,
+      "round_medians_us": [
+        305.63201010227203,
+        302.0160049200058,
+        311.15199625492096
+      ]
+    },
+    "source_ordinary": {
+      "median_round_us": 296.1760014295578,
+      "round_medians_us": [
+        296.9439923763275,
+        296.1760014295578,
+        292.7359938621521
+      ]
+    },
+    "static_multicast": {
+      "median_round_us": 314.07999992370605,
+      "round_medians_us": [
+        314.7040009498596,
+        314.07999992370605,
+        310.1920038461685
+      ]
+    },
+    "static_ordinary": {
+      "median_round_us": 423.3120083808899,
+      "round_medians_us": [
+        425.69600045681,
+        423.3120083808899,
+        419.95199024677277
+      ]
+    },
+    "triton_b": {
+      "median_round_us": 185.87200343608856,
+      "round_medians_us": [
+        186.43200397491455,
+        185.87200343608856,
+        184.688001871109
+      ]
+    }
+  },
+  "compiler": {
+    "source_multicast": {
+      "cubin_sha256": "497c83471ce3a226972e01ab27089304a1dcd14a2e096885b82880acf3bc1b81",
+      "ptx_multicast_sites": 1,
+      "ptx_sha256": "08a1ed1a2975aaedc69a1c18e1dbeb8ef25580c0dfe0a2cd70eaac00b3dc5920",
+      "registers_per_thread": 154,
+      "sass_multicast_sites": 1,
+      "sass_warpgroup_wait_sites": 2,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    },
+    "source_ordinary": {
+      "cubin_sha256": "497c83471ce3a226972e01ab27089304a1dcd14a2e096885b82880acf3bc1b81",
+      "ptx_multicast_sites": 1,
+      "ptx_sha256": "08a1ed1a2975aaedc69a1c18e1dbeb8ef25580c0dfe0a2cd70eaac00b3dc5920",
+      "registers_per_thread": 154,
+      "sass_multicast_sites": 1,
+      "sass_warpgroup_wait_sites": 2,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    },
+    "static_multicast": {
+      "cubin_sha256": "8432e4406362e837e44f6547c36ed6e5c383963a5dc3de0ec4eaad04f97af401",
+      "ptx_multicast_sites": 1,
+      "ptx_sha256": "15cb8576f6f1866b75257a5ffa89e8ee1634bc8bcac2606db915ecdd2045b795",
+      "registers_per_thread": 154,
+      "sass_multicast_sites": 1,
+      "sass_warpgroup_wait_sites": 2,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    },
+    "static_ordinary": {
+      "cubin_sha256": "ef623a843e11d03c0a2279713d4942e1c3855ea7bbec7b92b4cb1d6934d18179",
+      "ptx_multicast_sites": 0,
+      "ptx_sha256": "a10f8bc49d80153113304e1be0f95012244128cbb06a369ed02fd2f6fe18b2b3",
+      "registers_per_thread": 154,
+      "sass_multicast_sites": 0,
+      "sass_warpgroup_wait_sites": 4,
+      "shared_memory_bytes": 98312,
+      "spills": 0
+    }
+  },
+  "complete": true,
+  "contrasts": {
+    "source_multicast_vs_static_multicast": {
+      "control": "static_multicast",
+      "median_paired_delta_us": -9.071990847587585,
+      "round_deltas_us": [
+        -9.071990847587585,
+        -12.063995003700256,
+        0.9599924087524414
+      ],
+      "treatment": "source_multicast"
+    },
+    "source_ordinary_vs_source_multicast": {
+      "control": "source_multicast",
+      "median_paired_delta_us": -8.688017725944519,
+      "round_deltas_us": [
+        -8.688017725944519,
+        -5.840003490447998,
+        -18.41600239276886
+      ],
+      "treatment": "source_ordinary"
+    },
+    "source_ordinary_vs_static_ordinary": {
+      "control": "static_ordinary",
+      "median_paired_delta_us": -127.21599638462067,
+      "round_deltas_us": [
+        -128.75200808048248,
+        -127.13600695133209,
+        -127.21599638462067
+      ],
+      "treatment": "source_ordinary"
+    },
+    "source_ordinary_vs_triton_b": {
+      "control": "triton_b",
+      "median_paired_delta_us": 110.30399799346924,
+      "round_deltas_us": [
+        110.51198840141296,
+        110.30399799346924,
+        108.04799199104309
+      ],
+      "treatment": "source_ordinary"
+    },
+    "triton_b_vs_cublas": {
+      "control": "cublas",
+      "median_paired_delta_us": 8.656002581119537,
+      "round_deltas_us": [
+        8.656002581119537,
+        8.944004774093628,
+        4.112005233764648
+      ],
+      "treatment": "triton_b"
+    }
+  },
+  "dynamic_same_cubin": true,
+  "run_id": "8241d8b2-2e8d-4d06-b8d2-f7fab73d75e7",
+  "schema_version": 1,
+  "source_sha256": "ca9670937373c4477f968a9a13d09b2265909ca29f8dcba1d479db88a4fb2116"
+}

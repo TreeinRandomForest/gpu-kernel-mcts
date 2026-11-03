@@ -150,12 +150,32 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   one in the multicast cluster, 17,299 versus 4,119 barrier-stall samples,
   and 38.68% versus 51.99% tensor-pipe activity; DRAM bytes are nearly
   identical. See `docs/experiments/triton-h100-cluster-gluon-ncu/README.md`.
-- [ ] Make the ordinary-B clustered Gluon arm use the same one-wait WGMMA
-  schedule as the multicast arm without changing its B-load policy. Verify
-  exact correctness and paired H100 event timing to separate the compiler
-  schedule effect from multicast transfer.
-  Then carry the useful mechanism into a source derived from the optimized
-  Triton B kernel before attributing any cuBLAS-gap improvement.
+- [x] Test whether ordinary-B TMA request order removes the extra clustered
+  WGMMA waits. Moving B first saved 24.688 µs paired median, but both ordinary
+  cubins still have four wait sites. See
+  `docs/experiments/triton-h100-cluster-gluon-schedule/README.md`.
+- [x] Test a CTA-local ordinary-B descriptor and a pinned PTX B-load control.
+  Gluon rejected the one-CTA shared layout inside the two-CTA cluster. The
+  first PTX control assembled with ordinary TMA and two wait sites, but its
+  runtime launch hung because the first-warp issuer guard was removed. See
+  `docs/experiments/triton-h100-cluster-gluon-local-b/README.md` and
+  `docs/experiments/triton-h100-cluster-gluon-ptx-control/README.md`.
+- [x] Correct the PTX issuer predicate and validate a per-CTA ordinary-B TMA
+  variant with one WGMMA wait per K step. All four arms in three H100 rounds
+  matched cuBLAS exactly. Patched ordinary was 120.768 µs faster than
+  generated ordinary and 9.120 µs faster than reassembled multicast in paired
+  median comparisons. See
+  `docs/experiments/triton-h100-cluster-gluon-ptx-control-v2/README.md`.
+- [x] Express per-CTA ordinary-B TMA with the one-loop-wait schedule in
+  maintained Gluon source using a runtime-uniform B-mode branch. Both modes
+  share one cubin and pass exact correctness. In a matched CUDA Graph run,
+  source ordinary took 296.176 µs, static ordinary 423.312 µs, optimized
+  Triton B 185.872 µs, and cuBLAS 177.776 µs. See
+  `docs/experiments/triton-h100-gluon-source-schedule/README.md`.
+- [ ] Profile the source Gluon ordinary arm and optimized Triton B in one
+  matched worker to localize the remaining ~110 µs gap across TMA setup,
+  matrix-multiply scheduling, CTA scheduling, and epilogue. Only then test a
+  transferable mechanism in the optimized kernel or add a search action.
 - [x] Start standalone H100 SXM characterization with a global-copy path
   sweep. The 11-case CUDA Graph timing set spans 4 KiB–256 MiB with repeated
   and rotating buffers; separate NCU passes record DRAM traffic and L2 hit

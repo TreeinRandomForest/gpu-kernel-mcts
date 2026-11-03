@@ -1,0 +1,50 @@
+{
+  "compiler": {
+    "cluster_b_multicast": {
+      "cubin_sha256": "38af5b8d637c025f503689466186243bad9f9b806a1e2305b0fe4eab08285265",
+      "ptx_multicast_sites": 1,
+      "registers_per_thread": 154,
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 1,
+      "shared_memory_bytes": 65536,
+      "spills": 0
+    },
+    "single": {
+      "cubin_sha256": "36e28406114eb360b02c1397e16441cfa5f47f559c6d454c916d049645285da2",
+      "ptx_multicast_sites": 0,
+      "registers_per_thread": 154,
+      "sass_tma_load_sites": 2,
+      "sass_tma_multicast_sites": 0,
+      "shared_memory_bytes": 65536,
+      "spills": 0
+    }
+  },
+  "median_paired_delta_us": 36.75200045108795,
+  "median_paired_slowdown_percent": 7.395840258354608,
+  "rounds": [
+    {
+      "cluster_median_us": 535.1999998092651,
+      "cluster_minus_single_us": 41.48799180984497,
+      "cluster_slowdown_percent": 8.403277849764937,
+      "round": 0,
+      "single_median_us": 493.71200799942017
+    },
+    {
+      "cluster_median_us": 533.6799919605255,
+      "cluster_minus_single_us": 36.75200045108795,
+      "cluster_slowdown_percent": 7.395840258354608,
+      "round": 1,
+      "single_median_us": 496.92799150943756
+    },
+    {
+      "cluster_median_us": 534.0000092983246,
+      "cluster_minus_single_us": 35.936012864112854,
+      "cluster_slowdown_percent": 7.2151396449832665,
+      "round": 2,
+      "single_median_us": 498.06399643421173
+    }
+  ],
+  "schema_version": 1,
+  "source_sha256": "a4f44e2841a3a865066c21ece7f50a56984371b6ec7d80336c315ea7101b1831",
+  "triton_version": "3.9.0"
+}

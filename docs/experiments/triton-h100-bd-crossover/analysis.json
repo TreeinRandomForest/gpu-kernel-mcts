@@ -1,0 +1,409 @@
+{
+  "hardware_graph_topology_revision": 2,
+  "limitations": "Three randomized same-worker rounds and one separate NCU replay per source. PTX sites are static; NCU counters are whole-kernel. Hybrids isolate source factors, but compiler transformations can interact. This does not identify which prompt factor caused the original search outcomes.",
+  "paired_vs_B": {
+    "B_both": {
+      "delta_us_each_round": [
+        28.68799865245819,
+        27.184002101421356,
+        27.952000498771667
+      ],
+      "median_delta_us": 27.952000498771667
+    },
+    "B_loop_only": {
+      "delta_us_each_round": [
+        28.89600396156311,
+        26.8000066280365,
+        29.88799661397934
+      ],
+      "median_delta_us": 28.89600396156311
+    },
+    "B_mask_only": {
+      "delta_us_each_round": [
+        0.2079978585243225,
+        -0.7039979100227356,
+        -0.2559944987297058
+      ],
+      "median_delta_us": -0.2559944987297058
+    },
+    "D_exact": {
+      "delta_us_each_round": [
+        29.53600138425827,
+        27.584001421928406,
+        29.53600138425827
+      ],
+      "median_delta_us": 29.53600138425827
+    }
+  },
+  "schema_version": 1,
+  "status": "same_worker_source_crossover",
+  "variants": [
+    {
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "matches_original_pre_debug_ptx": true,
+      "matches_original_ptx": false,
+      "median_of_round_medians_us": 199.5519995689392,
+      "original_median_us": 202.92799919843674,
+      "profile_summary": {
+        "dram_bytes_read": 186683392.0,
+        "dram_bytes_written": 28634624.0,
+        "instructions_executed": 39968768.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "math_pipe_throttle_warps_per_issue": 0.2,
+        "registers_per_thread": 213.0,
+        "shared_bank_conflicts": 2540.0,
+        "sm_throughput_pct": 86.87,
+        "tensor_instructions_executed": 1048576.0,
+        "tensor_pipe_utilization_pct": 91.89
+      },
+      "ptx": {
+        "bytes": 47728,
+        "opcode_family_sites": {
+          "bar.sync": 5,
+          "cp.async": 44,
+          "ld.global": 0,
+          "ld.local": 0,
+          "ld.shared": 16,
+          "ldmatrix": 0,
+          "mma.sync": 0,
+          "shfl": 1,
+          "st.global": 16,
+          "st.local": 0,
+          "st.shared": 0,
+          "wgmma": 8
+        },
+        "operation_classes": {
+          "async_copy": 36,
+          "control": 2,
+          "global_write": 16,
+          "parameter": 4,
+          "parameter_load": 3,
+          "scalar_or_vector_compute": 789,
+          "shared_read": 16,
+          "shared_write": 16,
+          "synchronization": 17,
+          "tensor_compute": 4,
+          "warp_exchange": 1
+        },
+        "path_gaps": {},
+        "proven_edge_count": 1439,
+        "sha256": "935e630c3ec43e86a83220370c521322b915aa4ed213e59fdfadc9965b76bd24",
+        "site_count": 904,
+        "uncertainty": [
+          "control_flow_join_or_loop",
+          "memory_alias_or_runtime_path_unknown",
+          "predicated_instruction",
+          "unparsed_instruction"
+        ]
+      },
+      "range_of_round_medians_us": [
+        199.12000000476837,
+        201.10400021076202
+      ],
+      "round_medians_us": [
+        199.12000000476837,
+        201.10400021076202,
+        199.5519995689392
+      ],
+      "source_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+      "variant": "B_exact"
+    },
+    {
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "median_of_round_medians_us": 228.01600396633148,
+      "profile_summary": {
+        "dram_bytes_read": 186680064.0,
+        "dram_bytes_written": 28665600.0,
+        "instructions_executed": 43999232.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "math_pipe_throttle_warps_per_issue": 0.42,
+        "registers_per_thread": 197.0,
+        "shared_bank_conflicts": 7320.0,
+        "sm_throughput_pct": 71.66,
+        "tensor_instructions_executed": 1048576.0,
+        "tensor_pipe_utilization_pct": 75.28
+      },
+      "ptx": {
+        "bytes": 47683,
+        "opcode_family_sites": {
+          "bar.sync": 5,
+          "cp.async": 44,
+          "ld.global": 0,
+          "ld.local": 0,
+          "ld.shared": 16,
+          "ldmatrix": 0,
+          "mma.sync": 0,
+          "shfl": 1,
+          "st.global": 16,
+          "st.local": 0,
+          "st.shared": 0,
+          "wgmma": 8
+        },
+        "operation_classes": {
+          "async_copy": 36,
+          "control": 2,
+          "global_write": 16,
+          "parameter": 4,
+          "parameter_load": 3,
+          "scalar_or_vector_compute": 786,
+          "shared_read": 16,
+          "shared_write": 16,
+          "synchronization": 17,
+          "tensor_compute": 4,
+          "warp_exchange": 1
+        },
+        "path_gaps": {},
+        "proven_edge_count": 1413,
+        "sha256": "9758733ba76575ed8b0e072cf6f59f739de11bddb0e6d959749df831ad349320",
+        "site_count": 901,
+        "uncertainty": [
+          "control_flow_join_or_loop",
+          "memory_alias_or_runtime_path_unknown",
+          "predicated_instruction",
+          "unparsed_instruction"
+        ]
+      },
+      "range_of_round_medians_us": [
+        227.90400683879852,
+        229.43999618291855
+      ],
+      "round_medians_us": [
+        228.01600396633148,
+        227.90400683879852,
+        229.43999618291855
+      ],
+      "source_sha256": "6332ba9b0e8822ba57cb8bde0b611e4d3c13798f1c55bdb6999ef9413cdbd7c5",
+      "variant": "B_loop_only"
+    },
+    {
+      "compiler_resources": {
+        "registers_per_thread": 213,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "median_of_round_medians_us": 199.3279978632927,
+      "profile_summary": {
+        "dram_bytes_read": 186682880.0,
+        "dram_bytes_written": 28610048.0,
+        "instructions_executed": 39968768.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "math_pipe_throttle_warps_per_issue": 0.2,
+        "registers_per_thread": 213.0,
+        "shared_bank_conflicts": 1433.0,
+        "sm_throughput_pct": 87.15,
+        "tensor_instructions_executed": 1048576.0,
+        "tensor_pipe_utilization_pct": 91.87
+      },
+      "ptx": {
+        "bytes": 47725,
+        "opcode_family_sites": {
+          "bar.sync": 5,
+          "cp.async": 44,
+          "ld.global": 0,
+          "ld.local": 0,
+          "ld.shared": 16,
+          "ldmatrix": 0,
+          "mma.sync": 0,
+          "shfl": 1,
+          "st.global": 16,
+          "st.local": 0,
+          "st.shared": 0,
+          "wgmma": 8
+        },
+        "operation_classes": {
+          "async_copy": 36,
+          "control": 2,
+          "global_write": 16,
+          "parameter": 4,
+          "parameter_load": 3,
+          "scalar_or_vector_compute": 789,
+          "shared_read": 16,
+          "shared_write": 16,
+          "synchronization": 17,
+          "tensor_compute": 4,
+          "warp_exchange": 1
+        },
+        "path_gaps": {},
+        "proven_edge_count": 1439,
+        "sha256": "78267a31d9a305a9d5e2cf7288d51e06d44698570cf5a9bddb2d4f46960c1cf4",
+        "site_count": 904,
+        "uncertainty": [
+          "control_flow_join_or_loop",
+          "memory_alias_or_runtime_path_unknown",
+          "predicated_instruction",
+          "unparsed_instruction"
+        ]
+      },
+      "range_of_round_medians_us": [
+        199.2960050702095,
+        200.4000023007393
+      ],
+      "round_medians_us": [
+        199.3279978632927,
+        200.4000023007393,
+        199.2960050702095
+      ],
+      "source_sha256": "4043f9e7edbc163c28f5b829aa25d49f8d8db38f3ba11d83b4a7115222cf3186",
+      "variant": "B_mask_only"
+    },
+    {
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "median_of_round_medians_us": 227.80799865722656,
+      "profile_summary": {
+        "dram_bytes_read": 186702848.0,
+        "dram_bytes_written": 28696832.0,
+        "instructions_executed": 43999232.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "math_pipe_throttle_warps_per_issue": 0.42,
+        "registers_per_thread": 197.0,
+        "shared_bank_conflicts": 7654.0,
+        "sm_throughput_pct": 71.59,
+        "tensor_instructions_executed": 1048576.0,
+        "tensor_pipe_utilization_pct": 75.27
+      },
+      "ptx": {
+        "bytes": 47684,
+        "opcode_family_sites": {
+          "bar.sync": 5,
+          "cp.async": 44,
+          "ld.global": 0,
+          "ld.local": 0,
+          "ld.shared": 16,
+          "ldmatrix": 0,
+          "mma.sync": 0,
+          "shfl": 1,
+          "st.global": 16,
+          "st.local": 0,
+          "st.shared": 0,
+          "wgmma": 8
+        },
+        "operation_classes": {
+          "async_copy": 36,
+          "control": 2,
+          "global_write": 16,
+          "parameter": 4,
+          "parameter_load": 3,
+          "scalar_or_vector_compute": 786,
+          "shared_read": 16,
+          "shared_write": 16,
+          "synchronization": 17,
+          "tensor_compute": 4,
+          "warp_exchange": 1
+        },
+        "path_gaps": {},
+        "proven_edge_count": 1413,
+        "sha256": "48db419ee02430e247869910d778011dd0206f64ae47a97b269bba58e7820d53",
+        "site_count": 901,
+        "uncertainty": [
+          "control_flow_join_or_loop",
+          "memory_alias_or_runtime_path_unknown",
+          "predicated_instruction",
+          "unparsed_instruction"
+        ]
+      },
+      "range_of_round_medians_us": [
+        227.50400006771088,
+        228.28800231218338
+      ],
+      "round_medians_us": [
+        227.80799865722656,
+        228.28800231218338,
+        227.50400006771088
+      ],
+      "source_sha256": "f86dc63ad87730f9ffccc8f7e351843ada1ea0b4caad0e0e43aa264c06fc616d",
+      "variant": "B_both"
+    },
+    {
+      "compiler_resources": {
+        "registers_per_thread": 197,
+        "spills": 0,
+        "static_shared_memory_bytes": 147456
+      },
+      "matches_original_pre_debug_ptx": true,
+      "matches_original_ptx": false,
+      "median_of_round_medians_us": 228.68800163269043,
+      "original_median_us": 228.7839949131012,
+      "profile_summary": {
+        "dram_bytes_read": 186680320.0,
+        "dram_bytes_written": 28754176.0,
+        "instructions_executed": 43999232.0,
+        "local_load_sectors": 0.0,
+        "local_store_sectors": 0.0,
+        "math_pipe_throttle_warps_per_issue": 0.42,
+        "registers_per_thread": 197.0,
+        "shared_bank_conflicts": 8792.0,
+        "sm_throughput_pct": 71.65,
+        "tensor_instructions_executed": 1048576.0,
+        "tensor_pipe_utilization_pct": 75.25
+      },
+      "ptx": {
+        "bytes": 47684,
+        "opcode_family_sites": {
+          "bar.sync": 5,
+          "cp.async": 44,
+          "ld.global": 0,
+          "ld.local": 0,
+          "ld.shared": 16,
+          "ldmatrix": 0,
+          "mma.sync": 0,
+          "shfl": 1,
+          "st.global": 16,
+          "st.local": 0,
+          "st.shared": 0,
+          "wgmma": 8
+        },
+        "operation_classes": {
+          "async_copy": 36,
+          "control": 2,
+          "global_write": 16,
+          "parameter": 4,
+          "parameter_load": 3,
+          "scalar_or_vector_compute": 786,
+          "shared_read": 16,
+          "shared_write": 16,
+          "synchronization": 17,
+          "tensor_compute": 4,
+          "warp_exchange": 1
+        },
+        "path_gaps": {},
+        "proven_edge_count": 1413,
+        "sha256": "825bd93e4b3b30eacc57693499bc8cdcaa592b82fb74c4134dad86619fd1cc23",
+        "site_count": 901,
+        "uncertainty": [
+          "control_flow_join_or_loop",
+          "memory_alias_or_runtime_path_unknown",
+          "predicated_instruction",
+          "unparsed_instruction"
+        ]
+      },
+      "range_of_round_medians_us": [
+        228.65600138902664,
+        229.08800095319748
+      ],
+      "round_medians_us": [
+        228.65600138902664,
+        228.68800163269043,
+        229.08800095319748
+      ],
+      "source_sha256": "270eb1e009823e43b5cea9198c9499592256b07264d774c955585154afe51279",
+      "variant": "D_exact"
+    }
+  ],
+  "worker_manifest_id": "d57cf17f5e73800fbcab9cd594af53797e7f67befbf635d4c35b6dc3ae6becca"
+}
