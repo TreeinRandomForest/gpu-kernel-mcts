@@ -1,0 +1,108 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-03T21:34:37.577949+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-de363773-3315-de4d-979e-28e3af763307",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "f8f05f567282d777a1bf5f5c034ec33edbd27a14f851c06a425a8f80334c5b70",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00hjq9hte0w4mhsh1",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "0ddd28f4ff70a08652a26c1b143254f2f8fbe969",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00hjq9hte0w4mhsh1"
+  },
+  "fast_b_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+  "git_commit": "0ddd28f4ff70a08652a26c1b143254f2f8fbe969",
+  "harness_sha256": "b13bad2ca99e3e7c980cb63c8965e58a6bf976471dd34311e13b81ddfb533dfd",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "paired_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+  "profiles": {
+    "cublas": {
+      "arm": "cublas",
+      "correctness": {
+        "exact": true,
+        "maximum_error": 0.0
+      },
+      "cubin_sha256": null,
+      "fast_b_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+      "ncu_report_sha256": "031ec59e2c0a4968c44e6ce52c69c582fa012407736896218ec605e041814353",
+      "nvtx_range": "GLUON_VS_TRITON_CUBLAS",
+      "paired_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+      "raw_csv_sha256": "222c9c38b1e9fd41b0c4e47172d4bcdc0a5af95afb15f61b98dba3499617bb54",
+      "sass_csv_sha256": "a1cd78085b417539b7e506a3fa8ffb180e7de646538dd37c1361c109eb267aed",
+      "source_sha256": "ca9670937373c4477f968a9a13d09b2265909ca29f8dcba1d479db88a4fb2116",
+      "status": "ok",
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    },
+    "source_ordinary": {
+      "arm": "source_ordinary",
+      "correctness": {
+        "exact": true,
+        "maximum_error": 0.0
+      },
+      "cubin_sha256": "497c83471ce3a226972e01ab27089304a1dcd14a2e096885b82880acf3bc1b81",
+      "fast_b_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+      "ncu_report_sha256": "a27a1ccafc39179d12bdf293405c16496d10441f4b3eb52032fc8e3f77d12f1e",
+      "nvtx_range": "GLUON_VS_TRITON_SOURCE_ORDINARY",
+      "paired_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+      "raw_csv_sha256": "907a196b11938063b81d1423c3d2cfb25507083c3b66f78552fbcd72904ecbc8",
+      "sass_csv_sha256": "8adacc0e6d85b8afe8f2de3fc8a15cf196ff0ade55f17de11793b133a43fbc31",
+      "source_sha256": "ca9670937373c4477f968a9a13d09b2265909ca29f8dcba1d479db88a4fb2116",
+      "status": "ok",
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    },
+    "triton_b": {
+      "arm": "triton_b",
+      "correctness": {
+        "exact": true,
+        "maximum_error": 0.0
+      },
+      "cubin_sha256": null,
+      "fast_b_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+      "ncu_report_sha256": "1c23a43474ba96554cbe8195bf804a0bb06252936a5ea4cd028d1684bb181628",
+      "nvtx_range": "GLUON_VS_TRITON_TRITON_B",
+      "paired_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+      "raw_csv_sha256": "527f00082bec92f56b45e9be115d2cd0d7931aca17d26d37bb209ecbbc805cee",
+      "sass_csv_sha256": "d97c91503a84a68327f29736fde920744148137339a0764dc6c778297320fed2",
+      "source_sha256": "ca9670937373c4477f968a9a13d09b2265909ca29f8dcba1d479db88a4fb2116",
+      "status": "ok",
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    }
+  },
+  "run_id": "ddb22c6d-5bf9-472d-a960-66488ac2fb2b",
+  "schema_version": 1,
+  "source_ordinary_cubin_sha256": "497c83471ce3a226972e01ab27089304a1dcd14a2e096885b82880acf3bc1b81",
+  "source_sha256": "ca9670937373c4477f968a9a13d09b2265909ca29f8dcba1d479db88a4fb2116"
+}

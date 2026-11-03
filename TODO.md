@@ -172,10 +172,18 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   source ordinary took 296.176 µs, static ordinary 423.312 µs, optimized
   Triton B 185.872 µs, and cuBLAS 177.776 µs. See
   `docs/experiments/triton-h100-gluon-source-schedule/README.md`.
-- [ ] Profile the source Gluon ordinary arm and optimized Triton B in one
-  matched worker to localize the remaining ~110 µs gap across TMA setup,
-  matrix-multiply scheduling, CTA scheduling, and epilogue. Only then test a
-  transferable mechanism in the optimized kernel or add a search action.
+- [x] Profile source Gluon ordinary, optimized Triton B, and cuBLAS on one
+  H100 with exact matched inputs. Gluon and Triton B both launch 512 CTAs
+  and execute 1.049M `64×256×16` HGMMA warp instructions; Gluon reads fewer
+  DRAM bytes and executes fewer instructions, yet tensor-pipe activity is
+  55.64% versus 86.79%. A TMA transaction-barrier retry branch has 67.1%
+  of Gluon's Source-page PC samples. See
+  `docs/experiments/triton-h100-gluon-vs-triton-profile/README.md`.
+- [ ] Test a three-stage source Gluon A/B prefetch ring with per-slot TMA
+  barriers against the validated two-stage source control. Keep tile, grid,
+  and ordinary-B policy fixed; check exact output, emitted SASS, paired CUDA
+  Graph latency, and barrier-poll PC samples before considering transfer to
+  optimized Triton B or adding a search action.
 - [x] Start standalone H100 SXM characterization with a global-copy path
   sweep. The 11-case CUDA Graph timing set spans 4 KiB–256 MiB with repeated
   and rotating buffers; separate NCU passes record DRAM traffic and L2 hit

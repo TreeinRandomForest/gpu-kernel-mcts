@@ -259,6 +259,7 @@ docs/experiments/triton-h100-cluster-gluon-local-b/output/
 docs/experiments/triton-h100-cluster-gluon-ptx-control/output/
 docs/experiments/triton-h100-cluster-gluon-ptx-control-v2/output/
 docs/experiments/triton-h100-gluon-source-schedule/output/
+docs/experiments/triton-h100-gluon-vs-triton-profile/output/
 /docs/experiments/triton-h100-context-factorial/output/*
 !/docs/experiments/triton-h100-context-factorial/output/analysis.json
 *.swp
