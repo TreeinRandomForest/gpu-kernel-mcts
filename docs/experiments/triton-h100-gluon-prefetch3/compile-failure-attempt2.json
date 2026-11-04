@@ -1,0 +1,58 @@
+{
+  "complete": false,
+  "control_sha256": "ca9670937373c4477f968a9a13d09b2265909ca29f8dcba1d479db88a4fb2116",
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-03T22:02:42.446641+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-85fe10e4-6186-b7a9-06df-1430ce704466",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "4f65e4453144ac73c357946d3c2d04e8e2164e81630adb83da00e08b41560d86",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00h8rs884exvhqw3h",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "c8e90180ec583cda67168d7502e12dae6ae57e55",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00h8rs884exvhqw3h"
+  },
+  "fast_b_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+  "git_commit": "c8e90180ec583cda67168d7502e12dae6ae57e55",
+  "harness_sha256": "601a07b329a70c6979fa0a5e785e1584cec892700a4f233d2eee7fd8ea88b241",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "last_output": "        else:\n            tma.async_load(b_desc, [off_n, pre * block_k], bar, b_tile,\n                           multicast=True)\n    for step in range(steps):\n    ^\nAssertionError(\"Loop carried variable slot changed type, was <class 'triton.language.core.tensor'> but is now <class 'triton.language.core.constexpr'>\")\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"create_tdm_prefetch\"\n - leaked function \"create_async_copy_mbarrier_arrive\"\n - leaked function \"get_bool_attr\"\n - leaked function \"create_fp_ext\"\n - leaked function \"create_make_range\"\n - leaked function \"create_module\"\n - leaked function \"create_async_commit_group\"\n - leaked function \"create_dot\"\n - leaked function \"get_disable_loop_licm_attr\"\n - leaked function \"create_amd_cluster_wait\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+  "paired_complete": false,
+  "paired_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+  "profile_harness_sha256": "2bde36e6d02ee67ea3f9ccfac3b82ea3820378dca2be576de41c8d2b2a5289c0",
+  "profiles": {},
+  "remote_artifacts_sha256": "32ddd57da80a367d57bdc24ea88e636f11d6876d91500e0556997a29c0c9d4d2",
+  "remote_exit_code": 1,
+  "run_id": "531d9e60-f9ae-475a-bbfd-bd777e6886d8",
+  "schema_version": 1,
+  "source_sha256": "277f43e3cdb4c080cc890e6760764c816a1a81c01b52ddcf58306792d39ca9b6"
+}

@@ -1,0 +1,18 @@
+{
+  "compiler": {},
+  "complete": false,
+  "error": {
+    "message": "PassManager::run failed",
+    "traceback_tail": "Traceback (most recent call last):\n  File \"/tmp/gluon-prefetch3-paired.py\", line 58, in main\n    compiled[name] = module.gemm[grid](*desc, True, True, 1,\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 375, in <lambda>\n    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 765, in run\n    kernel = self._do_compile(key, signature, device, constexprs, options, attrs, warmup)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 917, in _do_compile\n    kernel = self.compile(src, target=target, options=options.__dict__)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 327, in compile\n    next_module = compile_ir(module, metadata)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/backends/nvidia/compiler.py\", line 668, in <lambda>\n    stages[\"llir\"] = lambda src, metadata: self.make_llir(src, metadata, options, capability)\n                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/backends/nvidia/compiler.py\", line 466, in make_llir\n    pm.run(mod, 'make_llir')\nRuntimeError: PassManager::run failed\n",
+    "type": "RuntimeError"
+  },
+  "observations": [],
+  "orders": {},
+  "schema_version": 1,
+  "source_sha256": {
+    "candidate": "51890ca87f17f4c1e8f6bdb66d64256d231c3cf5d71ea312bb7bcf8c6a67c282",
+    "control": "ca9670937373c4477f968a9a13d09b2265909ca29f8dcba1d479db88a4fb2116",
+    "fast_b": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+    "paired": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2"
+  }
+}

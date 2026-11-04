@@ -1,0 +1,18 @@
+{
+  "compiler": {},
+  "complete": false,
+  "error": {
+    "message": "at 43:4:\n        a_tile = a_smem.index(pre)\n        b_tile = b_smem.index(pre)\n        bar = bars.index(pre)\n        mbarrier.expect(bar, a_desc.nbytes_per_cta + b_desc.nbytes_per_cta)\n        tma.async_load(a_desc, [off_m, pre * block_k], bar, a_tile)\n        if B_MODE == 1:\n            tma.async_load(b_desc, [off_n, pre * block_k], bar, b_tile,\n                           multicast=False)\n        else:\n            tma.async_load(b_desc, [off_n, pre * block_k], bar, b_tile,\n                           multicast=True)\n    for step in range(steps):\n    ^\nAssertionError(\"Loop carried variable slot changed type, was <class 'triton.language.core.tensor'> but is now <class 'triton.language.core.constexpr'>\")",
+    "traceback_tail": "Traceback (most recent call last):\n  File \"/tmp/gluon-prefetch3-paired.py\", line 58, in main\n    compiled[name] = module.gemm[grid](*desc, True, True, 1,\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 375, in <lambda>\n    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 765, in run\n    kernel = self._do_compile(key, signature, device, constexprs, options, attrs, warmup)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 917, in _do_compile\n    kernel = self.compile(src, target=target, options=options.__dict__)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 307, in compile\n    module = src.make_ir(target, options, codegen_fns, module_map, context)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/experimental/gluon/_runtime.py\", line 46, in make_ir\n    module = ast_to_ttir(self.fn, self, context=context, options=options, codegen_fns=codegen_fns,\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntriton.compiler.errors.CompilationError: at 43:4:\n        a_tile = a_smem.index(pre)\n        b_tile = b_smem.index(pre)\n        bar = bars.index(pre)\n        mbarrier.expect(bar, a_desc.nbytes_per_cta + b_desc.nbytes_per_cta)\n        tma.async_load(a_desc, [off_m, pre * block_k], bar, a_tile)\n        if B_MODE == 1:\n            tma.async_load(b_desc, [off_n, pre * block_k], bar, b_tile,\n                           multicast=False)\n        else:\n            tma.async_load(b_desc, [off_n, pre * block_k], bar, b_tile,\n                           multicast=True)\n    for step in range(steps):\n    ^\nAssertionError(\"Loop carried variable slot changed type, was <class 'triton.language.core.tensor'> but is now <class 'triton.language.core.constexpr'>\")\n",
+    "type": "CompilationError"
+  },
+  "observations": [],
+  "orders": {},
+  "schema_version": 1,
+  "source_sha256": {
+    "candidate": "277f43e3cdb4c080cc890e6760764c816a1a81c01b52ddcf58306792d39ca9b6",
+    "control": "ca9670937373c4477f968a9a13d09b2265909ca29f8dcba1d479db88a4fb2116",
+    "fast_b": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+    "paired": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2"
+  }
+}

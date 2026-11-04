@@ -179,11 +179,27 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   55.64% versus 86.79%. A TMA transaction-barrier retry branch has 67.1%
   of Gluon's Source-page PC samples. See
   `docs/experiments/triton-h100-gluon-vs-triton-profile/README.md`.
-- [ ] Test a three-stage source Gluon A/B prefetch ring with per-slot TMA
+- [x] Test a three-stage source Gluon A/B prefetch ring with per-slot TMA
   barriers against the validated two-stage source control. Keep tile, grid,
   and ordinary-B policy fixed; check exact output, emitted SASS, paired CUDA
   Graph latency, and barrier-poll PC samples before considering transfer to
-  optimized Triton B or adding a search action.
+  optimized Triton B or adding a search action. Exact output passed; paired
+  medians were 234.496 versus 295.568 µs, tensor-pipe activity rose from
+  55.89% to 66.77%, and the barrier-poll branch fell from 19,528 to 841
+  Source-page PC samples. See
+  `docs/experiments/triton-h100-gluon-prefetch3/README.md`.
+- [x] Inspect the remaining source Gluon versus optimized Triton B gap after
+  three-stage prefetch. Compare WGMMA issue/wait placement and shared-memory
+  pressure in the emitted loop before porting the schedule or adding a search
+  action. A controlled Gluon wait-one/refill reorder emitted the intended
+  `WARPGROUP.DEPBAR.LE ... 0x1`, raised tensor-pipe activity from 66.85% to
+  84.65%, and improved the paired median from 224.048 to 188.272 µs, within
+  1.552 µs of same-run optimized Triton B. See
+  `docs/experiments/triton-h100-gluon-wait1/README.md`.
+- [ ] Stress the Gluon wait-one schedule over repeated replays, more data
+  seeds, and relevant GEMM shapes. Verify exactness, emitted wait semantics,
+  and resources before transferring it to optimized Triton B or making it a
+  search strategy.
 - [x] Start standalone H100 SXM characterization with a global-copy path
   sweep. The 11-case CUDA Graph timing set spans 4 KiB–256 MiB with repeated
   and rotating buffers; separate NCU passes record DRAM traffic and L2 hit

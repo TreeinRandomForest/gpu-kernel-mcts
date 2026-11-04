@@ -1,0 +1,243 @@
+{
+  "paired_candidate_speedup": [
+    1.192566678856981,
+    1.1900229684551775,
+    1.2820534058161337
+  ],
+  "profiles": {
+    "candidate": {
+      "compiler": {
+        "cubin_sha256": "e0b359040ee3f8d14f064ba3d39e2d14317df0c3c5ee56338cb48d2431c142dd",
+        "ptx_multicast_sites": 4,
+        "ptx_sha256": "7b5411dcbfd0cc36dc4d36e28ed1e359c490237f9c70f7c96c72677026edacad",
+        "registers_per_thread": 154,
+        "sass_multicast_sites": 4,
+        "sass_warpgroup_wait_sites": 2,
+        "shared_memory_bytes": 147480,
+        "spills": 0
+      },
+      "cubin_sha256": "e0b359040ee3f8d14f064ba3d39e2d14317df0c3c5ee56338cb48d2431c142dd",
+      "metrics": {
+        "dram__bytes_read.sum": {
+          "unit": "Mbyte",
+          "value": 174.098944
+        },
+        "gpu__time_duration.sum": {
+          "unit": "us",
+          "value": 221.056
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 154.0
+        },
+        "launch__shared_mem_per_block": {
+          "unit": "Kbyte/block",
+          "value": 148.504
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 84.648278
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 24524288.0
+        }
+      },
+      "sass": {
+        "barrier_poll_branch_samples": 1296,
+        "top_sites": [
+          {
+            "executed": 262144,
+            "instruction": "WARPGROUP.DEPBAR.LE gsb0, 0x1",
+            "samples": 4467
+          },
+          {
+            "executed": 262144,
+            "instruction": "@P1   BRA 0x70d1257b5f60",
+            "samples": 3027
+          },
+          {
+            "executed": 262144,
+            "instruction": "@!P1  BRA 0x70d1257b68a0",
+            "samples": 1296
+          },
+          {
+            "executed": 262144,
+            "instruction": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24, gsb0",
+            "samples": 1070
+          },
+          {
+            "executed": 262144,
+            "instruction": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24",
+            "samples": 901
+          },
+          {
+            "executed": 262144,
+            "instruction": "UMOV UR23, 0x40000040",
+            "samples": 412
+          },
+          {
+            "executed": 4096,
+            "instruction": "UCGABAR_WAIT",
+            "samples": 373
+          },
+          {
+            "executed": 262144,
+            "instruction": "UIADD3 UR5, UR5, 0x1, URZ",
+            "samples": 362
+          },
+          {
+            "executed": 4096,
+            "instruction": "MEMBAR.ALL.CTA",
+            "samples": 329
+          },
+          {
+            "executed": 249856,
+            "instruction": "@UP1  UTMALDG.2D [UR8], [UR14]",
+            "samples": 324
+          }
+        ],
+        "total_source_page_pc_samples": 18341,
+        "warpgroup_wait_samples": 4738
+      }
+    },
+    "control": {
+      "compiler": {
+        "cubin_sha256": "3e2de3df757417fe12c37cedc7f5251e34b9d49d777941db7c9d44d8287f8b39",
+        "ptx_multicast_sites": 4,
+        "ptx_sha256": "85334c557d3f116d2bd7a27e85348ccb86cfbb02e7447c6cd4bdda4ac82af815",
+        "registers_per_thread": 154,
+        "sass_multicast_sites": 4,
+        "sass_warpgroup_wait_sites": 2,
+        "shared_memory_bytes": 147480,
+        "spills": 0
+      },
+      "cubin_sha256": "3e2de3df757417fe12c37cedc7f5251e34b9d49d777941db7c9d44d8287f8b39",
+      "metrics": {
+        "dram__bytes_read.sum": {
+          "unit": "Mbyte",
+          "value": 174.099712
+        },
+        "gpu__time_duration.sum": {
+          "unit": "us",
+          "value": 271.36
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 154.0
+        },
+        "launch__shared_mem_per_block": {
+          "unit": "Kbyte/block",
+          "value": 148.504
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 66.846755
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 22988288.0
+        }
+      },
+      "sass": {
+        "barrier_poll_branch_samples": 876,
+        "top_sites": [
+          {
+            "executed": 262144,
+            "instruction": "WARPGROUP.DEPBAR.LE gsb0, 0x0",
+            "samples": 13155
+          },
+          {
+            "executed": 262144,
+            "instruction": "@P1   BRA 0x7432af7b5ce0",
+            "samples": 2126
+          },
+          {
+            "executed": 262144,
+            "instruction": "@!P1  BRA 0x7432af7b6840",
+            "samples": 876
+          },
+          {
+            "executed": 4096,
+            "instruction": "UCGABAR_WAIT",
+            "samples": 443
+          },
+          {
+            "executed": 249856,
+            "instruction": "@UP1  UTMALDG.2D [UR8], [UR14]",
+            "samples": 411
+          },
+          {
+            "executed": 249856,
+            "instruction": "@!P1  BRA 0x7432af7b5cd0",
+            "samples": 363
+          },
+          {
+            "executed": 4096,
+            "instruction": "WARPGROUP.DEPBAR.LE gsb0, 0x0",
+            "samples": 301
+          },
+          {
+            "executed": 249856,
+            "instruction": "BSSY B0, 0x7432af7b5ce0",
+            "samples": 296
+          },
+          {
+            "executed": 262144,
+            "instruction": "ULOP3.LUT UR20, UR20, 0x1, URZ, 0xc0, !UPT",
+            "samples": 271
+          },
+          {
+            "executed": 262144,
+            "instruction": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24, gsb0",
+            "samples": 252
+          }
+        ],
+        "total_source_page_pc_samples": 23312,
+        "warpgroup_wait_samples": 13456
+      }
+    }
+  },
+  "run_id": "2d43c715-c0b4-4a13-8898-f9ed3891c866",
+  "schema_version": 1,
+  "source_sha256": {
+    "candidate": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+    "control": "f232199a1d946a839424c83e7fe582e060ff1d28defda3b98370ebcc6f3253e5",
+    "fast_b": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+    "paired": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2"
+  },
+  "timing": {
+    "candidate": {
+      "median_of_round_medians_us": 188.27199935913086,
+      "round_medians_us": [
+        187.69600242376328,
+        188.27199935913086,
+        190.43200463056564
+      ]
+    },
+    "control": {
+      "median_of_round_medians_us": 224.04800355434418,
+      "round_medians_us": [
+        223.83999824523926,
+        224.04800355434418,
+        244.1440001130104
+      ]
+    },
+    "cublas": {
+      "median_of_round_medians_us": 177.93600261211395,
+      "round_medians_us": [
+        177.93600261211395,
+        177.7919977903366,
+        180.4479956626892
+      ]
+    },
+    "triton_b": {
+      "median_of_round_medians_us": 186.71999871730804,
+      "round_medians_us": [
+        186.71999871730804,
+        186.67200207710266,
+        189.10399824380875
+      ]
+    }
+  }
+}

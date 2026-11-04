@@ -1,0 +1,58 @@
+{
+  "complete": false,
+  "control_sha256": "f232199a1d946a839424c83e7fe582e060ff1d28defda3b98370ebcc6f3253e5",
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-03T22:57:28.114343+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-efd582fd-c629-9297-848e-bb343ef6901b",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "756381c015394616627069efe1367cb167e2590015bb8c04e4dbe49c8e38e0c3",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00dkbvqewwqrqg13v",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "c8e90180ec583cda67168d7502e12dae6ae57e55",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00dkbvqewwqrqg13v"
+  },
+  "fast_b_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+  "git_commit": "c8e90180ec583cda67168d7502e12dae6ae57e55",
+  "harness_sha256": "601a07b329a70c6979fa0a5e785e1584cec892700a4f233d2eee7fd8ea88b241",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "last_output": "        mbarrier.wait(bars.index(slot), phase=(step // 3) % 2,\n                      deps=[a_tile, b_tile])\n        acc = warpgroup_mma(a_tile, b_tile.permute((1, 0)), acc, is_async=True)\n        if step > 0:\n        ^\nAssertionError('initial value for `acc` is of type <triton.experimental.gluon.language.nvidia.hopper.warpgroup_mma_accumulator object at 0x73f002c9e180>, but the then block redefines it as fp32[constexpr[256], constexpr[256]]')\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"create_threadwise_inline_asm\"\n - leaked function \"extend_with\"\n - leaked function \"get_unit_attr\"\n - leaked function \"create_buffer_load_to_local\"\n - leaked function \"create_fp4_to_fp\"\n - leaked function \"create_clc_is_canceled\"\n - leaked function \"create_log2\"\n - leaked function \"get_dot_operand_layout\"\n - leaked function \"get_fp8e5b16_ty\"\n - leaked function \"create_maximumf\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+  "paired_complete": false,
+  "paired_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+  "profile_harness_sha256": "2bde36e6d02ee67ea3f9ccfac3b82ea3820378dca2be576de41c8d2b2a5289c0",
+  "profiles": {},
+  "remote_artifacts_sha256": "99e4c83bc25827b7cef48e255e61a2d6e41179e1ee42690e2f817bc2c2bb263e",
+  "remote_exit_code": 1,
+  "run_id": "7b4c6a00-6d70-40e8-b50e-b94c7654f9dd",
+  "schema_version": 1,
+  "source_sha256": "608eec8977ab5cac23623eb50deb3cb4113a385fb9e334bfa46805939b224379"
+}

@@ -1,0 +1,18 @@
+{
+  "compiler": {},
+  "complete": false,
+  "error": {
+    "message": "at 50:8:\n                           multicast=False)\n        else:\n            tma.async_load(b_desc, [off_n, pre * block_k], bar, b_tile,\n                           multicast=True)\n    for step in range(steps):\n        slot = step % 3\n        a_tile = a_smem.index(slot)\n        b_tile = b_smem.index(slot)\n        mbarrier.wait(bars.index(slot), phase=(step // 3) % 2,\n                      deps=[a_tile, b_tile])\n        acc = warpgroup_mma(a_tile, b_tile.permute((1, 0)), acc, is_async=True)\n        if step > 0:\n        ^\nAssertionError('initial value for `acc` is of type <triton.experimental.gluon.language.nvidia.hopper.warpgroup_mma_accumulator object at 0x73f002c9e180>, but the then block redefines it as fp32[constexpr[256], constexpr[256]]')",
+    "traceback_tail": "Traceback (most recent call last):\n  File \"/tmp/gluon-wait1-paired.py\", line 58, in main\n    compiled[name] = module.gemm[grid](*desc, True, True, 1,\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 375, in <lambda>\n    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 765, in run\n    kernel = self._do_compile(key, signature, device, constexprs, options, attrs, warmup)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 917, in _do_compile\n    kernel = self.compile(src, target=target, options=options.__dict__)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 307, in compile\n    module = src.make_ir(target, options, codegen_fns, module_map, context)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/experimental/gluon/_runtime.py\", line 46, in make_ir\n    module = ast_to_ttir(self.fn, self, context=context, options=options, codegen_fns=codegen_fns,\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntriton.compiler.errors.CompilationError: at 50:8:\n                           multicast=False)\n        else:\n            tma.async_load(b_desc, [off_n, pre * block_k], bar, b_tile,\n                           multicast=True)\n    for step in range(steps):\n        slot = step % 3\n        a_tile = a_smem.index(slot)\n        b_tile = b_smem.index(slot)\n        mbarrier.wait(bars.index(slot), phase=(step // 3) % 2,\n                      deps=[a_tile, b_tile])\n        acc = warpgroup_mma(a_tile, b_tile.permute((1, 0)), acc, is_async=True)\n        if step > 0:\n        ^\nAssertionError('initial value for `acc` is of type <triton.experimental.gluon.language.nvidia.hopper.warpgroup_mma_accumulator object at 0x73f002c9e180>, but the then block redefines it as fp32[constexpr[256], constexpr[256]]')\n",
+    "type": "CompilationError"
+  },
+  "observations": [],
+  "orders": {},
+  "schema_version": 1,
+  "source_sha256": {
+    "candidate": "608eec8977ab5cac23623eb50deb3cb4113a385fb9e334bfa46805939b224379",
+    "control": "f232199a1d946a839424c83e7fe582e060ff1d28defda3b98370ebcc6f3253e5",
+    "fast_b": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+    "paired": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2"
+  }
+}
