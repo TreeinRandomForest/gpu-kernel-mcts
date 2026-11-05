@@ -88,11 +88,11 @@ def build_generation_prompt(request: GenerationRequest) -> str:
         if request.reference_baselines:
             payload["performance_references"] = _json_value(request.reference_baselines)
         payload["constraints"] = [
-            "Return a complete Python Triton source file without Markdown.",
-            "Define launch(A, B, C, M, N, K) and return its CompiledKernel.",
+            "Return a complete Python Triton or Gluon source file without Markdown.",
+            "Define launch(A, B, C, M, N, K) and return the CompiledKernel that computes C.",
             "A is row-major BF16 [M,K]; B is column-major BF16 [K,N]; C is row-major BF16 [M,N].",
             "Preserve FP32 accumulation and the fixed correctness tolerance.",
-            "Keep the JIT kernel name bf16_gemm_triton for NCU selection.",
+            "The kernel may use @triton.jit or @gluon.jit; preserve the launch ABI and return one named compiled kernel.",
         ]
         if request.reference_baselines:
             payload["constraints"].append(

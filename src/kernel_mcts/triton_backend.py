@@ -1,8 +1,9 @@
-"""H100 Triton backend for the fixed BF16 GEMM integration experiment."""
+"""H100 Triton/Gluon backend for the fixed BF16 GEMM contract."""
 
 from __future__ import annotations
 
 import hashlib
+import csv
 import os
 import statistics
 import subprocess
@@ -58,6 +59,7 @@ class TritonArtifact:
     source_path: Path
     cubin_path: Path
     ptx_path: Path | None
+    kernel_name: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,7 +97,6 @@ class TritonH100Backend:
     def __init__(self, config: TritonBackendConfig, *, runner=None) -> None:
         self.config = config
         self._runner = runner or _run_command
-        self._kernel_names: dict[str, str] = {}
         self._compiler_resources: dict[str, dict[str, object]] = {}
 
     def normalize_program(self, program: KernelProgram) -> str:
@@ -126,12 +127,17 @@ class TritonH100Backend:
         if payload.get("status") != "ok":
             return TritonCompilationResult(False, None, result.stdout[-2000:],
                                            result.stderr[-2000:], duration)
+        name = payload.get("kernel_name")
+        if not isinstance(name, str) or not name or len(name) > 256:
+            return TritonCompilationResult(False, None, result.stdout[-2000:],
+                                           "launch did not return a named compiled kernel", duration)
         cubin = directory / "kernel.cubin"
         if not cubin.is_file():
             raise EvaluationInfrastructureError("Triton harness did not save cubin")
         artifact_id = hashlib.sha256(cubin.read_bytes()).hexdigest()
         ptx = directory / "kernel.ptx"
-        artifact = TritonArtifact(artifact_id, source, cubin, ptx if ptx.is_file() else None)
+        artifact = TritonArtifact(artifact_id, source, cubin,
+                                 ptx if ptx.is_file() else None, name)
         ptx_artifacts = []
         ptx_sites = None
         if artifact.ptx_path is not None:
@@ -146,13 +152,11 @@ class TritonH100Backend:
             })
             if len(ptx_bytes) <= MAX_PTX_ARTIFACT_BYTES:
                 ptx_sites = ptx_instruction_sites(ptx_bytes.decode("utf-8", errors="replace"))
-        name = payload.get("kernel_name")
-        if isinstance(name, str):
-            self._kernel_names[artifact_id] = name
         context: dict[str, object] = {
             "schema_version": 1,
             "backend": self.name,
             "architecture": self.config.architecture,
+            "kernel_name": name,
             "resources": {
                 "registers_per_thread": payload.get("registers_per_thread"),
                 "static_shared_memory_bytes": payload.get("shared_memory_bytes"),
@@ -197,7 +201,7 @@ class TritonH100Backend:
     def lightweight_profile(self, artifact: TritonArtifact,
                             workload: WorkloadContract,
                             metric_set: str = "lightweight_v1") -> Mapping[str, object]:
-        if metric_set not in {"lightweight_v1", "diagnostic_v2", "spill_v1"}:
+        if metric_set not in {"lightweight_v1", "diagnostic_v2", "spill_v1", "reuse_v1"}:
             raise EvaluationInfrastructureError(
                 "unsupported Triton H100 NCU metric set"
             )
@@ -208,10 +212,13 @@ class TritonH100Backend:
             raise EvaluationInfrastructureError(str(error)) from error
         command = [
             _resolve_tool(self.config.ncu), "--csv", "--page", "raw", "--log-file", "stdout",
-            "--kernel-name-base", "function", "--kernel-name", "regex:.*bf16_gemm_triton.*",
+            "--kernel-name-base", "function", "--kernel-name", artifact.kernel_name,
+            "--nvtx", "--nvtx-include", "KERNEL_MCTS_TARGET/",
             "--launch-count", "1", "--metrics", ",".join(definition.metrics),
             *self._command(artifact.source_path, workload, "profile"),
         ]
+        if metric_set == "reuse_v1":
+            command[1:1] = ["--cache-control", "all", "--replay-mode", "kernel"]
         try:
             result = self._runner(command, timeout=self.config.profile_timeout_seconds,
                                   env=self.config.subprocess_environment)
@@ -220,26 +227,42 @@ class TritonH100Backend:
         if result.returncode != 0:
             diagnostic = _ncu_diagnostic(result.stdout, result.stderr)
             raise EvaluationInfrastructureError(f"Triton NCU profiling failed: {diagnostic}")
-        metrics = _parse_ncu_csv(
-            _ncu_csv_output(result.stdout, result.stderr, definition.metrics), definition.metrics
-        )
+        csv_output = _ncu_csv_output(result.stdout, result.stderr, definition.metrics)
+        profiled_name = _profiled_kernel_name(csv_output)
+        if profiled_name != artifact.kernel_name:
+            raise EvaluationInfrastructureError(
+                "Triton NCU profile did not match the compiled kernel name"
+            )
+        metrics = _parse_ncu_csv(csv_output, definition.metrics)
         summary = {alias: metrics[name]["value"] for name, alias in definition.aliases.items()}
-        if metric_set in {"diagnostic_v2", "spill_v1"}:
+        if metric_set in {"diagnostic_v2", "spill_v1", "reuse_v1"}:
             resources = self._compiler_resources.get(artifact.artifact_id)
             if resources is not None:
                 summary["compiler_spills"] = resources.get("spills")
                 summary["compiler_static_shared_memory_bytes"] = resources.get(
                     "static_shared_memory_bytes"
                 )
-        return {
+        profile = {
             "schema_version": definition.schema_version, "profiler": "ncu",
             "metric_set": definition.id,
             "target": {"architecture": self.config.architecture,
                        "ncu_version": normalize_ncu_version(self.config.ncu_version)},
             "resolved_metrics": list(definition.metrics), "artifact_id": artifact.artifact_id,
+            "kernel_name": profiled_name,
+            "selection": {"kernel_name_base": "function", "kernel_name": artifact.kernel_name,
+                          "nvtx_range": "KERNEL_MCTS_TARGET", "launch_count": 1},
             "summary": summary,
             "metrics": metrics,
         }
+        if metric_set == "reuse_v1":
+            profile["cache_control"] = "all"
+            profile["replay_mode"] = "kernel"
+            profile["interpretation_limits"] = [
+                "L2 TEX read counters describe the whole kernel, not individual A/B tensors.",
+                "NCU may collect metrics on separate replay passes; do not require hit, miss, and request counts to sum exactly.",
+                "L2 lookup misses are not equivalent to DRAM read sectors; optimize CUDA-event latency.",
+            ]
+        return profile
 
     def full_profile(self, artifact: TritonArtifact,
                      workload: WorkloadContract) -> Mapping[str, object]:
@@ -280,3 +303,18 @@ class TritonH100Backend:
 def _run_command(command, *, timeout, env):
     return subprocess.run(command, timeout=timeout, env=dict(env), text=True,
                           capture_output=True, check=False)
+
+
+def _profiled_kernel_name(csv_output: str) -> str:
+    rows = list(csv.reader(csv_output.splitlines()))
+    for index, row in enumerate(rows):
+        if "Kernel Name" not in row:
+            continue
+        column = row.index("Kernel Name")
+        names = {value[column] for value in rows[index + 1:]
+                 if len(value) > column and value[column]
+                 and value[column] != "Kernel Name"}
+        if len(names) == 1:
+            return names.pop()
+        break
+    raise EvaluationInfrastructureError("Triton NCU profile did not identify one kernel")

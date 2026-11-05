@@ -143,6 +143,17 @@ def test_opt_in_dataflow_view_is_in_prompt_and_result_metadata() -> None:
     assert result.prompt_hash == hashlib.sha256(result.prompt_text.encode()).hexdigest()
 
 
+def test_triton_prompt_allows_gluon_without_a_fixed_kernel_name() -> None:
+    prompt = build_generation_prompt(request(
+        parent=KernelProgram("def launch(A, B, C, M, N, K): pass", "triton_h100"),
+        strategy=Strategy("pipeline", "Pipeline", {"triton_h100": "Use Gluon if useful"}),
+    ))
+    constraints = json.loads(prompt)["constraints"]
+    assert any("@gluon.jit" in item and "@triton.jit" in item for item in constraints)
+    assert any("CompiledKernel that computes C" in item for item in constraints)
+    assert not any("Keep the JIT kernel name" in item for item in constraints)
+
+
 def test_cute_prompt_requests_only_typed_representation_json() -> None:
     from kernel_mcts.cute_mutations import CUTE_MUTATION_STRATEGIES
     from kernel_mcts.cute_program import PinnedCuteGemmRenderer, REFERENCE_CUTE_GEMM

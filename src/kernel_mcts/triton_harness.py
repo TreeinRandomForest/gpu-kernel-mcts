@@ -1,4 +1,4 @@
-"""Isolated GPU process for the fixed Triton H100 GEMM contract."""
+"""Isolated GPU process for the fixed Triton/Gluon H100 GEMM contract."""
 
 from __future__ import annotations
 
@@ -44,6 +44,9 @@ def run(arguments: argparse.Namespace) -> dict[str, object]:
         asm = getattr(compiled, "asm", None)
         if not isinstance(asm, dict) or not isinstance(asm.get("cubin"), bytes):
             raise ValueError("launch must return a Triton CompiledKernel with cubin")
+        name = getattr(compiled, "name", None)
+        if not isinstance(name, str) or not name or len(name) > 256:
+            raise ValueError("launch must return a named Triton CompiledKernel")
         arguments.artifact_dir.mkdir(parents=True, exist_ok=True)
         (arguments.artifact_dir / "kernel.cubin").write_bytes(asm["cubin"])
         ptx = asm.get("ptx")
@@ -52,7 +55,7 @@ def run(arguments: argparse.Namespace) -> dict[str, object]:
         metadata = getattr(compiled, "metadata", None)
         return {
             "status": "ok",
-            "kernel_name": getattr(compiled, "name", None),
+            "kernel_name": name,
             "registers_per_thread": getattr(compiled, "n_regs", None),
             "shared_memory_bytes": getattr(metadata, "shared", None),
             "spills": getattr(compiled, "n_spills", None),
@@ -75,7 +78,11 @@ def run(arguments: argparse.Namespace) -> dict[str, object]:
             launch(a, b, c, arguments.M, arguments.N, arguments.K)
         torch.cuda.synchronize()
         if arguments.mode == "profile":
-            launch(a, b, c, arguments.M, arguments.N, arguments.K)
+            torch.cuda.nvtx.range_push("KERNEL_MCTS_TARGET")
+            try:
+                launch(a, b, c, arguments.M, arguments.N, arguments.K)
+            finally:
+                torch.cuda.nvtx.range_pop()
             torch.cuda.synchronize()
             return {"status": "ok"}
         timings = []

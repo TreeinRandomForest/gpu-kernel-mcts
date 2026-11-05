@@ -3503,8 +3503,16 @@ remain Section 49 work.
 
 The `triton_h100` backend accepts complete Python source defining
 `launch(A, B, C, M, N, K)`. A is row-major `[M,K]`, B is column-major
-`[K,N]`, and C is row-major `[M,N]`. `launch` invokes a Triton JIT kernel
-named `bf16_gemm_triton` and returns the compiled kernel. The backend JITs
+`[K,N]`, and C is row-major `[M,N]`. `launch` may invoke a `@triton.jit` or
+`@gluon.jit` kernel and returns the named compiled kernel that computes C.
+The H100 integration keeps one backend and one workload contract for both
+frontends. NCU selects the recorded compiled-kernel function name inside a
+dedicated profile NVTX range and verifies the reported kernel identity; it
+does not require the original `bf16_gemm_triton` name. The packaged Triton
+root remains the default root. A search-ABI adapter for the validated
+three-slot wait-one Gluon kernel is a separate reference candidate, subject
+to correctness and timing validation under this backend before comparison.
+The backend JITs
 and saves the cubin/PTX when available, checks output against same-worker
 cuBLAS through PyTorch, and times the operation with CUDA events after
 warmup. A candidate is a node only after compile, correctness, and timing.
@@ -3523,10 +3531,22 @@ derived from the report but is not automatically inserted into MCTS prompts.
 An opt-in `spill_v1` H100/NCU 2025.1 or 2025.2 set extends `diagnostic_v2` with local
 load L1 hit and miss sectors after device-metric availability is checked.
 These are local-memory counters, not exclusively spill-attributed bytes.
+An opt-in `reuse_v1` H100/NCU 2025.1 or 2025.2 set extends `spill_v1`
+with L2 TEX-source read sectors, read lookup hit and miss sectors, and the
+aggregate L2 read-sector hit rate. It collects with explicit NCU kernel
+replay and `--cache-control all`, and records those settings in the profile.
+The counters are whole-kernel evidence; neither L2 lookup misses nor DRAM
+read bytes identify the responsible input tensor or imply equal byte counts.
+The default remains `lightweight_v1`. Profiling still occurs lazily on
+expansion and does not change reward, node admission, or `B_gen`.
 
 The initial H100 Triton action catalog is versioned separately from the
 CUDA C++ catalog and covers output tiles, K tile/pipeline, warps, and
-column-major B access. The controller, MCTS selection, progressive widening,
+column-major B access. A later `improve_cross_cta_reuse` semantic action
+coordinates output-tile aspect ratio and CTA tile traversal from the source,
+input layouts, and any available parent traffic counters. The action must not
+assume that lower DRAM traffic improves latency, and must preserve the fixed
+workload contract. The controller, MCTS selection, progressive widening,
 generation/repair budget, valid-node rule, reward, and SQLite trace semantics
 are unchanged. CUDA C++ compiler/dataflow prompt views and CUDA autotuning
 do not apply to this backend. Compiler artifacts are stored on the worker;

@@ -4,6 +4,34 @@
 and validation status. Checked implementation items have automated coverage; any
 completed hardware validation is identified explicitly.
 
+## Triton/Gluon search work after the H100 kernel experiments
+
+The implementation sequence and controlled ablations are in
+`docs/experiments/triton-h100-search-strategy-context-plan.md`. Pause further
+standalone gap-closing GPU experiments while building this path.
+
+- [x] Locally adapt the validated wait-one Gluon source to the `triton_h100`
+  launcher and B layout; use the returned compiled kernel's name and an NVTX
+  range for NCU selection, with reported-name verification. The device
+  kernel body matches the validated source by AST. Local contract and prompt
+  tests pass; see `docs/experiments/triton-h100-gluon-search-adapter/README.md`.
+- [ ] Validate the adapted Gluon candidate through the H100 search harness:
+  compile, correctness, CUDA-event latency, compiled resources, and an NCU
+  profile selecting `gemm`. Compare it with the packaged root and cuBLAS on
+  the same worker before using it as a search reference.
+- [ ] Version a stage-aware Triton/Gluon strategy catalog. Keep the current
+  catalog as a baseline; test applicability filters, prompt content, and a
+  valid structural Gluon realization before search ablations.
+- [ ] Share a bounded, provenance-preserving parent-context builder across
+  Triton sequential and MCTS prompts: measured NCU, compiler/PTX/SASS,
+  architectural H100 graph, and explicitly validated dataflow views.
+- [ ] Extend sequential freeform/menu search to `triton_h100`; add an opt-in
+  one-freeform-action Triton MCTS variant only after the corresponding
+  `spec.md` amendment, then test PW/UCB and budget invariants.
+- [ ] Run matched short smoke and multi-seed ablations after the local and
+  H100 correctness gates, separating strategy-set effects from context
+  visibility and history policy.
+
 ## Next-session sequence (2026-10-30)
 
 The active branch is `feature/triton-h100`. The latest completed search is the
@@ -196,10 +224,54 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   84.65%, and improved the paired median from 224.048 to 188.272 µs, within
   1.552 µs of same-run optimized Triton B. See
   `docs/experiments/triton-h100-gluon-wait1/README.md`.
-- [ ] Stress the Gluon wait-one schedule over repeated replays, more data
+- [x] Compare ordinary and multicast B in the wait-one Gluon source on one
+  H100. Both modes shared one cubin and passed seed-0 timing-round exactness,
+  but multicast was 1.952–2.592 µs slower in each paired round. A later
+  seed-2 multicast exact check failed once and was not reproduced in 12 fresh
+  launches. Multicast NCU replay stalled, so no multicast traffic result was
+  obtained. Keep ordinary B for this fixed workload. See
+  `docs/experiments/triton-h100-gluon-wait1-multicast/README.md`.
+- [x] Stress the Gluon wait-one schedule over repeated replays, more data
   seeds, and relevant GEMM shapes. Verify exactness, emitted wait semantics,
   and resources before transferring it to optimized Triton B or making it a
-  search strategy.
+  search strategy. The wait-one control passed exact comparison after every
+  seed-0 timing round, five launches each for seeds 1 and 2 at `4096³`, and
+  five launches each at `2048³` and `4096 × 2048 × 2048`; SASS and NCU
+  verified its loop wait operand and resources. This is bounded fixed-family
+  evidence, not general GEMM coverage. See
+  `docs/experiments/triton-h100-gluon-wait2/README.md`.
+- [x] Test a four-slot A/B prefetch ring with `wait_group 2` against the
+  validated three-slot wait-one kernel. Exactness passed the same stress
+  cases, and SASS emitted `WARPGROUP.DEPBAR.LE ... 0x2`; shared memory rose
+  by 49.160 KB/CTA with no spills. Tensor-pipe activity and DRAM reads were
+  effectively unchanged. An eight-round order-balanced follow-up used the
+  same cubins and found a +0.184 µs median candidate-minus-control difference
+  (three faster, five slower rounds). No material fixed-shape speedup was
+  demonstrated. See `docs/experiments/triton-h100-gluon-wait2/README.md`.
+- [x] Reconcile the wait-one Gluon kernel against cuBLAS on one H100 with
+  matched NCU traffic, launch geometry, and emitted SASS evidence. Eight
+  alternating CUDA Graph rounds put Gluon 11.920 µs behind cuBLAS; cuBLAS
+  launched 132 versus 512 CTAs, read 23.166 MB less from DRAM, and had
+  higher tensor-pipe activity. Aggregate profiling does not prove cuBLAS's
+  exact per-CTA tile schedule. See
+  `docs/experiments/triton-h100-gluon-vs-cublas-wait1/README.md`.
+- [x] Run a matched 2×2×2 Gluon wait-one experiment varying program-cluster
+  order, 256 versus 128 N tile width, and regular versus 66-cluster
+  persistence. All variants passed exactness on the fixed 4096³ BF16 seed.
+  The 256-wide M-fast persistent variant was 2.128 µs faster than its regular
+  counterpart at the paired median, without reducing DRAM reads, but still
+  7.312 µs behind cuBLAS. A 128-wide tile caused roughly 100 µs regression
+  and about 310 MB DRAM reads. See
+  `docs/experiments/triton-h100-gluon-factorial/README.md`.
+- [ ] Isolate operand sharing/reuse and instruction overhead for 128-wide
+  HGMMA shapes. Current 128-wide Gluon emits the cuBLAS HGMMA shape but has
+  much higher traffic and instruction count. Stress any promising source
+  across seeds and shapes before promoting it to a search strategy.
+- [ ] Make Nebius experiment cleanup resilient to CLI token expiry after
+  worker provisioning. The multicast runner's instance-IP lookup timed out
+  during reauthentication and automatic cleanup failed; the instance and disk
+  were removed manually after the run. Avoid leaving a billable idle worker
+  when authentication expires mid-run.
 - [x] Start standalone H100 SXM characterization with a global-copy path
   sweep. The 11-case CUDA Graph timing set spans 4 KiB–256 MiB with repeated
   and rotating buffers; separate NCU passes record DRAM traffic and L2 hit
