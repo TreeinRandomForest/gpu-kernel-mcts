@@ -1,0 +1,930 @@
+{
+  "bridge": {
+    "exit_code": 1,
+    "log_tail": "Warning: Permanently added '195.242.10.249' (ED25519) to the list of known hosts.\n/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\ncandidate triton_root: compiling\ncandidate triton_root: correctness\ncandidate triton_root: benchmarking\ncandidate triton_root: 833.648 us, kernel bf16_gemm_triton\ncandidate generated_candidate: compiling\nTraceback (most recent call last):\n  File \"/tmp/gluon-v4-smoke.py\", line 123, in <module>\n    main()\n  File \"/tmp/gluon-v4-smoke.py\", line 85, in main\n    raise RuntimeError(\nRuntimeError: generated_candidate compile failed: {\"status\": \"candidate_failure\", \"error_type\": \"RuntimeError\", \"message\": \"error encountered during parsing\"}\n\n",
+    "measurement": {
+      "candidates": {
+        "generated_candidate": {
+          "compile_stderr": ":276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n/tmp/gluon-search-adapter-artifacts/triton-artifact-e_x5mu0i/candidate.py:27:21: error: Result has an invalid layout: #ttg.slice<{dim = 1, parent = #ttg.blocked<{sizePerThread = [1, 16], threadsPerWarp = [4, 4], warpsPerCTA = [2, 2], order = [0, 1]}>}>.\nLayout has 16 threads per warp, but the module specifies 32 threads per warp.\n    row_a = off_m + gl.arange(0, BM, gl.SliceLayout(1, a_layout))\n                    ^\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"set_insertion_point_after\"\n - leaked function \"create_assume\"\n - leaked function \"get_int64_ty\"\n - leaked function \"create_minui\"\n - leaked function \"create_fma\"\n - leaked function \"create_for_op\"\n - leaked function \"replace_all_uses_with\"\n - leaked function \"create_fp_to_fp\"\n - leaked function \"create_experimental_fpsan_embed\"\n - leaked function \"create_print\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+          "compile_stdout": "{\"status\": \"candidate_failure\", \"error_type\": \"RuntimeError\", \"message\": \"error encountered during parsing\"}\n",
+          "compile_success": false,
+          "source_sha256": "c8f91c4ae402cb367a83cf87e28ff0c4709fc740301e523895b4a2100a808bb3"
+        },
+        "triton_root": {
+          "artifact_id": "15961f229d7e2f8649588e64cd8f13a5af1b83dfe78187a5cab39658bdea5eab",
+          "compile_success": true,
+          "compiler_context": {
+            "architecture": "sm_90",
+            "backend": "triton_h100",
+            "kernel_name": "bf16_gemm_triton",
+            "ptx": {
+              "artifacts": [
+                {
+                  "path": "/tmp/gluon-search-adapter-artifacts/triton-artifact-rgh73zm8/kernel.ptx",
+                  "sha256": "5899d50a199e21160601b320f309b5c8d3328ee8d20446edf2252b067ac10658",
+                  "size_bytes": 14900,
+                  "storage_status": "eligible"
+                }
+              ],
+              "static_instruction_sites": {
+                "categories": {
+                  "async_copy": 17,
+                  "barrier": 6,
+                  "control": 2,
+                  "global_load": 0,
+                  "global_store": 2,
+                  "local_load": 0,
+                  "local_store": 0,
+                  "other": 159,
+                  "shared_load": 2,
+                  "shared_store": 0,
+                  "tensor": 8
+                },
+                "total": 196
+              },
+              "status": "captured"
+            },
+            "resources": {
+              "registers_per_thread": 48,
+              "spills": 0,
+              "static_shared_memory_bytes": 12288
+            },
+            "sass": {
+              "status": "unavailable"
+            },
+            "schema_version": 1
+          },
+          "correctness_success": true,
+          "kernel_name": "bf16_gemm_triton",
+          "maximum_error": 0.0,
+          "median_us": 833.6479961872101,
+          "source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+          "timings_us": [
+            839.4560217857361,
+            838.6240005493164,
+            834.3039751052856,
+            835.0399732589722,
+            833.8559865951538,
+            833.4400057792664,
+            829.7920227050781,
+            836.5439772605896,
+            836.896002292633,
+            837.9520177841187,
+            837.664008140564,
+            828.8959860801697,
+            833.2480192184448,
+            833.9840173721313,
+            837.0879888534546,
+            833.1199884414673,
+            831.2000036239624,
+            835.7440233230591,
+            831.2640190124512,
+            832.2880268096924,
+            835.2000117301941,
+            832.863986492157,
+            831.5200209617615,
+            832.256019115448,
+            834.272027015686,
+            832.4800133705139,
+            832.5759768486023,
+            833.0240249633789,
+            835.7759714126587,
+            832.2880268096924
+          ]
+        }
+      },
+      "complete": false,
+      "cuda_version": "12.8",
+      "error": "RuntimeError: generated_candidate compile failed: {\"status\": \"candidate_failure\", \"error_type\": \"RuntimeError\", \"message\": \"error encountered during parsing\"}\n",
+      "gpu": "NVIDIA H100 80GB HBM3",
+      "schema_version": 1,
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    }
+  },
+  "bundle_sha256": "d67fa41805833e20ad845e1099189b169aee323499ac1d3028b1f8c059d9fa91",
+  "complete": false,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-05T04:21:14.614860+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-b74fc06c-2972-5ff3-18ca-1e312a74f522",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "f944196d1e982f6b55e06255cf5a349b02a2ec35bd6b9752b380441aba4f3e81",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00fcf891rq1vnmbhg",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00fcf891rq1vnmbhg"
+  },
+  "four_warp": {
+    "exit_code": 0,
+    "log_tail": "Warning: Permanently added '195.242.10.249' (ED25519) to the list of known hosts.\n/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\nround 0 cublas: 182.272 us\nround 0 single_cta: 251.008 us\nround 0 four_warp: 1277.488 us\nround 1 single_cta: 251.216 us\nround 1 four_warp: 1279.664 us\nround 1 cublas: 182.912 us\nround 2 cublas: 182.960 us\nround 2 four_warp: 1276.064 us\nround 2 single_cta: 253.152 us\nround 3 cublas: 182.048 us\nround 3 single_cta: 250.480 us\nround 3 four_warp: 1278.800 us\nround 4 cublas: 183.312 us\nround 4 four_warp: 1285.200 us\nround 4 single_cta: 251.760 us\n",
+    "measurement": {
+      "candidates": {
+        "four_warp": {
+          "compile_success": true,
+          "compiler_context": {
+            "architecture": "sm_90",
+            "backend": "triton_h100",
+            "kernel_name": "gemm",
+            "ptx": {
+              "artifacts": [
+                {
+                  "path": "/tmp/gluon-search-adapter-paired-artifacts/triton-artifact-rudogb2_/kernel.ptx",
+                  "sha256": "2d06358f482d6143da8d01e513cbf6d590d460fd127675698d1463ce42c3b976",
+                  "size_bytes": 52011,
+                  "storage_status": "eligible"
+                }
+              ],
+              "static_instruction_sites": {
+                "categories": {
+                  "async_copy": 2,
+                  "barrier": 17,
+                  "control": 7,
+                  "global_load": 0,
+                  "global_store": 0,
+                  "local_load": 0,
+                  "local_store": 0,
+                  "other": 1097,
+                  "shared_load": 0,
+                  "shared_store": 0,
+                  "tensor": 12
+                },
+                "total": 1135
+              },
+              "status": "captured"
+            },
+            "resources": {
+              "registers_per_thread": 255,
+              "spills": 156,
+              "static_shared_memory_bytes": 147480
+            },
+            "sass": {
+              "status": "unavailable"
+            },
+            "schema_version": 1
+          },
+          "correctness_success": true,
+          "exact_vs_torch_mm": true,
+          "kernel_name": "gemm",
+          "maximum_error": 0.0,
+          "source_sha256": "ff3d8062c764db6df970eceb7514c7fe337c0cc2debc927e9a300d19f0fa4771"
+        },
+        "single_cta": {
+          "compile_success": true,
+          "compiler_context": {
+            "architecture": "sm_90",
+            "backend": "triton_h100",
+            "kernel_name": "gemm",
+            "ptx": {
+              "artifacts": [
+                {
+                  "path": "/tmp/gluon-search-adapter-paired-artifacts/triton-artifact-epyz1ou7/kernel.ptx",
+                  "sha256": "533c2ffc08db366d8f4679bc3be39b2c28b476479669621548e9e07dbbd49955",
+                  "size_bytes": 33226,
+                  "storage_status": "eligible"
+                }
+              ],
+              "static_instruction_sites": {
+                "categories": {
+                  "async_copy": 2,
+                  "barrier": 17,
+                  "control": 7,
+                  "global_load": 0,
+                  "global_store": 0,
+                  "local_load": 0,
+                  "local_store": 0,
+                  "other": 628,
+                  "shared_load": 0,
+                  "shared_store": 0,
+                  "tensor": 8
+                },
+                "total": 662
+              },
+              "status": "captured"
+            },
+            "resources": {
+              "registers_per_thread": 154,
+              "spills": 0,
+              "static_shared_memory_bytes": 147480
+            },
+            "sass": {
+              "status": "unavailable"
+            },
+            "schema_version": 1
+          },
+          "correctness_success": true,
+          "exact_vs_torch_mm": true,
+          "kernel_name": "gemm",
+          "maximum_error": 0.0,
+          "source_sha256": "0a19a0237606f07d36148bd735b0a8a2ff70a798c76739eee39d432c51dd2393"
+        }
+      },
+      "complete": true,
+      "cuda_version": "12.8",
+      "gpu": "NVIDIA H100 80GB HBM3",
+      "observations": [
+        {
+          "benchmark": {
+            "median_us": 182.27200210094452,
+            "stddev_us": 2.7143815448929876,
+            "timings_us": [
+              193.79200041294098,
+              184.32000279426575,
+              186.27199530601501,
+              181.5039962530136,
+              180.67200481891632,
+              182.27200210094452,
+              182.27200210094452,
+              185.05600094795227,
+              181.47200345993042,
+              181.69599771499634,
+              182.11199343204498,
+              186.68800592422485,
+              183.74399840831757,
+              182.01600015163422,
+              182.75199830532074,
+              182.11199343204498,
+              181.66400492191315,
+              184.92799997329712,
+              183.03999304771423,
+              182.6239973306656,
+              181.37599527835846,
+              182.11199343204498,
+              185.5359971523285,
+              181.98400735855103,
+              182.49599635601044,
+              180.38399517536163,
+              182.81599879264832,
+              189.15200233459473,
+              182.23999440670013,
+              182.23999440670013
+            ],
+            "warmup_count": 10
+          },
+          "order": 0,
+          "round": 0,
+          "variant": "cublas"
+        },
+        {
+          "benchmark": {
+            "median_us": 251.00800395011902,
+            "stddev_us": 3.5596850626169796,
+            "timings_us": [
+              261.7279887199402,
+              254.04798984527588,
+              253.34399938583374,
+              250.8159875869751,
+              246.94399535655975,
+              259.2639923095703,
+              249.9839961528778,
+              246.75199389457703,
+              251.8720030784607,
+              251.00800395011902,
+              248.9600032567978,
+              247.80799448490143,
+              254.43199276924133,
+              251.8399953842163,
+              251.00800395011902,
+              252.76800990104675,
+              256.22400641441345,
+              250.88000297546387,
+              249.85599517822266,
+              249.37599897384644,
+              252.128005027771,
+              248.03200364112854,
+              247.23200500011444,
+              248.60799312591553,
+              251.77600979804993,
+              247.39199876785278,
+              246.46399915218353,
+              253.66398692131042,
+              255.0399899482727,
+              252.03201174736023
+            ],
+            "warmup_count": 10
+          },
+          "order": 1,
+          "round": 0,
+          "variant": "single_cta"
+        },
+        {
+          "benchmark": {
+            "median_us": 1277.4879932403564,
+            "stddev_us": 7.965029429278348,
+            "timings_us": [
+              1278.6879539489746,
+              1284.6399545669556,
+              1272.1279859542847,
+              1277.2480249404907,
+              1277.7279615402222,
+              1272.447943687439,
+              1278.175950050354,
+              1274.880051612854,
+              1291.0720109939575,
+              1283.1679582595825,
+              1271.4879512786865,
+              1281.5040349960327,
+              1274.2079496383667,
+              1268.7679529190063,
+              1280.8640003204346,
+              1290.719985961914,
+              1273.8879919052124,
+              1271.5200185775757,
+              1297.7279424667358,
+              1275.8400440216064,
+              1279.1039943695068,
+              1279.263973236084,
+              1278.7840366363525,
+              1286.56005859375,
+              1273.5040187835693,
+              1271.3279724121094,
+              1266.9440507888794,
+              1288.3199453353882,
+              1265.4399871826172,
+              1261.0880136489868
+            ],
+            "warmup_count": 10
+          },
+          "order": 2,
+          "round": 0,
+          "variant": "four_warp"
+        },
+        {
+          "benchmark": {
+            "median_us": 251.21599435806274,
+            "stddev_us": 5.305922186566519,
+            "timings_us": [
+              264.3519937992096,
+              267.4559950828552,
+              251.3599991798401,
+              249.5039999485016,
+              250.36799907684326,
+              255.0080120563507,
+              252.00000405311584,
+              248.9279955625534,
+              252.128005027771,
+              254.68799471855164,
+              250.07998943328857,
+              259.45600867271423,
+              266.400009393692,
+              250.46399235725403,
+              249.02400374412537,
+              250.84799528121948,
+              254.62400913238525,
+              249.53599274158478,
+              248.48000705242157,
+              250.2720057964325,
+              252.41601467132568,
+              247.6159930229187,
+              248.89600276947021,
+              248.6719936132431,
+              254.65598702430725,
+              248.57600033283234,
+              261.1840069293976,
+              254.94399666786194,
+              251.0719895362854,
+              253.50400805473328
+            ],
+            "warmup_count": 10
+          },
+          "order": 0,
+          "round": 1,
+          "variant": "single_cta"
+        },
+        {
+          "benchmark": {
+            "median_us": 1279.6639800071716,
+            "stddev_us": 11.602669640254977,
+            "timings_us": [
+              1289.2800569534302,
+              1303.48801612854,
+              1279.1359424591064,
+              1272.447943687439,
+              1256.7360401153564,
+              1265.9200429916382,
+              1266.0160064697266,
+              1272.4159955978394,
+              1283.519983291626,
+              1284.0960025787354,
+              1279.3920040130615,
+              1290.3679609298706,
+              1268.1599855422974,
+              1301.31196975708,
+              1285.47203540802,
+              1284.767985343933,
+              1279.9359560012817,
+              1260.6719732284546,
+              1296.5120077133179,
+              1263.6159658432007,
+              1283.1679582595825,
+              1285.248041152954,
+              1264.9919986724854,
+              1285.9519720077515,
+              1275.9040594100952,
+              1278.2080173492432,
+              1272.2560167312622,
+              1282.5599908828735,
+              1268.928050994873,
+              1292.9600477218628
+            ],
+            "warmup_count": 10
+          },
+          "order": 1,
+          "round": 1,
+          "variant": "four_warp"
+        },
+        {
+          "benchmark": {
+            "median_us": 182.91200697422028,
+            "stddev_us": 2.150646775870508,
+            "timings_us": [
+              191.45600497722626,
+              184.4480037689209,
+              182.23999440670013,
+              186.65599822998047,
+              183.61599743366241,
+              181.15200102329254,
+              182.20800161361694,
+              182.91200697422028,
+              185.44000387191772,
+              182.91200697422028,
+              182.3039948940277,
+              182.36799538135529,
+              183.9040070772171,
+              185.12000143527985,
+              181.85600638389587,
+              182.40000307559967,
+              181.536003947258,
+              185.85599958896637,
+              185.82400679588318,
+              182.3039948940277,
+              183.00800025463104,
+              182.11199343204498,
+              181.95199966430664,
+              185.88800728321075,
+              181.15200102329254,
+              183.07200074195862,
+              183.1039935350418,
+              181.66400492191315,
+              185.40799617767334,
+              181.88799917697906
+            ],
+            "warmup_count": 10
+          },
+          "order": 2,
+          "round": 1,
+          "variant": "cublas"
+        },
+        {
+          "benchmark": {
+            "median_us": 182.95999616384506,
+            "stddev_us": 2.310554444233858,
+            "timings_us": [
+              191.23199582099915,
+              183.1360012292862,
+              186.39999628067017,
+              182.27200210094452,
+              181.43999576568604,
+              182.43199586868286,
+              182.6239973306656,
+              185.44000387191772,
+              182.94399976730347,
+              182.6239973306656,
+              183.16799402236938,
+              183.3920031785965,
+              185.47199666500092,
+              183.1360012292862,
+              182.46400356292725,
+              182.97599256038666,
+              185.37600338459015,
+              189.08800184726715,
+              182.8799992799759,
+              182.40000307559967,
+              181.8239986896515,
+              182.20800161361694,
+              187.9359930753708,
+              183.74399840831757,
+              183.23199450969696,
+              181.63199722766876,
+              182.8480064868927,
+              186.5919977426529,
+              182.40000307559967,
+              182.0479929447174
+            ],
+            "warmup_count": 10
+          },
+          "order": 0,
+          "round": 2,
+          "variant": "cublas"
+        },
+        {
+          "benchmark": {
+            "median_us": 1276.0640382766724,
+            "stddev_us": 10.318099579935085,
+            "timings_us": [
+              1294.1759824752808,
+              1291.200041770935,
+              1286.463975906372,
+              1304.0640354156494,
+              1284.9279642105103,
+              1285.5360507965088,
+              1283.8399410247803,
+              1273.9200592041016,
+              1275.264024734497,
+              1274.880051612854,
+              1271.5519666671753,
+              1281.7599773406982,
+              1288.032054901123,
+              1284.3199968338013,
+              1298.0480194091797,
+              1269.6640491485596,
+              1272.7359533309937,
+              1269.8240280151367,
+              1276.8640518188477,
+              1270.3039646148682,
+              1289.9839878082275,
+              1265.1519775390625,
+              1274.9439477920532,
+              1266.5280103683472,
+              1278.4960269927979,
+              1263.3919715881348,
+              1272.5759744644165,
+              1265.5680179595947,
+              1266.8800354003906,
+              1286.0480546951294
+            ],
+            "warmup_count": 10
+          },
+          "order": 1,
+          "round": 2,
+          "variant": "four_warp"
+        },
+        {
+          "benchmark": {
+            "median_us": 253.151997923851,
+            "stddev_us": 3.921938350985833,
+            "timings_us": [
+              264.8319900035858,
+              256.73601031303406,
+              251.8399953842163,
+              261.6960108280182,
+              252.6400089263916,
+              251.74400210380554,
+              256.48000836372375,
+              255.13601303100586,
+              255.23200631141663,
+              255.0399899482727,
+              255.5519938468933,
+              249.05599653720856,
+              250.07998943328857,
+              250.84799528121948,
+              255.90398907661438,
+              255.295991897583,
+              253.37600708007812,
+              247.96800315380096,
+              252.3519992828369,
+              248.83200228214264,
+              248.19199740886688,
+              256.7040026187897,
+              247.3600059747696,
+              253.12000513076782,
+              256.00001215934753,
+              253.1839907169342,
+              249.05599653720856,
+              249.85599517822266,
+              251.39200687408447,
+              256.0960054397583
+            ],
+            "warmup_count": 10
+          },
+          "order": 2,
+          "round": 2,
+          "variant": "single_cta"
+        },
+        {
+          "benchmark": {
+            "median_us": 182.0479929447174,
+            "stddev_us": 2.472156657099754,
+            "timings_us": [
+              193.50400567054749,
+              183.26400220394135,
+              182.78400599956512,
+              185.2799952030182,
+              182.8799992799759,
+              181.05599284172058,
+              182.0479929447174,
+              181.72800540924072,
+              184.9920004606247,
+              181.7599982023239,
+              181.536003947258,
+              181.5039962530136,
+              181.60000443458557,
+              185.59999763965607,
+              181.7599982023239,
+              182.27200210094452,
+              181.43999576568604,
+              185.44000387191772,
+              185.85599958896637,
+              181.5679967403412,
+              182.23999440670013,
+              181.7920058965683,
+              181.7920058965683,
+              185.47199666500092,
+              181.85600638389587,
+              182.11199343204498,
+              182.0479929447174,
+              181.7920058965683,
+              185.59999763965607,
+              181.63199722766876
+            ],
+            "warmup_count": 10
+          },
+          "order": 0,
+          "round": 3,
+          "variant": "cublas"
+        },
+        {
+          "benchmark": {
+            "median_us": 250.47999620437622,
+            "stddev_us": 4.559161659753386,
+            "timings_us": [
+              264.5759880542755,
+              258.08000564575195,
+              250.14400482177734,
+              249.59999322891235,
+              249.9839961528778,
+              254.84800338745117,
+              250.8159875869751,
+              247.3279982805252,
+              261.82401180267334,
+              250.68798661231995,
+              247.39199876785278,
+              247.9040026664734,
+              253.7280023097992,
+              248.31999838352203,
+              248.28800559043884,
+              257.05599784851074,
+              255.5840015411377,
+              249.79199469089508,
+              249.15200471878052,
+              249.53599274158478,
+              254.88001108169556,
+              250.88000297546387,
+              248.9600032567978,
+              262.11199164390564,
+              251.0719895362854,
+              246.94399535655975,
+              249.85599517822266,
+              253.4720003604889,
+              250.2720057964325,
+              254.07999753952026
+            ],
+            "warmup_count": 10
+          },
+          "order": 1,
+          "round": 3,
+          "variant": "single_cta"
+        },
+        {
+          "benchmark": {
+            "median_us": 1278.8000106811523,
+            "stddev_us": 10.9545935406826,
+            "timings_us": [
+              1277.4720191955566,
+              1265.120029449463,
+              1277.9200077056885,
+              1291.7759418487549,
+              1291.2319898605347,
+              1263.6159658432007,
+              1283.519983291626,
+              1309.1520071029663,
+              1290.560007095337,
+              1271.7440128326416,
+              1264.8639678955078,
+              1282.080054283142,
+              1279.2320251464844,
+              1281.3440561294556,
+              1278.3679962158203,
+              1279.4560194015503,
+              1277.3120403289795,
+              1285.4399681091309,
+              1283.6799621582031,
+              1260.4479789733887,
+              1279.647946357727,
+              1284.0319871902466,
+              1266.7200565338135,
+              1267.3920392990112,
+              1266.6239738464355,
+              1270.8799839019775,
+              1294.5280075073242,
+              1289.2800569534302,
+              1264.1600370407104,
+              1273.8239765167236
+            ],
+            "warmup_count": 10
+          },
+          "order": 2,
+          "round": 3,
+          "variant": "four_warp"
+        },
+        {
+          "benchmark": {
+            "median_us": 183.31199884414673,
+            "stddev_us": 2.761855603524712,
+            "timings_us": [
+              194.36800479888916,
+              184.2239946126938,
+              182.46400356292725,
+              182.559996843338,
+              186.78399920463562,
+              184.7040057182312,
+              183.32800269126892,
+              181.0240000486374,
+              181.92000687122345,
+              184.9920004606247,
+              189.2160028219223,
+              182.8480064868927,
+              180.7360053062439,
+              186.49600446224213,
+              187.55200505256653,
+              183.55199694633484,
+              182.8480064868927,
+              182.43199586868286,
+              183.1360012292862,
+              186.68800592422485,
+              182.0800006389618,
+              183.58400464057922,
+              182.49599635601044,
+              183.29599499702454,
+              186.62400543689728,
+              181.5679967403412,
+              182.97599256038666,
+              182.78400599956512,
+              185.88800728321075,
+              184.76800620555878
+            ],
+            "warmup_count": 10
+          },
+          "order": 0,
+          "round": 4,
+          "variant": "cublas"
+        },
+        {
+          "benchmark": {
+            "median_us": 1285.1999998092651,
+            "stddev_us": 6.75490435236181,
+            "timings_us": [
+              1295.3280210494995,
+              1285.1519584655762,
+              1292.799949645996,
+              1278.656005859375,
+              1284.224033355713,
+              1277.5360345840454,
+              1292.672038078308,
+              1280.8959484100342,
+              1276.9279479980469,
+              1280.735969543457,
+              1284.5120429992676,
+              1271.1039781570435,
+              1280.3200483322144,
+              1280.3200483322144,
+              1288.864016532898,
+              1295.1680421829224,
+              1290.4319763183594,
+              1277.7279615402222,
+              1285.248041152954,
+              1282.3359966278076,
+              1286.2399816513062,
+              1290.94398021698,
+              1290.94398021698,
+              1273.4400033950806,
+              1293.6960458755493,
+              1282.3679447174072,
+              1286.463975906372,
+              1296.3199615478516,
+              1286.687970161438,
+              1294.1759824752808
+            ],
+            "warmup_count": 10
+          },
+          "order": 1,
+          "round": 4,
+          "variant": "four_warp"
+        },
+        {
+          "benchmark": {
+            "median_us": 251.76000595092773,
+            "stddev_us": 4.410420512935503,
+            "timings_us": [
+              264.1279995441437,
+              265.1520073413849,
+              250.40000677108765,
+              249.15200471878052,
+              250.8159875869751,
+              252.128005027771,
+              250.59199333190918,
+              249.82400238513947,
+              253.37600708007812,
+              254.59200143814087,
+              249.11999702453613,
+              257.02399015426636,
+              264.22399282455444,
+              250.94398856163025,
+              252.3519992828369,
+              251.39200687408447,
+              256.19199872016907,
+              251.0719895362854,
+              249.02400374412537,
+              250.65600872039795,
+              253.82399559020996,
+              250.5599856376648,
+              247.9040026664734,
+              256.03199005126953,
+              253.1839907169342,
+              249.4720071554184,
+              254.7839879989624,
+              254.20799851417542,
+              250.7840096950531,
+              255.264014005661
+            ],
+            "warmup_count": 10
+          },
+          "order": 2,
+          "round": 4,
+          "variant": "single_cta"
+        }
+      ],
+      "rounds": 5,
+      "schema_version": 1,
+      "summary": {
+        "cublas": {
+          "contender_median_of_round_medians_us": 182.91200697422028,
+          "delta_definition": "cublas_minus_single_cta_us",
+          "median_paired_delta_us": -68.448007106781,
+          "paired_delta_us": [
+            -68.7360018491745,
+            -68.30398738384247,
+            -70.19200176000595,
+            -68.43200325965881,
+            -68.448007106781
+          ],
+          "single_cta_median_of_round_medians_us": 251.21599435806274
+        },
+        "four_warp": {
+          "contender_median_of_round_medians_us": 1278.8000106811523,
+          "delta_definition": "four_warp_minus_single_cta_us",
+          "median_paired_delta_us": 1028.3200144767761,
+          "paired_delta_us": [
+            1026.4799892902374,
+            1028.447985649109,
+            1022.9120403528214,
+            1028.3200144767761,
+            1033.4399938583374
+          ],
+          "single_cta_median_of_round_medians_us": 251.21599435806274
+        }
+      },
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    }
+  },
+  "git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "schema_version": 1,
+  "sha256": {
+    "bridge": "c8f91c4ae402cb367a83cf87e28ff0c4709fc740301e523895b4a2100a808bb3",
+    "four_warp": "ff3d8062c764db6df970eceb7514c7fe337c0cc2debc927e9a300d19f0fa4771",
+    "paired": "b7b8f082de3d9258487bff7aa6994988b85af63a27630a5e70ca4e8a27b314da",
+    "single_cta": "0a19a0237606f07d36148bd735b0a8a2ff70a798c76739eee39d432c51dd2393",
+    "smoke": "86ff1045048271dc9db4e7b3ddc586bd0d1e736254a40e0b8747ec87bed35995"
+  }
+}

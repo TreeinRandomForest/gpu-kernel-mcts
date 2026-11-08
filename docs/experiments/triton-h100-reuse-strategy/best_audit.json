@@ -1,0 +1,166 @@
+[
+  {
+    "best_median_us": 198.2240006327629,
+    "catalog": "old",
+    "profile_summary": {
+      "dram_bytes_read": 186664960.0,
+      "instructions_executed": 40103936.0,
+      "tensor_pipe_utilization_pct": 91.37
+    },
+    "ptx_has_cp_async": true,
+    "ptx_has_tma_load": false,
+    "ptx_sha256": "0e58f447a976175e7cba92ef3a36e2a80267057233a9303d1952db53649e1c76",
+    "ptx_sites": {
+      "categories": {
+        "async_copy": 58,
+        "barrier": 6,
+        "control": 2,
+        "global_load": 0,
+        "global_store": 16,
+        "local_load": 0,
+        "local_store": 0,
+        "other": 835,
+        "shared_load": 16,
+        "shared_store": 0,
+        "tensor": 8
+      },
+      "total": 941
+    },
+    "ptx_size_bytes": 50161,
+    "resources": {
+      "registers_per_thread": 213,
+      "spills": 0,
+      "static_shared_memory_bytes": 196608
+    },
+    "sass_status": "unavailable",
+    "seed": 0,
+    "source_sha256": "46b84a1fe53d74ad8a6964db59c23c3522962ee7bcff97d966827ff73da0bf88",
+    "source_uses_descriptor_load": false,
+    "source_uses_pointer_load": true,
+    "strategy_id": "change_warp_count",
+    "trace": "b10-s0-old.sqlite"
+  },
+  {
+    "best_median_us": 199.08799976110458,
+    "catalog": "new",
+    "profile_summary": {
+      "dram_bytes_read": 186665216.0,
+      "instructions_executed": 39997440.0,
+      "tensor_pipe_utilization_pct": 91.78
+    },
+    "ptx_has_cp_async": true,
+    "ptx_has_tma_load": false,
+    "ptx_sha256": "1beaba1f0f77c40e820afc9a4c5fae5639fabf3d86ca62e11649c62b2fb1a36e",
+    "ptx_sites": {
+      "categories": {
+        "async_copy": 44,
+        "barrier": 5,
+        "control": 2,
+        "global_load": 0,
+        "global_store": 16,
+        "local_load": 0,
+        "local_store": 0,
+        "other": 811,
+        "shared_load": 16,
+        "shared_store": 0,
+        "tensor": 8
+      },
+      "total": 902
+    },
+    "ptx_size_bytes": 47779,
+    "resources": {
+      "registers_per_thread": 213,
+      "spills": 0,
+      "static_shared_memory_bytes": 147456
+    },
+    "sass_status": "unavailable",
+    "seed": 0,
+    "source_sha256": "36e195fd150bf1ecaa0e95f6569c49507e0d60f437396555cf14603dae823a90",
+    "source_uses_descriptor_load": false,
+    "source_uses_pointer_load": true,
+    "strategy_id": "change_warp_count",
+    "trace": "b10-s0-new.sqlite"
+  },
+  {
+    "best_median_us": 201.27999782562256,
+    "catalog": "old",
+    "profile_summary": {
+      "dram_bytes_read": 186673408.0,
+      "instructions_executed": 39837696.0,
+      "tensor_pipe_utilization_pct": 91.55
+    },
+    "ptx_has_cp_async": true,
+    "ptx_has_tma_load": false,
+    "ptx_sha256": "378fa96fd25ae0f06de1d968f6e689689da25dc361d4bea8ad459db9d9725c0b",
+    "ptx_sites": {
+      "categories": {
+        "async_copy": 44,
+        "barrier": 5,
+        "control": 2,
+        "global_load": 0,
+        "global_store": 16,
+        "local_load": 0,
+        "local_store": 0,
+        "other": 766,
+        "shared_load": 16,
+        "shared_store": 0,
+        "tensor": 8
+      },
+      "total": 857
+    },
+    "ptx_size_bytes": 44673,
+    "resources": {
+      "registers_per_thread": 213,
+      "spills": 0,
+      "static_shared_memory_bytes": 147456
+    },
+    "sass_status": "unavailable",
+    "seed": 1,
+    "source_sha256": "0fff956a587105de78fce72edbe1f2f6c8d4ccef72b539402df9c2925f0dd81a",
+    "source_uses_descriptor_load": false,
+    "source_uses_pointer_load": true,
+    "strategy_id": "improve_b_layout_access",
+    "trace": "b10-s1-old.sqlite"
+  },
+  {
+    "best_median_us": 200.44799894094467,
+    "catalog": "new",
+    "profile_summary": {
+      "dram_bytes_read": 186695936.0,
+      "instructions_executed": 41189376.0,
+      "tensor_pipe_utilization_pct": 91.37
+    },
+    "ptx_has_cp_async": true,
+    "ptx_has_tma_load": false,
+    "ptx_sha256": "845d85b157c2add2de52403f5882aedf69d04a1793f66f436f269880af443e4e",
+    "ptx_sites": {
+      "categories": {
+        "async_copy": 58,
+        "barrier": 6,
+        "control": 2,
+        "global_load": 0,
+        "global_store": 16,
+        "local_load": 0,
+        "local_store": 0,
+        "other": 836,
+        "shared_load": 16,
+        "shared_store": 0,
+        "tensor": 8
+      },
+      "total": 942
+    },
+    "ptx_size_bytes": 48574,
+    "resources": {
+      "registers_per_thread": 215,
+      "spills": 0,
+      "static_shared_memory_bytes": 196608
+    },
+    "sass_status": "unavailable",
+    "seed": 1,
+    "source_sha256": "0ea3a8b433453c05d25ef7c2bcbf8781774f83a8818fdd7fa4d89ca19221b0f7",
+    "source_uses_descriptor_load": false,
+    "source_uses_pointer_load": true,
+    "strategy_id": "improve_b_layout_access",
+    "trace": "b10-s1-new.sqlite"
+  }
+]

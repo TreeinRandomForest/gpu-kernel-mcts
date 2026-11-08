@@ -1,0 +1,95 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-03T16:05:43.166439+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-1d880153-e1b1-248e-9b16-16c555e785ac",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "87d50955ca93eb7bf5a5d87ab40af2b6ae9b26598aa3dc9b8535a72e057191fd",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00bqbn3q26502psdq",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.3.1"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00bqbn3q26502psdq"
+  },
+  "git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+  "image": "docker.io/saarora/gpu-kernel-mcts@sha256:d0cd8e7b784ac8828691aa0add0e41d1802e22ef11745780de018afaa12c0469",
+  "probe_sha256": "a85716016855fac2d44818bc1d9a5ff6c4da7580374c5cfd6718dd511fd00e5e",
+  "run_id": "63922af5-2f5a-4697-9aa7-547fd9c9ca52",
+  "schema_version": 1,
+  "source_sha256": "c7113204ec9d45e858382fc7d2ede9a6d33d18fadbc0f842c6031d91f7163dfa",
+  "variants": {
+    "baseline": {
+      "cluster_mentions": 6,
+      "cluster_rank_mentions": 0,
+      "exact_mismatches_vs_cublas": 0,
+      "grid_programs": 512,
+      "maximum_error_vs_cublas": 0.0,
+      "multicast_mentions": 0,
+      "num_ctas": 1,
+      "ptx_sha256": "7aabae36876215532c86f8bd3f311074a455a27d5caaef5d7921549156662fe5",
+      "ptx_size_bytes": 35453,
+      "registers_per_thread": 154,
+      "shared_memory_bytes": 147480,
+      "source_sha256": "c7113204ec9d45e858382fc7d2ede9a6d33d18fadbc0f842c6031d91f7163dfa",
+      "spills": 0,
+      "status": "ok",
+      "tile": [
+        128,
+        256,
+        64
+      ],
+      "tma_load_mentions": 6,
+      "variant": "baseline"
+    },
+    "cluster_m": {
+      "error": "PassManager::run failed",
+      "error_type": "RuntimeError",
+      "status": "failed",
+      "traceback_tail": "6_gemm_tma[grid](\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 347, in <lambda>\n    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 569, in run\n    kernel = self.compile(src, target=target, options=options.__dict__)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 284, in compile\n    next_module = compile_ir(module, metadata)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/backends/nvidia/compiler.py\", line 450, in <lambda>\n    stages[\"llir\"] = lambda src, metadata: self.make_llir(src, metadata, options, capability)\n                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/backends/nvidia/compiler.py\", line 341, in make_llir\n    pm.run(mod)\nRuntimeError: PassManager::run failed\n",
+      "variant": "cluster_m"
+    },
+    "cluster_n": {
+      "error": "Triton Error [CUDA]: invalid argument",
+      "error_type": "RuntimeError",
+      "status": "failed",
+      "traceback_tail": "Traceback (most recent call last):\n  File \"/tmp/cluster-tma-probe.py\", line 84, in main\n    result = run(args.source, args.variant, args.output_dir)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/cluster-tma-probe.py\", line 54, in run\n    b_desc = tma.create_2d_tma_descriptor(b.data_ptr(), N, K, bn, 64, b.element_size())\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/tools/experimental_descriptor.py\", line 32, in create_2d_tma_descriptor\n    return TmaDescKernelParam(ptr, [dim1, dim0], [block_dim1, block_dim0], element_size)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/tools/experimental_descriptor.py\", line 19, in __init__\n    triton.runtime.driver.active.utils.fill_2d_tma_descriptor(ptr, dims[0], dims[1], block_dims[0],\nRuntimeError: Triton Error [CUDA]: invalid argument\n",
+      "variant": "cluster_n"
+    },
+    "cluster_same_tile": {
+      "error": "PassManager::run failed",
+      "error_type": "RuntimeError",
+      "status": "failed",
+      "traceback_tail": "6_gemm_tma[grid](\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 347, in <lambda>\n    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/runtime/jit.py\", line 569, in run\n    kernel = self.compile(src, target=target, options=options.__dict__)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/compiler/compiler.py\", line 284, in compile\n    next_module = compile_ir(module, metadata)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/backends/nvidia/compiler.py\", line 450, in <lambda>\n    stages[\"llir\"] = lambda src, metadata: self.make_llir(src, metadata, options, capability)\n                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/venv/lib/python3.12/site-packages/triton/backends/nvidia/compiler.py\", line 341, in make_llir\n    pm.run(mod)\nRuntimeError: PassManager::run failed\n",
+      "variant": "cluster_same_tile"
+    }
+  }
+}

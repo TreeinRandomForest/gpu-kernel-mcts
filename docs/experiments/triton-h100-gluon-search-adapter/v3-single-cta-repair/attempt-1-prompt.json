@@ -1,0 +1,110 @@
+{
+  "attempt": 1,
+  "backend": "triton_h100",
+  "constraints": [
+    "Return a complete Python Triton or Gluon source file without Markdown.",
+    "Define launch(A, B, C, M, N, K) and return the CompiledKernel that computes C.",
+    "A is row-major BF16 [M,K]; B is column-major BF16 [K,N]; C is row-major BF16 [M,N].",
+    "Preserve FP32 accumulation and the fixed correctness tolerance.",
+    "The kernel may use @triton.jit or @gluon.jit; preserve the launch ABI and return one named compiled kernel.",
+    "Treat cuBLAS timing as a reference target; search reward is measured against the Triton root."
+  ],
+  "parent_kernel": "import triton\nimport triton.language as tl\nfrom triton.tools.tensor_descriptor import TensorDescriptor\n\n\n@triton.jit\ndef bf16_gemm_tma(a_desc, b_desc, C, M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,\n                  BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    off_m = tl.program_id(0) * BM\n    off_n = tl.program_id(1) * BN\n    acc = tl.zeros((BM, BN), dtype=tl.float32)\n    for off_k in range(0, K, BK):\n        a = a_desc.load([off_m, off_k])\n        b = b_desc.load([off_n, off_k])\n        acc += tl.dot(a, tl.trans(b))\n    row = off_m + tl.arange(0, BM)\n    col = off_n + tl.arange(0, BN)\n    tl.store(C + row[:, None] * N + col[None, :],\n             acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 64, 128, 64\n    a_desc = TensorDescriptor(A, shape=[M, K], strides=[K, 1],\n                              block_shape=[BM, BK])\n    # B is [K,N] column-major == zero-copy contiguous B.T [N,K].\n    b_desc = TensorDescriptor(B, shape=[N, K], strides=[K, 1],\n                              block_shape=[BN, BK])\n    return bf16_gemm_tma[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        a_desc, b_desc, C, M, N, K, BM, BN, BK,\n        num_warps=8, num_stages=3\n    )",
+  "parent_profile": null,
+  "parent_timing": {
+    "measurement": "CUDA events",
+    "median_us": 300.448,
+    "sample_count": null,
+    "warmup_count": null
+  },
+  "performance_references": {
+    "cublas_median_us": 181.536
+  },
+  "repair": {
+    "instruction": "Repair the failed candidate while preserving semantics.",
+    "previous_candidate": "import triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_kernel(A, B, C, M, N, K,\n                     BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr,\n                     GROUP_M: tl.constexpr,\n                     EVEN_K: tl.constexpr, FULL_MN: tl.constexpr):\n    pid = tl.program_id(0)\n    num_pid_m = tl.cdiv(M, BM)\n    num_pid_n = tl.cdiv(N, BN)\n\n    # L2-friendly grouped ordering of tiles.\n    num_pid_in_group = GROUP_M * num_pid_n\n    group_id = pid // num_pid_in_group\n    first_pid_m = group_id * GROUP_M\n    group_size_m = min(num_pid_m - first_pid_m, GROUP_M)\n    pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)\n    pid_n = (pid % num_pid_in_group) // group_size_m\n\n    off_m = pid_m * BM\n    off_n = pid_n * BN\n    rm = off_m + tl.arange(0, BM)\n    rn = off_n + tl.arange(0, BN)\n    rk = tl.arange(0, BK)\n\n    rm = tl.max_contiguous(tl.multiple_of(rm, BM), BM)\n    rn = tl.max_contiguous(tl.multiple_of(rn, BN), BN)\n\n    # A is row-major [M,K]: addr(m,k) = m*K + k\n    a_ptrs = A + rm[:, None] * K + rk[None, :]\n    # B is column-major [K,N]: addr(k,n) = n*K + k\n    # (equivalently B.T viewed as row-major [N,K], zero-copy)\n    b_ptrs = B + rn[None, :] * K + rk[:, None]\n\n    acc = tl.zeros((BM, BN), dtype=tl.float32)\n\n    if EVEN_K:\n        for _ in range(0, tl.cdiv(K, BK)):\n            a = tl.load(a_ptrs)\n            b = tl.load(b_ptrs)\n            acc = tl.dot(a, b, acc)\n            a_ptrs += BK\n            b_ptrs += BK\n    else:\n        for k in range(0, tl.cdiv(K, BK) * BK, BK):\n            a = tl.load(a_ptrs, mask=rm[:, None] < M, other=0.0)\n            b = tl.load(b_ptrs, mask=rn[None, :] < N, other=0.0)\n            acc = tl.dot(a, b, acc)\n            a_ptrs += BK\n            b_ptrs += BK\n\n    c = acc.to(tl.bfloat16)\n    c_ptrs = C + rm[:, None] * N + rn[None, :]\n    if FULL_MN:\n        tl.store(c_ptrs, c)\n    else:\n        tl.store(c_ptrs, c, mask=(rm[:, None] < M) & (rn[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 128, 256, 64\n    GROUP_M = 8\n    EVEN_K = (K % BK) == 0\n    FULL_MN = (M % BM) == 0 and (N % BN) == 0\n    grid = (triton.cdiv(M, BM) * triton.cdiv(N, BN),)\n    return bf16_gemm_kernel[grid](\n        A, B, C, M, N, K,\n        BM, BN, BK, GROUP_M,\n        EVEN_K, FULL_MN,\n        num_warps=8, num_stages=3,\n    )",
+    "previous_evaluation": {
+      "compilation": null,
+      "compile_status": "NOT_ATTEMPTED",
+      "correctness": null,
+      "correctness_status": "NOT_TESTED",
+      "expected_candidate_stage": "single_cta_gluon",
+      "invalid_reason": "STRATEGY_MISMATCH",
+      "observed_candidate_stage": "pointer_triton",
+      "status": "INVALID"
+    }
+  },
+  "strategy": {
+    "backend_prompt": "Port the descriptor GEMM to @gluon.jit using imports from triton.experimental.gluon, not a separate gluon package. Keep one CTA per output tile (num_ctas=1), the current tile/grid, and the search launch ABI. Use Hopper TensorDescriptor.from_tensor for A and zero-copy B.T, legal NVMMASharedLayout, one TMA mbarrier and shared A/B buffers, and warpgroup_mma with an explicit wait before reusing buffers. Keep output ownership and FP32 accumulation; use ordinary B loads. Do not add a two-CTA cluster or a multi-slot pipeline in this action. Return the compiled Gluon kernel; verify correctness and resources.",
+    "description": "Port descriptor GEMM to one-CTA Gluon TMA and WGMMA",
+    "id": "single_cta_gluon_wgmma_tma"
+  },
+  "target_hardware": {
+    "gpu_model": "H100"
+  },
+  "task": "Produce a complete replacement GPU kernel preserving the workload contract.",
+  "workload": {
+    "atol": 0.02,
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "dtype": "bfloat16",
+    "metadata": {
+      "abi": {
+        "launch": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "parameters": [
+          "A",
+          "B",
+          "C",
+          "M",
+          "N",
+          "K"
+        ]
+      },
+      "accumulation_dtype": "float32",
+      "entry_point": "launch",
+      "output_dtype": "bfloat16",
+      "target": {
+        "form_factor": "SXM",
+        "gpu_model": "H100",
+        "minimum_compute_capability": "9.0"
+      },
+      "tensors": {
+        "A": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "K"
+          ]
+        },
+        "B": {
+          "layout": "column_major",
+          "shape": [
+            "K",
+            "N"
+          ]
+        },
+        "C": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "N"
+          ]
+        }
+      }
+    },
+    "operation": "gemm",
+    "rtol": 0.02,
+    "shapes": [
+      {
+        "dimensions": {
+          "K": 4096,
+          "M": 4096,
+          "N": 4096
+        },
+        "weight": 1.0
+      }
+    ]
+  }
+}

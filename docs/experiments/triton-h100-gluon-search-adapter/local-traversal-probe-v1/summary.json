@@ -1,0 +1,28 @@
+{
+  "accepted_for_gpu": true,
+  "attempts": [
+    {
+      "accepted_for_gpu": true,
+      "attempt": 0,
+      "b_gen": 1,
+      "edit_mismatch": null,
+      "generation_id": "chatcmpl-6d900769-7439-4a5d-89ca-0d521f62fc48",
+      "input_tokens": 3746,
+      "latency_seconds": 16.57721782498993,
+      "output_tokens": 1746,
+      "prompt_sha256": "d698e3732c3b44869280a14addbdfc6dfb958018caab32a6ec3d3561c274cc88",
+      "source_sha256": "7fc54b4d668cdf62358a5991796d96f06da48dc537a29505da1d7aa6281521ae",
+      "stage": "single_cta_gluon"
+    }
+  ],
+  "b_gen_used": 1,
+  "catalog_sha256": "242763fd74430d69d84b68cb00723c3f179a66c5fe6add79228af5eea976bf08",
+  "complete": true,
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "model": "rits/zai-org/glm-5-3",
+  "parent_evidence_sha256": "fb116c09ab8d162aa789eb7350195e8dddf7df0bef2b4553967aa3b52b0832f2",
+  "parent_source_sha256": "0a19a0237606f07d36148bd735b0a8a2ff70a798c76739eee39d432c51dd2393",
+  "schema_version": 1,
+  "strategy_id": "single_cta_tile_traversal"
+}

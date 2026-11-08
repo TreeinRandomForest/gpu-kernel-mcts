@@ -1,0 +1,337 @@
+{
+  "bundle_sha256": "b14dfd028e76aa3f71bc317397e9e80d1d949c9ad02efe7b50a5c93730ac1d61",
+  "candidate_sha256": "0a19a0237606f07d36148bd735b0a8a2ff70a798c76739eee39d432c51dd2393",
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-05T01:34:20.291499+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-ade41b30-29a5-be1f-71a2-95104de12b84",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "08f972c3098fb0a2aba42fa6937985e8086c08a4a8e125c23f19f944145078ba",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00yyf7bzcc4w7g9bg",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00yyf7bzcc4w7g9bg"
+  },
+  "git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "measurement": {
+    "candidates": {
+      "generated_candidate": {
+        "artifact_id": "062e6d69b24e920f9631e25f3efa765c37142f59d0f481faac22fa08da0bf170",
+        "compile_success": true,
+        "compiler_context": {
+          "architecture": "sm_90",
+          "backend": "triton_h100",
+          "kernel_name": "gemm",
+          "ptx": {
+            "artifacts": [
+              {
+                "path": "/tmp/gluon-search-adapter-artifacts/triton-artifact-5hv1izlr/kernel.ptx",
+                "sha256": "20cc49c6c02aac15cf6e5a8ca90cc482dfa168541591fe8f9383695b3ff02aee",
+                "size_bytes": 33165,
+                "storage_status": "eligible"
+              }
+            ],
+            "static_instruction_sites": {
+              "categories": {
+                "async_copy": 2,
+                "barrier": 17,
+                "control": 7,
+                "global_load": 0,
+                "global_store": 0,
+                "local_load": 0,
+                "local_store": 0,
+                "other": 628,
+                "shared_load": 0,
+                "shared_store": 0,
+                "tensor": 8
+              },
+              "total": 662
+            },
+            "status": "captured"
+          },
+          "resources": {
+            "registers_per_thread": 154,
+            "spills": 0,
+            "static_shared_memory_bytes": 147480
+          },
+          "sass": {
+            "status": "unavailable"
+          },
+          "schema_version": 1
+        },
+        "correctness_success": true,
+        "kernel_name": "gemm",
+        "lightweight_profile": {
+          "artifact_id": "062e6d69b24e920f9631e25f3efa765c37142f59d0f481faac22fa08da0bf170",
+          "kernel_name": "gemm",
+          "metric_set": "lightweight_v1",
+          "metrics": {
+            "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+              "unit": "%",
+              "value": 28.58
+            },
+            "l1tex__throughput.avg.pct_of_peak_sustained_active": {
+              "unit": "%",
+              "value": 58.37
+            },
+            "launch__registers_per_thread": {
+              "unit": "register/thread",
+              "value": 154.0
+            },
+            "lts__throughput.avg.pct_of_peak_sustained_elapsed": {
+              "unit": "%",
+              "value": 52.83
+            },
+            "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": {
+              "unit": "%",
+              "value": 92.17
+            },
+            "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+              "unit": "%",
+              "value": 87.21
+            },
+            "sm__warps_active.avg.pct_of_peak_sustained_active": {
+              "unit": "%",
+              "value": 12.56
+            },
+            "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+              "unit": "inst",
+              "value": 1.24
+            },
+            "smsp__inst_executed.sum": {
+              "unit": "inst",
+              "value": 28139520.0
+            }
+          },
+          "profiler": "ncu",
+          "resolved_metrics": [
+            "launch__registers_per_thread",
+            "sm__warps_active.avg.pct_of_peak_sustained_active",
+            "sm__throughput.avg.pct_of_peak_sustained_elapsed",
+            "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed",
+            "lts__throughput.avg.pct_of_peak_sustained_elapsed",
+            "l1tex__throughput.avg.pct_of_peak_sustained_active",
+            "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active",
+            "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio",
+            "smsp__inst_executed.sum"
+          ],
+          "schema_version": 1,
+          "selection": {
+            "kernel_name": "gemm",
+            "kernel_name_base": "function",
+            "launch_count": 1,
+            "nvtx_range": "KERNEL_MCTS_TARGET"
+          },
+          "summary": {
+            "achieved_occupancy_pct": 12.56,
+            "dram_throughput_pct": 28.58,
+            "instructions_executed": 28139520.0,
+            "l1tex_throughput_pct": 58.37,
+            "l2_throughput_pct": 52.83,
+            "long_scoreboard_warps_per_issue": 1.24,
+            "registers_per_thread": 154.0,
+            "sm_throughput_pct": 87.21,
+            "tensor_pipe_utilization_pct": 92.17
+          },
+          "target": {
+            "architecture": "sm_90",
+            "ncu_version": null
+          }
+        },
+        "maximum_error": 0.0,
+        "median_us": 249.63199347257614,
+        "source_sha256": "0a19a0237606f07d36148bd735b0a8a2ff70a798c76739eee39d432c51dd2393",
+        "timings_us": [
+          262.7519965171814,
+          252.44799256324768,
+          248.6719936132431,
+          254.36800718307495,
+          248.44799935817719,
+          247.1040040254593,
+          260.3519856929779,
+          248.79999458789825,
+          251.74400210380554,
+          253.60000133514404,
+          251.8399953842163,
+          246.8159943819046,
+          248.9600032567978,
+          246.94399535655975,
+          253.53598594665527,
+          251.26400589942932,
+          247.9040026664734,
+          258.91199707984924,
+          249.66399371623993,
+          249.15200471878052,
+          248.57600033283234,
+          251.64800882339478,
+          247.96800315380096,
+          248.57600033283234,
+          252.44799256324768,
+          251.93598866462708,
+          247.6159930229187,
+          249.5039999485016,
+          249.59999322891235,
+          257.6960027217865
+        ]
+      },
+      "triton_root": {
+        "artifact_id": "a8792af72938f673ebb8bfcac6680abb71a7712ec088fff9e69a0a5371bc6c91",
+        "compile_success": true,
+        "compiler_context": {
+          "architecture": "sm_90",
+          "backend": "triton_h100",
+          "kernel_name": "bf16_gemm_triton",
+          "ptx": {
+            "artifacts": [
+              {
+                "path": "/tmp/gluon-search-adapter-artifacts/triton-artifact-jkw1r2n3/kernel.ptx",
+                "sha256": "efa23a185dc0a04242b0ca74005546e8201b35fa838c856199a700dbce11b7d5",
+                "size_bytes": 14898,
+                "storage_status": "eligible"
+              }
+            ],
+            "static_instruction_sites": {
+              "categories": {
+                "async_copy": 17,
+                "barrier": 6,
+                "control": 2,
+                "global_load": 0,
+                "global_store": 2,
+                "local_load": 0,
+                "local_store": 0,
+                "other": 159,
+                "shared_load": 2,
+                "shared_store": 0,
+                "tensor": 8
+              },
+              "total": 196
+            },
+            "status": "captured"
+          },
+          "resources": {
+            "registers_per_thread": 48,
+            "spills": 0,
+            "static_shared_memory_bytes": 12288
+          },
+          "sass": {
+            "status": "unavailable"
+          },
+          "schema_version": 1
+        },
+        "correctness_success": true,
+        "kernel_name": "bf16_gemm_triton",
+        "maximum_error": 0.0,
+        "median_us": 835.6159925460815,
+        "source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+        "timings_us": [
+          842.3359990119934,
+          837.0239734649658,
+          832.7999711036682,
+          837.4720215797424,
+          830.2720189094543,
+          837.2160196304321,
+          835.8719944953918,
+          834.0160250663757,
+          831.6479921340942,
+          840.1920199394226,
+          832.5440287590027,
+          829.15198802948,
+          839.3279910087585,
+          834.8479866981506,
+          827.6159763336182,
+          839.4880294799805,
+          836.1279964447021,
+          837.3119831085205,
+          833.0559730529785,
+          837.5359773635864,
+          836.9280099868774,
+          834.559977054596,
+          834.8159790039062,
+          833.791971206665,
+          837.7599716186523,
+          827.8399705886841,
+          836.5439772605896,
+          830.016016960144,
+          836.1920118331909,
+          835.3599905967712
+        ]
+      }
+    },
+    "complete": true,
+    "cublas": {
+      "median_us": 181.42399936914444,
+      "timings_us": [
+        192.9599940776825,
+        184.79999899864197,
+        185.05600094795227,
+        185.5359971523285,
+        180.7679980993271,
+        181.43999576568604,
+        181.69599771499634,
+        179.45599555969238,
+        185.12000143527985,
+        183.00800025463104,
+        181.40800297260284,
+        182.5920045375824,
+        180.57599663734436,
+        186.5919977426529,
+        181.7920058965683,
+        180.92800676822662,
+        181.15200102329254,
+        180.92800676822662,
+        180.9920072555542,
+        184.89600718021393,
+        180.57599663734436,
+        180.95999956130981,
+        185.40799617767334,
+        181.0240000486374,
+        184.1920018196106,
+        180.7039976119995,
+        181.34400248527527,
+        181.40800297260284,
+        181.0240000486374,
+        184.28799510002136
+      ]
+    },
+    "cuda_version": "12.8",
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "schema_version": 1,
+    "torch_version": "2.7.1+cu128",
+    "triton_version": "3.9.0"
+  },
+  "remote_exit_code": 0,
+  "remote_log_tail": "Warning: Permanently added '195.242.30.219' (ED25519) to the list of known hosts.\n/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\ncandidate triton_root: compiling\ncandidate triton_root: correctness\ncandidate triton_root: benchmarking\ncandidate triton_root: 835.616 us, kernel bf16_gemm_triton\ncandidate generated_candidate: compiling\ncandidate generated_candidate: correctness\ncandidate generated_candidate: benchmarking\ncandidate generated_candidate: 249.632 us, kernel gemm\ncandidate generated_candidate: NCU\ncuBLAS: 181.424 us\n",
+  "schema_version": 1,
+  "smoke_sha256": "2dc1c7b8ac31da1be1d91dbbb982e53914d7c35df3f739102098f21b71831027"
+}

@@ -1,0 +1,103 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-06T21:30:46.813921+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-1bdaf72b-8dd6-4fb5-9ac3-77dc7cfb4701",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "8b2cd37a59c7209709ec872f516721d07b176b0b6ce8563052c955646d89aae4",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00dqpb7tc0y0w857g",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00dqpb7tc0y0w857g"
+  },
+  "expected_arms": [
+    "original_persistent",
+    "c_after_k",
+    "cublas"
+  ],
+  "git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+  "image": "docker.io/saarora/gpu-kernel-mcts@sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5",
+  "last_output": "timing 4 original_persistent 187.76000291109085\ntiming 5 cublas 181.03999644517899\ntiming 5 original_persistent 190.15999883413315\ntiming 5 c_after_k 191.8879970908165\ntiming 6 original_persistent 191.69600307941437\ntiming 6 c_after_k 207.07199722528458\ntiming 6 cublas 200.6720006465912\ntiming 7 c_after_k 203.855998814106\ntiming 7 cublas 197.4240019917488\ntiming 7 original_persistent 198.28800112009048\ntiming 8 cublas 192.27200001478195\ntiming 8 original_persistent 199.023999273777\ntiming 8 c_after_k 198.5440030694008\ntiming 9 original_persistent 197.4240019917488\ntiming 9 c_after_k 197.48800247907639\ntiming 9 cublas 190.19199907779694\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"create_atomic_cas\"\n - leaked function \"get_int8_ty\"\n - leaked function \"create_histogram\"\n - leaked function \"create_lds_barrier_wait\"\n - leaked function \"get_fp32\"\n - leaked function \"create_urem\"\n - leaked function \"create_minnumf\"\n - leaked function \"create_expand_dims\"\n - leaked function \"create_make_range\"\n - leaked function \"create_minui\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+  "paired_complete": true,
+  "profiles": {
+    "c_after_k": {
+      "arm": "c_after_k",
+      "correctness_exact": true,
+      "cubin_sha256": "1c11d64aa0f87c5fe1b45ad6184332b6ada5c73f1c55d9670a1c2ec567689b17",
+      "nvtx_range": "CSCRATCH_C_AFTER_K",
+      "sha256": {
+        "baseline": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "8425ca64f35b1ff8c0362842e991801b322882cfffab44c92687af3f42cba10a",
+        "paired": "28840f35529984dec3e4ae60a3c6f478c6f87b2f3249db9a8a76423a5fd3f1ef"
+      },
+      "status": "ok"
+    },
+    "cublas": {
+      "arm": "cublas",
+      "correctness_exact": true,
+      "cubin_sha256": null,
+      "nvtx_range": "CSCRATCH_CUBLAS",
+      "sha256": {
+        "baseline": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "8425ca64f35b1ff8c0362842e991801b322882cfffab44c92687af3f42cba10a",
+        "paired": "28840f35529984dec3e4ae60a3c6f478c6f87b2f3249db9a8a76423a5fd3f1ef"
+      },
+      "status": "ok"
+    },
+    "original_persistent": {
+      "arm": "original_persistent",
+      "correctness_exact": true,
+      "cubin_sha256": "b09d208d67e8780e7e6ab0aa6bad2555890b330580276995e0f8936989c2d13b",
+      "nvtx_range": "CSCRATCH_ORIGINAL_PERSISTENT",
+      "sha256": {
+        "baseline": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "8425ca64f35b1ff8c0362842e991801b322882cfffab44c92687af3f42cba10a",
+        "paired": "28840f35529984dec3e4ae60a3c6f478c6f87b2f3249db9a8a76423a5fd3f1ef"
+      },
+      "status": "ok"
+    }
+  },
+  "remote_exit_code": 0,
+  "run_id": "0bca7222-6747-41ef-ba30-64dfbb8436ba",
+  "schema_version": 1,
+  "sha256": {
+    "baseline": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+    "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+    "kernel": "8425ca64f35b1ff8c0362842e991801b322882cfffab44c92687af3f42cba10a",
+    "paired": "28840f35529984dec3e4ae60a3c6f478c6f87b2f3249db9a8a76423a5fd3f1ef",
+    "profile": "10fedfe0467631dcb8cccd68f218e8103f9d7a28a38d05183aedb4f722fdd1ac"
+  }
+}

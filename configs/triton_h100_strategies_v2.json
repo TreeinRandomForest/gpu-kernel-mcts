@@ -1,0 +1,44 @@
+{
+  "version": "triton_h100_stage_v2",
+  "strategies": [
+    {
+      "id": "tile_warp_co_design",
+      "description": "Co-design output tile and warp count around resource limits",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["pointer_triton", "descriptor_triton", "clustered_gluon", "gluon_other"]},
+      "prompts": {"triton_h100": "Change the output tile dimensions and num_warps together. Derive the launch grid and tensor ownership for the new tile; preserve complete output coverage, one writer per output, the fixed A/B/C layouts and BF16 output. Check compiler registers, spills and shared memory, especially the observed BN=256/four-warp spill cliff. Do not assume one tile wins across shapes; optimize measured CUDA-event latency."}
+    },
+    {
+      "id": "descriptor_tma_staging",
+      "description": "Replace pointer operand loads with legal descriptor TMA staging",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["pointer_triton"]},
+      "prompts": {"triton_h100": "Convert the pointer-load GEMM mainloop to descriptor-backed TMA operand staging. A is physical row-major [M,K]; B is logical column-major [K,N] with strides (1,K), so B.T is a zero-copy contiguous physical [N,K] view. Derive descriptor block shapes, alignment, full-tile bounds, shared-memory capacity and barrier lifetime before changing the loop. Preserve FP32 accumulation, BF16 output and one output writer. Return the actual compiled kernel from launch(A,B,C,M,N,K); verify exactness and measured latency."}
+    },
+    {
+      "id": "cross_cta_tile_traversal",
+      "description": "Change output-tile traversal to improve operand reuse",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["pointer_triton", "descriptor_triton", "clustered_gluon", "gluon_other"]},
+      "prompts": {"triton_h100": "Change the output tile-to-CTA mapping and, if needed, tile aspect ratio to revisit A or B more locally. Derive M/N tile counts, prove complete coverage and one writer per output, and preserve cluster ownership if present. Treat L2 request/hit/miss and DRAM counters as whole-kernel evidence, never per-tensor attribution. Check registers/shared memory and optimize measured CUDA-event latency rather than traffic alone."}
+    },
+    {
+      "id": "clustered_gluon_wgmma_tma",
+      "description": "Make a structural two-CTA Gluon WGMMA/TMA GEMM",
+      "candidate_stage": "clustered_gluon",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["pointer_triton", "descriptor_triton"]},
+      "prompts": {"triton_h100": "Produce a clustered Gluon WGMMA/TMA kernel, not an ordinary triton.jit pointer-load kernel. Keep launch(A,B,C,M,N,K) and return the compiled kernel. Use the ABI's B.T physical [N,K] descriptor view, legal two-CTA output ownership, ordinary B loads, three-slot TMA barriers, wait-one WGMMA lifetime, FP32 accumulation, BF16 output and one writer per output. Do not substitute a tl.load/tl.dot mainloop. Derive descriptor shapes, cluster layout, shared-memory capacity, barrier phases and teardown explicitly; compile, check correctness and benchmark before treating it as a valid realization."}
+    },
+    {
+      "id": "three_slot_wait_one_pipeline",
+      "description": "Pipeline clustered Gluon TMA and WGMMA with three slots and wait-one",
+      "candidate_stage": "clustered_gluon",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["clustered_gluon"]},
+      "prompts": {"triton_h100": "Refactor the clustered Gluon mainloop to a three-slot TMA prefetch ring. For every reused slot, match mbarrier expected bytes and phase to the TMA loads; wait for those loads before WGMMA reads shared memory. Keep one WGMMA group outstanding, release the prior slot before refilling it, then drain outstanding groups and invalidate barriers before output. Preserve cluster ownership and ordinary B loads initially. Inspect emitted wait sites, registers, shared memory and spills, then optimize measured latency."}
+    },
+    {
+      "id": "persistent_cluster_assignment",
+      "description": "Reuse clustered Gluon CTAs across output tiles",
+      "candidate_stage": "clustered_gluon",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["clustered_gluon"]},
+      "prompts": {"triton_h100": "Assign multiple output tiles to each two-CTA Gluon cluster. Derive worker count and per-worker tile sequence from GPU size and M/N tile counts; prove every output tile is covered once. Reset or reuse accumulator and pipeline state correctly between tiles, drain asynchronous operations before reusing shared buffers, and preserve descriptor and output ownership. Measure resource use and CUDA-event latency; do not assume persistence helps every tile shape."}
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "arm": "seq",
+  "best_median_us": 218.22399646043777,
+  "best_source": "seq-glm53-s2-b25-retry1-best.py",
+  "budget": 25,
+  "generations": 25,
+  "run_id": "cbb107e2-f9c6-465e-b11f-6a36adfbbfa9",
+  "seed": 2,
+  "trace": "seq-glm53-s2-b25-retry1.sqlite"
+}

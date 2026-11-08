@@ -1,0 +1,127 @@
+{
+  "arms": [
+    {
+      "best_median_us": 198.2240006327629,
+      "budget": 10,
+      "catalog": "old",
+      "model": "rits/zai-org/glm-5-3",
+      "profile_calls": 5,
+      "root_median_us": 824.3200182914734,
+      "seed": 0,
+      "strategies": {
+        "change_k_tile_pipeline": {
+          "best_median_us": 214.89600092172623,
+          "calls": 1,
+          "valid": 1
+        },
+        "change_warp_count": {
+          "best_median_us": 198.2240006327629,
+          "calls": 3,
+          "valid": 3
+        },
+        "improve_b_layout_access": {
+          "best_median_us": 222.1440002322197,
+          "calls": 6,
+          "valid": 6
+        }
+      },
+      "trace": "b10-s0-old.sqlite",
+      "valid_generations": 10
+    },
+    {
+      "best_median_us": 199.08799976110458,
+      "budget": 10,
+      "catalog": "new",
+      "model": "rits/zai-org/glm-5-3",
+      "profile_calls": 6,
+      "root_median_us": 821.0079967975616,
+      "seed": 0,
+      "strategies": {
+        "change_k_tile_pipeline": {
+          "best_median_us": 224.70400482416153,
+          "calls": 1,
+          "valid": 1
+        },
+        "change_warp_count": {
+          "best_median_us": 199.08799976110458,
+          "calls": 4,
+          "valid": 4
+        },
+        "improve_b_layout_access": {
+          "best_median_us": 225.8879989385605,
+          "calls": 4,
+          "valid": 4
+        },
+        "improve_cross_cta_reuse": {
+          "best_median_us": 278.4319967031479,
+          "calls": 1,
+          "valid": 1
+        }
+      },
+      "trace": "b10-s0-new.sqlite",
+      "valid_generations": 10
+    },
+    {
+      "best_median_us": 201.27999782562256,
+      "budget": 10,
+      "catalog": "old",
+      "model": "rits/zai-org/glm-5-3",
+      "profile_calls": 5,
+      "root_median_us": 820.8480179309845,
+      "seed": 1,
+      "strategies": {
+        "change_k_tile_pipeline": {
+          "best_median_us": 202.14399695396423,
+          "calls": 6,
+          "valid": 6
+        },
+        "change_tile_shape": {
+          "best_median_us": 202.08000391721725,
+          "calls": 2,
+          "valid": 2
+        },
+        "improve_b_layout_access": {
+          "best_median_us": 201.27999782562256,
+          "calls": 2,
+          "valid": 2
+        }
+      },
+      "trace": "b10-s1-old.sqlite",
+      "valid_generations": 10
+    },
+    {
+      "best_median_us": 200.44799894094467,
+      "budget": 10,
+      "catalog": "new",
+      "model": "rits/zai-org/glm-5-3",
+      "profile_calls": 5,
+      "root_median_us": 820.8480179309845,
+      "seed": 1,
+      "strategies": {
+        "change_k_tile_pipeline": {
+          "best_median_us": 201.03999972343445,
+          "calls": 6,
+          "valid": 5
+        },
+        "change_tile_shape": {
+          "best_median_us": 201.1360004544258,
+          "calls": 3,
+          "valid": 3
+        },
+        "improve_b_layout_access": {
+          "best_median_us": 200.44799894094467,
+          "calls": 1,
+          "valid": 1
+        }
+      },
+      "trace": "b10-s1-new.sqlite",
+      "valid_generations": 9
+    }
+  ],
+  "interpretation": "Two B_gen=10 seeds are a pilot, not an efficacy estimate; the new action was sampled only once.",
+  "new_minus_old_best_us": {
+    "0": 0.8639991283416748,
+    "1": -0.831998884677887
+  },
+  "schema_version": 1
+}

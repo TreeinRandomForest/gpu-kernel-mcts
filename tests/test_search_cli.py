@@ -80,8 +80,9 @@ def test_triton_cli_selects_root_and_strategy_catalog(monkeypatch) -> None:
     root = _root_program(parser, arguments)
     strategies, generator, _, config = _search_components(parser, arguments)
     assert root.backend == "triton_h100"
-    assert len(strategies) == 4
+    assert len(strategies) == 5
     assert all(strategy.prompt_for("triton_h100") for strategy in strategies)
+    assert "improve_cross_cta_reuse" in {strategy.id for strategy in strategies}
     assert isinstance(generator, LLMKernelGenerator)
     assert config.max_repairs == 1
     prompt = build_generation_prompt(GenerationRequest(
@@ -89,6 +90,38 @@ def test_triton_cli_selects_root_and_strategy_catalog(monkeypatch) -> None:
         hardware={"gpu_model": "H100"}, profile=None,
     ))
     assert "Define launch(A, B, C, M, N, K)" in prompt
+
+    reuse = next(strategy for strategy in strategies
+                 if strategy.id == "improve_cross_cta_reuse")
+    reuse_profile = {"metric_set": "reuse_v1", "cache_control": "all",
+                     "summary": {"dram_bytes_read": 186_667_776,
+                                 "l2_tex_read_sectors": 27_507_144,
+                                 "l2_tex_read_lookup_hit_sectors": 17_171_216,
+                                 "l2_tex_read_lookup_miss_sectors": 7_550_856}}
+    reuse_prompt = json.loads(build_generation_prompt(GenerationRequest(
+        parent=root, strategy=reuse, workload=BF16_GEMM_WORKLOAD,
+        hardware={"gpu_model": "H100"}, profile=reuse_profile,
+    )))
+    assert reuse_prompt["strategy"]["id"] == "improve_cross_cta_reuse"
+    assert "BM and BN" in reuse_prompt["strategy"]["backend_prompt"]
+    assert "GROUP_M" in reuse_prompt["strategy"]["backend_prompt"]
+    assert "not DRAM traffic alone" in reuse_prompt["strategy"]["backend_prompt"]
+    assert reuse_prompt["parent_profile"] == reuse_profile
+
+
+def test_triton_cli_accepts_explicit_alternate_root_only_for_triton(tmp_path) -> None:
+    source = tmp_path / "root.py"
+    source.write_text("@gluon.jit\ndef gemm(): pass\ndef launch(A,B,C,M,N,K):\n    return gemm[(1,)]()\n")
+    parser = build_parser()
+    args = parser.parse_args(["--image", "worker:triton", "--trace", "trace.sqlite",
+                              "--backend", "triton_h100", "--triton-root-source", str(source)])
+    root = _root_program(parser, args)
+    assert root.backend == "triton_h100"
+    assert root.source == source.read_text()
+    args = parser.parse_args(["--image", "worker:cuda", "--trace", "trace.sqlite",
+                              "--triton-root-source", str(source)])
+    with pytest.raises(SystemExit):
+        _root_program(parser, args)
 
 
 def test_triton_prompt_uses_launcher_abi_and_measured_references() -> None:
@@ -263,6 +296,36 @@ def test_sequential_strategy_catalog_provenance_is_frozen(monkeypatch, tmp_path)
     assert freeform.choice_provenance["catalog_sha256"] is None
 
 
+def test_triton_sequential_cli_accepts_pure_catalog_and_rejects_dataflow(
+    monkeypatch, tmp_path,
+) -> None:
+    monkeypatch.setenv("ENMAAS_KEY", "test-key")
+    parser = build_parser()
+    base = [
+        "--image", "worker:v1", "--trace", str(tmp_path / "trace.sqlite"),
+        "--algorithm", "sequential", "--backend", "triton_h100",
+        "--generator", "messages", "--model", "test-model",
+        "--messages-url", "https://gateway.example/v1/messages",
+        "--sequential-dataflow-view", "none",
+    ]
+    arguments = parser.parse_args(base + [
+        "--sequential-strategy-menu", "--strategies",
+        "configs/triton_h100_pure_local_v20.json",
+    ])
+    generator, _, config = _sequential_components(parser, arguments)
+    assert [item.id for item in generator.strategy_catalog] == [
+        "triton_pointer_advance_tile_128", "triton_widen_bn_256_eight_warps",
+        "triton_specialize_gemm_dims",
+    ]
+    assert config.dataflow_view == "none"
+    assert generator.choice_provenance["dynamic_applicability"] is True
+    assert generator.choice_provenance["prompt_schema_version"] == 3
+    freeform, _, _ = _sequential_components(parser, parser.parse_args(base))
+    assert freeform.strategy_catalog == ()
+    with pytest.raises(SystemExit):
+        _sequential_components(parser, parser.parse_args(base[:-2]))
+
+
 def test_search_cli_parser_accepts_compiler_prompt_ablation_flags() -> None:
     arguments = build_parser().parse_args([
         "--image", "worker:v1", "--trace", "trace.sqlite",
@@ -320,6 +383,13 @@ def test_triton_cli_parses_diagnostic_profile() -> None:
         "--profile-metric-set", "spill_v1",
     ])
     assert spill.profile_metric_set == "spill_v1"
+
+    reuse = build_parser().parse_args([
+        "--image", "worker:v1", "--trace", "trace.sqlite",
+        "--backend", "triton_h100", "--generator", "smoke",
+        "--profile-metric-set", "reuse_v1",
+    ])
+    assert reuse.profile_metric_set == "reuse_v1"
 
 
 def test_search_cli_parser_accepts_optional_post_search_tuning() -> None:

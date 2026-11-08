@@ -27,6 +27,7 @@ class GenerationRequest:
     hardware_resource_graph: Mapping[str, object] | None = None
     strategy_choice_original_id: str | None = None
     strategy_choice_locked_id: str | None = None
+    existing_realizations: tuple[Mapping[str, object], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

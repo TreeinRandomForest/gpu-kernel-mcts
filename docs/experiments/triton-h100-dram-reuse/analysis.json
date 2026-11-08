@@ -1,0 +1,139 @@
+{
+  "correctness": {
+    "group_1": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "group_32": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "group_8": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    }
+  },
+  "limitations": "L2 TEX read sectors are whole-kernel counters, not A/B-address-specific. L2 misses are not equal to DRAM sectors, and application replay with cache-control none preserves workload-dependent warm cache state.",
+  "profiles": {
+    "all-cublas": {
+      "kernel_name": "nvjet_tst_256x128_64x4_1x2_h_bz_coopA_TNT",
+      "metrics": {
+        "dram__bytes_read.sum": 150.821376,
+        "dram__sectors_read.sum": 4713168.0,
+        "lts__t_sector_op_read_hit_rate.pct": 69.972505,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 26235264.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 19276156.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 6849080.0
+      },
+      "report_sha256": "576edd81d9b59fa955930cd0238f8acf70d806a40d605eca72757cb0e7faaca1"
+    },
+    "all-group_1": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 170.972672,
+        "dram__sectors_read.sum": 5342896.0,
+        "lts__t_sector_op_read_hit_rate.pct": 76.21674,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 38171176.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 30143120.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 8251648.0
+      },
+      "report_sha256": "23238f74fcdccccef55a93e643c7169f507c3f2d24aff80f067c75285deb801d"
+    },
+    "all-group_32": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 174.081024,
+        "dram__sectors_read.sum": 5440032.0,
+        "lts__t_sector_op_read_hit_rate.pct": 69.705407,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 26843764.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 19572488.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 8008824.0
+      },
+      "report_sha256": "f6a7e85dcd15c897c5d248f3d2f18aeefe7b52a8dd0767b6d54204077d55f97c"
+    },
+    "all-group_8": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 186.685952,
+        "dram__sectors_read.sum": 5833936.0,
+        "lts__t_sector_op_read_hit_rate.pct": 64.290757,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 26565628.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 18209636.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 8342488.0
+      },
+      "report_sha256": "936c8a47b5b0d40d416cb181db9537920294eac59bf55b4e2e8ace0447f0c3af"
+    },
+    "none-cublas": {
+      "kernel_name": "nvjet_tst_256x128_64x4_1x2_h_bz_coopA_TNT",
+      "metrics": {
+        "dram__bytes_read.sum": 150.756864,
+        "dram__sectors_read.sum": 4711152.0,
+        "lts__t_sector_op_read_hit_rate.pct": 70.023794,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 25646356.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 18809916.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 6625092.0
+      },
+      "report_sha256": "4b6ce9da40e3c737faeccb9b1fc15049964b1806035f6e3a96619da364d003ba"
+    },
+    "none-group_1": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 170.940928,
+        "dram__sectors_read.sum": 5341904.0,
+        "lts__t_sector_op_read_hit_rate.pct": 72.943435,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 38542628.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 28712472.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 8266200.0
+      },
+      "report_sha256": "daa80c090b57eff27cfe9beb962c846b824356ade4c0b15537217b8526e7507d"
+    },
+    "none-group_32": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 174.087936,
+        "dram__sectors_read.sum": 5440248.0,
+        "lts__t_sector_op_read_hit_rate.pct": 68.610918,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 27102280.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 19527388.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 8084736.0
+      },
+      "report_sha256": "a5fe6fb8932ba6faeca25de92dcc48ab0d6d57ebabda37a81b45d030d359627c"
+    },
+    "none-group_8": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 186.663936,
+        "dram__sectors_read.sum": 5833248.0,
+        "lts__t_sector_op_read_hit_rate.pct": 69.320904,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 26924660.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 19882764.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 7964124.0
+      },
+      "report_sha256": "8085f94562c05d7f297d102e9b7b16456a11f89b6e307ab2524372c4371db4d8"
+    }
+  },
+  "round_medians_us": {
+    "cublas": [
+      188.51200491189957,
+      197.64799624681473,
+      197.93599843978882
+    ],
+    "group_1": [
+      201.27999782562256,
+      205.55199682712555,
+      212.14400231838226
+    ],
+    "group_32": [
+      198.16000014543533,
+      203.24800163507462,
+      209.6959948539734
+    ],
+    "group_8": [
+      199.23199713230133,
+      211.20000630617142,
+      212.17600256204605
+    ]
+  },
+  "schema_version": 1,
+  "source_sha256": "c7113204ec9d45e858382fc7d2ede9a6d33d18fadbc0f842c6031d91f7163dfa"
+}

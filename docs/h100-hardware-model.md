@@ -75,6 +75,30 @@ after a real attention kernel exposed those gaps. The
 and `shfl.sync` as register exchange within a warp. The graph still avoids
 assigning a physical-link rate to these logical routes.
 
+The [corrected seed-0 Triton B/D crossover](experiments/triton-h100-bd-crossover/README.md)
+is a later kernel-level check of revision 2. Five correct variants share the
+same tile and 147,456-byte shared-memory allocation, yet the alternate K-loop
+form uses 197 instead of 213 registers/thread and executes about 4.03 million
+more instructions. Its tensor-pipe activity is about 75% instead of 92%,
+with no compiled spills or measured local sectors. This adds evidence that
+source-to-PTX lowering and live resource state matter for a kernel overlay;
+it exposes no new hardware route or justified link cost, so the topology
+revision stays 2. The per-kernel results are not copied into the shared graph.
+
+The later [cuBLAS comparison](experiments/triton-h100-cublas-profile/README.md)
+observed a two-CTA cluster and one launch wave in a vendor GEMM, versus the
+512-program fast Triton source. The current graph already lists cluster/TMA
+behavior as uncharacterized; the NCU launch record confirms that cluster
+organization matters for a real H100 kernel, but does not reveal its traffic
+route or justify a link rate. Revision 2 remains unchanged.
+
+The [matched-input SASS follow-up](experiments/triton-h100-cublas-sass/README.md)
+observed `UTMALDG`/`UTMASTG` in that cuBLAS kernel and `LDGSTS` in the Triton
+kernel, alongside different launch and traffic counts. This supports keeping
+TMA and async-copy routes distinct in future overlays. NCU's whole-kernel
+DRAM bytes do not identify a route's throughput, and the vendor PTX was not
+available; no topology or link-cost revision follows from this comparison.
+
 ## Measurements that are *not* link calibrations
 
 The standalone [H100 characterization](experiments/h100-characterization/README.md)

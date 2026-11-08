@@ -1,0 +1,10 @@
+{
+  "arm": "combined",
+  "best_median_us": 244.52800303697586,
+  "best_source": "combined-glm53-s1-b25-paired39v1-best.py",
+  "budget": 25,
+  "generations": 25,
+  "run_id": "15aa7428-c8a2-49a9-b7a7-4fe5f507ba20",
+  "seed": 1,
+  "trace": "combined-glm53-s1-b25-paired39v1.sqlite"
+}

@@ -1,0 +1,56 @@
+[
+  {
+    "cubin_sha256": "22e0c1841ad952acda4d4a97e1c4f17ed04799efb5f8224fef259b054c7e5905",
+    "cubin_size_bytes": 19688,
+    "elf_offset": 88,
+    "fatbin_sha256": "05877c7bcaff8c0d9f0ea68cab0250944763dd5e39c3b4a922c66acd2eead47f",
+    "fatbin_size_bytes": 19776,
+    "name": "single",
+    "round": 0
+  },
+  {
+    "cubin_sha256": "baf732f96661c28db64d74cd5b865d5d39d1a8e7a2c1c921c223ee3ed7285ca6",
+    "cubin_size_bytes": 19688,
+    "elf_offset": 88,
+    "fatbin_sha256": "5e1da7a5d99eba2f6468b68f6b791b55187484dcee8a6a3b523ca34fb61842d7",
+    "fatbin_size_bytes": 19776,
+    "name": "cluster_b_multicast",
+    "round": 0
+  },
+  {
+    "cubin_sha256": "baf732f96661c28db64d74cd5b865d5d39d1a8e7a2c1c921c223ee3ed7285ca6",
+    "cubin_size_bytes": 19688,
+    "elf_offset": 88,
+    "fatbin_sha256": "5e1da7a5d99eba2f6468b68f6b791b55187484dcee8a6a3b523ca34fb61842d7",
+    "fatbin_size_bytes": 19776,
+    "name": "cluster_b_multicast",
+    "round": 1
+  },
+  {
+    "cubin_sha256": "22e0c1841ad952acda4d4a97e1c4f17ed04799efb5f8224fef259b054c7e5905",
+    "cubin_size_bytes": 19688,
+    "elf_offset": 88,
+    "fatbin_sha256": "05877c7bcaff8c0d9f0ea68cab0250944763dd5e39c3b4a922c66acd2eead47f",
+    "fatbin_size_bytes": 19776,
+    "name": "single",
+    "round": 1
+  },
+  {
+    "cubin_sha256": "22e0c1841ad952acda4d4a97e1c4f17ed04799efb5f8224fef259b054c7e5905",
+    "cubin_size_bytes": 19688,
+    "elf_offset": 88,
+    "fatbin_sha256": "05877c7bcaff8c0d9f0ea68cab0250944763dd5e39c3b4a922c66acd2eead47f",
+    "fatbin_size_bytes": 19776,
+    "name": "single",
+    "round": 2
+  },
+  {
+    "cubin_sha256": "baf732f96661c28db64d74cd5b865d5d39d1a8e7a2c1c921c223ee3ed7285ca6",
+    "cubin_size_bytes": 19688,
+    "elf_offset": 88,
+    "fatbin_sha256": "5e1da7a5d99eba2f6468b68f6b791b55187484dcee8a6a3b523ca34fb61842d7",
+    "fatbin_size_bytes": 19776,
+    "name": "cluster_b_multicast",
+    "round": 2
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "b_gen_for_this_probe": 1,
+  "candidate_stage": "gluon_mma_v2",
+  "cumulative_bridge_b_gen": 3,
+  "feedback_sha256": "a6c1cada362a3c12057c5b3db89e62d0e5974e94e1bf8f5a85a87df5f78b2c1e",
+  "generation_id": "chatcmpl-28361258-66b5-49db-8b9b-50e3314155d5",
+  "gpu_compile_attempted": false,
+  "input_tokens": 2590,
+  "model": "rits/zai-org/glm-5-3",
+  "output_tokens": 7652,
+  "prompt_sha256": "1482a91156e2d3e7dab7ff99c6fd6b7a1602bd80a945144533d106dca62b7d51",
+  "schema_version": 1,
+  "source_sha256": "ded1ce26e1f09afd6666555dcda45fe9fcabf271e74eb51dbd95d792b34653a3"
+}

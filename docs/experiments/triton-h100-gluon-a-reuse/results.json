@@ -1,0 +1,117 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-06T19:28:35.767337+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-f27645d7-3b6d-8227-a694-fc2e0e682d09",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "7dea9e3c16305c08269cd621a210383792764b7d93865e51aec9727f0b2ae72c",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00pj26pfh3zxf8mz4",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00pj26pfh3zxf8mz4"
+  },
+  "expected_arms": [
+    "original_persistent",
+    "split_reload",
+    "split_reuse",
+    "cublas"
+  ],
+  "git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+  "image": "docker.io/saarora/gpu-kernel-mcts@sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5",
+  "last_output": "timing 6 split_reuse 246.36800587177277\ntiming 6 cublas 177.61600017547607\ntiming 6 original_persistent 184.52800065279007\ntiming 6 split_reload 254.38399612903595\ntiming 7 cublas 183.9200034737587\ntiming 7 original_persistent 188.60800564289093\ntiming 7 split_reload 261.6479992866516\ntiming 7 split_reuse 256.9600045681\ntiming 8 original_persistent 189.96799737215042\ntiming 8 split_reload 257.85601139068604\ntiming 8 split_reuse 249.39199537038803\ntiming 8 cublas 178.0800074338913\ntiming 9 split_reload 259.66399908065796\ntiming 9 split_reuse 254.5440047979355\ntiming 9 cublas 179.34399843215942\ntiming 9 original_persistent 186.19199842214584\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"create_warp_specialize\"\n - leaked function \"create_tmem_load\"\n - leaked function \"create_local_gather\"\n - leaked function \"create_async_tma_gather\"\n - leaked function \"get_fp8e4b8_ty\"\n - leaked function \"get_coalesced_layout\"\n - leaked function \"create_fp_to_fp\"\n - leaked function \"create_masked_load\"\n - leaked function \"get_shared_mem_desc_ty\"\n - leaked function \"create_log2\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+  "paired_complete": true,
+  "profiles": {
+    "cublas": {
+      "arm": "cublas",
+      "correctness_exact": true,
+      "cubin_sha256": null,
+      "nvtx_range": "AREUSE_CUBLAS",
+      "sha256": {
+        "baseline": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "4805c219fbbaf98fb83bcef10aa8188e9d3a9b46e284df513c92772eb1949cb6",
+        "paired": "257c806d5e59173b5a3ffc2b5bd190737a8eb7297f6ec7bf98b20ded237b0262"
+      },
+      "status": "ok"
+    },
+    "original_persistent": {
+      "arm": "original_persistent",
+      "correctness_exact": true,
+      "cubin_sha256": "ebe53f1a0289df93b0aa337c655df516b9db3626502caa582432fa3a5a777a27",
+      "nvtx_range": "AREUSE_ORIGINAL_PERSISTENT",
+      "sha256": {
+        "baseline": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "4805c219fbbaf98fb83bcef10aa8188e9d3a9b46e284df513c92772eb1949cb6",
+        "paired": "257c806d5e59173b5a3ffc2b5bd190737a8eb7297f6ec7bf98b20ded237b0262"
+      },
+      "status": "ok"
+    },
+    "split_reload": {
+      "arm": "split_reload",
+      "correctness_exact": true,
+      "cubin_sha256": "d4939c72d2ecd3c2bdf585eb51a6c4822571b77c07085e46cbeb5fe997fdbb62",
+      "nvtx_range": "AREUSE_SPLIT_RELOAD",
+      "sha256": {
+        "baseline": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "4805c219fbbaf98fb83bcef10aa8188e9d3a9b46e284df513c92772eb1949cb6",
+        "paired": "257c806d5e59173b5a3ffc2b5bd190737a8eb7297f6ec7bf98b20ded237b0262"
+      },
+      "status": "ok"
+    },
+    "split_reuse": {
+      "arm": "split_reuse",
+      "correctness_exact": true,
+      "cubin_sha256": "057d2ef370d07f9f380db70749df0bda7ce81e3b1645e41fd402066013ed5e91",
+      "nvtx_range": "AREUSE_SPLIT_REUSE",
+      "sha256": {
+        "baseline": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "4805c219fbbaf98fb83bcef10aa8188e9d3a9b46e284df513c92772eb1949cb6",
+        "paired": "257c806d5e59173b5a3ffc2b5bd190737a8eb7297f6ec7bf98b20ded237b0262"
+      },
+      "status": "ok"
+    }
+  },
+  "remote_exit_code": 0,
+  "run_id": "b26cdede-b213-4a5e-beab-c142e45dffe5",
+  "schema_version": 1,
+  "sha256": {
+    "baseline": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+    "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+    "kernel": "4805c219fbbaf98fb83bcef10aa8188e9d3a9b46e284df513c92772eb1949cb6",
+    "paired": "257c806d5e59173b5a3ffc2b5bd190737a8eb7297f6ec7bf98b20ded237b0262",
+    "profile": "6dbc36d955d0d092184a9f6c4145a0d765ed96c6f503e36783fc4399b80f0aa2"
+  }
+}

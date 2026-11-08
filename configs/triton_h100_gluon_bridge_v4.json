@@ -1,0 +1,19 @@
+{
+  "version": "triton_h100_gluon_bridge_v4",
+  "strategies": [
+    {
+      "id": "gluon_mma_v2_pointer_port",
+      "description": "Port the valid descriptor Triton GEMM to a simple pointer-load Gluon MMA-v2 kernel",
+      "candidate_stage": "gluon_mma_v2",
+      "applicability": {
+        "backend": "triton_h100",
+        "operation": "gemm",
+        "gpu_model": "H100",
+        "parent_stages": ["descriptor_triton"]
+      },
+      "prompts": {
+        "triton_h100": "Return only a complete Python source file, at most 130 lines. Make a deliberately simple one-CTA Gluon GEMM; latency may regress. Replace the parent's descriptor loads with ordinary pointer gl.load calls for A and B. Use import triton; from triton.experimental import gluon; from triton.experimental.gluon import language as gl; from triton.experimental.gluon.language.nvidia.ampere import mma_v2. Define @gluon.jit def gemm and launch(A,B,C,M,N,K). The fixed workload is M=N=K=4096 BF16, A and C row-major, B[K,N] column-major with B[k,n] at B+n*K+k. Use BM=64, BN=128, BK=64 and num_warps=4. Give every gl.arange an explicit gl.SliceLayout derived from a gl.BlockedLayout. Use an accumulator with gl.NVMMADistributedLayout(version=[2,0], warps_per_cta=[4,1], instr_shape=[16,8]) and gl.zeros((BM,BN), gl.float32, layout=mma_layout). Before each mma_v2(a,b,acc), use gl.convert_layout on the BF16 operands to gl.DotOperandLayout(operand_index=0 or 1, parent=mma_layout, k_width=2). The A tile must have shape [BM,BK] and the B tile [BK,BN]. Convert the accumulator to a coalesced output BlockedLayout before gl.store. Preserve one writer per output, FP32 accumulation and BF16 output. Do not use descriptors, TMA, WGMMA, clusters, persistence, templates, or a validated Gluon kernel. Return the compiled kernel from launch, with no Markdown or explanation."
+      }
+    }
+  ]
+}

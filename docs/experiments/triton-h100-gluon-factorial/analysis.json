@@ -1,0 +1,3004 @@
+{
+  "effects": {
+    "n128_at_mfast_persistent": {
+      "a_faster_rounds": 0,
+      "a_minus_b_median_us": 103.43199595808983,
+      "round_differences_us": [
+        104.49600219726562,
+        113.77600580453873,
+        107.31199383735657,
+        105.6000143289566,
+        100.320003926754,
+        106.65600001811981,
+        102.36798971891403,
+        100.73599964380264,
+        99.69599545001984,
+        100.40000826120377
+      ]
+    },
+    "n128_at_mfast_regular": {
+      "a_faster_rounds": 0,
+      "a_minus_b_median_us": 103.7680059671402,
+      "round_differences_us": [
+        109.00799930095673,
+        105.58400303125381,
+        107.53600299358368,
+        106.28799349069595,
+        101.95200890302658,
+        107.44000226259232,
+        101.61600261926651,
+        101.69599205255508,
+        100.08000582456589,
+        100.0640019774437
+      ]
+    },
+    "n128_at_nfast_persistent": {
+      "a_faster_rounds": 0,
+      "a_minus_b_median_us": 103.15199568867683,
+      "round_differences_us": [
+        101.61599516868591,
+        108.67200791835785,
+        101.26400738954544,
+        102.60801017284393,
+        103.39199751615524,
+        100.36801546812057,
+        102.91199386119843,
+        103.56799513101578,
+        104.36800867319107,
+        103.7760078907013
+      ]
+    },
+    "n128_at_nfast_regular": {
+      "a_faster_rounds": 0,
+      "a_minus_b_median_us": 97.91199862957001,
+      "round_differences_us": [
+        95.0080081820488,
+        106.46399855613708,
+        101.1199951171875,
+        100.75198858976364,
+        97.27999567985535,
+        100.8480042219162,
+        97.79200702905655,
+        96.80000692605972,
+        98.03199023008347,
+        97.16799855232239
+      ]
+    },
+    "nfast_at_n128_persistent": {
+      "a_faster_rounds": 2,
+      "a_minus_b_median_us": 1.4079958200454712,
+      "round_differences_us": [
+        3.8399994373321533,
+        -1.1200010776519775,
+        0.06401538848876953,
+        0.28799474239349365,
+        0.5919933319091797,
+        -1.551985740661621,
+        2.2239983081817627,
+        3.9199888706207275,
+        4.048019647598267,
+        3.488004207611084
+      ]
+    },
+    "nfast_at_n128_regular": {
+      "a_faster_rounds": 9,
+      "a_minus_b_median_us": -4.695996642112732,
+      "round_differences_us": [
+        -8.575990796089172,
+        0.5919933319091797,
+        -7.200002670288086,
+        -4.2400062084198,
+        -5.37601113319397,
+        -8.351996541023254,
+        -3.711998462677002,
+        -5.151987075805664,
+        -3.1040161848068237,
+        -3.9200037717819214
+      ]
+    },
+    "nfast_at_n256_persistent": {
+      "a_faster_rounds": 2,
+      "a_minus_b_median_us": 2.479996532201767,
+      "round_differences_us": [
+        6.720006465911865,
+        3.9839968085289,
+        6.112001836299896,
+        3.2799988985061646,
+        -2.4800002574920654,
+        4.735998809337616,
+        1.6799941658973694,
+        1.0879933834075928,
+        -0.6239935755729675,
+        0.11200457811355591
+      ]
+    },
+    "nfast_at_n256_regular": {
+      "a_faster_rounds": 7,
+      "a_minus_b_median_us": -0.4960000514984131,
+      "round_differences_us": [
+        5.424000322818756,
+        -0.2880021929740906,
+        -0.7839947938919067,
+        1.2959986925125122,
+        -0.7039979100227356,
+        -1.7599985003471375,
+        0.11199712753295898,
+        -0.25600194931030273,
+        -1.0560005903244019,
+        -1.024000346660614
+      ]
+    },
+    "persistent_at_n128_mfast": {
+      "a_faster_rounds": 9,
+      "a_minus_b_median_us": -2.088002860546112,
+      "round_differences_us": [
+        -6.7680031061172485,
+        6.032004952430725,
+        -2.1920055150985718,
+        -2.5919824838638306,
+        -1.248002052307129,
+        -3.519997000694275,
+        -1.7600059509277344,
+        -3.0559897422790527,
+        -1.8560141324996948,
+        -1.9840002059936523
+      ]
+    },
+    "persistent_at_n128_nfast": {
+      "a_faster_rounds": 0,
+      "a_minus_b_median_us": 4.896007478237152,
+      "round_differences_us": [
+        5.647987127304077,
+        4.320010542869568,
+        5.072012543678284,
+        1.936018466949463,
+        4.7200024127960205,
+        3.2800137996673584,
+        4.17599081993103,
+        6.015986204147339,
+        5.2960216999053955,
+        5.424007773399353
+      ]
+    },
+    "persistent_at_n256_mfast": {
+      "a_faster_rounds": 9,
+      "a_minus_b_median_us": -2.127997577190399,
+      "round_differences_us": [
+        -2.2560060024261475,
+        -2.159997820854187,
+        -1.96799635887146,
+        -1.9040033221244812,
+        0.3840029239654541,
+        -2.7359947562217712,
+        -2.5119930505752563,
+        -2.0959973335266113,
+        -1.4720037579536438,
+        -2.320006489753723
+      ]
+    },
+    "persistent_at_n256_nfast": {
+      "a_faster_rounds": 6,
+      "a_minus_b_median_us": -0.8479990065097809,
+      "round_differences_us": [
+        -0.9599998593330383,
+        2.1120011806488037,
+        4.928000271320343,
+        0.07999688386917114,
+        -1.3919994235038757,
+        3.760002553462982,
+        -0.943996012210846,
+        -0.7520020008087158,
+        -1.0399967432022095,
+        -1.1840015649795532
+      ]
+    }
+  },
+  "median_us": {
+    "cublas": 176.41600221395493,
+    "n128_mfast_persistent": 286.44800186157227,
+    "n128_mfast_regular": 289.5920053124428,
+    "n128_nfast_persistent": 288.4880006313324,
+    "n128_nfast_regular": 283.56799483299255,
+    "n256_mfast_persistent": 183.72800201177597,
+    "n256_mfast_regular": 185.73600053787231,
+    "n256_nfast_persistent": 186.15199625492096,
+    "n256_nfast_regular": 185.32799929380417,
+    "original": 186.94400042295456
+  },
+  "profiles": {
+    "cublas": {
+      "raw": {
+        "kernel_name": "nvjet_tst_256x128_64x4_1x2_h_bz_coopA_TNT",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 150.902016
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 28.716032
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 211.424
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 384.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 132.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 168.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 214.204
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 1.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 25990532.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 6497868.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 90.151879
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 90.151879
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 16570734.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 5667.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 2899.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 1342.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 3792.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 262144,
+          "BRA": 810364,
+          "HGMMA": 2097152,
+          "HMMA": 0,
+          "IMAD": 45184,
+          "ISETP": 595748,
+          "LDG": 4096,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1584,
+          "UTMALDG": 32768,
+          "UTMALDG.MULTICAST": 32768,
+          "UTMASTG": 32768,
+          "WARPGROUP": 921600
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x128x16.F32.BF16": 2097152
+        },
+        "kernel_name": "nvjet_tst_256x128_64x4_1x2_h_bz_coopA_TNT",
+        "source_page_instruction_total": 16856785,
+        "stall_samples_at_sites": {
+          "BAR": 98,
+          "BRA": 2018,
+          "HGMMA": 6701,
+          "HMMA": 0,
+          "IMAD": 14,
+          "ISETP": 63,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 0,
+          "UTMALDG": 15,
+          "UTMALDG.MULTICAST": 9,
+          "UTMASTG": 1,
+          "WARPGROUP": 3401
+        },
+        "static_sites": {
+          "BAR": 2,
+          "BRA": 71,
+          "HGMMA": 16,
+          "HMMA": 0,
+          "IMAD": 18,
+          "ISETP": 27,
+          "LDG": 1,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 2,
+          "UTMALDG": 2,
+          "UTMALDG.MULTICAST": 2,
+          "UTMASTG": 8,
+          "WARPGROUP": 41
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            6694878
+          ],
+          [
+            "HGMMA",
+            2097152
+          ],
+          [
+            "WARPGROUP",
+            921600
+          ],
+          [
+            "UISETP",
+            893690
+          ],
+          [
+            "BRA",
+            810364
+          ],
+          [
+            "SYNCS",
+            734122
+          ],
+          [
+            "UMOV",
+            662886
+          ],
+          [
+            "ISETP",
+            595748
+          ],
+          [
+            "NOP",
+            562638
+          ],
+          [
+            "LOP3",
+            346990
+          ],
+          [
+            "IADD3",
+            292252
+          ],
+          [
+            "LDS",
+            262524
+          ],
+          [
+            "WARPSYNC",
+            262524
+          ],
+          [
+            "PLOP3",
+            262144
+          ],
+          [
+            "BAR",
+            262144
+          ],
+          [
+            "F2FP",
+            262144
+          ],
+          [
+            "UIMAD",
+            198136
+          ],
+          [
+            "MOV",
+            139752
+          ],
+          [
+            "ULDC",
+            79308
+          ],
+          [
+            "NANOSLEEP",
+            66683
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x7f08077afe10",
+            "instructions_executed": 197664,
+            "samples": 2331,
+            "source": "HGMMA.64x128x16.F32.BF16 R24, gdesc[UR16], R24, !UP1"
+          },
+          {
+            "address": "0x7f08077afeb0",
+            "instructions_executed": 197664,
+            "samples": 2195,
+            "source": "WARPGROUP.DEPBAR.LE gsb0, 0x0"
+          },
+          {
+            "address": "0x7f08077afde0",
+            "instructions_executed": 197664,
+            "samples": 2096,
+            "source": "@P3   LOP3.LUT R4, R4, RZ, RZ, 0xf, !PT"
+          },
+          {
+            "address": "0x7f08077aff30",
+            "instructions_executed": 197664,
+            "samples": 946,
+            "source": "HGMMA.64x128x16.F32.BF16 R88, gdesc[UR16], R88, !UP1"
+          },
+          {
+            "address": "0x7f08077b3130",
+            "instructions_executed": 24708,
+            "samples": 888,
+            "source": "BRA !P3, 0x7f08077b3910"
+          },
+          {
+            "address": "0x7f08077b2530",
+            "instructions_executed": 64480,
+            "samples": 776,
+            "source": "HGMMA.64x128x16.F32.BF16 R24, gdesc[UR16], R24, !UP1"
+          },
+          {
+            "address": "0x7f08077b2500",
+            "instructions_executed": 64480,
+            "samples": 707,
+            "source": "@P3   LOP3.LUT R4, R4, RZ, RZ, 0xf, !PT"
+          },
+          {
+            "address": "0x7f08077b25d0",
+            "instructions_executed": 64480,
+            "samples": 699,
+            "source": "WARPGROUP.DEPBAR.LE gsb0, 0x0"
+          }
+        ],
+        "total_pc_samples": 17192,
+        "warpgroup_wait_executions": 266240,
+        "warpgroup_wait_sites": 5,
+        "warpgroup_wait_stall_samples": 2977
+      }
+    },
+    "n128_mfast_persistent": {
+      "raw": {
+        "kernel_name": "gemm",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 308.558336
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 32.92672
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 306.816
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 256.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 132.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 90.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 132.12
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 1.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 39869428.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 14396784.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 60.587311
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 60.587311
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 54727008.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 4051.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 10903.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 4884.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 144.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 2646016,
+          "BRA": 1590304,
+          "HGMMA": 2097152,
+          "HMMA": 0,
+          "IMAD": 5229664,
+          "ISETP": 2680896,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1056,
+          "UTMALDG": 1048576,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 8192,
+          "WARPGROUP": 1056768
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x128x16.F32.BF16": 2097152
+        },
+        "kernel_name": "gemm",
+        "source_page_instruction_total": 54727008,
+        "stall_samples_at_sites": {
+          "BAR": 1375,
+          "BRA": 12124,
+          "HGMMA": 1356,
+          "HMMA": 0,
+          "IMAD": 817,
+          "ISETP": 444,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 6,
+          "UTMALDG": 1541,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 20,
+          "WARPGROUP": 326
+        },
+        "static_sites": {
+          "BAR": 17,
+          "BRA": 9,
+          "HGMMA": 4,
+          "HMMA": 0,
+          "IMAD": 35,
+          "ISETP": 20,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1,
+          "UTMALDG": 8,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            10518528
+          ],
+          [
+            "UMOV",
+            7881760
+          ],
+          [
+            "IMAD",
+            5229664
+          ],
+          [
+            "R2UR",
+            4229184
+          ],
+          [
+            "UIMAD",
+            3072000
+          ],
+          [
+            "ISETP",
+            2680896
+          ],
+          [
+            "USHF",
+            2671648
+          ],
+          [
+            "BAR",
+            2646016
+          ],
+          [
+            "HGMMA",
+            2097152
+          ],
+          [
+            "BRA",
+            1590304
+          ],
+          [
+            "ELECT",
+            1105920
+          ],
+          [
+            "ULOP3",
+            1097728
+          ],
+          [
+            "SYNCS",
+            1097728
+          ],
+          [
+            "VOTEU",
+            1081344
+          ],
+          [
+            "IADD3",
+            1056768
+          ],
+          [
+            "WARPGROUP",
+            1056768
+          ],
+          [
+            "UTMALDG",
+            1048576
+          ],
+          [
+            "USGXT",
+            1048576
+          ],
+          [
+            "ULEA",
+            1041440
+          ],
+          [
+            "SHF",
+            528512
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x7a4bf77b5620",
+            "instructions_executed": 524288,
+            "samples": 10059,
+            "source": "@!P0  BRA 0x7a4bf77b60e0"
+          },
+          {
+            "address": "0x7a4bf77b57e0",
+            "instructions_executed": 524288,
+            "samples": 1894,
+            "source": "@P0   BRA 0x7a4bf77b5ad0"
+          },
+          {
+            "address": "0x7a4bf77b5ab0",
+            "instructions_executed": 499712,
+            "samples": 1268,
+            "source": "@UP1  UTMALDG.2D [UR16], [UR28]"
+          },
+          {
+            "address": "0x7a4bf77b5650",
+            "instructions_executed": 524288,
+            "samples": 831,
+            "source": "UMOV UR16, UR10"
+          },
+          {
+            "address": "0x7a4bf77b6040",
+            "instructions_executed": 8192,
+            "samples": 539,
+            "source": "BAR.SYNC.DEFER_BLOCKING 0x0"
+          },
+          {
+            "address": "0x7a4bf77b5500",
+            "instructions_executed": 524288,
+            "samples": 504,
+            "source": "UIMAD.WIDE.U32 UR14, UR5, -0x55555555, URZ"
+          },
+          {
+            "address": "0x7a4bf77b5860",
+            "instructions_executed": 499712,
+            "samples": 465,
+            "source": "UMOV UR8, 0x400"
+          },
+          {
+            "address": "0x7a4bf77b57b0",
+            "instructions_executed": 524288,
+            "samples": 413,
+            "source": "HGMMA.64x128x16.F32.BF16 R24, gdesc[UR16], R24, gsb0"
+          }
+        ],
+        "total_pc_samples": 26351,
+        "warpgroup_wait_executions": 532480,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 304
+      }
+    },
+    "n128_mfast_regular": {
+      "raw": {
+        "kernel_name": "gemm",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 309.338368
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 33.01888
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 307.552
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 256.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 1024.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 90.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 132.12
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 7.76
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 42297932.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 15141000.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 59.760962
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 59.760962
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 54001664.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 4194.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 10396.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 4977.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 136.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 2646016,
+          "BRA": 1589248,
+          "HGMMA": 2097152,
+          "HMMA": 0,
+          "IMAD": 5251072,
+          "ISETP": 2695168,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 8192,
+          "UTMALDG": 1048576,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 8192,
+          "WARPGROUP": 1056768
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x128x16.F32.BF16": 2097152
+        },
+        "kernel_name": "gemm",
+        "source_page_instruction_total": 54001664,
+        "stall_samples_at_sites": {
+          "BAR": 1188,
+          "BRA": 11819,
+          "HGMMA": 1416,
+          "HMMA": 0,
+          "IMAD": 675,
+          "ISETP": 477,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 33,
+          "UTMALDG": 1384,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 9,
+          "WARPGROUP": 331
+        },
+        "static_sites": {
+          "BAR": 17,
+          "BRA": 8,
+          "HGMMA": 4,
+          "HMMA": 0,
+          "IMAD": 35,
+          "ISETP": 20,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1,
+          "UTMALDG": 8,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            10510336
+          ],
+          [
+            "UMOV",
+            6889472
+          ],
+          [
+            "IMAD",
+            5251072
+          ],
+          [
+            "R2UR",
+            4235264
+          ],
+          [
+            "UIMAD",
+            3072000
+          ],
+          [
+            "ISETP",
+            2695168
+          ],
+          [
+            "USHF",
+            2678784
+          ],
+          [
+            "BAR",
+            2646016
+          ],
+          [
+            "HGMMA",
+            2097152
+          ],
+          [
+            "BRA",
+            1589248
+          ],
+          [
+            "ELECT",
+            1105920
+          ],
+          [
+            "ULOP3",
+            1097728
+          ],
+          [
+            "SYNCS",
+            1097728
+          ],
+          [
+            "VOTEU",
+            1081344
+          ],
+          [
+            "IADD3",
+            1056768
+          ],
+          [
+            "WARPGROUP",
+            1056768
+          ],
+          [
+            "ULEA",
+            1048576
+          ],
+          [
+            "UTMALDG",
+            1048576
+          ],
+          [
+            "USGXT",
+            1048576
+          ],
+          [
+            "SHF",
+            548864
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x7d6ae57b5620",
+            "instructions_executed": 524288,
+            "samples": 9707,
+            "source": "@!P0  BRA 0x7d6ae57b6080"
+          },
+          {
+            "address": "0x7d6ae57b57e0",
+            "instructions_executed": 524288,
+            "samples": 1927,
+            "source": "@P0   BRA 0x7d6ae57b5ab0"
+          },
+          {
+            "address": "0x7d6ae57b5a90",
+            "instructions_executed": 499712,
+            "samples": 1056,
+            "source": "@UP1  UTMALDG.2D [UR12], [UR22]"
+          },
+          {
+            "address": "0x7d6ae57b5650",
+            "instructions_executed": 524288,
+            "samples": 830,
+            "source": "UMOV UR20, UR12"
+          },
+          {
+            "address": "0x7d6ae57b5860",
+            "instructions_executed": 499712,
+            "samples": 515,
+            "source": "UMOV UR8, 0x400"
+          },
+          {
+            "address": "0x7d6ae57b57b0",
+            "instructions_executed": 524288,
+            "samples": 475,
+            "source": "HGMMA.64x128x16.F32.BF16 R24, gdesc[UR20], R24, gsb0"
+          },
+          {
+            "address": "0x7d6ae57b5500",
+            "instructions_executed": 524288,
+            "samples": 433,
+            "source": "UIMAD.WIDE.U32 UR10, UR5, -0x55555555, URZ"
+          },
+          {
+            "address": "0x7d6ae57b5ff0",
+            "instructions_executed": 8192,
+            "samples": 366,
+            "source": "BAR.SYNC.DEFER_BLOCKING 0x0"
+          }
+        ],
+        "total_pc_samples": 26262,
+        "warpgroup_wait_executions": 532480,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 294
+      }
+    },
+    "n128_nfast_persistent": {
+      "raw": {
+        "kernel_name": "gemm",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 312.410624
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 32.838912
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 311.04
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 256.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 132.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 90.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 132.12
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 1.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 48914224.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 14101068.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 59.809845
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 59.809845
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 54727008.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 4100.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 10898.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 4834.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 151.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 2646016,
+          "BRA": 1590304,
+          "HGMMA": 2097152,
+          "HMMA": 0,
+          "IMAD": 5229664,
+          "ISETP": 2680896,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1056,
+          "UTMALDG": 1048576,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 8192,
+          "WARPGROUP": 1056768
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x128x16.F32.BF16": 2097152
+        },
+        "kernel_name": "gemm",
+        "source_page_instruction_total": 54727008,
+        "stall_samples_at_sites": {
+          "BAR": 1371,
+          "BRA": 12213,
+          "HGMMA": 1366,
+          "HMMA": 0,
+          "IMAD": 833,
+          "ISETP": 444,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 2,
+          "UTMALDG": 1583,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 15,
+          "WARPGROUP": 319
+        },
+        "static_sites": {
+          "BAR": 17,
+          "BRA": 9,
+          "HGMMA": 4,
+          "HMMA": 0,
+          "IMAD": 35,
+          "ISETP": 20,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1,
+          "UTMALDG": 8,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            10518528
+          ],
+          [
+            "UMOV",
+            7881760
+          ],
+          [
+            "IMAD",
+            5229664
+          ],
+          [
+            "R2UR",
+            4229184
+          ],
+          [
+            "UIMAD",
+            3072000
+          ],
+          [
+            "ISETP",
+            2680896
+          ],
+          [
+            "USHF",
+            2671648
+          ],
+          [
+            "BAR",
+            2646016
+          ],
+          [
+            "HGMMA",
+            2097152
+          ],
+          [
+            "BRA",
+            1590304
+          ],
+          [
+            "ELECT",
+            1105920
+          ],
+          [
+            "ULOP3",
+            1097728
+          ],
+          [
+            "SYNCS",
+            1097728
+          ],
+          [
+            "VOTEU",
+            1081344
+          ],
+          [
+            "IADD3",
+            1056768
+          ],
+          [
+            "WARPGROUP",
+            1056768
+          ],
+          [
+            "UTMALDG",
+            1048576
+          ],
+          [
+            "USGXT",
+            1048576
+          ],
+          [
+            "ULEA",
+            1041440
+          ],
+          [
+            "SHF",
+            528512
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x7871eb7b5620",
+            "instructions_executed": 524288,
+            "samples": 10075,
+            "source": "@!P0  BRA 0x7871eb7b60e0"
+          },
+          {
+            "address": "0x7871eb7b57e0",
+            "instructions_executed": 524288,
+            "samples": 1944,
+            "source": "@P0   BRA 0x7871eb7b5ad0"
+          },
+          {
+            "address": "0x7871eb7b5ab0",
+            "instructions_executed": 499712,
+            "samples": 1265,
+            "source": "@UP1  UTMALDG.2D [UR16], [UR28]"
+          },
+          {
+            "address": "0x7871eb7b5650",
+            "instructions_executed": 524288,
+            "samples": 771,
+            "source": "UMOV UR16, UR10"
+          },
+          {
+            "address": "0x7871eb7b6040",
+            "instructions_executed": 8192,
+            "samples": 566,
+            "source": "BAR.SYNC.DEFER_BLOCKING 0x0"
+          },
+          {
+            "address": "0x7871eb7b5500",
+            "instructions_executed": 524288,
+            "samples": 475,
+            "source": "UIMAD.WIDE.U32 UR14, UR5, -0x55555555, URZ"
+          },
+          {
+            "address": "0x7871eb7b5860",
+            "instructions_executed": 499712,
+            "samples": 474,
+            "source": "UMOV UR8, 0x400"
+          },
+          {
+            "address": "0x7871eb7b57b0",
+            "instructions_executed": 524288,
+            "samples": 416,
+            "source": "HGMMA.64x128x16.F32.BF16 R24, gdesc[UR16], R24, gsb0"
+          }
+        ],
+        "total_pc_samples": 26254,
+        "warpgroup_wait_executions": 532480,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 292
+      }
+    },
+    "n128_nfast_regular": {
+      "raw": {
+        "kernel_name": "gemm",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 315.53792
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 32.952576
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 304.192
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 256.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 1024.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 90.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 132.12
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 7.76
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 45486736.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 13778680.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 60.705728
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 60.705728
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 54001664.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 4138.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 10249.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 5065.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 152.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 2646016,
+          "BRA": 1589248,
+          "HGMMA": 2097152,
+          "HMMA": 0,
+          "IMAD": 5251072,
+          "ISETP": 2695168,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 8192,
+          "UTMALDG": 1048576,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 8192,
+          "WARPGROUP": 1056768
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x128x16.F32.BF16": 2097152
+        },
+        "kernel_name": "gemm",
+        "source_page_instruction_total": 54001664,
+        "stall_samples_at_sites": {
+          "BAR": 1188,
+          "BRA": 11686,
+          "HGMMA": 1331,
+          "HMMA": 0,
+          "IMAD": 688,
+          "ISETP": 428,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 32,
+          "UTMALDG": 1472,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 12,
+          "WARPGROUP": 370
+        },
+        "static_sites": {
+          "BAR": 17,
+          "BRA": 8,
+          "HGMMA": 4,
+          "HMMA": 0,
+          "IMAD": 35,
+          "ISETP": 20,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1,
+          "UTMALDG": 8,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            10510336
+          ],
+          [
+            "UMOV",
+            6889472
+          ],
+          [
+            "IMAD",
+            5251072
+          ],
+          [
+            "R2UR",
+            4235264
+          ],
+          [
+            "UIMAD",
+            3072000
+          ],
+          [
+            "ISETP",
+            2695168
+          ],
+          [
+            "USHF",
+            2678784
+          ],
+          [
+            "BAR",
+            2646016
+          ],
+          [
+            "HGMMA",
+            2097152
+          ],
+          [
+            "BRA",
+            1589248
+          ],
+          [
+            "ELECT",
+            1105920
+          ],
+          [
+            "ULOP3",
+            1097728
+          ],
+          [
+            "SYNCS",
+            1097728
+          ],
+          [
+            "VOTEU",
+            1081344
+          ],
+          [
+            "IADD3",
+            1056768
+          ],
+          [
+            "WARPGROUP",
+            1056768
+          ],
+          [
+            "ULEA",
+            1048576
+          ],
+          [
+            "UTMALDG",
+            1048576
+          ],
+          [
+            "USGXT",
+            1048576
+          ],
+          [
+            "SHF",
+            548864
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x7d77e97b5620",
+            "instructions_executed": 524288,
+            "samples": 9576,
+            "source": "@!P0  BRA 0x7d77e97b6080"
+          },
+          {
+            "address": "0x7d77e97b57e0",
+            "instructions_executed": 524288,
+            "samples": 1894,
+            "source": "@P0   BRA 0x7d77e97b5ab0"
+          },
+          {
+            "address": "0x7d77e97b5a90",
+            "instructions_executed": 499712,
+            "samples": 1116,
+            "source": "@UP1  UTMALDG.2D [UR12], [UR22]"
+          },
+          {
+            "address": "0x7d77e97b5650",
+            "instructions_executed": 524288,
+            "samples": 806,
+            "source": "UMOV UR20, UR12"
+          },
+          {
+            "address": "0x7d77e97b5860",
+            "instructions_executed": 499712,
+            "samples": 489,
+            "source": "UMOV UR8, 0x400"
+          },
+          {
+            "address": "0x7d77e97b5500",
+            "instructions_executed": 524288,
+            "samples": 436,
+            "source": "UIMAD.WIDE.U32 UR10, UR5, -0x55555555, URZ"
+          },
+          {
+            "address": "0x7d77e97b57b0",
+            "instructions_executed": 524288,
+            "samples": 421,
+            "source": "HGMMA.64x128x16.F32.BF16 R24, gdesc[UR20], R24, gsb0"
+          },
+          {
+            "address": "0x7d77e97b5630",
+            "instructions_executed": 524288,
+            "samples": 363,
+            "source": "BAR.SYNC.DEFER_BLOCKING 0x0"
+          }
+        ],
+        "total_pc_samples": 25824,
+        "warpgroup_wait_executions": 532480,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 339
+      }
+    },
+    "n256_mfast_persistent": {
+      "raw": {
+        "kernel_name": "gemm",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 174.085632
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 28.81152
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 218.144
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 256.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 132.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 154.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 214.04
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 1.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 31544472.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 7789408.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 86.701467
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 86.701467
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 28594528.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 9158.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 1716.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 1662.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 47.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 1323008,
+          "BRA": 795680,
+          "HGMMA": 1048576,
+          "HMMA": 0,
+          "IMAD": 2616416,
+          "ISETP": 1341504,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1056,
+          "UTMALDG": 524288,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 4096,
+          "WARPGROUP": 528384
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x256x16.F32.BF16": 1048576
+        },
+        "kernel_name": "gemm",
+        "source_page_instruction_total": 28594528,
+        "stall_samples_at_sites": {
+          "BAR": 819,
+          "BRA": 4262,
+          "HGMMA": 2752,
+          "HMMA": 0,
+          "IMAD": 247,
+          "ISETP": 310,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 7,
+          "UTMALDG": 749,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 5,
+          "WARPGROUP": 4163
+        },
+        "static_sites": {
+          "BAR": 17,
+          "BRA": 9,
+          "HGMMA": 4,
+          "HMMA": 0,
+          "IMAD": 35,
+          "ISETP": 20,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1,
+          "UTMALDG": 8,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            5521408
+          ],
+          [
+            "UMOV",
+            3949600
+          ],
+          [
+            "IMAD",
+            2616416
+          ],
+          [
+            "R2UR",
+            2115648
+          ],
+          [
+            "UIMAD",
+            2048000
+          ],
+          [
+            "ISETP",
+            1341504
+          ],
+          [
+            "USHF",
+            1336352
+          ],
+          [
+            "BAR",
+            1323008
+          ],
+          [
+            "HGMMA",
+            1048576
+          ],
+          [
+            "BRA",
+            795680
+          ],
+          [
+            "ELECT",
+            552960
+          ],
+          [
+            "ULOP3",
+            548864
+          ],
+          [
+            "SYNCS",
+            548864
+          ],
+          [
+            "VOTEU",
+            540672
+          ],
+          [
+            "IADD3",
+            528384
+          ],
+          [
+            "WARPGROUP",
+            528384
+          ],
+          [
+            "CS2R",
+            524288
+          ],
+          [
+            "UTMALDG",
+            524288
+          ],
+          [
+            "USGXT",
+            524288
+          ],
+          [
+            "ULEA",
+            521248
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x7ecb6b7b5bf0",
+            "instructions_executed": 262144,
+            "samples": 3955,
+            "source": "WARPGROUP.DEPBAR.LE gsb0, 0x1"
+          },
+          {
+            "address": "0x7ecb6b7b5c10",
+            "instructions_executed": 262144,
+            "samples": 3161,
+            "source": "@P0   BRA 0x7ecb6b7b5f10"
+          },
+          {
+            "address": "0x7ecb6b7b5a90",
+            "instructions_executed": 262144,
+            "samples": 1060,
+            "source": "@!P0  BRA 0x7ecb6b7b67b0"
+          },
+          {
+            "address": "0x7ecb6b7b5be0",
+            "instructions_executed": 262144,
+            "samples": 990,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24, gsb0"
+          },
+          {
+            "address": "0x7ecb6b7b5b90",
+            "instructions_executed": 262144,
+            "samples": 847,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24"
+          },
+          {
+            "address": "0x7ecb6b7b5ec0",
+            "instructions_executed": 249856,
+            "samples": 776,
+            "source": "UMOV UR21, UR17"
+          },
+          {
+            "address": "0x7ecb6b7b6710",
+            "instructions_executed": 4096,
+            "samples": 583,
+            "source": "BAR.SYNC.DEFER_BLOCKING 0x0"
+          },
+          {
+            "address": "0x7ecb6b7b5ef0",
+            "instructions_executed": 249856,
+            "samples": 529,
+            "source": "@UP1  UTMALDG.2D [UR20], [UR32]"
+          }
+        ],
+        "total_pc_samples": 17829,
+        "warpgroup_wait_executions": 266240,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 4133
+      }
+    },
+    "n256_mfast_regular": {
+      "raw": {
+        "kernel_name": "gemm",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 174.096896
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 28.798464
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 218.944
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 256.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 512.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 154.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 214.04
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 3.88
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 27340668.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 7859932.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 85.991368
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 85.991368
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 28196864.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 8773.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 1944.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 1994.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 40.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 1323008,
+          "BRA": 794624,
+          "HGMMA": 1048576,
+          "HMMA": 0,
+          "IMAD": 2625536,
+          "ISETP": 1343488,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 4096,
+          "UTMALDG": 524288,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 4096,
+          "WARPGROUP": 528384
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x256x16.F32.BF16": 1048576
+        },
+        "kernel_name": "gemm",
+        "source_page_instruction_total": 28196864,
+        "stall_samples_at_sites": {
+          "BAR": 610,
+          "BRA": 4486,
+          "HGMMA": 2635,
+          "HMMA": 0,
+          "IMAD": 234,
+          "ISETP": 263,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 22,
+          "UTMALDG": 483,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 4,
+          "WARPGROUP": 4254
+        },
+        "static_sites": {
+          "BAR": 17,
+          "BRA": 8,
+          "HGMMA": 4,
+          "HMMA": 0,
+          "IMAD": 35,
+          "ISETP": 19,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1,
+          "UTMALDG": 8,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            5517312
+          ],
+          [
+            "UMOV",
+            3448832
+          ],
+          [
+            "IMAD",
+            2625536
+          ],
+          [
+            "R2UR",
+            2117632
+          ],
+          [
+            "UIMAD",
+            2048000
+          ],
+          [
+            "ISETP",
+            1343488
+          ],
+          [
+            "USHF",
+            1339392
+          ],
+          [
+            "BAR",
+            1323008
+          ],
+          [
+            "HGMMA",
+            1048576
+          ],
+          [
+            "BRA",
+            794624
+          ],
+          [
+            "ELECT",
+            552960
+          ],
+          [
+            "ULOP3",
+            548864
+          ],
+          [
+            "SYNCS",
+            548864
+          ],
+          [
+            "VOTEU",
+            540672
+          ],
+          [
+            "IADD3",
+            528384
+          ],
+          [
+            "WARPGROUP",
+            528384
+          ],
+          [
+            "CS2R",
+            524288
+          ],
+          [
+            "ULEA",
+            524288
+          ],
+          [
+            "UTMALDG",
+            524288
+          ],
+          [
+            "USGXT",
+            524288
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x7f37937b5bc0",
+            "instructions_executed": 262144,
+            "samples": 4077,
+            "source": "WARPGROUP.DEPBAR.LE gsb0, 0x1"
+          },
+          {
+            "address": "0x7f37937b5be0",
+            "instructions_executed": 262144,
+            "samples": 2875,
+            "source": "@P0   BRA 0x7f37937b5ec0"
+          },
+          {
+            "address": "0x7f37937b5a60",
+            "instructions_executed": 262144,
+            "samples": 1484,
+            "source": "@!P0  BRA 0x7f37937b6720"
+          },
+          {
+            "address": "0x7f37937b5bb0",
+            "instructions_executed": 262144,
+            "samples": 1139,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR24], R24, gsb0"
+          },
+          {
+            "address": "0x7f37937b5b60",
+            "instructions_executed": 262144,
+            "samples": 812,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR24], R24"
+          },
+          {
+            "address": "0x7f37937b5e60",
+            "instructions_executed": 249856,
+            "samples": 757,
+            "source": "UMOV UR14, UR18"
+          },
+          {
+            "address": "0x7f37937b5ac0",
+            "instructions_executed": 262144,
+            "samples": 451,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR24], R24"
+          },
+          {
+            "address": "0x7f37937b5ea0",
+            "instructions_executed": 249856,
+            "samples": 383,
+            "source": "@UP1  UTMALDG.2D [UR12], [UR26]"
+          }
+        ],
+        "total_pc_samples": 18088,
+        "warpgroup_wait_executions": 266240,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 4244
+      }
+    },
+    "n256_nfast_persistent": {
+      "raw": {
+        "kernel_name": "gemm",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 174.093312
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 28.689664
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 213.056
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 256.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 132.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 154.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 214.04
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 1.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 28869316.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 7806600.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 87.089276
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 87.089276
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 28594528.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 8916.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 2524.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 1671.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 23.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 1323008,
+          "BRA": 795680,
+          "HGMMA": 1048576,
+          "HMMA": 0,
+          "IMAD": 2616416,
+          "ISETP": 1341504,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1056,
+          "UTMALDG": 524288,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 4096,
+          "WARPGROUP": 528384
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x256x16.F32.BF16": 1048576
+        },
+        "kernel_name": "gemm",
+        "source_page_instruction_total": 28594528,
+        "stall_samples_at_sites": {
+          "BAR": 919,
+          "BRA": 5095,
+          "HGMMA": 2664,
+          "HMMA": 0,
+          "IMAD": 124,
+          "ISETP": 360,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 10,
+          "UTMALDG": 505,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 7,
+          "WARPGROUP": 4198
+        },
+        "static_sites": {
+          "BAR": 17,
+          "BRA": 9,
+          "HGMMA": 4,
+          "HMMA": 0,
+          "IMAD": 35,
+          "ISETP": 20,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1,
+          "UTMALDG": 8,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            5521408
+          ],
+          [
+            "UMOV",
+            3949600
+          ],
+          [
+            "IMAD",
+            2616416
+          ],
+          [
+            "R2UR",
+            2115648
+          ],
+          [
+            "UIMAD",
+            2048000
+          ],
+          [
+            "ISETP",
+            1341504
+          ],
+          [
+            "USHF",
+            1336352
+          ],
+          [
+            "BAR",
+            1323008
+          ],
+          [
+            "HGMMA",
+            1048576
+          ],
+          [
+            "BRA",
+            795680
+          ],
+          [
+            "ELECT",
+            552960
+          ],
+          [
+            "ULOP3",
+            548864
+          ],
+          [
+            "SYNCS",
+            548864
+          ],
+          [
+            "VOTEU",
+            540672
+          ],
+          [
+            "IADD3",
+            528384
+          ],
+          [
+            "WARPGROUP",
+            528384
+          ],
+          [
+            "CS2R",
+            524288
+          ],
+          [
+            "UTMALDG",
+            524288
+          ],
+          [
+            "USGXT",
+            524288
+          ],
+          [
+            "ULEA",
+            521248
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x76ce1b7b5bf0",
+            "instructions_executed": 262144,
+            "samples": 3991,
+            "source": "WARPGROUP.DEPBAR.LE gsb0, 0x1"
+          },
+          {
+            "address": "0x76ce1b7b5c10",
+            "instructions_executed": 262144,
+            "samples": 3140,
+            "source": "@P0   BRA 0x76ce1b7b5f10"
+          },
+          {
+            "address": "0x76ce1b7b5a90",
+            "instructions_executed": 262144,
+            "samples": 1861,
+            "source": "@!P0  BRA 0x76ce1b7b67b0"
+          },
+          {
+            "address": "0x76ce1b7b5be0",
+            "instructions_executed": 262144,
+            "samples": 1018,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24, gsb0"
+          },
+          {
+            "address": "0x76ce1b7b5b90",
+            "instructions_executed": 262144,
+            "samples": 753,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24"
+          },
+          {
+            "address": "0x76ce1b7b5ec0",
+            "instructions_executed": 249856,
+            "samples": 621,
+            "source": "UMOV UR21, UR17"
+          },
+          {
+            "address": "0x76ce1b7b6710",
+            "instructions_executed": 4096,
+            "samples": 574,
+            "source": "BAR.SYNC.DEFER_BLOCKING 0x0"
+          },
+          {
+            "address": "0x76ce1b7b5af0",
+            "instructions_executed": 262144,
+            "samples": 566,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24"
+          }
+        ],
+        "total_pc_samples": 17801,
+        "warpgroup_wait_executions": 266240,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 4181
+      }
+    },
+    "n256_nfast_regular": {
+      "raw": {
+        "kernel_name": "gemm",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 174.107392
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 28.678144
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 218.784
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 256.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 512.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 154.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 214.04
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 3.88
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 28885812.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 7876972.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 85.882918
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 85.882918
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 28196864.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 8467.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 1783.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 1850.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 67.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 1323008,
+          "BRA": 794624,
+          "HGMMA": 1048576,
+          "HMMA": 0,
+          "IMAD": 2625536,
+          "ISETP": 1343488,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 4096,
+          "UTMALDG": 524288,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 4096,
+          "WARPGROUP": 528384
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x256x16.F32.BF16": 1048576
+        },
+        "kernel_name": "gemm",
+        "source_page_instruction_total": 28196864,
+        "stall_samples_at_sites": {
+          "BAR": 577,
+          "BRA": 4130,
+          "HGMMA": 2620,
+          "HMMA": 0,
+          "IMAD": 256,
+          "ISETP": 212,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 18,
+          "UTMALDG": 379,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 9,
+          "WARPGROUP": 4287
+        },
+        "static_sites": {
+          "BAR": 17,
+          "BRA": 8,
+          "HGMMA": 4,
+          "HMMA": 0,
+          "IMAD": 35,
+          "ISETP": 19,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 1,
+          "UTMALDG": 8,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            5517312
+          ],
+          [
+            "UMOV",
+            3448832
+          ],
+          [
+            "IMAD",
+            2625536
+          ],
+          [
+            "R2UR",
+            2117632
+          ],
+          [
+            "UIMAD",
+            2048000
+          ],
+          [
+            "ISETP",
+            1343488
+          ],
+          [
+            "USHF",
+            1339392
+          ],
+          [
+            "BAR",
+            1323008
+          ],
+          [
+            "HGMMA",
+            1048576
+          ],
+          [
+            "BRA",
+            794624
+          ],
+          [
+            "ELECT",
+            552960
+          ],
+          [
+            "ULOP3",
+            548864
+          ],
+          [
+            "SYNCS",
+            548864
+          ],
+          [
+            "VOTEU",
+            540672
+          ],
+          [
+            "IADD3",
+            528384
+          ],
+          [
+            "WARPGROUP",
+            528384
+          ],
+          [
+            "CS2R",
+            524288
+          ],
+          [
+            "ULEA",
+            524288
+          ],
+          [
+            "UTMALDG",
+            524288
+          ],
+          [
+            "USGXT",
+            524288
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x7e69b77b5bc0",
+            "instructions_executed": 262144,
+            "samples": 4098,
+            "source": "WARPGROUP.DEPBAR.LE gsb0, 0x1"
+          },
+          {
+            "address": "0x7e69b77b5be0",
+            "instructions_executed": 262144,
+            "samples": 2717,
+            "source": "@P0   BRA 0x7e69b77b5ec0"
+          },
+          {
+            "address": "0x7e69b77b5a60",
+            "instructions_executed": 262144,
+            "samples": 1324,
+            "source": "@!P0  BRA 0x7e69b77b6720"
+          },
+          {
+            "address": "0x7e69b77b5bb0",
+            "instructions_executed": 262144,
+            "samples": 983,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR24], R24, gsb0"
+          },
+          {
+            "address": "0x7e69b77b5b60",
+            "instructions_executed": 262144,
+            "samples": 883,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR24], R24"
+          },
+          {
+            "address": "0x7e69b77b5d20",
+            "instructions_executed": 249856,
+            "samples": 559,
+            "source": "ULEA UR8, UR12, UR8, 0x18"
+          },
+          {
+            "address": "0x7e69b77b5e60",
+            "instructions_executed": 249856,
+            "samples": 550,
+            "source": "UMOV UR14, UR18"
+          },
+          {
+            "address": "0x7e69b77b5ac0",
+            "instructions_executed": 262144,
+            "samples": 542,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR24], R24"
+          }
+        ],
+        "total_pc_samples": 18042,
+        "warpgroup_wait_executions": 266240,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 4280
+      }
+    },
+    "original": {
+      "raw": {
+        "kernel_name": "gemm",
+        "metrics": {
+          "dram__bytes_read.sum": {
+            "unit": "Mbyte",
+            "value": 174.094336
+          },
+          "dram__bytes_write.sum": {
+            "unit": "Mbyte",
+            "value": 28.71808
+          },
+          "dram__throughput.avg.pct_of_peak_sustained_elapsed": null,
+          "gpu__time_duration.sum": {
+            "unit": "us",
+            "value": 222.56
+          },
+          "launch__block_size": {
+            "unit": "",
+            "value": 256.0
+          },
+          "launch__grid_size": {
+            "unit": "",
+            "value": 512.0
+          },
+          "launch__registers_per_thread": {
+            "unit": "register/thread",
+            "value": 154.0
+          },
+          "launch__shared_mem_per_block": {
+            "unit": "Kbyte/block",
+            "value": 148.504
+          },
+          "launch__waves_per_multiprocessor": {
+            "unit": "",
+            "value": 3.88
+          },
+          "lts__t_sectors_srcunit_tex_op_read.sum": {
+            "unit": "sector",
+            "value": 27108516.0
+          },
+          "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+            "unit": "sector",
+            "value": 7913412.0
+          },
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 84.403656
+          },
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+            "unit": "%",
+            "value": 84.403656
+          },
+          "smsp__inst_executed.sum": {
+            "unit": "inst",
+            "value": 24524288.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_barrier": {
+            "unit": "warp",
+            "value": 8689.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_long_scoreboard": {
+            "unit": "warp",
+            "value": 1564.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_wait": {
+            "unit": "warp",
+            "value": 2444.0
+          },
+          "smsp__pcsamp_warps_issue_stalled_warpgroup_arrive": {
+            "unit": "warp",
+            "value": 145.0
+          }
+        }
+      },
+      "sass": {
+        "dynamic_executions": {
+          "BAR": 1318912,
+          "BRA": 1347584,
+          "HGMMA": 1048576,
+          "HMMA": 0,
+          "IMAD": 1048576,
+          "ISETP": 1359872,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 12288,
+          "UTMALDG": 294912,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 4096,
+          "WARPGROUP": 528384
+        },
+        "hgmma_shapes": {
+          "HGMMA.64x256x16.F32.BF16": 1048576
+        },
+        "kernel_name": "gemm",
+        "source_page_instruction_total": 24524288,
+        "stall_samples_at_sites": {
+          "BAR": 562,
+          "BRA": 4318,
+          "HGMMA": 2408,
+          "HMMA": 0,
+          "IMAD": 98,
+          "ISETP": 433,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 495,
+          "UTMALDG": 423,
+          "UTMALDG.MULTICAST": 0,
+          "UTMASTG": 5,
+          "WARPGROUP": 4383
+        },
+        "static_sites": {
+          "BAR": 20,
+          "BRA": 19,
+          "HGMMA": 4,
+          "HMMA": 0,
+          "IMAD": 10,
+          "ISETP": 29,
+          "LDG": 0,
+          "LDGSTS": 0,
+          "STG": 0,
+          "UCGABAR_WAIT": 3,
+          "UTMALDG": 8,
+          "UTMALDG.MULTICAST": 4,
+          "UTMASTG": 1,
+          "WARPGROUP": 3
+        },
+        "top_dynamic_opcodes": [
+          [
+            "UIADD3",
+            6093312
+          ],
+          [
+            "UMOV",
+            2997248
+          ],
+          [
+            "UIMAD",
+            2048000
+          ],
+          [
+            "ISETP",
+            1359872
+          ],
+          [
+            "BRA",
+            1347584
+          ],
+          [
+            "USHF",
+            1339392
+          ],
+          [
+            "BAR",
+            1318912
+          ],
+          [
+            "IMAD",
+            1048576
+          ],
+          [
+            "HGMMA",
+            1048576
+          ],
+          [
+            "ELECT",
+            557056
+          ],
+          [
+            "SYNCS",
+            548864
+          ],
+          [
+            "ULOP3",
+            544768
+          ],
+          [
+            "WARPGROUP",
+            528384
+          ],
+          [
+            "ULEA",
+            524288
+          ],
+          [
+            "CS2R",
+            524288
+          ],
+          [
+            "USGXT",
+            524288
+          ],
+          [
+            "UTMALDG",
+            294912
+          ],
+          [
+            "BSYNC",
+            294912
+          ],
+          [
+            "VOTEU",
+            278528
+          ],
+          [
+            "SHF",
+            274432
+          ]
+        ],
+        "top_pc_samples": [
+          {
+            "address": "0x735f8d7b5c40",
+            "instructions_executed": 262144,
+            "samples": 4088,
+            "source": "WARPGROUP.DEPBAR.LE gsb0, 0x1"
+          },
+          {
+            "address": "0x735f8d7b5c60",
+            "instructions_executed": 262144,
+            "samples": 2663,
+            "source": "@P1   BRA 0x735f8d7b5f60"
+          },
+          {
+            "address": "0x735f8d7b5a30",
+            "instructions_executed": 262144,
+            "samples": 1209,
+            "source": "@!P1  BRA 0x735f8d7b68a0"
+          },
+          {
+            "address": "0x735f8d7b5c30",
+            "instructions_executed": 262144,
+            "samples": 936,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24, gsb0"
+          },
+          {
+            "address": "0x735f8d7b5bb0",
+            "instructions_executed": 262144,
+            "samples": 894,
+            "source": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24"
+          },
+          {
+            "address": "0x735f8d7b5f60",
+            "instructions_executed": 262144,
+            "samples": 456,
+            "source": "UIADD3 UR5, UR5, 0x1, URZ"
+          },
+          {
+            "address": "0x735f8d7b5de0",
+            "instructions_executed": 249856,
+            "samples": 391,
+            "source": "@UP1  UTMALDG.2D [UR8], [UR14]"
+          },
+          {
+            "address": "0x735f8d7b5cd0",
+            "instructions_executed": 249856,
+            "samples": 358,
+            "source": "BSSY B0, 0x735f8d7b5f60"
+          }
+        ],
+        "total_pc_samples": 18311,
+        "warpgroup_wait_executions": 266240,
+        "warpgroup_wait_sites": 2,
+        "warpgroup_wait_stall_samples": 4361
+      }
+    }
+  },
+  "rounds_us": {
+    "0": {
+      "cublas": 174.3519976735115,
+      "n128_mfast_persistent": 286.0639989376068,
+      "n128_mfast_regular": 292.83200204372406,
+      "n128_nfast_persistent": 289.90399837493896,
+      "n128_nfast_regular": 284.2560112476349,
+      "n256_mfast_persistent": 181.5679967403412,
+      "n256_mfast_regular": 183.82400274276733,
+      "n256_nfast_persistent": 188.28800320625305,
+      "n256_nfast_regular": 189.2480030655861,
+      "original": 185.32799929380417
+    },
+    "1": {
+      "cublas": 178.0640035867691,
+      "n128_mfast_persistent": 297.13600873947144,
+      "n128_mfast_regular": 291.1040037870407,
+      "n128_nfast_persistent": 296.01600766181946,
+      "n128_nfast_regular": 291.6959971189499,
+      "n256_mfast_persistent": 183.3600029349327,
+      "n256_mfast_regular": 185.5200007557869,
+      "n256_nfast_persistent": 187.3439997434616,
+      "n256_nfast_regular": 185.2319985628128,
+      "original": 189.87199664115906
+    },
+    "2": {
+      "cublas": 178.3199980854988,
+      "n128_mfast_persistent": 292.9919958114624,
+      "n128_mfast_regular": 295.184001326561,
+      "n128_nfast_persistent": 293.0560111999512,
+      "n128_nfast_regular": 287.9839986562729,
+      "n256_mfast_persistent": 185.68000197410583,
+      "n256_mfast_regular": 187.6479983329773,
+      "n256_nfast_persistent": 191.79200381040573,
+      "n256_nfast_regular": 186.8640035390854,
+      "original": 188.6560022830963
+    },
+    "3": {
+      "cublas": 177.7920052409172,
+      "n128_mfast_persistent": 290.4000133275986,
+      "n128_mfast_regular": 292.9919958114624,
+      "n128_nfast_persistent": 290.68800806999207,
+      "n128_nfast_regular": 288.7519896030426,
+      "n256_mfast_persistent": 184.79999899864197,
+      "n256_mfast_regular": 186.70400232076645,
+      "n256_nfast_persistent": 188.07999789714813,
+      "n256_nfast_regular": 188.00000101327896,
+      "original": 188.38400393724442
+    },
+    "4": {
+      "cublas": 176.11200362443924,
+      "n128_mfast_persistent": 286.8320047855377,
+      "n128_mfast_regular": 288.08000683784485,
+      "n128_nfast_persistent": 287.4239981174469,
+      "n128_nfast_regular": 282.7039957046509,
+      "n256_mfast_persistent": 186.51200085878372,
+      "n256_mfast_regular": 186.12799793481827,
+      "n256_nfast_persistent": 184.03200060129166,
+      "n256_nfast_regular": 185.42400002479553,
+      "original": 187.1199980378151
+    },
+    "5": {
+      "cublas": 176.7200008034706,
+      "n128_mfast_persistent": 289.0399992465973,
+      "n128_mfast_regular": 292.55999624729156,
+      "n128_nfast_persistent": 287.48801350593567,
+      "n128_nfast_regular": 284.2079997062683,
+      "n256_mfast_persistent": 182.38399922847748,
+      "n256_mfast_regular": 185.11999398469925,
+      "n256_nfast_persistent": 187.1199980378151,
+      "n256_nfast_regular": 183.3599954843521,
+      "original": 187.32799589633942
+    },
+    "6": {
+      "cublas": 174.9280020594597,
+      "n128_mfast_persistent": 284.2559963464737,
+      "n128_mfast_regular": 286.0160022974014,
+      "n128_nfast_persistent": 286.47999465465546,
+      "n128_nfast_regular": 282.3040038347244,
+      "n256_mfast_persistent": 181.88800662755966,
+      "n256_mfast_regular": 184.39999967813492,
+      "n256_nfast_persistent": 183.56800079345703,
+      "n256_nfast_regular": 184.51199680566788,
+      "original": 186.76800280809402
+    },
+    "7": {
+      "cublas": 177.50399559736252,
+      "n128_mfast_persistent": 284.8320007324219,
+      "n128_mfast_regular": 287.8879904747009,
+      "n128_nfast_persistent": 288.7519896030426,
+      "n128_nfast_regular": 282.73600339889526,
+      "n256_mfast_persistent": 184.09600108861923,
+      "n256_mfast_regular": 186.19199842214584,
+      "n256_nfast_persistent": 185.18399447202682,
+      "n256_nfast_regular": 185.93599647283554,
+      "original": 186.67200207710266
+    },
+    "8": {
+      "cublas": 175.74400454759598,
+      "n128_mfast_persistent": 284.1759920120239,
+      "n128_mfast_regular": 286.0320061445236,
+      "n128_nfast_persistent": 288.2240116596222,
+      "n128_nfast_regular": 282.9279899597168,
+      "n256_mfast_persistent": 184.4799965620041,
+      "n256_mfast_regular": 185.95200031995773,
+      "n256_nfast_persistent": 183.85600298643112,
+      "n256_nfast_regular": 184.89599972963333,
+      "original": 186.17599457502365
+    },
+    "9": {
+      "cublas": 175.59999972581863,
+      "n128_mfast_persistent": 282.73600339889526,
+      "n128_mfast_regular": 284.7200036048889,
+      "n128_nfast_persistent": 286.22400760650635,
+      "n128_nfast_regular": 280.799999833107,
+      "n256_mfast_persistent": 182.3359951376915,
+      "n256_mfast_regular": 184.65600162744522,
+      "n256_nfast_persistent": 182.44799971580505,
+      "n256_nfast_regular": 183.6320012807846,
+      "original": 186.2879991531372
+    }
+  },
+  "run_id": "2fccba9f-badc-4319-893e-1f772e316e02",
+  "schema_version": 1
+}

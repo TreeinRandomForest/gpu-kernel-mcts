@@ -1,0 +1,1278 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-05T20:11:36.975874+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-f65e342d-494b-483c-177c-d6c099ee4ddc",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "bc7cee16c1b70b8939730fdc7286455ea386d330da87332f01c7f3f677a22718",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00q61sj0631t0ybsk",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00q61sj0631t0ybsk"
+  },
+  "git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "median_paired_delta_us": -45.34400254487991,
+  "observations": [
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 256.9279968738556,
+        "mean_us": 244.75093285242716,
+        "median_us": 243.58400702476501,
+        "min_us": 241.5039986371994,
+        "per_shape_median_us": {},
+        "stddev_us": 3.210997004623102,
+        "timings_us": [
+          256.9279968738556,
+          246.65600061416626,
+          246.0480034351349,
+          245.66400051116943,
+          244.159996509552,
+          243.58400702476501,
+          242.88000166416168,
+          247.39199876785278,
+          242.5599992275238,
+          242.91199445724487,
+          250.59199333190918,
+          242.94400215148926,
+          241.72799289226532,
+          248.1600046157837,
+          247.3600059747696,
+          243.58400702476501,
+          243.8720017671585,
+          242.14400351047516,
+          245.08799612522125,
+          241.85599386692047,
+          242.97599494457245,
+          241.95200204849243,
+          246.59200012683868,
+          242.0479953289032,
+          241.88800156116486,
+          241.5039986371994,
+          245.63199281692505,
+          243.42399835586548,
+          247.29600548744202,
+          243.1039959192276
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "correctness_status": "PASS",
+      "evaluation": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 256.9279968738556,
+          "mean_us": 244.75093285242716,
+          "median_us": 243.58400702476501,
+          "min_us": 241.5039986371994,
+          "per_shape_median_us": {},
+          "stddev_us": 3.210997004623102,
+          "timings_us": [
+            256.9279968738556,
+            246.65600061416626,
+            246.0480034351349,
+            245.66400051116943,
+            244.159996509552,
+            243.58400702476501,
+            242.88000166416168,
+            247.39199876785278,
+            242.5599992275238,
+            242.91199445724487,
+            250.59199333190918,
+            242.94400215148926,
+            241.72799289226532,
+            248.1600046157837,
+            247.3600059747696,
+            243.58400702476501,
+            243.8720017671585,
+            242.14400351047516,
+            245.08799612522125,
+            241.85599386692047,
+            242.97599494457245,
+            241.95200204849243,
+            246.59200012683868,
+            242.0479953289032,
+            241.88800156116486,
+            241.5039986371994,
+            245.63199281692505,
+            243.42399835586548,
+            247.29600548744202,
+            243.1039959192276
+          ],
+          "warmup_count": 10
+        },
+        "binary_hash": "8816f6d7ead0487bab3aa49ed048c2ec8681809cf1e58108371316ca76d46094",
+        "compilation": {
+          "artifact_id": "254029d369e527a125d6548c4bbd18b5822ef2cda1f50c559217839c9a61f4d0",
+          "artifact_paths": [
+            "/tmp/kernel-mcts-artifacts/triton-artifact-ykhq_o1t/candidate.py",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-ykhq_o1t/kernel.cubin",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-ykhq_o1t/kernel.ptx"
+          ],
+          "duration_seconds": 3.062650888999997,
+          "stderr": "/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n",
+          "stdout": "{\"status\": \"ok\", \"kernel_name\": \"bf16_gemm_triton\", \"registers_per_thread\": 188, \"shared_memory_bytes\": 147456, \"spills\": 0}\n"
+        },
+        "compile_status": "SUCCESS",
+        "correctness": {
+          "failed_test_id": null,
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "reference_metadata": {
+            "implementation": "torch.matmul/cuBLAS",
+            "seed": 0
+          }
+        },
+        "correctness_status": "PASS",
+        "environment_manifest_id": "bc7cee16c1b70b8939730fdc7286455ea386d330da87332f01c7f3f677a22718",
+        "invalid_reason": null,
+        "launch_config": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "metadata": {
+          "compiler_context": {
+            "architecture": "sm_90",
+            "backend": "triton_h100",
+            "kernel_name": "bf16_gemm_triton",
+            "ptx": {
+              "artifacts": [
+                {
+                  "path": "/tmp/kernel-mcts-artifacts/triton-artifact-ykhq_o1t/kernel.ptx",
+                  "sha256": "650edd37e230cf16dcb2c2c610d5b89c3f99182e84f536eaf1a4c2ab7bddc863",
+                  "size_bytes": 49852,
+                  "storage_status": "eligible"
+                }
+              ],
+              "static_instruction_sites": {
+                "categories": {
+                  "async_copy": 44,
+                  "barrier": 6,
+                  "control": 3,
+                  "global_load": 0,
+                  "global_store": 16,
+                  "local_load": 0,
+                  "local_store": 0,
+                  "other": 801,
+                  "shared_load": 0,
+                  "shared_store": 16,
+                  "tensor": 8
+                },
+                "total": 894
+              },
+              "status": "captured"
+            },
+            "resources": {
+              "registers_per_thread": 188,
+              "spills": 0,
+              "static_shared_memory_bytes": 147456
+            },
+            "sass": {
+              "status": "unavailable"
+            },
+            "schema_version": 1
+          }
+        },
+        "program": {
+          "backend": "triton_h100",
+          "source": "import triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_triton(A, B, C, M, N, K,\n                      BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    a_ptrs = A + row[:, None] * K + kk[None, :]\n    b_ptrs = B + kk[:, None] + col[None, :] * K\n    acc = tl.full((BM, BN), 0, tl.float32)\n    for k in range(0, tl.cdiv(K, BK)):\n        a = tl.load(a_ptrs,\n                    (row[:, None] < M) & (kk[None, :] + k * BK < K), other=0)\n        b = tl.load(b_ptrs,\n                    (kk[:, None] + k * BK < K) & (col[None, :] < N), other=0)\n        acc = tl.dot(a, b, acc)\n        a_ptrs += BK\n        b_ptrs += BK\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 128, 256, 64\n    return bf16_gemm_triton[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        A, B, C, M, N, K, BM, BN, BK, num_warps=8, num_stages=3\n    )"
+        },
+        "reward": 1.2324200351738601,
+        "source_hash": "b2aa37ccd53d5f17885a79394b4eaef4f50fd0ca6e28c8aad15b06166ef0d90d",
+        "state_key": "75258e6b6a8f7444f9dad0c5ae4f33075a4a8056691f8b746170a99fb4e233d8",
+        "status": "VALID",
+        "worker_id": "computeinstance-e00q61sj0631t0ybsk"
+      },
+      "name": "runtime",
+      "round": 0,
+      "status": "VALID"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 210.87999641895294,
+        "mean_us": 199.42933221658072,
+        "median_us": 198.65600019693375,
+        "min_us": 195.360004901886,
+        "per_shape_median_us": {},
+        "stddev_us": 3.363096748049643,
+        "timings_us": [
+          210.87999641895294,
+          205.53599298000336,
+          199.96799528598785,
+          196.79999351501465,
+          202.27199792861938,
+          198.7520009279251,
+          195.77600061893463,
+          202.4639993906021,
+          199.35999810695648,
+          202.07999646663666,
+          205.56800067424774,
+          196.60800695419312,
+          196.79999351501465,
+          200.80000162124634,
+          198.55999946594238,
+          200.19200444221497,
+          197.2160041332245,
+          196.8960016965866,
+          200.03199577331543,
+          195.360004901886,
+          198.11199605464935,
+          195.64799964427948,
+          197.08800315856934,
+          200.83199441432953,
+          197.1839964389801,
+          196.79999351501465,
+          200.3519982099533,
+          199.2959976196289,
+          198.04799556732178,
+          197.60000705718994
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "correctness_status": "PASS",
+      "evaluation": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 210.87999641895294,
+          "mean_us": 199.42933221658072,
+          "median_us": 198.65600019693375,
+          "min_us": 195.360004901886,
+          "per_shape_median_us": {},
+          "stddev_us": 3.363096748049643,
+          "timings_us": [
+            210.87999641895294,
+            205.53599298000336,
+            199.96799528598785,
+            196.79999351501465,
+            202.27199792861938,
+            198.7520009279251,
+            195.77600061893463,
+            202.4639993906021,
+            199.35999810695648,
+            202.07999646663666,
+            205.56800067424774,
+            196.60800695419312,
+            196.79999351501465,
+            200.80000162124634,
+            198.55999946594238,
+            200.19200444221497,
+            197.2160041332245,
+            196.8960016965866,
+            200.03199577331543,
+            195.360004901886,
+            198.11199605464935,
+            195.64799964427948,
+            197.08800315856934,
+            200.83199441432953,
+            197.1839964389801,
+            196.79999351501465,
+            200.3519982099533,
+            199.2959976196289,
+            198.04799556732178,
+            197.60000705718994
+          ],
+          "warmup_count": 10
+        },
+        "binary_hash": "b3b9e15d4bb65cfa26330ce48b5d62324b3eed8f4f3c7b2c62074507fbddeb5b",
+        "compilation": {
+          "artifact_id": "225f1f67fd9d03d49700cf4e7436d1648fc051819556e1e86c5cf274fb7c28ae",
+          "artifact_paths": [
+            "/tmp/kernel-mcts-artifacts/triton-artifact-ybndwv48/candidate.py",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-ybndwv48/kernel.cubin",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-ybndwv48/kernel.ptx"
+          ],
+          "duration_seconds": 3.085495273000106,
+          "stderr": "/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n",
+          "stdout": "{\"status\": \"ok\", \"kernel_name\": \"bf16_gemm_triton\", \"registers_per_thread\": 170, \"shared_memory_bytes\": 147456, \"spills\": 0}\n"
+        },
+        "compile_status": "SUCCESS",
+        "correctness": {
+          "failed_test_id": null,
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "reference_metadata": {
+            "implementation": "torch.matmul/cuBLAS",
+            "seed": 0
+          }
+        },
+        "correctness_status": "PASS",
+        "environment_manifest_id": "bc7cee16c1b70b8939730fdc7286455ea386d330da87332f01c7f3f677a22718",
+        "invalid_reason": null,
+        "launch_config": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "metadata": {
+          "compiler_context": {
+            "architecture": "sm_90",
+            "backend": "triton_h100",
+            "kernel_name": "bf16_gemm_triton",
+            "ptx": {
+              "artifacts": [
+                {
+                  "path": "/tmp/kernel-mcts-artifacts/triton-artifact-ybndwv48/kernel.ptx",
+                  "sha256": "6e3e40006e0e640203307df763ab811185a9fae04736978dec53825670012612",
+                  "size_bytes": 36632,
+                  "storage_status": "eligible"
+                }
+              ],
+              "static_instruction_sites": {
+                "categories": {
+                  "async_copy": 44,
+                  "barrier": 6,
+                  "control": 2,
+                  "global_load": 0,
+                  "global_store": 16,
+                  "local_load": 0,
+                  "local_store": 0,
+                  "other": 502,
+                  "shared_load": 0,
+                  "shared_store": 16,
+                  "tensor": 8
+                },
+                "total": 594
+              },
+              "status": "captured"
+            },
+            "resources": {
+              "registers_per_thread": 170,
+              "spills": 0,
+              "static_shared_memory_bytes": 147456
+            },
+            "sass": {
+              "status": "unavailable"
+            },
+            "schema_version": 1
+          }
+        },
+        "program": {
+          "backend": "triton_h100",
+          "source": "import triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_triton(A, B, C, M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,\n                      BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    a_ptrs = A + row[:, None] * K + kk[None, :]\n    b_ptrs = B + kk[:, None] + col[None, :] * K\n    acc = tl.full((BM, BN), 0, tl.float32)\n    for k in range(0, tl.cdiv(K, BK)):\n        a = tl.load(a_ptrs,\n                    (row[:, None] < M) & (kk[None, :] + k * BK < K), other=0)\n        b = tl.load(b_ptrs,\n                    (kk[:, None] + k * BK < K) & (col[None, :] < N), other=0)\n        acc = tl.dot(a, b, acc)\n        a_ptrs += BK\n        b_ptrs += BK\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 128, 256, 64\n    return bf16_gemm_triton[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        A, B, C, M, N, K, BM, BN, BK, num_warps=8, num_stages=3\n    )"
+        },
+        "reward": 1.4363072295747035,
+        "source_hash": "2d210ec906fac3fc898dcefafa13a12f474d22cd7b9a74c214a8fadcc28becdd",
+        "state_key": "6a27856700dfe1925ed3f4f7968330fb6c328aff11b994e3d6ed2b87152f1d6e",
+        "status": "VALID",
+        "worker_id": "computeinstance-e00q61sj0631t0ybsk"
+      },
+      "name": "constexpr",
+      "round": 0,
+      "status": "VALID"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 212.73599565029144,
+        "mean_us": 199.45599983135858,
+        "median_us": 198.44800233840942,
+        "min_us": 195.23200392723083,
+        "per_shape_median_us": {},
+        "stddev_us": 3.395599072357621,
+        "timings_us": [
+          212.73599565029144,
+          205.1199972629547,
+          202.2079974412918,
+          198.46400618553162,
+          197.79199361801147,
+          201.9519954919815,
+          200.28799772262573,
+          198.17599654197693,
+          196.3520050048828,
+          196.60800695419312,
+          203.13599705696106,
+          200.06400346755981,
+          200.095996260643,
+          197.7279931306839,
+          198.43199849128723,
+          198.08000326156616,
+          202.33599841594696,
+          198.71999323368073,
+          196.28800451755524,
+          195.23200392723083,
+          201.92000269889832,
+          198.46400618553162,
+          195.45599818229675,
+          199.2959976196289,
+          198.2399970293045,
+          200.6080001592636,
+          197.50399887561798,
+          197.40800559520721,
+          198.2720047235489,
+          196.70400023460388
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "correctness_status": "PASS",
+      "evaluation": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 212.73599565029144,
+          "mean_us": 199.45599983135858,
+          "median_us": 198.44800233840942,
+          "min_us": 195.23200392723083,
+          "per_shape_median_us": {},
+          "stddev_us": 3.395599072357621,
+          "timings_us": [
+            212.73599565029144,
+            205.1199972629547,
+            202.2079974412918,
+            198.46400618553162,
+            197.79199361801147,
+            201.9519954919815,
+            200.28799772262573,
+            198.17599654197693,
+            196.3520050048828,
+            196.60800695419312,
+            203.13599705696106,
+            200.06400346755981,
+            200.095996260643,
+            197.7279931306839,
+            198.43199849128723,
+            198.08000326156616,
+            202.33599841594696,
+            198.71999323368073,
+            196.28800451755524,
+            195.23200392723083,
+            201.92000269889832,
+            198.46400618553162,
+            195.45599818229675,
+            199.2959976196289,
+            198.2399970293045,
+            200.6080001592636,
+            197.50399887561798,
+            197.40800559520721,
+            198.2720047235489,
+            196.70400023460388
+          ],
+          "warmup_count": 10
+        },
+        "binary_hash": "b3b9e15d4bb65cfa26330ce48b5d62324b3eed8f4f3c7b2c62074507fbddeb5b",
+        "compilation": {
+          "artifact_id": "225f1f67fd9d03d49700cf4e7436d1648fc051819556e1e86c5cf274fb7c28ae",
+          "artifact_paths": [
+            "/tmp/kernel-mcts-artifacts/triton-artifact-090fxh87/candidate.py",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-090fxh87/kernel.cubin",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-090fxh87/kernel.ptx"
+          ],
+          "duration_seconds": 2.3751323879998836,
+          "stderr": "/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n",
+          "stdout": "{\"status\": \"ok\", \"kernel_name\": \"bf16_gemm_triton\", \"registers_per_thread\": 170, \"shared_memory_bytes\": 147456, \"spills\": 0}\n"
+        },
+        "compile_status": "SUCCESS",
+        "correctness": {
+          "failed_test_id": null,
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "reference_metadata": {
+            "implementation": "torch.matmul/cuBLAS",
+            "seed": 0
+          }
+        },
+        "correctness_status": "PASS",
+        "environment_manifest_id": "bc7cee16c1b70b8939730fdc7286455ea386d330da87332f01c7f3f677a22718",
+        "invalid_reason": null,
+        "launch_config": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "metadata": {
+          "compiler_context": {
+            "architecture": "sm_90",
+            "backend": "triton_h100",
+            "kernel_name": "bf16_gemm_triton",
+            "ptx": {
+              "artifacts": [
+                {
+                  "path": "/tmp/kernel-mcts-artifacts/triton-artifact-090fxh87/kernel.ptx",
+                  "sha256": "6e3e40006e0e640203307df763ab811185a9fae04736978dec53825670012612",
+                  "size_bytes": 36632,
+                  "storage_status": "eligible"
+                }
+              ],
+              "static_instruction_sites": {
+                "categories": {
+                  "async_copy": 44,
+                  "barrier": 6,
+                  "control": 2,
+                  "global_load": 0,
+                  "global_store": 16,
+                  "local_load": 0,
+                  "local_store": 0,
+                  "other": 502,
+                  "shared_load": 0,
+                  "shared_store": 16,
+                  "tensor": 8
+                },
+                "total": 594
+              },
+              "status": "captured"
+            },
+            "resources": {
+              "registers_per_thread": 170,
+              "spills": 0,
+              "static_shared_memory_bytes": 147456
+            },
+            "sass": {
+              "status": "unavailable"
+            },
+            "schema_version": 1
+          }
+        },
+        "program": {
+          "backend": "triton_h100",
+          "source": "import triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_triton(A, B, C, M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,\n                      BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    a_ptrs = A + row[:, None] * K + kk[None, :]\n    b_ptrs = B + kk[:, None] + col[None, :] * K\n    acc = tl.full((BM, BN), 0, tl.float32)\n    for k in range(0, tl.cdiv(K, BK)):\n        a = tl.load(a_ptrs,\n                    (row[:, None] < M) & (kk[None, :] + k * BK < K), other=0)\n        b = tl.load(b_ptrs,\n                    (kk[:, None] + k * BK < K) & (col[None, :] < N), other=0)\n        acc = tl.dot(a, b, acc)\n        a_ptrs += BK\n        b_ptrs += BK\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 128, 256, 64\n    return bf16_gemm_triton[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        A, B, C, M, N, K, BM, BN, BK, num_warps=8, num_stages=3\n    )"
+        },
+        "reward": 1.4373548033902177,
+        "source_hash": "2d210ec906fac3fc898dcefafa13a12f474d22cd7b9a74c214a8fadcc28becdd",
+        "state_key": "6a27856700dfe1925ed3f4f7968330fb6c328aff11b994e3d6ed2b87152f1d6e",
+        "status": "VALID",
+        "worker_id": "computeinstance-e00q61sj0631t0ybsk"
+      },
+      "name": "constexpr",
+      "round": 1,
+      "status": "VALID"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 257.63198733329773,
+        "mean_us": 244.84266688426337,
+        "median_us": 243.8560053706169,
+        "min_us": 240.03200232982635,
+        "per_shape_median_us": {},
+        "stddev_us": 3.396074491311435,
+        "timings_us": [
+          257.63198733329773,
+          247.80799448490143,
+          247.6480007171631,
+          242.94400215148926,
+          247.6480007171631,
+          242.8479939699173,
+          242.5920069217682,
+          246.59200012683868,
+          244.1920042037964,
+          243.52000653743744,
+          247.96800315380096,
+          247.29600548744202,
+          243.13600361347198,
+          244.57600712776184,
+          247.8400021791458,
+          247.39199876785278,
+          243.42399835586548,
+          241.5039986371994,
+          241.7919933795929,
+          246.62399291992188,
+          242.91199445724487,
+          240.03200232982635,
+          241.82400107383728,
+          245.31200528144836,
+          241.5360063314438,
+          241.63199961185455,
+          241.2160038948059,
+          247.13599681854248,
+          242.97599494457245,
+          245.728000998497
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "correctness_status": "PASS",
+      "evaluation": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 257.63198733329773,
+          "mean_us": 244.84266688426337,
+          "median_us": 243.8560053706169,
+          "min_us": 240.03200232982635,
+          "per_shape_median_us": {},
+          "stddev_us": 3.396074491311435,
+          "timings_us": [
+            257.63198733329773,
+            247.80799448490143,
+            247.6480007171631,
+            242.94400215148926,
+            247.6480007171631,
+            242.8479939699173,
+            242.5920069217682,
+            246.59200012683868,
+            244.1920042037964,
+            243.52000653743744,
+            247.96800315380096,
+            247.29600548744202,
+            243.13600361347198,
+            244.57600712776184,
+            247.8400021791458,
+            247.39199876785278,
+            243.42399835586548,
+            241.5039986371994,
+            241.7919933795929,
+            246.62399291992188,
+            242.91199445724487,
+            240.03200232982635,
+            241.82400107383728,
+            245.31200528144836,
+            241.5360063314438,
+            241.63199961185455,
+            241.2160038948059,
+            247.13599681854248,
+            242.97599494457245,
+            245.728000998497
+          ],
+          "warmup_count": 10
+        },
+        "binary_hash": "8816f6d7ead0487bab3aa49ed048c2ec8681809cf1e58108371316ca76d46094",
+        "compilation": {
+          "artifact_id": "254029d369e527a125d6548c4bbd18b5822ef2cda1f50c559217839c9a61f4d0",
+          "artifact_paths": [
+            "/tmp/kernel-mcts-artifacts/triton-artifact-0ot8q7lp/candidate.py",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-0ot8q7lp/kernel.cubin",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-0ot8q7lp/kernel.ptx"
+          ],
+          "duration_seconds": 2.2604589319998922,
+          "stderr": "/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n",
+          "stdout": "{\"status\": \"ok\", \"kernel_name\": \"bf16_gemm_triton\", \"registers_per_thread\": 188, \"shared_memory_bytes\": 147456, \"spills\": 0}\n"
+        },
+        "compile_status": "SUCCESS",
+        "correctness": {
+          "failed_test_id": null,
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "reference_metadata": {
+            "implementation": "torch.matmul/cuBLAS",
+            "seed": 0
+          }
+        },
+        "correctness_status": "PASS",
+        "environment_manifest_id": "bc7cee16c1b70b8939730fdc7286455ea386d330da87332f01c7f3f677a22718",
+        "invalid_reason": null,
+        "launch_config": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "metadata": {
+          "compiler_context": {
+            "architecture": "sm_90",
+            "backend": "triton_h100",
+            "kernel_name": "bf16_gemm_triton",
+            "ptx": {
+              "artifacts": [
+                {
+                  "path": "/tmp/kernel-mcts-artifacts/triton-artifact-0ot8q7lp/kernel.ptx",
+                  "sha256": "650edd37e230cf16dcb2c2c610d5b89c3f99182e84f536eaf1a4c2ab7bddc863",
+                  "size_bytes": 49852,
+                  "storage_status": "eligible"
+                }
+              ],
+              "static_instruction_sites": {
+                "categories": {
+                  "async_copy": 44,
+                  "barrier": 6,
+                  "control": 3,
+                  "global_load": 0,
+                  "global_store": 16,
+                  "local_load": 0,
+                  "local_store": 0,
+                  "other": 801,
+                  "shared_load": 0,
+                  "shared_store": 16,
+                  "tensor": 8
+                },
+                "total": 894
+              },
+              "status": "captured"
+            },
+            "resources": {
+              "registers_per_thread": 188,
+              "spills": 0,
+              "static_shared_memory_bytes": 147456
+            },
+            "sass": {
+              "status": "unavailable"
+            },
+            "schema_version": 1
+          }
+        },
+        "program": {
+          "backend": "triton_h100",
+          "source": "import triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_triton(A, B, C, M, N, K,\n                      BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    a_ptrs = A + row[:, None] * K + kk[None, :]\n    b_ptrs = B + kk[:, None] + col[None, :] * K\n    acc = tl.full((BM, BN), 0, tl.float32)\n    for k in range(0, tl.cdiv(K, BK)):\n        a = tl.load(a_ptrs,\n                    (row[:, None] < M) & (kk[None, :] + k * BK < K), other=0)\n        b = tl.load(b_ptrs,\n                    (kk[:, None] + k * BK < K) & (col[None, :] < N), other=0)\n        acc = tl.dot(a, b, acc)\n        a_ptrs += BK\n        b_ptrs += BK\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 128, 256, 64\n    return bf16_gemm_triton[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        A, B, C, M, N, K, BM, BN, BK, num_warps=8, num_stages=3\n    )"
+        },
+        "reward": 1.2313040070794619,
+        "source_hash": "b2aa37ccd53d5f17885a79394b4eaef4f50fd0ca6e28c8aad15b06166ef0d90d",
+        "state_key": "75258e6b6a8f7444f9dad0c5ae4f33075a4a8056691f8b746170a99fb4e233d8",
+        "status": "VALID",
+        "worker_id": "computeinstance-e00q61sj0631t0ybsk"
+      },
+      "name": "runtime",
+      "round": 1,
+      "status": "VALID"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 256.9600045681,
+        "mean_us": 245.08693466583887,
+        "median_us": 244.06400322914124,
+        "min_us": 240.89600145816803,
+        "per_shape_median_us": {},
+        "stddev_us": 3.1272967325039756,
+        "timings_us": [
+          256.9600045681,
+          247.48800694942474,
+          246.87999486923218,
+          248.54399263858795,
+          248.03200364112854,
+          244.60799992084503,
+          242.5920069217682,
+          243.3280050754547,
+          245.1840043067932,
+          244.00000274181366,
+          247.00799584388733,
+          242.5280064344406,
+          246.5600073337555,
+          243.29599738121033,
+          242.88000166416168,
+          244.1280037164688,
+          247.42400646209717,
+          242.94400215148926,
+          247.80799448490143,
+          245.31200528144836,
+          242.36799776554108,
+          242.36799776554108,
+          242.17599630355835,
+          249.02400374412537,
+          240.89600145816803,
+          242.75200068950653,
+          243.0720031261444,
+          245.82399427890778,
+          243.80800127983093,
+          242.8160011768341
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "correctness_status": "PASS",
+      "evaluation": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 256.9600045681,
+          "mean_us": 245.08693466583887,
+          "median_us": 244.06400322914124,
+          "min_us": 240.89600145816803,
+          "per_shape_median_us": {},
+          "stddev_us": 3.1272967325039756,
+          "timings_us": [
+            256.9600045681,
+            247.48800694942474,
+            246.87999486923218,
+            248.54399263858795,
+            248.03200364112854,
+            244.60799992084503,
+            242.5920069217682,
+            243.3280050754547,
+            245.1840043067932,
+            244.00000274181366,
+            247.00799584388733,
+            242.5280064344406,
+            246.5600073337555,
+            243.29599738121033,
+            242.88000166416168,
+            244.1280037164688,
+            247.42400646209717,
+            242.94400215148926,
+            247.80799448490143,
+            245.31200528144836,
+            242.36799776554108,
+            242.36799776554108,
+            242.17599630355835,
+            249.02400374412537,
+            240.89600145816803,
+            242.75200068950653,
+            243.0720031261444,
+            245.82399427890778,
+            243.80800127983093,
+            242.8160011768341
+          ],
+          "warmup_count": 10
+        },
+        "binary_hash": "8816f6d7ead0487bab3aa49ed048c2ec8681809cf1e58108371316ca76d46094",
+        "compilation": {
+          "artifact_id": "254029d369e527a125d6548c4bbd18b5822ef2cda1f50c559217839c9a61f4d0",
+          "artifact_paths": [
+            "/tmp/kernel-mcts-artifacts/triton-artifact-qnidlqjm/candidate.py",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-qnidlqjm/kernel.cubin",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-qnidlqjm/kernel.ptx"
+          ],
+          "duration_seconds": 2.372533358000055,
+          "stderr": "/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n",
+          "stdout": "{\"status\": \"ok\", \"kernel_name\": \"bf16_gemm_triton\", \"registers_per_thread\": 188, \"shared_memory_bytes\": 147456, \"spills\": 0}\n"
+        },
+        "compile_status": "SUCCESS",
+        "correctness": {
+          "failed_test_id": null,
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "reference_metadata": {
+            "implementation": "torch.matmul/cuBLAS",
+            "seed": 0
+          }
+        },
+        "correctness_status": "PASS",
+        "environment_manifest_id": "bc7cee16c1b70b8939730fdc7286455ea386d330da87332f01c7f3f677a22718",
+        "invalid_reason": null,
+        "launch_config": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "metadata": {
+          "compiler_context": {
+            "architecture": "sm_90",
+            "backend": "triton_h100",
+            "kernel_name": "bf16_gemm_triton",
+            "ptx": {
+              "artifacts": [
+                {
+                  "path": "/tmp/kernel-mcts-artifacts/triton-artifact-qnidlqjm/kernel.ptx",
+                  "sha256": "650edd37e230cf16dcb2c2c610d5b89c3f99182e84f536eaf1a4c2ab7bddc863",
+                  "size_bytes": 49852,
+                  "storage_status": "eligible"
+                }
+              ],
+              "static_instruction_sites": {
+                "categories": {
+                  "async_copy": 44,
+                  "barrier": 6,
+                  "control": 3,
+                  "global_load": 0,
+                  "global_store": 16,
+                  "local_load": 0,
+                  "local_store": 0,
+                  "other": 801,
+                  "shared_load": 0,
+                  "shared_store": 16,
+                  "tensor": 8
+                },
+                "total": 894
+              },
+              "status": "captured"
+            },
+            "resources": {
+              "registers_per_thread": 188,
+              "spills": 0,
+              "static_shared_memory_bytes": 147456
+            },
+            "sass": {
+              "status": "unavailable"
+            },
+            "schema_version": 1
+          }
+        },
+        "program": {
+          "backend": "triton_h100",
+          "source": "import triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_triton(A, B, C, M, N, K,\n                      BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    a_ptrs = A + row[:, None] * K + kk[None, :]\n    b_ptrs = B + kk[:, None] + col[None, :] * K\n    acc = tl.full((BM, BN), 0, tl.float32)\n    for k in range(0, tl.cdiv(K, BK)):\n        a = tl.load(a_ptrs,\n                    (row[:, None] < M) & (kk[None, :] + k * BK < K), other=0)\n        b = tl.load(b_ptrs,\n                    (kk[:, None] + k * BK < K) & (col[None, :] < N), other=0)\n        acc = tl.dot(a, b, acc)\n        a_ptrs += BK\n        b_ptrs += BK\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 128, 256, 64\n    return bf16_gemm_triton[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        A, B, C, M, N, K, BM, BN, BK, num_warps=8, num_stages=3\n    )"
+        },
+        "reward": 1.2304514170341352,
+        "source_hash": "b2aa37ccd53d5f17885a79394b4eaef4f50fd0ca6e28c8aad15b06166ef0d90d",
+        "state_key": "75258e6b6a8f7444f9dad0c5ae4f33075a4a8056691f8b746170a99fb4e233d8",
+        "status": "VALID",
+        "worker_id": "computeinstance-e00q61sj0631t0ybsk"
+      },
+      "name": "runtime",
+      "round": 2,
+      "status": "VALID"
+    },
+    {
+      "benchmark": {
+        "gpu_operating_state": {},
+        "max_us": 211.07199788093567,
+        "mean_us": 199.6853326757749,
+        "median_us": 198.72000068426132,
+        "min_us": 195.42400538921356,
+        "per_shape_median_us": {},
+        "stddev_us": 3.5361379503494956,
+        "timings_us": [
+          211.07199788093567,
+          202.55999267101288,
+          209.9519968032837,
+          200.03199577331543,
+          197.91999459266663,
+          202.59200036525726,
+          197.85599410533905,
+          200.8640021085739,
+          198.30399751663208,
+          196.79999351501465,
+          203.5840004682541,
+          197.24799692630768,
+          201.85600221157074,
+          197.952002286911,
+          196.48000597953796,
+          200.1280039548874,
+          200.54399967193604,
+          199.0080028772354,
+          196.57599925994873,
+          195.42400538921356,
+          195.8719938993454,
+          199.42399859428406,
+          198.43199849128723,
+          197.28000462055206,
+          200.25600492954254,
+          197.40800559520721,
+          200.3519982099533,
+          197.7279931306839,
+          197.4399983882904,
+          199.61600005626678
+        ],
+        "warmup_count": 10
+      },
+      "compile_status": "SUCCESS",
+      "correctness_status": "PASS",
+      "evaluation": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 211.07199788093567,
+          "mean_us": 199.6853326757749,
+          "median_us": 198.72000068426132,
+          "min_us": 195.42400538921356,
+          "per_shape_median_us": {},
+          "stddev_us": 3.5361379503494956,
+          "timings_us": [
+            211.07199788093567,
+            202.55999267101288,
+            209.9519968032837,
+            200.03199577331543,
+            197.91999459266663,
+            202.59200036525726,
+            197.85599410533905,
+            200.8640021085739,
+            198.30399751663208,
+            196.79999351501465,
+            203.5840004682541,
+            197.24799692630768,
+            201.85600221157074,
+            197.952002286911,
+            196.48000597953796,
+            200.1280039548874,
+            200.54399967193604,
+            199.0080028772354,
+            196.57599925994873,
+            195.42400538921356,
+            195.8719938993454,
+            199.42399859428406,
+            198.43199849128723,
+            197.28000462055206,
+            200.25600492954254,
+            197.40800559520721,
+            200.3519982099533,
+            197.7279931306839,
+            197.4399983882904,
+            199.61600005626678
+          ],
+          "warmup_count": 10
+        },
+        "binary_hash": "b3b9e15d4bb65cfa26330ce48b5d62324b3eed8f4f3c7b2c62074507fbddeb5b",
+        "compilation": {
+          "artifact_id": "225f1f67fd9d03d49700cf4e7436d1648fc051819556e1e86c5cf274fb7c28ae",
+          "artifact_paths": [
+            "/tmp/kernel-mcts-artifacts/triton-artifact-91jsewml/candidate.py",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-91jsewml/kernel.cubin",
+            "/tmp/kernel-mcts-artifacts/triton-artifact-91jsewml/kernel.ptx"
+          ],
+          "duration_seconds": 2.312565763000066,
+          "stderr": "/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n",
+          "stdout": "{\"status\": \"ok\", \"kernel_name\": \"bf16_gemm_triton\", \"registers_per_thread\": 170, \"shared_memory_bytes\": 147456, \"spills\": 0}\n"
+        },
+        "compile_status": "SUCCESS",
+        "correctness": {
+          "failed_test_id": null,
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "reference_metadata": {
+            "implementation": "torch.matmul/cuBLAS",
+            "seed": 0
+          }
+        },
+        "correctness_status": "PASS",
+        "environment_manifest_id": "bc7cee16c1b70b8939730fdc7286455ea386d330da87332f01c7f3f677a22718",
+        "invalid_reason": null,
+        "launch_config": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "metadata": {
+          "compiler_context": {
+            "architecture": "sm_90",
+            "backend": "triton_h100",
+            "kernel_name": "bf16_gemm_triton",
+            "ptx": {
+              "artifacts": [
+                {
+                  "path": "/tmp/kernel-mcts-artifacts/triton-artifact-91jsewml/kernel.ptx",
+                  "sha256": "6e3e40006e0e640203307df763ab811185a9fae04736978dec53825670012612",
+                  "size_bytes": 36632,
+                  "storage_status": "eligible"
+                }
+              ],
+              "static_instruction_sites": {
+                "categories": {
+                  "async_copy": 44,
+                  "barrier": 6,
+                  "control": 2,
+                  "global_load": 0,
+                  "global_store": 16,
+                  "local_load": 0,
+                  "local_store": 0,
+                  "other": 502,
+                  "shared_load": 0,
+                  "shared_store": 16,
+                  "tensor": 8
+                },
+                "total": 594
+              },
+              "status": "captured"
+            },
+            "resources": {
+              "registers_per_thread": 170,
+              "spills": 0,
+              "static_shared_memory_bytes": 147456
+            },
+            "sass": {
+              "status": "unavailable"
+            },
+            "schema_version": 1
+          }
+        },
+        "program": {
+          "backend": "triton_h100",
+          "source": "import triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_triton(A, B, C, M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,\n                      BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    a_ptrs = A + row[:, None] * K + kk[None, :]\n    b_ptrs = B + kk[:, None] + col[None, :] * K\n    acc = tl.full((BM, BN), 0, tl.float32)\n    for k in range(0, tl.cdiv(K, BK)):\n        a = tl.load(a_ptrs,\n                    (row[:, None] < M) & (kk[None, :] + k * BK < K), other=0)\n        b = tl.load(b_ptrs,\n                    (kk[:, None] + k * BK < K) & (col[None, :] < N), other=0)\n        acc = tl.dot(a, b, acc)\n        a_ptrs += BK\n        b_ptrs += BK\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 128, 256, 64\n    return bf16_gemm_triton[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        A, B, C, M, N, K, BM, BN, BK, num_warps=8, num_stages=3\n    )"
+        },
+        "reward": 1.4359851140582203,
+        "source_hash": "2d210ec906fac3fc898dcefafa13a12f474d22cd7b9a74c214a8fadcc28becdd",
+        "state_key": "6a27856700dfe1925ed3f4f7968330fb6c328aff11b994e3d6ed2b87152f1d6e",
+        "status": "VALID",
+        "worker_id": "computeinstance-e00q61sj0631t0ybsk"
+      },
+      "name": "constexpr",
+      "round": 2,
+      "status": "VALID"
+    }
+  ],
+  "orders": [
+    [
+      "runtime",
+      "constexpr"
+    ],
+    [
+      "constexpr",
+      "runtime"
+    ],
+    [
+      "runtime",
+      "constexpr"
+    ]
+  ],
+  "overlay_sha256": "dff042e2163ca9d54314621488dd9b9b9155fb692dd5400507df807d55979d91",
+  "paired_constexpr_minus_runtime_us": [
+    -44.92800682783127,
+    -45.40800303220749,
+    -45.34400254487991
+  ],
+  "schema_version": 1,
+  "source_sha256": {
+    "constexpr": "2d210ec906fac3fc898dcefafa13a12f474d22cd7b9a74c214a8fadcc28becdd",
+    "runtime": "b2aa37ccd53d5f17885a79394b4eaef4f50fd0ca6e28c8aad15b06166ef0d90d"
+  },
+  "startup_calibration": {
+    "backend": "triton_h100",
+    "benchmark": {
+      "gpu_operating_state": {},
+      "max_us": 850.0159978866577,
+      "mean_us": 835.0421289602915,
+      "median_us": 835.3759944438934,
+      "min_us": 827.9359936714172,
+      "per_shape_median_us": {},
+      "stddev_us": 3.947544556695048,
+      "timings_us": [
+        839.1680121421814,
+        834.3679904937744,
+        834.7839713096619,
+        834.5919847488403,
+        836.4480137825012,
+        835.3919982910156,
+        833.3119750022888,
+        835.3599905967712,
+        835.0080251693726,
+        837.119996547699,
+        829.472005367279,
+        830.3359746932983,
+        831.0080170631409,
+        850.0159978866577,
+        838.9120101928711,
+        833.9200019836426,
+        836.6079926490784,
+        835.8079791069031,
+        827.9359936714172,
+        832.0000171661377,
+        829.8879861831665,
+        835.6159925460815,
+        838.271975517273,
+        836.0959887504578,
+        836.2240195274353,
+        830.3359746932983,
+        836.7040157318115,
+        834.33598279953,
+        836.031973361969,
+        836.1920118331909
+      ],
+      "warmup_count": 10
+    },
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "compile": {
+      "artifact_id": "beecec235c295e1fe0693058884581960b9388a024ead9c0c6beb268e2295ddc",
+      "duration_seconds": 2.342017566000095,
+      "success": true
+    },
+    "correctness": {
+      "failed_test_id": null,
+      "maximum_error": 0.0,
+      "mean_error": 0.0,
+      "reference_metadata": {
+        "implementation": "torch.matmul/cuBLAS",
+        "seed": 0
+      },
+      "success": true
+    },
+    "vendor_baselines": {
+      "cublas": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 181.728012,
+          "mean_us": 177.48906556666668,
+          "median_us": 177.375992,
+          "min_us": 174.751999,
+          "per_shape_median_us": {},
+          "stddev_us": 1.3155552044968095,
+          "timings_us": [
+            180.960007,
+            178.432007,
+            177.215988,
+            177.40799,
+            176.255997,
+            177.343994,
+            177.568008,
+            178.175995,
+            176.671997,
+            175.871994,
+            177.599991,
+            177.599991,
+            177.727997,
+            178.240005,
+            176.960007,
+            178.496002,
+            177.535995,
+            177.40799,
+            177.888,
+            177.024002,
+            176.479996,
+            175.871994,
+            181.728012,
+            177.343994,
+            176.768005,
+            174.751999,
+            176.639999,
+            177.279999,
+            178.335999,
+            177.088013
+          ],
+          "warmup_count": 10
+        },
+        "correctness": {
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "success": true
+        }
+      },
+      "cutlass": {
+        "benchmark": {
+          "gpu_operating_state": {},
+          "max_us": 312.959991,
+          "mean_us": 308.2293315333334,
+          "median_us": 308.160004,
+          "min_us": 306.367981,
+          "per_shape_median_us": {},
+          "stddev_us": 1.2609266736134168,
+          "timings_us": [
+            312.959991,
+            309.536011,
+            307.519989,
+            309.471985,
+            307.424011,
+            309.247986,
+            307.743988,
+            308.800018,
+            306.367981,
+            309.152008,
+            308.192017,
+            307.455994,
+            306.59198,
+            307.104004,
+            307.200012,
+            308.319977,
+            309.119995,
+            308.384003,
+            308.0,
+            307.808014,
+            308.575989,
+            306.975983,
+            309.152008,
+            309.056,
+            307.104004,
+            308.127991,
+            308.832001,
+            306.528015,
+            308.575989,
+            307.552002
+          ],
+          "warmup_count": 10
+        },
+        "correctness": {
+          "maximum_error": 0.0,
+          "mean_error": 0.0,
+          "success": true
+        }
+      }
+    }
+  }
+}

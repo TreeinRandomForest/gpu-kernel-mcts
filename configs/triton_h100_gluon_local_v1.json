@@ -1,0 +1,12 @@
+{
+  "version": "triton_h100_gluon_local_v1",
+  "strategies": [
+    {
+      "id": "single_cta_tile_traversal",
+      "description": "Group output tiles in the one-CTA Gluon launch without changing the mainloop",
+      "candidate_stage": "single_cta_gluon",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["single_cta_gluon"]},
+      "prompts": {"triton_h100": "Make one local output-tile traversal edit to the supplied one-CTA Gluon source. Preserve the top-level module docstring exactly, along with every import, constant, function signature, descriptor, MMA operation, pipeline, output store, and ABI. In gemm, replace only the consecutive pid_m = gl.program_id(0) and pid_n = gl.program_id(1) statements with a bounded group-M mapping from one linear pid = gl.program_id(0). Set GROUP_M to 2, 4, 8, or 16 inside that mapping. If existing_realizations are provided, choose a GROUP_M not listed there and do not repeat their source. Compute num_pid_m = a_desc.shape[0] // block_m and num_pid_n = b_desc.shape[0] // block_n with integer // division; use integer // for every other quotient in the mapping. Handle the last partial M group so the mapping is bijective. Keep off_m = pid_m * block_m and off_n = pid_n * block_n and every later statement unchanged. In launch, replace only grid = (...) with the one-dimensional total-tile grid (triton.cdiv(M, block_m) * triton.cdiv(N, CTA_N),). Return the complete source with launch(A,B,C,M,N,K). A static guard checks that only these two sites changed and that the mapping uses GROUP_M; correctness and CUDA-event timing decide validity and speed. Do not change tile dimensions, num_warps, num_ctas, or the K loop."}
+    }
+  ]
+}

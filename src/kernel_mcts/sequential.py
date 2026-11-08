@@ -21,6 +21,7 @@ from .profiling import (
 from .proposals import run_proposal
 from .resource_graph import prompt_h100_resource_graph
 from .serialization import serialize_benchmark, serialize_evaluation, serialize_generation, serialize_workload
+from .strategy_applicability import applicable_strategies
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +72,7 @@ class SequentialResult:
     wall_seconds: float
 
 
-_FREEFORM = Strategy("freeform", "Unconstrained sequential optimization", {"cuda_cpp": ""})
+_FREEFORM = Strategy("freeform", "Unconstrained sequential optimization", {"cuda_cpp": "", "triton_h100": ""})
 
 
 def run_sequential_loop(
@@ -80,6 +81,8 @@ def run_sequential_loop(
     evaluator: KernelEvaluator, profiler: NodeProfiler, trace: SearchTraceStore,
     generation_budget: int, config: SequentialConfig = SequentialConfig(), seed: int = 0,
     resource_graph: Mapping[str, object] | None = None,
+    strategy_catalog: tuple[Strategy, ...] = (),
+    reference_baselines: Mapping[str, object] | None = None,
 ) -> SequentialResult:
     if root_evaluation.status != ProposalStatus.VALID:
         raise ValueError("sequential root must be valid")
@@ -137,9 +140,13 @@ def run_sequential_loop(
     try:
         profile(root, 0, "initial_context")
         while not budget.exhausted:
-            iterations += 1
             evaluation = current.evaluation
             assert evaluation.program is not None
+            if strategy_catalog and not applicable_strategies(
+                strategy_catalog, evaluation.program, workload, hardware,
+            ):
+                break
+            iterations += 1
             compiler = None
             if config.compiler_detail != "none":
                 compiler = prompt_compiler_summary(evaluation.metadata.get("compiler_context"))
@@ -157,6 +164,9 @@ def run_sequential_loop(
                 profile=_visible_profile(current.profile, config.profile_visibility),
                 compiler_summary=compiler, dataflow_view=dataflow,
                 current_benchmark=serialize_benchmark(evaluation.benchmark),
+                reference_baselines=(
+                    reference_baselines if evaluation.program.backend == "triton_h100" else None
+                ),
                 recent_feedback=feedback,
                 hardware_resource_graph=(
                     prompt_h100_resource_graph(resource_graph)
@@ -177,6 +187,14 @@ def run_sequential_loop(
                 generator=generator, evaluator=evaluator, budget=budget, request=request,
                 max_repairs=config.max_repairs,
                 max_infrastructure_retries=config.max_infrastructure_retries,
+                selected_strategies=(
+                    {item.id: item for item in strategy_catalog}
+                    if strategy_catalog else None
+                ),
+                allowed_candidate_stages=(
+                    frozenset({"pointer_triton", "descriptor_triton"})
+                    if evaluation.program.backend == "triton_h100" else None
+                ),
             )
             result = outcome.result
             child = None
@@ -197,7 +215,11 @@ def run_sequential_loop(
                 trace.emit("generation", {
                     "generation_id": attempt.generation.generation_id,
                     "iteration": iterations, "b_gen": attempt.b_gen,
-                    "parent_node_id": parent.id, "strategy_id": "freeform",
+                    "parent_node_id": parent.id,
+                    "strategy_id": (
+                        choice.get("selected_strategy_id") or "freeform"
+                        if strategy_catalog else "freeform"
+                    ),
                     "repair_attempt": attempt.attempt_number,
                     "proposal_status": attempt_result.status.value,
                     "invalid_reason": serialized["invalid_reason"],

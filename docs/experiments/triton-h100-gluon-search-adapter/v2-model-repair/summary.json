@@ -1,0 +1,38 @@
+{
+  "attempts": [
+    {
+      "attempt": 0,
+      "b_gen": 1,
+      "candidate_stage": "pointer_triton",
+      "generation_id": "chatcmpl-f8643ab6-5c46-4477-915d-69310e7ae13e",
+      "input_tokens": 1292,
+      "latency_seconds": 46.29169487999752,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 3477,
+      "prompt_sha256": "2274f475a33d9d09f8350c2ef922d0c1dff2df0844a1d133645c4bfd2c61a120",
+      "source_sha256": "e8f885785bc1551fa6811933400d29b4125fe165b85c95d392649e8d77bc2bf3",
+      "stage_accepted": false
+    },
+    {
+      "attempt": 1,
+      "b_gen": 2,
+      "candidate_stage": "unknown",
+      "generation_id": "chatcmpl-acafe3fe-1338-47b2-a1c8-2bafc83242e3",
+      "input_tokens": 2105,
+      "latency_seconds": 41.58454252593219,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 3052,
+      "prompt_sha256": "51114da915ec356049d3c68a4e44e359fccbb3751e4d0c6c89805026bf5c0e1f",
+      "source_sha256": "85b24e35f852cee0dd96b5a96bb5d6394f2ada527d905bd75e3b7a1d85f585e4",
+      "stage_accepted": false
+    }
+  ],
+  "b_gen_used": 2,
+  "catalog_sha256": "75a976656a8e75be6e056e4bae131d31620d8d276bd1d99695e1aa22befcf7c8",
+  "complete": true,
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "scaffold": false,
+  "schema_version": 1,
+  "stage_accepted": false
+}

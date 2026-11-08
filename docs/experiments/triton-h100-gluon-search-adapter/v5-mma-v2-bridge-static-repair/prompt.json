@@ -1,0 +1,108 @@
+{
+  "attempt": 1,
+  "backend": "triton_h100",
+  "constraints": [
+    "Return a complete Python Triton or Gluon source file without Markdown.",
+    "Define launch(A, B, C, M, N, K) and return the CompiledKernel that computes C.",
+    "A is row-major BF16 [M,K]; B is column-major BF16 [K,N]; C is row-major BF16 [M,N].",
+    "Preserve FP32 accumulation and the fixed correctness tolerance.",
+    "The kernel may use @triton.jit or @gluon.jit; preserve the launch ABI and return one named compiled kernel.",
+    "Treat cuBLAS timing as a reference target; search reward is measured against the Triton root."
+  ],
+  "parent_kernel": "import triton\nimport triton.language as tl\nfrom triton.tools.tensor_descriptor import TensorDescriptor\n\n\n@triton.jit\ndef bf16_gemm_tma(a_desc, b_desc, C, M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,\n                  BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    off_m = tl.program_id(0) * BM\n    off_n = tl.program_id(1) * BN\n    acc = tl.zeros((BM, BN), dtype=tl.float32)\n    for off_k in range(0, K, BK):\n        a = a_desc.load([off_m, off_k])\n        b = b_desc.load([off_n, off_k])\n        acc += tl.dot(a, tl.trans(b))\n    row = off_m + tl.arange(0, BM)\n    col = off_n + tl.arange(0, BN)\n    tl.store(C + row[:, None] * N + col[None, :],\n             acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 64, 128, 64\n    a_desc = TensorDescriptor(A, shape=[M, K], strides=[K, 1],\n                              block_shape=[BM, BK])\n    # B is [K,N] column-major == zero-copy contiguous B.T [N,K].\n    b_desc = TensorDescriptor(B, shape=[N, K], strides=[K, 1],\n                              block_shape=[BN, BK])\n    return bf16_gemm_tma[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        a_desc, b_desc, C, M, N, K, BM, BN, BK,\n        num_warps=8, num_stages=3\n    )",
+  "parent_profile": null,
+  "parent_timing": {
+    "measurement": "CUDA events",
+    "median_us": 300.448,
+    "sample_count": null,
+    "warmup_count": null
+  },
+  "performance_references": {
+    "cublas_median_us": 181.536
+  },
+  "repair": {
+    "instruction": "Repair the failed candidate while preserving semantics.",
+    "previous_candidate": "import triton\nimport triton.language as tl\nimport gluon\nimport gluon.language as gl\nfrom triton.experimental.gluon.language.nvidia.ampere import (\n    mma_v2,\n    NVMMADistributedLayout,\n    DotOperandLayout,\n)\n\n\n@gluon.jit\ndef bf16_gemm_gluon(A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,\n                    BM: gl.constexpr, BN: gl.constexpr, BK: gl.constexpr):\n    a_layout: gl.constexpr = gl.BlockedLayout(\n        size_per_thread=[1, 16], threads_per_warp=[4, 8],\n        warps_per_cta=[2, 2], order=[1, 0])\n    b_layout: gl.constexpr = gl.BlockedLayout(\n        size_per_thread=[16, 1], threads_per_warp=[8, 4],\n        warps_per_cta=[2, 2], order=[0, 1])\n    c_layout: gl.constexpr = gl.BlockedLayout(\n        size_per_thread=[1, 8], threads_per_warp=[4, 8],\n        warps_per_cta=[4, 1], order=[1, 0])\n    mma_layout: gl.constexpr = NVMMADistributedLayout(\n        warps_per_cta=[4, 1], instr_shape=[16, 8])\n    a_op: gl.constexpr = gl.DotOperandLayout(0, parent=mma_layout, k_width=2)\n    b_op: gl.constexpr = gl.DotOperandLayout(1, parent=mma_layout, k_width=2)\n\n    pid_m = tl.program_id(0)\n    pid_n = tl.program_id(1)\n\n    row = pid_m * BM + tl.arange(0, BM)\n    col = pid_n * BN + tl.arange(0, BN)\n    k = tl.arange(0, BK)\n\n    row_a: gl.constexpr = gl.SliceLayout(1, a_layout)\n    k_a: gl.constexpr = gl.SliceLayout(0, a_layout)\n    k_b: gl.constexpr = gl.SliceLayout(1, b_layout)\n    col_b: gl.constexpr = gl.SliceLayout(0, b_layout)\n\n    row_m = tl.reshape(row, (BM, 1))\n    col_m = tl.reshape(col, (1, BN))\n\n    acc = gl.zeros((BM, BN), mma_layout, tl.float32)\n\n    for off_k in range(0, K, BK):\n        a_off = tl.reshape(tl.convert_layout(row, row_a), (BM, 1)) * K \\\n            + tl.reshape(tl.convert_layout(k + off_k, k_a), (1, BK))\n        b_off = tl.reshape(tl.convert_layout(k + off_k, k_b), (BK, 1)) \\\n            + tl.reshape(tl.convert_layout(col, col_b), (1, BN)) * K\n        a = gl.load(A + a_off,\n                    mask=(row[:, None] < M) & (k[None, :] + off_k < K),\n                    other=0.0)\n        b = gl.load(B + b_off,\n                    mask=(k[:, None] + off_k < K) & (col[None, :] < N),\n                    other=0.0)\n        a = gl.convert_layout(a, a_op)\n        b = gl.convert_layout(b, b_op)\n        acc = mma_v2(a, b, acc)\n\n    c = gl.convert_layout(acc.to(tl.bfloat16), c_layout)\n    gl.store(C + row_m * N + col_m, c,\n             mask=(row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 64, 128, 64\n    return bf16_gemm_gluon[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        A, B, C, M, N, K, BM, BN, BK,\n        num_warps=4, num_stages=3\n    )",
+    "previous_evaluation": {
+      "compilation": null,
+      "compile_status": "NOT_ATTEMPTED",
+      "correctness": null,
+      "correctness_status": "NOT_TESTED",
+      "invalid_reason": "OTHER",
+      "status": "INVALID"
+    }
+  },
+  "strategy": {
+    "backend_prompt": "Return only a complete Python source file, at most 130 lines. Port to one-CTA @gluon.jit using ordinary pointer gl.load and mma_v2 from triton.experimental.gluon.language.nvidia.ampere; this intermediate may be slower. Keep launch(A,B,C,M,N,K), BF16 input/output, FP32 accumulation, and one writer per output. A[M,K] is row-major, B[K,N] is column-major with B[k,n] at B+n*K+k, and C[M,N] is row-major. Use BM=64, BN=128, BK=64, num_warps=4. Every layout-object local assignment needs ': gl.constexpr'. Every gl.BlockedLayout must have four arguments and threads_per_warp entries whose product is 32; use A size_per_thread=[1,16], threads_per_warp=[4,8], warps_per_cta=[2,2], order=[1,0]; B [16,1], [8,4], [2,2], order=[0,1]; output [1,8], [4,8], [4,1], order=[1,0]. Use gl.SliceLayout(1, layout) for first-axis offsets and gl.SliceLayout(0, layout) for second-axis offsets. Use gl.NVMMADistributedLayout(version=[2,0], warps_per_cta=[4,1], instr_shape=[16,8]) for a gl.zeros FP32 accumulator; convert A/B tiles to gl.DotOperandLayout(0 or 1, parent=mma_layout, k_width=2) before mma_v2(a,b,acc). gl.load(pointer, mask=..., other=...) and gl.store(pointer,value,mask=...) take no positional layout argument. Convert the accumulator to the output BlockedLayout before store. Return the compiled kernel from launch. Do not use descriptors, TMA, WGMMA, clusters, or a validated Gluon source scaffold. Static review before GPU compilation: `import gluon` and `import gluon.language as gl` are invalid; use `from triton.experimental import gluon` and `from triton.experimental.gluon import language as gl`. Inside @gluon.jit use only gl.program_id, gl.arange, gl.reshape, gl.convert_layout, gl.float32 and gl.bfloat16, never tl.*. Use `gl.NVMMADistributedLayout(version=[2,0], warps_per_cta=[4,1], instr_shape=[16,8])`; supply dtype then layout to `gl.zeros((BM,BN), gl.float32, layout=mma_layout)`. Keep the A/B/output BlockedLayout orders and 32-thread warp products. Return complete Python code only.",
+    "description": "Port descriptor Triton GEMM to a simple one-CTA pointer-load Gluon MMA-v2 kernel",
+    "id": "gluon_mma_v2_pointer_port"
+  },
+  "target_hardware": {
+    "gpu_model": "H100"
+  },
+  "task": "Produce a complete replacement GPU kernel preserving the workload contract.",
+  "workload": {
+    "atol": 0.02,
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "dtype": "bfloat16",
+    "metadata": {
+      "abi": {
+        "launch": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "parameters": [
+          "A",
+          "B",
+          "C",
+          "M",
+          "N",
+          "K"
+        ]
+      },
+      "accumulation_dtype": "float32",
+      "entry_point": "launch",
+      "output_dtype": "bfloat16",
+      "target": {
+        "form_factor": "SXM",
+        "gpu_model": "H100",
+        "minimum_compute_capability": "9.0"
+      },
+      "tensors": {
+        "A": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "K"
+          ]
+        },
+        "B": {
+          "layout": "column_major",
+          "shape": [
+            "K",
+            "N"
+          ]
+        },
+        "C": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "N"
+          ]
+        }
+      }
+    },
+    "operation": "gemm",
+    "rtol": 0.02,
+    "shapes": [
+      {
+        "dimensions": {
+          "K": 4096,
+          "M": 4096,
+          "N": 4096
+        },
+        "weight": 1.0
+      }
+    ]
+  }
+}

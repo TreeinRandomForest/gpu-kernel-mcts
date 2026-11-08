@@ -1,0 +1,66 @@
+{
+  "version": "triton_h100_staged_v3",
+  "strategies": [
+    {
+      "id": "tile_warp_co_design",
+      "description": "Co-design output tile and warp count around resource limits",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["pointer_triton", "descriptor_triton", "gluon_mma_v2", "single_cta_gluon", "clustered_gluon", "gluon_other"]},
+      "prompts": {"triton_h100": "Change output tile dimensions and num_warps together. Preserve complete output coverage, one writer per output, fixed tensor layouts and BF16 output. Check compiler registers, spills and shared memory; optimize measured CUDA-event latency."}
+    },
+    {
+      "id": "descriptor_tma_staging",
+      "description": "Replace Triton pointer operand loads with descriptor TMA loads",
+      "candidate_stage": "descriptor_triton",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["pointer_triton"]},
+      "prompts": {"triton_h100": "Keep the existing @triton.jit GEMM, tl.dot, single-CTA grid, output tile and BF16 epilogue. Change only A/B operand retrieval from pointer tl.load to descriptor loads. In launch(A,B,C,M,N,K), create Triton TensorDescriptor objects for contiguous row-major A[M,K] and the zero-copy contiguous B.T[N,K] physical view; pass both descriptors to the JIT kernel. Inside the K loop, use a_desc.load([off_m, off_k]) and b_desc.load([off_n, off_k]), then transpose the B tile for tl.dot. Use the TensorDescriptor API supported by Triton 3.9 and legal aligned block shapes. Do not introduce Gluon, clusters, or a new pipeline yet. Preserve one output writer and verify correctness before latency."}
+    },
+    {
+      "id": "cross_cta_tile_traversal",
+      "description": "Change output-tile traversal to improve operand reuse",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["pointer_triton", "descriptor_triton", "gluon_mma_v2", "single_cta_gluon", "clustered_gluon", "gluon_other"]},
+      "prompts": {"triton_h100": "Change output tile-to-CTA mapping and, if useful, tile aspect ratio. Derive M/N tile counts, prove complete coverage and one writer per output, and preserve cluster ownership if present. Treat L2/DRAM counters as whole-kernel evidence and optimize measured latency, not traffic alone."}
+    },
+    {
+      "id": "gluon_mma_v2_port",
+      "description": "Port one-CTA GEMM syntax and layouts to Gluon MMA v2",
+      "candidate_stage": "gluon_mma_v2",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["pointer_triton", "descriptor_triton"]},
+      "prompts": {"triton_h100": "Make only the language/layout transition to one-CTA Gluon. Import gluon from triton.experimental and language as gl; define @gluon.jit and launch(A,B,C,M,N,K) returning its compiled kernel. Keep the existing GEMM tile, pointer-based A/B loads and output ownership; B remains logical column-major [K,N] with strides (1,K). Give gl.arange and gl.zeros explicit legal BlockedLayout/SliceLayout/NVMMADistributedLayout values, convert A and B to matching DotOperandLayout values, and use the documented triton.experimental.gluon.language.nvidia.ampere.mma_v2 operation for FP32 accumulation. Do not introduce TMA, WGMMA, clusters, persistence or multi-slot pipelining in this action. Verify BF16 correctness before timing; an intermediate latency regression is allowed."}
+    },
+    {
+      "id": "single_cta_gluon_wgmma_tma",
+      "description": "Port descriptor GEMM to one-CTA Gluon TMA and WGMMA",
+      "candidate_stage": "single_cta_gluon",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["descriptor_triton", "gluon_mma_v2"]},
+      "prompts": {"triton_h100": "Convert the valid one-CTA GEMM to Hopper TMA and WGMMA while keeping one CTA per output tile (num_ctas=1), the current tile/grid and the search launch ABI. Use imports from triton.experimental.gluon. Build Hopper TensorDescriptor.from_tensor for A and zero-copy B.T with legal NVMMASharedLayout; use one TMA mbarrier and shared A/B buffers, then warpgroup_mma with an explicit wait before buffer reuse. Load B through its descriptor with an ordinary per-CTA unicast TMA load, without multicast. Keep output ownership and FP32 accumulation. Do not add a two-CTA cluster or multi-slot pipeline in this action. Return the compiled Gluon kernel; verify correctness and resources."}
+    },
+    {
+      "id": "two_cta_cluster_partition",
+      "description": "Partition a one-CTA Gluon output tile across two CTAs",
+      "candidate_stage": "clustered_gluon",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["single_cta_gluon"]},
+      "prompts": {"triton_h100": "Change the valid one-CTA Gluon TMA/WGMMA kernel to num_ctas=2. Derive a two-CTA output ownership layout: distribute A and C along M, keep B as unicast per-CTA TMA loads without multicast, and resize the program tile/grid so every output is written exactly once. Use legal cga_layout values for the shared descriptors and WGMMA accumulator. Preserve the existing barrier and wait schedule; do not add persistence or a new prefetch ring. Verify exactness, compiler resources and measured latency."}
+    },
+    {
+      "id": "single_cta_tile_shape",
+      "description": "Change the validated one-CTA Gluon N or K tile through a bounded typed mutation",
+      "candidate_stage": "single_cta_gluon",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["single_cta_gluon"]},
+      "prompts": {"triton_h100": "For the validated one-CTA Gluon family, change only CTA_N and its WGMMA instruction N shape or BLOCK_K. Keep the ABI, single-CTA ownership, barrier schedule and BF16 output. The opt-in typed realization offers CTA_N=128 or BLOCK_K=32 from the CTA_N=256, BLOCK_K=64 root; charge these deterministic proposals to B_mut and verify each candidate."}
+    },
+    {
+      "id": "three_slot_wait_one_pipeline",
+      "description": "Pipeline clustered Gluon TMA and WGMMA with three slots and wait-one",
+      "candidate_stage": "clustered_gluon",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["clustered_gluon"]},
+      "prompts": {"triton_h100": "Refactor the clustered Gluon mainloop to a three-slot TMA prefetch ring. Match each mbarrier's expected bytes and phase to the TMA loads; wait before WGMMA reads shared memory. Keep one WGMMA group outstanding, release the prior slot before refilling, then drain groups and invalidate barriers. Preserve cluster ownership and ordinary B loads. Inspect waits, registers, shared memory and spills before comparing latency."}
+    },
+    {
+      "id": "persistent_cluster_assignment",
+      "description": "Reuse clustered Gluon CTAs across output tiles",
+      "candidate_stage": "clustered_gluon",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["clustered_gluon"]},
+      "prompts": {"triton_h100": "Assign multiple output tiles to each two-CTA Gluon cluster. Derive worker count and tile sequence from GPU size and M/N tile counts; prove every tile is covered once. Reset accumulator and pipeline state between tiles, drain asynchronous operations before shared-buffer reuse, and preserve descriptor/output ownership. Measure resources and latency; persistence is not always faster."}
+    }
+  ]
+}

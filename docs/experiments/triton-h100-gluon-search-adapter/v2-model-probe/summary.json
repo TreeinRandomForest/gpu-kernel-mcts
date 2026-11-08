@@ -1,0 +1,14 @@
+{
+  "catalog_sha256": "7375a7734368fcdfdb1b1e88f54158dd22b04bfb513301329731b1a2348e154d",
+  "classified_stage": "pointer_triton",
+  "input_tokens": 1299,
+  "latency_seconds": 11.985426706029102,
+  "model": "rits/zai-org/glm-5-3",
+  "output_tokens": 913,
+  "prompt_sha256": "582e56bdbf7b0a011541bdd44d95de4bea685f17fffb4a93a3f7bd91156fb2ee",
+  "response_id": "chatcmpl-3536b662-5888-4c90-b078-48687282267e",
+  "schema_version": 1,
+  "source_extracted": true,
+  "source_sha256": "fd2736734ba72f38ac0f01203d178e75bb7a308ada81bb8922ec6c177661995d",
+  "syntax_ok": true
+}

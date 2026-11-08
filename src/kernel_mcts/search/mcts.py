@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import math
 from dataclasses import asdict, dataclass
 from random import Random
@@ -21,6 +22,7 @@ from ..interfaces import EventSink, KernelEvaluator, MeasurementDriftMonitor, No
 from ..priors import validate_priors
 from ..profiling import PROFILE_METRIC_SET_IDS
 from ..proposals import GenerationAttempt, run_proposal
+from ..strategy_applicability import applicable_strategies
 from ..serialization import (
     serialize_evaluation,
     serialize_benchmark,
@@ -29,6 +31,8 @@ from ..serialization import (
     serialize_workload,
 )
 from ..trace_records import IterationStatus, SelectionMode
+from ..triton_action_fidelity import TRAVERSAL_ACTION, traversal_group_m
+from ..triton_freeform import TRITON_FREEFORM_ACTION
 from .model import RealizationEdge, SearchNode, StrategyEdge, TranspositionTable
 
 
@@ -188,7 +192,9 @@ class MCTS:
         self.profile_calls = 0
         self.drift_probe_calls = 0
         self._last_drift_node_count = 1
-        self._exhausted_nodes: set[str] = set()
+        # A transposed node can be reached at different depths. Exhaustion at
+        # the depth cap must not hide a shallower route to the same node.
+        self._exhausted_positions: set[tuple[str, int]] = set()
 
     def run(self, root_evaluation: EvaluationResult) -> SearchResult:
         root = SearchNode(str(uuid4()), root_evaluation)
@@ -338,13 +344,18 @@ class MCTS:
     def _ensure_actions(self, node: SearchNode, iteration: int | None = None) -> None:
         if node.actions:
             return
+        eligible = applicable_strategies(
+            tuple(self.strategies.values()), node.program, self.workload, self.hardware,
+        )
+        if not eligible:
+            return
         if self.profiler is not None and node.profile is None:
             self._profile_node(node, iteration, "expansion")
         if self.prior_provider.counts_toward_b_prior:
             self.prior_calls += 1
         priors = validate_priors(
-            self.prior_provider.get_priors(node.program, self.workload, tuple(self.strategies.values()), node.profile),
-            tuple(self.strategies.values()),
+            self.prior_provider.get_priors(node.program, self.workload, eligible, node.profile),
+            eligible,
         )
         node.actions = {key: StrategyEdge(key, prior) for key, prior in priors.items()}
         self.events.emit(
@@ -372,10 +383,12 @@ class MCTS:
             self._ensure_actions(node, iteration)
             try:
                 action, puct_candidates, total_action_visits = (
-                    self._select_action_with_scores(node, respect_availability=True)
+                    self._select_action_with_scores(
+                        node, respect_availability=True, depth=traversal_depth
+                    )
                 )
             except _ProposalSpaceExhausted:
-                self._exhausted_nodes.add(node.id)
+                self._exhausted_positions.add((node.id, traversal_depth))
                 if node is not root:
                     self._backup(path, node.reward, iteration)
                 return IterationOutcome(
@@ -392,10 +405,8 @@ class MCTS:
             prospective_visits = action.visits + 1
             allowed_children = self._allowed_children(prospective_visits)
             existing_children = len(action.realizations)
-            if (
-                existing_children < allowed_children
-                and self._can_generate_new_realization(node, action)
-            ):  # progressive widening
+            if (existing_children < allowed_children
+                    and self._can_generate_new_realization(node, action)):
                 outcome = self._expand(
                     node,
                     action,
@@ -434,11 +445,14 @@ class MCTS:
                     selected_strategy_id=action.strategy_id,
                     backed_up_reward=leaf.reward,
                 )
-            can_generate_new = self._can_generate_new_realization(node, action)
+            can_generate_new = self._can_expand_action(node, action)
             realization, ucb_candidates = self._select_realization_with_scores(
                 action,
                 excluded_children=(
-                    None if can_generate_new else self._exhausted_nodes
+                    None if can_generate_new else {
+                        child_id for child_id in action.realizations
+                        if (child_id, traversal_depth + 1) in self._exhausted_positions
+                    }
                 ),
             )
             path.append(SelectedEdge(node.id, action, realization))
@@ -468,6 +482,7 @@ class MCTS:
                 )
             seen.add(child.id)
             node = child
+        self._exhausted_positions.add((node.id, traversal_depth))
         self._backup(path, node.reward, iteration)
         return IterationOutcome(
             status=IterationStatus.DEPTH_LIMIT,
@@ -516,13 +531,14 @@ class MCTS:
         return selected
 
     def _select_action_with_scores(
-        self, node: SearchNode, *, respect_availability: bool = False
+        self, node: SearchNode, *, respect_availability: bool = False,
+        depth: int = 0,
     ) -> tuple[StrategyEdge, tuple[Mapping[str, object], ...], int]:
         total = sum(edge.visits for edge in node.actions.values())
         exploration_scale = math.sqrt(total)
         scored: list[tuple[float, StrategyEdge, float]] = []
         for edge in node.actions.values():
-            if respect_availability and not self._action_available(node, edge):
+            if respect_availability and not self._action_available(node, edge, depth):
                 continue
             explore = (
                 self.config.c_puct
@@ -558,6 +574,19 @@ class MCTS:
         action: StrategyEdge,
         incoming_edge: SelectedEdge | None = None,
     ) -> GenerationRequest:
+        existing_realizations: tuple[Mapping[str, object], ...] = ()
+        if action.strategy_id == TRAVERSAL_ACTION and action.realizations:
+            by_id = {node.id: node for node in self.nodes.values()}
+            existing_realizations = tuple(
+                {
+                    "group_m": traversal_group_m(by_id[child_id].program.source),
+                    "median_us": by_id[child_id].evaluation.benchmark.median_us,
+                    "source_sha256": hashlib.sha256(
+                        by_id[child_id].program.source.encode()).hexdigest(),
+                }
+                for child_id in action.realizations
+                if child_id in by_id and by_id[child_id].evaluation.benchmark is not None
+            )
         dataflow_view = None
         if self.config.dataflow_prompt_view != "none":
             if parent.id not in self._dataflow_prompt_cache:
@@ -592,6 +621,7 @@ class MCTS:
             ),
             dataflow_view=dataflow_view,
             incoming_profile_delta=self._incoming_profile_delta(parent, incoming_edge),
+            existing_realizations=existing_realizations,
         )
 
     def _can_generate_new_realization(
@@ -606,11 +636,17 @@ class MCTS:
         )
         return mechanism is not None
 
-    def _action_available(self, parent: SearchNode, action: StrategyEdge) -> bool:
-        if self._can_generate_new_realization(parent, action):
+    def _can_expand_action(self, parent: SearchNode, action: StrategyEdge) -> bool:
+        return (len(action.realizations) < self._allowed_children(action.visits + 1)
+                and self._can_generate_new_realization(parent, action))
+
+    def _action_available(
+        self, parent: SearchNode, action: StrategyEdge, depth: int = 0
+    ) -> bool:
+        if self._can_expand_action(parent, action):
             return True
         return any(
-            child_id not in self._exhausted_nodes
+            (child_id, depth + 1) not in self._exhausted_positions
             for child_id in action.realizations
         )
 
@@ -667,6 +703,10 @@ class MCTS:
             request=self._proposal_request(parent, action, incoming_edge),
             max_repairs=self.config.max_repairs,
             max_infrastructure_retries=self.config.max_infrastructure_retries,
+            allowed_candidate_stages=(
+                frozenset({"pointer_triton", "descriptor_triton"})
+                if action.strategy_id == TRITON_FREEFORM_ACTION else None
+            ),
         )
         generation_attempts = sum(
             attempt.budget_kind == ProposalBudgetKind.GENERATION

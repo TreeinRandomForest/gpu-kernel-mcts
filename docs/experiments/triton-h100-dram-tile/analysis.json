@@ -1,0 +1,151 @@
+{
+  "correctness": {
+    "tile_128x256_g1": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "tile_128x256_g8": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "tile_256x128_g1": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "tile_256x128_g16": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "tile_256x128_g8": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    }
+  },
+  "limitations": "Tile orientation changes the operand load shapes and code generation; timing rounds may drift, and L2 read misses are not DRAM sectors.",
+  "profiles": {
+    "cublas": {
+      "kernel_name": "nvjet_tst_256x128_64x4_1x2_h_bz_coopA_TNT",
+      "metrics": {
+        "dram__bytes_read.sum": 150.843904,
+        "dram__sectors_read.sum": 4713872.0,
+        "launch__grid_size": 132.0,
+        "launch__registers_per_thread": 168.0,
+        "launch__shared_mem_per_block": 214.204,
+        "lts__t_sector_op_read_hit_rate.pct": 70.618473,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 26667752.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 20012336.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 6488876.0
+      },
+      "report_sha256": "e9a2c68d3aab9f52b9b0c867572cec2cc8a54be56f35e77bddb74945db260410"
+    },
+    "tile_128x256_g1": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 170.937344,
+        "dram__sectors_read.sum": 5341792.0,
+        "launch__grid_size": 512.0,
+        "launch__registers_per_thread": 154.0,
+        "launch__shared_mem_per_block": 148.504,
+        "lts__t_sector_op_read_hit_rate.pct": 76.832913,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 38367444.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 30839884.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 7824596.0
+      },
+      "report_sha256": "f63ca4875a9b7bd27554471264a6852a239d744bbb4b0c8ddf24d1f6ab2263dc"
+    },
+    "tile_128x256_g8": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 186.667776,
+        "dram__sectors_read.sum": 5833368.0,
+        "launch__grid_size": 512.0,
+        "launch__registers_per_thread": 154.0,
+        "launch__shared_mem_per_block": 148.504,
+        "lts__t_sector_op_read_hit_rate.pct": 59.622308,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 27507144.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 17171216.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 7550856.0
+      },
+      "report_sha256": "972d0e2825ecc4c6af2c0228659b295ff27a3ca2dbf9544f003b44b048e2ac7a"
+    },
+    "tile_256x128_g1": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 174.081792,
+        "dram__sectors_read.sum": 5440056.0,
+        "launch__grid_size": 512.0,
+        "launch__registers_per_thread": 174.0,
+        "launch__shared_mem_per_block": 148.504,
+        "lts__t_sector_op_read_hit_rate.pct": 75.183429,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 36533656.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 28121788.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 8853336.0
+      },
+      "report_sha256": "63b243fe4554bf3d5a40cc27a75a92ce1d80151e53d7eb9de3cdb5ac5f18f3f7"
+    },
+    "tile_256x128_g16": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 170.966528,
+        "dram__sectors_read.sum": 5342704.0,
+        "launch__grid_size": 512.0,
+        "launch__registers_per_thread": 174.0,
+        "launch__shared_mem_per_block": 148.504,
+        "lts__t_sector_op_read_hit_rate.pct": 77.59085,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 37123324.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 29714836.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 8407960.0
+      },
+      "report_sha256": "c2b71b85b82e2d9ce02b8389c354097ebe3736639ed6bdba20600fc94fd49105"
+    },
+    "tile_256x128_g8": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 152.701952,
+        "dram__sectors_read.sum": 4771936.0,
+        "launch__grid_size": 512.0,
+        "launch__registers_per_thread": 174.0,
+        "launch__shared_mem_per_block": 148.504,
+        "lts__t_sector_op_read_hit_rate.pct": 78.849039,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 35947212.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 29457820.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 6679504.0
+      },
+      "report_sha256": "fb667d7181e640f102a5c74e665705ec28673006c1086d2632bdfee08b2dbeef"
+    }
+  },
+  "round_medians_us": {
+    "cublas": [
+      181.99999630451202,
+      186.3040030002594,
+      190.75199961662292
+    ],
+    "tile_128x256_g1": [
+      201.9679993391037,
+      204.3519988656044,
+      209.44000035524368
+    ],
+    "tile_128x256_g8": [
+      208.01600068807602,
+      206.92799985408783,
+      209.3919962644577
+    ],
+    "tile_256x128_g1": [
+      213.50400149822235,
+      216.48000180721283,
+      216.15999937057495
+    ],
+    "tile_256x128_g16": [
+      222.06400334835052,
+      218.1759998202324,
+      223.10400009155273
+    ],
+    "tile_256x128_g8": [
+      222.1599966287613,
+      218.1439995765686,
+      222.3679944872856
+    ]
+  },
+  "schema_version": 1,
+  "source_sha256": "c7113204ec9d45e858382fc7d2ede9a6d33d18fadbc0f842c6031d91f7163dfa"
+}

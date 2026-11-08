@@ -1,0 +1,14 @@
+{
+  "b_gen_for_this_probe": 1,
+  "candidate_stage": "single_cta_gluon",
+  "cumulative_wgmma_probe_b_gen": 2,
+  "feedback_sha256": "eb89c8d7067c808a3ad4869539ccf05107183d618ef35b999ff98cc4a17ca412",
+  "generation_id": "chatcmpl-fbc85215-96ad-4ec8-9705-ed06838823fc",
+  "gpu_compile_attempted": false,
+  "input_tokens": 3971,
+  "model": "rits/zai-org/glm-5-3",
+  "output_tokens": 949,
+  "prompt_sha256": "205991cdcb8b15e8f0f7ace9c6477d769fa3fda8ad740b62c21891401426283f",
+  "schema_version": 1,
+  "source_sha256": "1484da9aeb0ce5272005c7641f7307f7b6f9faad6052c9d91e3b19a1d22834af"
+}

@@ -1498,6 +1498,38 @@ def test_depth_limit_iteration_outcome_records_traversed_path() -> None:
     assert [step.child_node_id for step in outcome.steps] == [child.id]
 
 
+def test_depth_limit_terminates_with_unspent_generation_budget() -> None:
+    generator = ToyGenerator()
+    result = MCTS(
+        strategies=(STRATEGIES[0],),
+        workload=WORKLOAD,
+        generator=generator,
+        evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(),
+        budget=GenerationBudget(2),
+        config=MCTSConfig(k_max=1, max_depth=1),
+    ).run(valid_evaluation("0", "state:0", 0.0))
+    assert result.generations == generator.counter == 1
+    assert len(result.nodes) == 2
+    assert result.iterations == 3
+
+
+def test_depth_exhaustion_does_not_hide_shallower_transposition_route() -> None:
+    mcts = MCTS(
+        strategies=(STRATEGIES[0],), workload=WORKLOAD,
+        generator=ToyGenerator(), evaluator=ToyEvaluator(),
+        prior_provider=UniformStrategyPrior(), budget=GenerationBudget(2),
+        config=MCTSConfig(k_max=1, max_depth=2),
+    )
+    parent = SearchNode("parent", valid_evaluation("0", "state:0", 0.0))
+    child = SearchNode("child", valid_evaluation("1", "state:1", 1.0))
+    action = StrategyEdge("a", 1.0, visits=1,
+                          realizations={child.id: RealizationEdge(child.id)})
+    mcts._exhausted_positions.add((child.id, 2))
+    assert not mcts._action_available(parent, action, depth=1)
+    assert mcts._action_available(parent, action, depth=0)
+
+
 class CountingLLMPrior:
     name = "test-llm"
     counts_toward_b_prior = True

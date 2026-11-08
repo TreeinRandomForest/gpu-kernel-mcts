@@ -19,6 +19,11 @@
       "id": "improve_b_layout_access",
       "description": "Improve loads and reuse for column-major B",
       "prompts": {"triton_h100": "Optimize the B load and reuse pattern using its fixed [K,N] column-major strides (1,K), while preserving A/C row-major layouts."}
+    },
+    {
+      "id": "improve_cross_cta_reuse",
+      "description": "Coordinate output tile aspect ratio and CTA traversal to improve A/B reuse",
+      "prompts": {"triton_h100": "Inspect A/B physical strides, the current BM and BN output tile, CTA tile mapping (including GROUP_M if present), and the M/N tile counts. Choose a coordinated tile-aspect and/or CTA-order change based on the expected A/B revisit pattern. Check register and shared-memory constraints and preserve complete output coverage and one writer per output. If parent L2/DRAM counters are present, distinguish L2 TEX read requests, lookup hits and misses, and DRAM reads as aggregate evidence; do not assign saved bytes to A or B without evidence or equate L2 misses with DRAM sectors. Optimize measured CUDA-event latency, not DRAM traffic alone, and do not assume that a particular tile shape always wins."}
     }
   ]
 }

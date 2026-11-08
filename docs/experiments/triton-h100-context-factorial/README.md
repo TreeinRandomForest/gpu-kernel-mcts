@@ -74,8 +74,11 @@ activity versus 91.47% for C, with zero compiler spills and zero local-load
 sectors in both. In seed 0, B and D both used `128 × 256 × 64`, eight warps,
 and three stages, but their loop and mask source differed. D's best had
 75.26% tensor-pipe activity versus 91.62% for B, again with no spills or
-local-load sectors. Those are whole-kernel profile observations; a controlled
-source crossover is needed to isolate the cause of the codegen difference.
+local-load sectors. Those are whole-kernel profile observations. The
+[corrected seed-0 B/D source crossover](../triton-h100-bd-crossover/README.md)
+finds that changing the K-loop form reproduces nearly all of that kernel
+latency gap on one worker; mask hoisting alone does not. This does not explain
+why either prompt selected its source.
 
 ## Interrupted and exploratory traces
 

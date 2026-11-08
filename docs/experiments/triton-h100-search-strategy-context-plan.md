@@ -1,7 +1,15 @@
 # Triton/Gluon search: strategies and parent context
 
-Status: implementation plan. The local Gluon adapter and dynamic NCU selection
-are implemented; GPU validation and the later search/context work remain.
+The consolidated target factor space and current support status are in
+`triton-h100-ablation-matrix.md`. This document retains the implementation
+sequence and earlier experiment history.
+
+Status: implementation in progress. The Gluon adapter passed an H100 backend
+smoke. The stage-aware v2 and smaller staged v3 catalogs are implemented;
+the generated descriptor-Triton bridge passed H100 validation. The later v18
+catalog reached a correct three-slot wait-one Gluon kernel from the packaged
+Triton root in three declared H100 seeds; see the adapter README. Other
+context/search work remains.
 Pause further gap-closing GPU experiments while building and validating this path.
 
 ## Why this work is needed
@@ -22,7 +30,8 @@ Current implementation boundaries also matter:
   `bf16_gemm_triton`. The local adapter now keeps the standalone Gluon
   kernel's `gemm` device body, interprets the search ABI's column-major
   `B[K,N]` as a zero-copy physical `B[N,K]` view, and profiles by the
-  compiled name plus NVTX range. H100 validation is still required.
+  compiled name plus NVTX range. The H100 adapter smoke passed; see
+  `triton-h100-gluon-search-adapter/README.md`.
 - The CLI only permits sequential search for `cuda_cpp`. The sequential
   prompt and compiler-context selector also assume CUDA C++.
 - MCTS can show Triton compiler resources and static PTX counts and lazily
@@ -65,6 +74,58 @@ can generate a valid candidate. Applicability filtering must exclude actions
 that cannot operate on the current parent, instead of spending `B_gen` on
 impossible requests. Preserve the old catalog and uniform-prior MCTS arm for
 controlled comparisons. Add parser/filter tests and prompt-snapshot tests.
+
+The opt-in catalog is `configs/triton_h100_strategies_v2.json`. It declares
+the parent stages accepted by each action. `strategy_applicability.py` uses
+Python AST syntax and the kernel returned by `launch` to identify pointer Triton, descriptor Triton, clustered
+Gluon, other Gluon, or unknown parents. Unknown parents receive no
+stage-specific v2 action. MCTS filters before asking for priors or an
+expansion profile; an empty eligible set is a dead end. Local tests cover
+stage classification, filtering, malformed metadata, prompt guards, and one
+fixture realization routed through MCTS. The separately validated Gluon
+adapter is the fixture's source. One GLM-5.3 probe of the initial structural
+prompt returned an ordinary Triton pointer-load kernel; a second probe with
+the validated source supplied as a scaffold returned an AST-identical copy.
+The scaffold is an explicit diagnostic override and is absent from the
+production v2 catalog. Thus an independently generated structural rewrite
+is still an open gate before claiming that the prompt alone reaches it.
+The three v2 Gluon actions now require the generated `launch` to return a
+kernel classified as `clustered_gluon`. A pointer-load Triton response is
+logged as `STRATEGY_MISMATCH` after spending its generation call and before
+GPU evaluation; repair receives the expected and observed stages. This
+prevents a source-stage mismatch from being admitted under a Gluon action.
+The gate does not certify the wait-one or persistent schedule itself.
+
+The direct v2 structural action failed a bounded scaffold-free GLM-5.3
+request plus one repair: the first source was pointer Triton and the repair
+was not a clustered Gluon kernel. The opt-in staged catalog at
+`configs/triton_h100_strategies_v3_staged.json` adds smaller parent/output
+stage transitions. Its descriptor/TMA action produced a valid H100 kernel on
+the repair call. The next single-CTA Gluon TMA/WGMMA action returned pointer
+Triton then no extractable source at the output-token cap. A still smaller
+Gluon MMA-v2 language/layout action also failed within two calls. Neither
+Gluon stage was sent to GPU evaluation. A diagnostic single-CTA Gluon fixture,
+made by changing the launcher and cluster layouts of the previously validated
+two-CTA source, did compile, pass correctness, and measure 249.632 µs on H100.
+It is not a model-generated intermediate. A bounded two-call attempt to add
+the two-CTA cluster from this valid parent kept `num_ctas=1` on both calls;
+the candidate-stage guard rejected both before GPU evaluation. The remaining
+gate is a model-generated Gluon transition. Further requests should follow a
+revised template or an explicitly labeled partial-scaffold experiment.
+The subsequent five-round same-worker crossover found the single-CTA fixture
+faster than the two-CTA reference by 20.624 µs median paired. An opt-in typed
+one-CTA tile action then produced two valid but slower variants (N=128 and
+BK=32); a measured-result MCTS replay charged two `B_mut` proposals and kept
+both valid nodes. This does not close the scaffold-free model-generation gate
+or justify a live MCTS performance claim. The exact samples and constraints
+are in the Gluon search-adapter experiment README.
+An alternate-root Gluon traversal arm subsequently demonstrated that GLM-5.3
+can write a bounded local source edit: two distinct grouped mappings became
+valid MCTS children under `B_gen=4`. The root remained faster. The completed
+SQLite trace records the explicit root source, local package overlay, parent
+NCU profile, compiler summary, prompts, failures, and timings. This resolves
+the local-action reachability check while leaving the pointer-Triton-to-Gluon
+bridge and a performance-positive strategy open.
 
 ## 3. Build one bounded parent-context record for both algorithms
 

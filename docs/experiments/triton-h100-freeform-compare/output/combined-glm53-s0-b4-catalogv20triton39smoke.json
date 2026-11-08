@@ -1,0 +1,10 @@
+{
+  "arm": "combined",
+  "best_median_us": 256.1440020799637,
+  "best_source": "combined-glm53-s0-b4-catalogv20triton39smoke-best.py",
+  "budget": 4,
+  "generations": 4,
+  "run_id": "3203ba14-c06b-478a-82fd-b52cb9d576ff",
+  "seed": 0,
+  "trace": "combined-glm53-s0-b4-catalogv20triton39smoke.sqlite"
+}

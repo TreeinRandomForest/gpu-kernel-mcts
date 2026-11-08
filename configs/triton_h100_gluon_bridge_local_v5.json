@@ -1,0 +1,26 @@
+{
+  "version": "triton_h100_gluon_bridge_local_v5",
+  "strategies": [
+    {
+      "id": "descriptor_tma_staging",
+      "description": "Replace Triton pointer operand loads with descriptor TMA loads",
+      "candidate_stage": "descriptor_triton",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["pointer_triton"]},
+      "prompts": {"triton_h100": "Keep @triton.jit GEMM, tl.dot, a single-CTA grid, and BF16 output. Replace only A/B pointer loads with legal Triton 3.9 TensorDescriptor loads. A is row-major [M,K]; B is column-major [K,N], so use zero-copy B.T as a contiguous physical [N,K] descriptor and transpose its tile for tl.dot. Return a complete launch(A,B,C,M,N,K) source. Verify correctness before latency."}
+    },
+    {
+      "id": "gluon_mma_v2_pointer_port",
+      "description": "Port descriptor Triton GEMM to a simple one-CTA pointer-load Gluon MMA-v2 kernel",
+      "candidate_stage": "gluon_mma_v2",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["descriptor_triton"]},
+      "prompts": {"triton_h100": "Return only a complete Python source file, at most 130 lines. Port to one-CTA @gluon.jit using ordinary pointer gl.load and mma_v2 from triton.experimental.gluon.language.nvidia.ampere; this intermediate may be slower. Keep launch(A,B,C,M,N,K), BF16 input/output, FP32 accumulation, and one writer per output. A[M,K] is row-major, B[K,N] is column-major with B[k,n] at B+n*K+k, and C[M,N] is row-major. Use BM=64, BN=128, BK=64, num_warps=4. Every layout-object local assignment needs ': gl.constexpr'. Every gl.BlockedLayout must have four arguments and threads_per_warp entries whose product is 32; use A size_per_thread=[1,16], threads_per_warp=[4,8], warps_per_cta=[2,2], order=[1,0]; B [16,1], [8,4], [2,2], order=[0,1]; output [1,8], [4,8], [4,1], order=[1,0]. Use gl.SliceLayout(1, layout) for first-axis offsets and gl.SliceLayout(0, layout) for second-axis offsets. Use gl.NVMMADistributedLayout(version=[2,0], warps_per_cta=[4,1], instr_shape=[16,8]) for a gl.zeros FP32 accumulator; convert A/B tiles to gl.DotOperandLayout(0 or 1, parent=mma_layout, k_width=2) before mma_v2(a,b,acc). gl.load(pointer, mask=..., other=...) and gl.store(pointer,value,mask=...) take no positional layout argument. Convert the accumulator to the output BlockedLayout before store. Return the compiled kernel from launch. Do not use descriptors, TMA, WGMMA, clusters, or a validated Gluon source scaffold."}
+    },
+    {
+      "id": "gluon_mma_v2_coalesced_layout",
+      "description": "Order Gluon A, B, and C thread layouts by their contiguous memory axes",
+      "candidate_stage": "gluon_mma_v2",
+      "applicability": {"backend": "triton_h100", "operation": "gemm", "gpu_model": "H100", "parent_stages": ["gluon_mma_v2"]},
+      "prompts": {"triton_h100": "Keep the complete working Gluon MMA-v2 source, tile, grid, compute, and launcher unchanged. Change only the fourth argument (axis order) of the gl.BlockedLayout assignments named a_layout, b_layout, and out_layout. For row-major A[M,K], K is contiguous: a_layout order=[1,0]. For column-major B[K,N], K is contiguous: b_layout order=[0,1]. For row-major C[M,N], N is contiguous: out_layout order=[1,0]. Preserve the first three layout arguments and every other statement exactly. Return a complete source file with no Markdown. Correctness and measured latency decide acceptance."}
+    }
+  ]
+}

@@ -28,7 +28,7 @@ from .cute_independent_program import (
     independent_cute_gemm_from_source,
 )
 from .dataflow_prompt import VIEWS as DATAFLOW_PROMPT_VIEWS
-from .domain import Strategy
+from .domain import KernelProgram, Strategy
 from .generation import (
     GenerationRequest,
     GenerationResult,
@@ -41,6 +41,7 @@ from .llm_generation import LLMKernelGenerator
 from .llm import LLMClient
 from .messages_client import MessagesClient, MessagesConfig
 from .nebius import NebiusConfig, create_nebius_provider
+from .nebius_overlay import overlay_nebius_worker, package_bundle
 from .openai_client import OpenAIResponsesClient, OpenAIResponsesConfig
 from .orchestration import run_mcts_search, run_sequential_search
 from .persistence import SQLiteTraceStore
@@ -53,8 +54,17 @@ from .runpod_cli import ReadinessProgress
 from .runpod_volume import resolve_reusable_volume
 from .search import MCTSConfig
 from .smoke import SmokeKernelGenerator, TritonSmokeKernelGenerator
+from .triton_freeform import (
+    TRITON_FREEFORM_PROMPT, TRITON_FREEFORM_PROMPT_VERSION,
+    pure_triton_freeform_strategy,
+)
 from .sequential import SequentialConfig
-from .sequential_generation import SEQUENTIAL_INSTRUCTIONS, SequentialKernelGenerator
+from .sequential_generation import (
+    SEQUENTIAL_INSTRUCTIONS, SEQUENTIAL_PROMPT_SCHEMA_VERSION,
+    SEQUENTIAL_TRITON_INSTRUCTIONS,
+    SEQUENTIAL_TRITON_PROMPT_SCHEMA_VERSION,
+    SequentialKernelGenerator,
+)
 
 
 class SearchCLIProgress:
@@ -216,7 +226,7 @@ def _default_messages_url() -> str | None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run MCTS or sequential CUDA refinement on an H100 worker."
+        description="Run MCTS or sequential CUDA/Triton refinement on an H100 worker."
     )
     parser.add_argument("--image", required=True)
     parser.add_argument("--trace", type=Path, required=True)
@@ -224,6 +234,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--backend", choices=("cuda_cpp", "cute_dsl", "triton_h100"), default="cuda_cpp"
     )
+    parser.add_argument("--triton-root-source", type=Path,
+                        help="use an explicit Triton H100 root source (alternate-root experiment)")
+    parser.add_argument("--nebius-overlay-local-package", action="store_true",
+                        help="overlay the local package on a Nebius Triton worker before root evaluation")
     parser.add_argument("--provider", choices=("runpod", "nebius"), default="runpod")
     parser.add_argument("--api-key-env", default="RUNPOD_API_KEY")
     parser.add_argument("--gpu-type", default="NVIDIA H100 80GB HBM3")
@@ -274,6 +288,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--model")
     parser.add_argument("--strategies", type=Path)
+    parser.add_argument("--triton-freeform-mcts", action="store_true",
+                        help="run opt-in pure-Triton freeform-only MCTS without --strategies")
     parser.add_argument("--openai-api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--openai-base-url", help="HTTPS base URL for an OpenAI-compatible Responses gateway")
     parser.add_argument("--messages-url", default=_default_messages_url())
@@ -385,12 +401,24 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.dataflow_prompt_view != "none" and (arguments.generator not in {"openai", "messages"} or arguments.backend != "cuda_cpp"):
         parser.error("--dataflow-prompt-view requires a CUDA LLM generator")
     if arguments.backend == "triton_h100":
-        if arguments.algorithm != "mcts" or arguments.generator not in {"openai", "messages", "smoke"}:
-            parser.error("Triton H100 currently requires MCTS with an LLM or smoke generator")
+        allowed_generators = {"openai", "messages", "smoke"} if arguments.algorithm == "mcts" else {"openai", "messages"}
+        if arguments.generator not in allowed_generators:
+            parser.error("Triton H100 requires an LLM generator, or smoke for MCTS")
         if arguments.dataflow_prompt_view != "none":
             parser.error("CUDA dataflow prompt views are unsupported for Triton H100")
         if arguments.autotune:
             parser.error("CUDA autotuning is unsupported for Triton H100")
+    if arguments.triton_freeform_mcts and (
+        arguments.backend != "triton_h100" or arguments.algorithm != "mcts"
+        or arguments.generator not in {"openai", "messages"}
+        or arguments.strategies is not None
+        or arguments.mutation_budget != 0
+    ):
+        parser.error("--triton-freeform-mcts requires Triton LLM MCTS without --strategies or --mutation-budget")
+    if arguments.nebius_overlay_local_package and (
+        arguments.provider != "nebius" or arguments.backend != "triton_h100"
+    ):
+        parser.error("--nebius-overlay-local-package requires Nebius Triton")
     if arguments.best_output is not None and arguments.best_output.exists():
         parser.error(
             f"refusing to overwrite existing best output: {arguments.best_output}"
@@ -421,6 +449,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     root_program = _root_program(parser, arguments)
     repository = capture_repository_state(Path(__file__).resolve().parents[2])
+    local_bundle = (package_bundle(Path(__file__).resolve().parents[2])
+                    if arguments.nebius_overlay_local_package else None)
     image_digest = image_digest_from_reference(arguments.image)
     provenance: dict[str, object] = {
         "worker_image": arguments.image,
@@ -431,6 +461,17 @@ def main(argv: list[str] | None = None) -> int:
         ),
         "backend": arguments.backend,
     }
+    if arguments.triton_freeform_mcts:
+        provenance["triton_action_policy"] = "freeform_only_v1"
+        provenance["triton_freeform_prompt_version"] = TRITON_FREEFORM_PROMPT_VERSION
+        provenance["triton_freeform_prompt_sha256"] = hashlib.sha256(
+            TRITON_FREEFORM_PROMPT.encode()).hexdigest()
+    if arguments.triton_root_source is not None:
+        provenance["triton_root_source_sha256"] = hashlib.sha256(
+            root_program.source.encode()).hexdigest()
+        provenance["triton_root_kind"] = "explicit_alternate_root"
+    if local_bundle is not None:
+        provenance["local_package_overlay_sha256"] = hashlib.sha256(local_bundle).hexdigest()
     if arguments.generator == "messages":
         provenance["model_provider"] = "anthropic_messages_compatible"
         provenance["messages_thinking"] = arguments.messages_thinking
@@ -536,7 +577,16 @@ def main(argv: list[str] | None = None) -> int:
                 run_metadata=provenance,
             )
             if arguments.algorithm == "sequential":
-                execution = run_sequential_search(**shared, config=sequential_config)
+                execution = run_sequential_search(
+                    **shared, config=sequential_config,
+                    strategy_catalog=generator.strategy_catalog,
+                    worker_prepare=(
+                        (lambda worker: overlay_nebius_worker(
+                            worker, arguments.nebius_ssh_private_key,
+                            arguments.nebius_username, local_bundle))
+                        if local_bundle is not None else None
+                    ),
+                )
             else:
                 execution = run_mcts_search(
                     **shared, strategies=strategies, prior_provider=UniformStrategyPrior(),
@@ -544,6 +594,12 @@ def main(argv: list[str] | None = None) -> int:
                     tuning_config=(
                         TuningConfig(arguments.tuning_budget, arguments.tuning_method, arguments.seed)
                         if arguments.autotune else None
+                    ),
+                    worker_prepare=(
+                        (lambda worker: overlay_nebius_worker(
+                            worker, arguments.nebius_ssh_private_key,
+                            arguments.nebius_username, local_bundle))
+                        if local_bundle is not None else None
                     ),
                 )
     finally:
@@ -620,6 +676,16 @@ def _root_program(
     parser: argparse.ArgumentParser,
     arguments: argparse.Namespace,
 ):
+    if arguments.triton_root_source is not None:
+        if arguments.backend != "triton_h100":
+            parser.error("--triton-root-source requires --backend=triton_h100")
+        try:
+            source = arguments.triton_root_source.read_text(encoding="utf-8")
+        except OSError as error:
+            parser.error(f"cannot read Triton root source: {error}")
+        if not source.strip():
+            parser.error("Triton root source is empty")
+        return KernelProgram(source, backend="triton_h100")
     values = (
         arguments.cute_root_tile_m,
         arguments.cute_root_tile_n,
@@ -714,8 +780,8 @@ def _cuda_llm_client(
 def _sequential_components(
     parser: argparse.ArgumentParser, arguments: argparse.Namespace,
 ) -> tuple[KernelGenerator, str, SequentialConfig]:
-    if arguments.backend != "cuda_cpp" or arguments.generator not in {"openai", "messages"}:
-        parser.error("sequential search requires --backend=cuda_cpp and a CUDA LLM generator")
+    if arguments.backend not in {"cuda_cpp", "triton_h100"} or arguments.generator not in {"openai", "messages"}:
+        parser.error("sequential search requires a CUDA or Triton LLM generator")
     if arguments.generation_budget < 1 or arguments.mutation_budget:
         parser.error("sequential search requires a positive generation budget and no mutation budget")
     if not arguments.model:
@@ -726,6 +792,8 @@ def _sequential_components(
         parser.error("post-search autotuning is not part of the sequential experiment")
     if arguments.sequential_strategy_menu and arguments.strategies is None:
         parser.error("--sequential-strategy-menu requires --strategies")
+    if arguments.backend == "triton_h100" and arguments.sequential_dataflow_view != "none":
+        parser.error("Triton sequential dataflow requires --sequential-dataflow-view=none until validated")
     if (
         arguments.omit_parent_profile or arguments.profile_prompt_view != "full"
         or arguments.include_incoming_profile_delta
@@ -736,25 +804,42 @@ def _sequential_components(
     menu: tuple[str, ...] = ()
     strategy_ids: tuple[str, ...] = ()
     catalog_sha256: str | None = None
+    strategy_catalog: tuple[Strategy, ...] = ()
     if arguments.sequential_strategy_menu:
         catalog_sha256 = hashlib.sha256(arguments.strategies.read_bytes()).hexdigest()
         catalog = parse_strategies(load_data(arguments.strategies))
         if not catalog:
             parser.error("strategy menu must contain at least one strategy")
         strategy_ids = tuple(item.id for item in catalog)
+        if arguments.backend == "triton_h100":
+            if any(item.candidate_stage not in {"pointer_triton", "descriptor_triton"}
+                   for item in catalog):
+                parser.error("Triton sequential pure mode requires a pure-Triton catalog")
+            strategy_catalog = tuple(catalog)
         if len(set(strategy_ids)) != len(strategy_ids) or "freeform" in strategy_ids:
             parser.error("strategy menu IDs must be unique and cannot use freeform")
         menu = tuple(
-            f"{item.id}: {item.description}; {item.prompt_for('cuda_cpp')}"
+            f"{item.id}: {item.description}; {item.prompt_for(arguments.backend)}"
             for item in catalog
         )
     client = _cuda_llm_client(
-        arguments, instructions=SEQUENTIAL_INSTRUCTIONS,
+        arguments, instructions=(
+            SEQUENTIAL_TRITON_INSTRUCTIONS
+            if arguments.backend == "triton_h100" else SEQUENTIAL_INSTRUCTIONS
+        ),
         history_turns=arguments.session_history_turns,
     )
     generator = SequentialKernelGenerator(
         client, strategy_menu=menu, strategy_ids=strategy_ids,
-        catalog_sha256=catalog_sha256,
+        catalog_sha256=catalog_sha256, strategy_catalog=strategy_catalog,
+        instructions_text=(
+            SEQUENTIAL_TRITON_INSTRUCTIONS
+            if arguments.backend == "triton_h100" else SEQUENTIAL_INSTRUCTIONS
+        ),
+        prompt_schema_version=(
+            SEQUENTIAL_TRITON_PROMPT_SCHEMA_VERSION
+            if arguments.backend == "triton_h100" else SEQUENTIAL_PROMPT_SCHEMA_VERSION
+        ),
     )
     config = SequentialConfig(
         max_repairs=arguments.max_repairs,
@@ -774,6 +859,13 @@ def _search_components(
     parser: argparse.ArgumentParser,
     arguments: argparse.Namespace,
 ) -> tuple[tuple[Strategy, ...], KernelGenerator, str | None, MCTSConfig]:
+    if arguments.triton_freeform_mcts and (
+        arguments.backend != "triton_h100" or arguments.algorithm != "mcts"
+        or arguments.generator not in {"openai", "messages"}
+        or arguments.strategies is not None
+        or arguments.mutation_budget != 0
+    ):
+        parser.error("--triton-freeform-mcts requires Triton LLM MCTS without --strategies or --mutation-budget")
     if arguments.generator == "smoke":
         if arguments.cute_strategy:
             parser.error("--cute-strategy requires a CuTe generator")
@@ -839,12 +931,14 @@ def _search_components(
         parser.error("the mixed CuTe run requires a positive --mutation-budget")
     if not arguments.model:
         parser.error(f"--model is required with --generator={arguments.generator}")
-    if arguments.generator in {"openai", "messages"} and arguments.strategies is None:
+    if arguments.generator in {"openai", "messages"} and arguments.strategies is None and not arguments.triton_freeform_mcts:
         parser.error("--strategies is required with a CUDA LLM generator")
     _validate_llm_connection(parser, arguments)
     strategies = (
         _selected_cute_strategies(parser, arguments)
         if arguments.generator == "cute-mixed"
+        else (pure_triton_freeform_strategy(),)
+        if arguments.triton_freeform_mcts
         else parse_strategies(load_data(arguments.strategies))
     )
     if not strategies:

@@ -1,0 +1,152 @@
+{
+  "bundle_sha256": "62daea7266df9f1a51f84ae5db2bf50ebeb2174ae3f66ed5602d5a4c9be92b71",
+  "candidate_sha256": "cec866fd21563c4a1e40cfdea3a8320a6c64dc81e4bb7bc8b9b24a16ed6ffb49",
+  "complete": false,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-05T16:20:04.349106+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-698b0ebe-f5f2-8789-f7b1-003d7cf59e5c",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "e5ebf89ea4032236fc6e5dfeff003ce50d9af3f4a3f058218a334bba5349eeb6",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00xfvzw4xqbgabwm8",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00xfvzw4xqbgabwm8"
+  },
+  "git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+  "harness_sha256": "86ff1045048271dc9db4e7b3ddc586bd0d1e736254a40e0b8747ec87bed35995",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "measurement": {
+    "candidates": {
+      "generated_candidate": {
+        "compile_stderr": "/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"__ne__\"\n - leaked function \"create_log\"\n - leaked function \"create_dot_scaled\"\n - leaked function \"get_blocked_layout\"\n - leaked function \"get_int16\"\n - leaked function \"create_fp_trunc\"\n - leaked function \"get_context\"\n - leaked function \"create_warp_specialize_partitions\"\n - leaked function \"create_scaled_upcast_fp8\"\n - leaked function \"create_lds_barrier_init\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+        "compile_stdout": "{\"status\": \"candidate_failure\", \"error_type\": \"CompilationError\", \"message\": \"at 33:4:\\n    bars = mbarrier.allocate_mbarrier(batch=1)\\n    bar = bars.index(0)\\n    mbarrier.init(bar, count=1)\\n\\n    acc_layout: gl.constexpr = gl.NVMMADistributedLayout(\\n        version=[3, 0], warps_per_cta=[8, 1], instr_shape=[16, 256, 16]\\n    )\\n\\n    acc = warpgroup_mma_init(gl.zeros((BM, BN), gl.float32, layout=acc_layout))\\n\\n    num_k_blocks = (K + BK - 1) // BK\\n    for step in range(0, num_k_blocks):\\n    ^\\nAssertionError(\\\"Loop carried variable acc changed type, was <class 'triton.language.core.tensor'> but is now <class 'triton.experimental.gluon.language.nvidia.hopper.warpgroup_mma_accumulator'>\\\")\"}\n",
+        "compile_success": false,
+        "source_sha256": "cec866fd21563c4a1e40cfdea3a8320a6c64dc81e4bb7bc8b9b24a16ed6ffb49"
+      },
+      "triton_root": {
+        "artifact_id": "f64c34838132293c7553e2d8a0438a9eda31fd952567e55582c64fd6a0fcce31",
+        "compile_success": true,
+        "compiler_context": {
+          "architecture": "sm_90",
+          "backend": "triton_h100",
+          "kernel_name": "bf16_gemm_triton",
+          "ptx": {
+            "artifacts": [
+              {
+                "path": "/tmp/gluon-search-adapter-artifacts/triton-artifact-kla6psn7/kernel.ptx",
+                "sha256": "44d3a4014e9f18e34c613404331bd0efc01df10ef391ce9ba6de3953910a8a2e",
+                "size_bytes": 14899,
+                "storage_status": "eligible"
+              }
+            ],
+            "static_instruction_sites": {
+              "categories": {
+                "async_copy": 17,
+                "barrier": 6,
+                "control": 2,
+                "global_load": 0,
+                "global_store": 2,
+                "local_load": 0,
+                "local_store": 0,
+                "other": 159,
+                "shared_load": 2,
+                "shared_store": 0,
+                "tensor": 8
+              },
+              "total": 196
+            },
+            "status": "captured"
+          },
+          "resources": {
+            "registers_per_thread": 48,
+            "spills": 0,
+            "static_shared_memory_bytes": 12288
+          },
+          "sass": {
+            "status": "unavailable"
+          },
+          "schema_version": 1
+        },
+        "correctness_success": true,
+        "kernel_name": "bf16_gemm_triton",
+        "maximum_error": 0.0,
+        "median_us": 832.8640162944794,
+        "source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+        "timings_us": [
+          841.1840200424194,
+          832.7680230140686,
+          835.2959752082825,
+          835.1680040359497,
+          835.0399732589722,
+          840.3199911117554,
+          830.9440016746521,
+          828.1919956207275,
+          833.9840173721313,
+          835.2000117301941,
+          828.2560110092163,
+          833.407998085022,
+          832.9600095748901,
+          832.0320248603821,
+          837.6960158348083,
+          828.1919956207275,
+          828.7680149078369,
+          828.4800052642822,
+          831.5200209617615,
+          833.2160115242004,
+          827.5520205497742,
+          836.8319869041443,
+          835.8719944953918,
+          822.6879835128784,
+          833.9840173721313,
+          836.4480137825012,
+          828.5760283470154,
+          832.256019115448,
+          829.5040130615234,
+          828.2240033149719
+        ]
+      }
+    },
+    "complete": false,
+    "cuda_version": "12.8",
+    "error": "RuntimeError: generated_candidate compile failed: {\"status\": \"candidate_failure\", \"error_type\": \"CompilationError\", \"message\": \"at 33:4:\\n    bars = mbarrier.allocate_mbarrier(batch=1)\\n    bar = bars.index(0)\\n    mbarrier.init(bar, count=1)\\n\\n    acc_layout: gl.constexpr = gl.NVMMADistributedLayout(\\n        version=[3, 0], warps_per_cta=[8, 1], instr_shape=[16, 256, 16]\\n    )\\n\\n    acc = warpgroup_mma_init(gl.zeros((BM, BN), gl.float32, layout=acc_layout))\\n\\n    num_k_blocks = (K + BK - 1) // BK\\n    for step in range(0, num_k_blocks):\\n    ^\\nAssertionError(\\\"Loop carried variable acc changed type, was <class 'triton.language.core.tensor'> but is now <class 'triton.experimental.gluon.language.nvidia.hopper.warpgroup_mma_accumulator'>\\\")\"}\n",
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "schema_version": 1,
+    "torch_version": "2.7.1+cu128",
+    "triton_version": "3.9.0"
+  },
+  "mode": "smoke",
+  "remote_exit_code": 1,
+  "remote_log_tail": "Warning: Permanently added '89.169.114.88' (ED25519) to the list of known hosts.\n/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\ncandidate triton_root: compiling\ncandidate triton_root: correctness\ncandidate triton_root: benchmarking\ncandidate triton_root: 832.864 us, kernel bf16_gemm_triton\ncandidate generated_candidate: compiling\nTraceback (most recent call last):\n  File \"/tmp/gluon-search-adapter-smoke.py\", line 123, in <module>\n    main()\n  File \"/tmp/gluon-search-adapter-smoke.py\", line 85, in main\n    raise RuntimeError(\nRuntimeError: generated_candidate compile failed: {\"status\": \"candidate_failure\", \"error_type\": \"CompilationError\", \"message\": \"at 33:4:\\n    bars = mbarrier.allocate_mbarrier(batch=1)\\n    bar = bars.index(0)\\n    mbarrier.init(bar, count=1)\\n\\n    acc_layout: gl.constexpr = gl.NVMMADistributedLayout(\\n        version=[3, 0], warps_per_cta=[8, 1], instr_shape=[16, 256, 16]\\n    )\\n\\n    acc = warpgroup_mma_init(gl.zeros((BM, BN), gl.float32, layout=acc_layout))\\n\\n    num_k_blocks = (K + BK - 1) // BK\\n    for step in range(0, num_k_blocks):\\n    ^\\nAssertionError(\\\"Loop carried variable acc changed type, was <class 'triton.language.core.tensor'> but is now <class 'triton.experimental.gluon.language.nvidia.hopper.warpgroup_mma_accumulator'>\\\")\"}\n\n",
+  "schema_version": 1,
+  "smoke_sha256": "86ff1045048271dc9db4e7b3ddc586bd0d1e736254a40e0b8747ec87bed35995"
+}

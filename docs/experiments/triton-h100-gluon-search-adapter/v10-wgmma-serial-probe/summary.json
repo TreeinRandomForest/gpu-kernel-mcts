@@ -1,0 +1,29 @@
+{
+  "attempts": [
+    {
+      "attempt": 0,
+      "b_gen": 1,
+      "candidate_stage": "single_cta_gluon",
+      "edit_mismatch": null,
+      "generation_id": "chatcmpl-8191464f-1fb7-4483-aea1-a95e7fd048e3",
+      "input_tokens": 2227,
+      "latency_seconds": 18.899162417976186,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 1368,
+      "prompt_sha256": "edd0d153d07cdf62940d29148ecd3fe87470b81ee90ef6eec28944068f18873a",
+      "source_sha256": "000707eb1dc2d2aec1e8af6339f95bcaf4af4b5fe81b68f51f0d504c16d59506",
+      "stage_accepted": true
+    }
+  ],
+  "b_gen_used": 1,
+  "catalog_sha256": "8f0bc57e3a9f225111a9151a86e2ed95c0ed5587f4c0f5be9ab6c840cb973c36",
+  "complete": true,
+  "expected_candidate_stage": "single_cta_gluon",
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "parent_source_sha256": "3ade911c03eb6a9fbb9db8af98078b64a35e754319ef0d63ee867545a7547cf2",
+  "scaffold": false,
+  "schema_version": 1,
+  "stage_accepted": true,
+  "strategy_id": "single_cta_gluon_tma_wgmma_serial"
+}

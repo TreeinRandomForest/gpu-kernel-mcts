@@ -1,0 +1,122 @@
+{
+  "cleanup": {
+    "disk_deleted": true,
+    "empty_instance_and_disk_lists_verified": true,
+    "instance_deleted": true
+  },
+  "complete": false,
+  "correctness": {
+    "extra_seeds": {
+      "1": {
+        "multicast": true,
+        "ordinary": true
+      },
+      "2": {
+        "ordinary": true
+      }
+    },
+    "fresh_seed2_diagnostic_log_sha256": "48f3622083b8f0006f264b3f872da477bf2e80dd5ed9c1c09047b5b421b25bfa",
+    "post_round_seed0": {
+      "cublas": [
+        true,
+        true,
+        true
+      ],
+      "multicast": [
+        true,
+        true,
+        true
+      ],
+      "ordinary": [
+        true,
+        true,
+        true
+      ],
+      "triton_b": [
+        true,
+        true,
+        true
+      ]
+    },
+    "seed0": {
+      "cublas": true,
+      "multicast": true,
+      "ordinary": true,
+      "triton_b": true
+    },
+    "seed2_multicast_failure": {
+      "message": "incorrect multicast output at seed 2",
+      "traceback_tail": "Traceback (most recent call last):\n  File \"/tmp/gluon-wait1-b-paired.py\", line 123, in main\n    run(args, report)\n  File \"/tmp/gluon-wait1-b-paired.py\", line 104, in run\n    raise ValueError(f\"incorrect {name} output at seed {seed}\")\nValueError: incorrect multicast output at seed 2\n",
+      "type": "ValueError"
+    }
+  },
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-04T01:54:13.065472+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-bcc6a623-2eff-6537-bcea-664209b7c04c",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "492f936fb55c52c75957ea030237e5e1be69094516618e19520af8162a459a71",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00bgw7z1xam3kp0ky",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00bgw7z1xam3kp0ky"
+  },
+  "fast_b_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+  "git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+  "harness_sha256": "42b841563814c862f91443cf30d9d250f5a1c90851b2501a91f00d7c94cd9a9b",
+  "helper_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "paired_report_sha256": "18b21518c705d3b8d524d8168f655c057914f8ab36e29016e98054d33622020f",
+  "paired_seed0_timing_complete": true,
+  "profile_harness_sha256": "433247df01e64f0ccc099c359076ea45901ad062584d50bad05c75890842c5fd",
+  "profiles": {
+    "multicast": {
+      "reason": "NCU replay still active after more than two minutes; no completed report or traffic counters",
+      "status": "stopped_after_stall"
+    },
+    "ordinary": {
+      "correctness_exact": true,
+      "cubin_sha256": "5216a83fd20aeb901904931703929ba3146d5e25dd42844abf3a752eae67b350",
+      "ncu_report_sha256": "8caae44542aefc74e0db70a9be6e8538d300ed3fb166b6a54823ed37eef833b8",
+      "raw_csv_sha256": "91cb7f226b84ac383e55fb1b1648eb0a0c8745dd4b19f203e10b86b981e75b0f",
+      "sass_csv_sha256": "63611998c69a2af1d4cc148ddbe3629d1546724411ce9148af7b6205a0a6555e",
+      "status": "ok"
+    }
+  },
+  "recovery": "Original runner timed out fetching instance IP during Nebius CLI reauthentication. Harness and NCU were run manually on its already provisioned worker.",
+  "run_id": "d91228d6-41cf-4a40-93ba-13f45a2062a0",
+  "same_cubin": true,
+  "schema_version": 1,
+  "source_sha256": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+  "status": "partial_due_to_multicast_seed2_mismatch",
+  "worker_instance_id": "computeinstance-e00bgw7z1xam3kp0ky"
+}

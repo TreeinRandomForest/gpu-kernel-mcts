@@ -1,0 +1,151 @@
+{
+  "bundle_sha256": "55664de5cd82b35ca51074bb07dc2379839cd3d1f68917ad0452571305e4ed79",
+  "candidate_sha256": "ded1ce26e1f09afd6666555dcda45fe9fcabf271e74eb51dbd95d792b34653a3",
+  "complete": false,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-05T04:05:45.676875+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-ec09e7cb-98e6-0d1b-6ed2-3fba5f8db5b1",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "9c1a579f7b52ac35554a8e818148173deadbd8f89e2e56ca89396b607fad46ca",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00kfqnmbzk6xye0ss",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00kfqnmbzk6xye0ss"
+  },
+  "git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+  "harness_sha256": "2dc1c7b8ac31da1be1d91dbbb982e53914d7c35df3f739102098f21b71831027",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "measurement": {
+    "candidates": {
+      "generated_candidate": {
+        "compile_stderr": "/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n",
+        "compile_success": false,
+        "source_sha256": "ded1ce26e1f09afd6666555dcda45fe9fcabf271e74eb51dbd95d792b34653a3"
+      },
+      "triton_root": {
+        "artifact_id": "d65f32c27d3a348f3a6de834bed18e7633add6235be078df75000bb14dd619ce",
+        "compile_success": true,
+        "compiler_context": {
+          "architecture": "sm_90",
+          "backend": "triton_h100",
+          "kernel_name": "bf16_gemm_triton",
+          "ptx": {
+            "artifacts": [
+              {
+                "path": "/tmp/gluon-search-adapter-artifacts/triton-artifact-3u67qwgt/kernel.ptx",
+                "sha256": "777d36294f30e9acfd4b92ed5a794bfc308e22b6014f41b3a81629232531465c",
+                "size_bytes": 14897,
+                "storage_status": "eligible"
+              }
+            ],
+            "static_instruction_sites": {
+              "categories": {
+                "async_copy": 17,
+                "barrier": 6,
+                "control": 2,
+                "global_load": 0,
+                "global_store": 2,
+                "local_load": 0,
+                "local_store": 0,
+                "other": 159,
+                "shared_load": 2,
+                "shared_store": 0,
+                "tensor": 8
+              },
+              "total": 196
+            },
+            "status": "captured"
+          },
+          "resources": {
+            "registers_per_thread": 48,
+            "spills": 0,
+            "static_shared_memory_bytes": 12288
+          },
+          "sass": {
+            "status": "unavailable"
+          },
+          "schema_version": 1
+        },
+        "correctness_success": true,
+        "kernel_name": "bf16_gemm_triton",
+        "maximum_error": 0.0,
+        "median_us": 828.2399773597717,
+        "source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+        "timings_us": [
+          836.5439772605896,
+          829.0240168571472,
+          827.0400166511536,
+          834.7200155258179,
+          829.1839957237244,
+          830.1759958267212,
+          835.2640271186829,
+          827.8399705886841,
+          826.1119723320007,
+          838.9440178871155,
+          828.3839821815491,
+          827.6799917221069,
+          827.0400166511536,
+          825.0240087509155,
+          830.560028553009,
+          832.863986492157,
+          831.2960267066956,
+          826.4639973640442,
+          824.6080279350281,
+          826.6239762306213,
+          827.1679878234863,
+          834.5280289649963,
+          827.5200128555298,
+          833.5040211677551,
+          826.8799781799316,
+          829.472005367279,
+          827.2320032119751,
+          832.6719999313354,
+          828.0959725379944,
+          826.9760012626648
+        ]
+      }
+    },
+    "complete": false,
+    "cuda_version": "12.8",
+    "error": "RuntimeError: generated_candidate compile failed: /opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n",
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "schema_version": 1,
+    "torch_version": "2.7.1+cu128",
+    "triton_version": "3.9.0"
+  },
+  "mode": "smoke",
+  "remote_exit_code": 1,
+  "remote_log_tail": "Warning: Permanently added '89.169.99.68' (ED25519) to the list of known hosts.\n/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\ncandidate triton_root: compiling\ncandidate triton_root: correctness\ncandidate triton_root: benchmarking\ncandidate triton_root: 828.240 us, kernel bf16_gemm_triton\ncandidate generated_candidate: compiling\nTraceback (most recent call last):\n  File \"/tmp/gluon-search-adapter-smoke.py\", line 120, in <module>\n    main()\n  File \"/tmp/gluon-search-adapter-smoke.py\", line 84, in main\n    raise RuntimeError(f\"{label} compile failed: {compiled.stderr[-800:]}\")\nRuntimeError: generated_candidate compile failed: /opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n\n",
+  "schema_version": 1,
+  "smoke_sha256": "2dc1c7b8ac31da1be1d91dbbb982e53914d7c35df3f739102098f21b71831027"
+}

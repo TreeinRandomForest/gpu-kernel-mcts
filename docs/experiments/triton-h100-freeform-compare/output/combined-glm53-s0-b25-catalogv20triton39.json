@@ -1,0 +1,10 @@
+{
+  "arm": "combined",
+  "best_median_us": 198.94399493932724,
+  "best_source": "combined-glm53-s0-b25-catalogv20triton39-best.py",
+  "budget": 25,
+  "generations": 25,
+  "run_id": "b70bd111-acd5-475d-84b5-490296a30cc2",
+  "seed": 0,
+  "trace": "combined-glm53-s0-b25-catalogv20triton39.sqlite"
+}

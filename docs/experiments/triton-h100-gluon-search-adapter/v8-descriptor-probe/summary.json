@@ -1,0 +1,29 @@
+{
+  "attempts": [
+    {
+      "attempt": 0,
+      "b_gen": 1,
+      "candidate_stage": "descriptor_triton",
+      "edit_mismatch": null,
+      "generation_id": "chatcmpl-2666f996-99a9-4d9a-b54f-a68839f47241",
+      "input_tokens": 1454,
+      "latency_seconds": 6.238920518895611,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 394,
+      "prompt_sha256": "1d83c0667dd462097206763ca167cae4eb574227dbede41f37c7524bb7e975b3",
+      "source_sha256": "8e40bca1b535ec75ae2ea12d9815cf0086cd3d6d13bebd0e3aff5fba3a4974b1",
+      "stage_accepted": true
+    }
+  ],
+  "b_gen_used": 1,
+  "catalog_sha256": "abaf0410e560ca55bd0f5f109f8f3662d30b713bcf82536105e4019fa47465b6",
+  "complete": true,
+  "expected_candidate_stage": "descriptor_triton",
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "parent_source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+  "scaffold": false,
+  "schema_version": 1,
+  "stage_accepted": true,
+  "strategy_id": "descriptor_tma_staging"
+}

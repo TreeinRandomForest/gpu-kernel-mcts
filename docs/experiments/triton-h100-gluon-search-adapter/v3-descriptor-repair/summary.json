@@ -1,0 +1,40 @@
+{
+  "attempts": [
+    {
+      "attempt": 0,
+      "b_gen": 1,
+      "candidate_stage": "unknown",
+      "generation_id": "chatcmpl-79de49a9-86d8-421e-836f-461057fc430c",
+      "input_tokens": 1311,
+      "latency_seconds": 11.696644291980192,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 1034,
+      "prompt_sha256": "f4ca41fe5247f7e6718c91632c5559a271ab989d0d944caf507f249f017edf6f",
+      "source_sha256": "0d411c177c266db247b368ba76113edcd9187b36efe13425cee492cf7170f4f5",
+      "stage_accepted": false
+    },
+    {
+      "attempt": 1,
+      "b_gen": 2,
+      "candidate_stage": "descriptor_triton",
+      "generation_id": "chatcmpl-38d5ff42-3aaa-4cad-a584-6e08441d9255",
+      "input_tokens": 2274,
+      "latency_seconds": 6.471415387932211,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 464,
+      "prompt_sha256": "a8dc25eb34f82f9dddf8fe7a44ca79e68c75ca240e3980abc4149162f8769d87",
+      "source_sha256": "ccfc06f9dafe254680ce31a6f006c246d4fa3c2478b9617c8c22c0f0e1ac516d",
+      "stage_accepted": true
+    }
+  ],
+  "b_gen_used": 2,
+  "catalog_sha256": "c7fd976070f7361fa7f39a9eb5777d1b2d8e480ff430f2dbc660c9da344c1e61",
+  "complete": true,
+  "expected_candidate_stage": "descriptor_triton",
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "scaffold": false,
+  "schema_version": 1,
+  "stage_accepted": true,
+  "strategy_id": "descriptor_tma_staging"
+}

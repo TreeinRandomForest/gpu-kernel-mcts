@@ -1,0 +1,131 @@
+{
+  "correctness": {
+    "nonpersistent_8": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "persistent_1": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "persistent_32": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "persistent_8": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    }
+  },
+  "limitations": "Persistent loops can change code generation as well as CTA residency; L2 miss and DRAM sector counters are not interchangeable.",
+  "num_sms": 132,
+  "profiles": {
+    "cublas": {
+      "kernel_name": "nvjet_tst_256x128_64x4_1x2_h_bz_coopA_TNT",
+      "metrics": {
+        "dram__bytes_read.sum": 150.860032,
+        "dram__sectors_read.sum": 4714376.0,
+        "launch__grid_size": 132.0,
+        "launch__registers_per_thread": 168.0,
+        "launch__shared_mem_per_block": 214.204,
+        "lts__t_sector_op_read_hit_rate.pct": 70.167183,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 27003204.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 20226936.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 6748932.0
+      },
+      "report_sha256": "a577de63111a5f9062b976110119d0c2816e37a5bb81204990a9a457ea8a402d"
+    },
+    "nonpersistent_8": {
+      "kernel_name": "bf16_gemm_tma",
+      "metrics": {
+        "dram__bytes_read.sum": 186.659328,
+        "dram__sectors_read.sum": 5833104.0,
+        "launch__grid_size": 512.0,
+        "launch__registers_per_thread": 154.0,
+        "launch__shared_mem_per_block": 148.504,
+        "lts__t_sector_op_read_hit_rate.pct": 66.791878,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 27334536.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 19689320.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 7074280.0
+      },
+      "report_sha256": "d44972add05f6c31579e2b0ef331cda8c00c17724351ee230e3d15c59ea81af6"
+    },
+    "persistent_1": {
+      "kernel_name": "bf16_gemm_tma_persistent",
+      "metrics": {
+        "dram__bytes_read.sum": 170.93504,
+        "dram__sectors_read.sum": 5341720.0,
+        "launch__grid_size": 132.0,
+        "launch__registers_per_thread": 232.0,
+        "launch__shared_mem_per_block": 216.088,
+        "lts__t_sector_op_read_hit_rate.pct": 76.461079,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 40333288.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 32310936.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 7634952.0
+      },
+      "report_sha256": "10e79659e6442167d3ca26b774e12b1f1ced6ffeeb88de8f16c8e3ae948693ed"
+    },
+    "persistent_32": {
+      "kernel_name": "bf16_gemm_tma_persistent",
+      "metrics": {
+        "dram__bytes_read.sum": 174.107136,
+        "dram__sectors_read.sum": 5440848.0,
+        "launch__grid_size": 132.0,
+        "launch__registers_per_thread": 230.0,
+        "launch__shared_mem_per_block": 216.088,
+        "lts__t_sector_op_read_hit_rate.pct": 68.555955,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 29229576.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 20981468.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 8076660.0
+      },
+      "report_sha256": "b808359a5cb808c95c85a73d174d228e57cc76173299d8469999cd9ea97f5862"
+    },
+    "persistent_8": {
+      "kernel_name": "bf16_gemm_tma_persistent",
+      "metrics": {
+        "dram__bytes_read.sum": 186.661632,
+        "dram__sectors_read.sum": 5833176.0,
+        "launch__grid_size": 132.0,
+        "launch__registers_per_thread": 230.0,
+        "launch__shared_mem_per_block": 216.088,
+        "lts__t_sector_op_read_hit_rate.pct": 70.66777,
+        "lts__t_sectors_srcunit_tex_op_read.sum": 26616724.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum": 20567192.0,
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": 6756012.0
+      },
+      "report_sha256": "d983eb3ff318851f147802c8ed1c6c21fd757b252fe40f3658468db996a2e650"
+    }
+  },
+  "round_medians_us": {
+    "cublas": [
+      184.57599729299545,
+      192.60799884796143,
+      192.9119974374771
+    ],
+    "nonpersistent_8": [
+      200.3840059041977,
+      207.05600082874298,
+      204.78399842977524
+    ],
+    "persistent_1": [
+      208.17600190639496,
+      208.80000293254852,
+      210.7520028948784
+    ],
+    "persistent_32": [
+      204.8799991607666,
+      205.02400398254395,
+      204.96000349521637
+    ],
+    "persistent_8": [
+      198.7680047750473,
+      204.6239972114563,
+      202.54399627447128
+    ]
+  },
+  "schema_version": 1,
+  "source_sha256": {
+    "persistent": "5827e319c9b30a7a193875544feefb686226796b9a96302558af55d539a417d7",
+    "tma": "c7113204ec9d45e858382fc7d2ede9a6d33d18fadbc0f842c6031d91f7163dfa"
+  }
+}

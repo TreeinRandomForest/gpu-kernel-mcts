@@ -1,0 +1,43 @@
+{
+  "attempts": [
+    {
+      "attempt": 0,
+      "b_gen": 1,
+      "candidate_stage": "single_cta_gluon",
+      "edit_mismatch": "reuse descriptor.layout inside the JIT kernel; do not call get_default_for there; compare host tensor dtype with torch.bfloat16, not triton.bfloat16; allocate A/B/C with gl.allocate_shared_memory(descriptor.dtype, descriptor.block_shape, descriptor.layout); gl.allocate_shared is not the serial action shared-memory API",
+      "generation_id": "chatcmpl-4ffe4269-c28b-4a08-808d-4fb55b38d495",
+      "input_tokens": 2796,
+      "latency_seconds": 12.860907952068374,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 958,
+      "prompt_sha256": "ba8fe530cf537129640d925c51c6a762a3e7a18c085b155d94cf5b8c1ab0646e",
+      "source_sha256": "9504d17e55838f62f8c525905ffde03d062399aba6b59f2b150786f8a931115c",
+      "stage_accepted": false
+    },
+    {
+      "attempt": 1,
+      "b_gen": 2,
+      "candidate_stage": "single_cta_gluon",
+      "edit_mismatch": null,
+      "generation_id": "chatcmpl-3c15d37d-8c79-4f58-abf2-2ab5a509a222",
+      "input_tokens": 4024,
+      "latency_seconds": 13.901919188909233,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 898,
+      "prompt_sha256": "d2f4cf3216a99e2b2b0e807383eb0b215bf38676620932b6fa3b472ac437e4f3",
+      "source_sha256": "bd989845f499aad8f1e19da77a3acd37d1eb575c41e553a5a99cfe21756e7c59",
+      "stage_accepted": true
+    }
+  ],
+  "b_gen_used": 2,
+  "catalog_sha256": "403196194b523f3269eca54bb3f01e3c92a7c7d6921ae64b97f51c74b5305d54",
+  "complete": true,
+  "expected_candidate_stage": "single_cta_gluon",
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "parent_source_sha256": "3ade911c03eb6a9fbb9db8af98078b64a35e754319ef0d63ee867545a7547cf2",
+  "scaffold": false,
+  "schema_version": 1,
+  "stage_accepted": true,
+  "strategy_id": "single_cta_gluon_tma_wgmma_serial_guarded"
+}

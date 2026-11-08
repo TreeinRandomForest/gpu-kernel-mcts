@@ -1,0 +1,96 @@
+{
+  "attempt": 0,
+  "backend": "triton_h100",
+  "constraints": [
+    "Return a complete Python Triton or Gluon source file without Markdown.",
+    "Define launch(A, B, C, M, N, K) and return the CompiledKernel that computes C.",
+    "A is row-major BF16 [M,K]; B is column-major BF16 [K,N]; C is row-major BF16 [M,N].",
+    "Preserve FP32 accumulation and the fixed correctness tolerance.",
+    "The kernel may use @triton.jit or @gluon.jit; preserve the launch ABI and return one named compiled kernel.",
+    "Treat cuBLAS timing as a reference target; search reward is measured against the Triton root."
+  ],
+  "parent_kernel": "\"\"\"Triton root for the existing H100 BF16 GEMM workload.\"\"\"\n\nimport triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_triton(A, B, C, M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,\n                     BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    acc = tl.full((BM, BN), 0, tl.float32)\n    for start in range(tl.cdiv(K, BK)):\n        k = start * BK + kk\n        a = tl.load(A + row[:, None] * K + k[None, :],\n                    (row[:, None] < M) & (k[None, :] < K), other=0)\n        # B is [K,N] column-major, so its K stride is 1 and N stride is K.\n        b = tl.load(B + k[:, None] + col[None, :] * K,\n                    (k[:, None] < K) & (col[None, :] < N), other=0)\n        acc += tl.dot(a, b)\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    bm, bn, bk = 32, 64, 32\n    return bf16_gemm_triton[(triton.cdiv(M, bm), triton.cdiv(N, bn))](\n        A, B, C, M, N, K, bm, bn, bk, num_warps=4\n    )\n",
+  "parent_profile": null,
+  "parent_timing": {
+    "measurement": "CUDA events",
+    "median_us": 832.784,
+    "sample_count": null,
+    "warmup_count": null
+  },
+  "performance_references": {
+    "cublas_median_us": 183.568
+  },
+  "strategy": {
+    "backend_prompt": "Produce a clustered Gluon WGMMA/TMA kernel, not an ordinary triton.jit pointer-load kernel. Keep launch(A,B,C,M,N,K) and return the compiled kernel. Use the ABI's B.T physical [N,K] descriptor view, legal two-CTA output ownership, ordinary B loads, three-slot TMA barriers, wait-one WGMMA lifetime, FP32 accumulation, BF16 output and one writer per output. Do not substitute a tl.load/tl.dot mainloop. Derive descriptor shapes, cluster layout, shared-memory capacity, barrier phases and teardown explicitly; compile, check correctness and benchmark before treating it as a valid realization.",
+    "description": "Make a structural two-CTA Gluon WGMMA/TMA GEMM",
+    "id": "clustered_gluon_wgmma_tma"
+  },
+  "target_hardware": {
+    "gpu_model": "H100"
+  },
+  "task": "Produce a complete replacement GPU kernel preserving the workload contract.",
+  "workload": {
+    "atol": 0.02,
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "dtype": "bfloat16",
+    "metadata": {
+      "abi": {
+        "launch": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "parameters": [
+          "A",
+          "B",
+          "C",
+          "M",
+          "N",
+          "K"
+        ]
+      },
+      "accumulation_dtype": "float32",
+      "entry_point": "launch",
+      "output_dtype": "bfloat16",
+      "target": {
+        "form_factor": "SXM",
+        "gpu_model": "H100",
+        "minimum_compute_capability": "9.0"
+      },
+      "tensors": {
+        "A": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "K"
+          ]
+        },
+        "B": {
+          "layout": "column_major",
+          "shape": [
+            "K",
+            "N"
+          ]
+        },
+        "C": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "N"
+          ]
+        }
+      }
+    },
+    "operation": "gemm",
+    "rtol": 0.02,
+    "shapes": [
+      {
+        "dimensions": {
+          "K": 4096,
+          "M": 4096,
+          "N": 4096
+        },
+        "weight": 1.0
+      }
+    ]
+  }
+}

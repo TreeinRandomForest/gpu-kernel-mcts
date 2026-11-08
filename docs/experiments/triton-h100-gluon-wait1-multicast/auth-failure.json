@@ -1,0 +1,52 @@
+{
+  "complete": false,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-04T01:54:13.065472+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-bcc6a623-2eff-6537-bcea-664209b7c04c",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "492f936fb55c52c75957ea030237e5e1be69094516618e19520af8162a459a71",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00bgw7z1xam3kp0ky",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00bgw7z1xam3kp0ky"
+  },
+  "fast_b_sha256": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+  "git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+  "harness_sha256": "42b841563814c862f91443cf30d9d250f5a1c90851b2501a91f00d7c94cd9a9b",
+  "helper_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "profile_harness_sha256": "433247df01e64f0ccc099c359076ea45901ad062584d50bad05c75890842c5fd",
+  "run_id": "d91228d6-41cf-4a40-93ba-13f45a2062a0",
+  "schema_version": 1,
+  "source_sha256": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525"
+}

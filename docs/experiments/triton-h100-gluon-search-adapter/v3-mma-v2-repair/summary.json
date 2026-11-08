@@ -1,0 +1,41 @@
+{
+  "attempts": [
+    {
+      "attempt": 0,
+      "b_gen": 1,
+      "candidate_stage": "missing",
+      "generation_id": "chatcmpl-c0314d94-1f25-49dc-bcaf-648896b8a256",
+      "input_tokens": 1327,
+      "latency_seconds": 117.04021051595919,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 8192,
+      "prompt_sha256": "39b3fe476f39dd277311f323cdae4281c1d3ed0249e02130d395ffa781b67fcb",
+      "source_sha256": null,
+      "stage_accepted": false
+    },
+    {
+      "attempt": 1,
+      "b_gen": 2,
+      "candidate_stage": "descriptor_triton",
+      "generation_id": "chatcmpl-483473e9-486a-48a2-9107-451b96749f6c",
+      "input_tokens": 1414,
+      "latency_seconds": 102.50217242492363,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 6923,
+      "prompt_sha256": "75e3aafe864d4acec591a47c6cbb9a69fc73fdaab364e0a8f5a28c6336c69ab4",
+      "source_sha256": "87f7fc4dc338aa8131a1b15f6f05633bd6f0326858dfb8402f4714095859ecdd",
+      "stage_accepted": false
+    }
+  ],
+  "b_gen_used": 2,
+  "catalog_sha256": "02ee05d9c33505cbd8d656094dac3a85ad719bafed22642a096c4d0b7a15331d",
+  "complete": true,
+  "expected_candidate_stage": "gluon_mma_v2",
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "parent_source_sha256": "ccfc06f9dafe254680ce31a6f006c246d4fa3c2478b9617c8c22c0f0e1ac516d",
+  "scaffold": false,
+  "schema_version": 1,
+  "stage_accepted": false,
+  "strategy_id": "gluon_mma_v2_port"
+}

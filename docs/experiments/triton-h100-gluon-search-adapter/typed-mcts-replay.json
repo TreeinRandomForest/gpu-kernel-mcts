@@ -1,0 +1,40 @@
+{
+  "b_gen": 0,
+  "b_mut": 2,
+  "best_median_us": 249.39200282096863,
+  "best_source_sha256": "0a19a0237606f07d36148bd735b0a8a2ff70a798c76739eee39d432c51dd2393",
+  "generation_events": [
+    {
+      "b_gen": 0,
+      "b_mut": 1,
+      "proposal_mechanism": "mutation"
+    },
+    {
+      "b_gen": 0,
+      "b_mut": 2,
+      "proposal_mechanism": "mutation"
+    }
+  ],
+  "iterations": 2,
+  "measurement_sha256": "7dc9931601e342803eec3f3e0c03663e641c13ebab2dccba604014deeb5df612",
+  "mode": "measured_result_replay_without_gpu",
+  "node_count": 3,
+  "nodes": [
+    {
+      "median_us": 249.39200282096863,
+      "reward": 0.0,
+      "source_sha256": "0a19a0237606f07d36148bd735b0a8a2ff70a798c76739eee39d432c51dd2393"
+    },
+    {
+      "median_us": 262.703999876976,
+      "reward": -0.052001955543294225,
+      "source_sha256": "05c84cd02690599b6992f847d4f194bc0b8850675ea6c19db4fb6ea5e4b7f48f"
+    },
+    {
+      "median_us": 346.9439893960953,
+      "reward": -0.3301373860160579,
+      "source_sha256": "faaf1f28168a3269117ef100cf9772a816cb7502233c801e909b660db597f644"
+    }
+  ],
+  "schema_version": 1
+}

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+from importlib.resources import files
 from typing import Any, Mapping
 
-from .domain import EvaluationResult, KernelProgram
+from .domain import EvaluationResult, KernelProgram, WorkloadContract
 from .generation import GenerationRequest, GenerationResult
 from .llm import LLMClient
 from .serialization import serialize_evaluation, serialize_workload
+from .triton_freeform import TRITON_FREEFORM_ACTION, TRITON_FREEFORM_PROMPT_VERSION
 
 
 class LLMKernelGenerator:
@@ -52,17 +54,22 @@ class LLMKernelGenerator:
         )
 
 
-def build_generation_prompt(request: GenerationRequest) -> str:
-    workload = serialize_workload(request.workload)
-    if request.parent.backend == "triton_h100":
-        workload["metadata"] = {
-            **workload["metadata"],
+def _prompt_workload(workload: WorkloadContract, backend: str) -> dict[str, Any]:
+    payload = serialize_workload(workload)
+    if backend == "triton_h100":
+        payload["metadata"] = {
+            **payload["metadata"],
             "entry_point": "launch",
             "abi": {
                 "parameters": ["A", "B", "C", "M", "N", "K"],
                 "launch": {"dynamic": True, "entry_point": "launch"},
             },
         }
+    return payload
+
+
+def build_generation_prompt(request: GenerationRequest) -> str:
+    workload = _prompt_workload(request.workload, request.parent.backend)
     payload: dict[str, Any] = {
         "task": "Produce a complete replacement GPU kernel preserving the workload contract.",
         "backend": request.parent.backend,
@@ -83,6 +90,14 @@ def build_generation_prompt(request: GenerationRequest) -> str:
         "attempt": request.attempt,
     }
     if request.parent.backend == "triton_h100":
+        if request.strategy.scaffold_resource is not None:
+            scaffold = (files("kernel_mcts.benchmarks")
+                        .joinpath("kernels", request.strategy.scaffold_resource)
+                        .read_text(encoding="utf-8"))
+            payload["strategy"]["source_scaffold"] = {
+                "source": scaffold,
+                "sha256": hashlib.sha256(scaffold.encode()).hexdigest(),
+            }
         if request.current_benchmark is not None:
             payload["parent_timing"] = _prompt_timing(request.current_benchmark)
         if request.reference_baselines:
@@ -94,6 +109,13 @@ def build_generation_prompt(request: GenerationRequest) -> str:
             "Preserve FP32 accumulation and the fixed correctness tolerance.",
             "The kernel may use @triton.jit or @gluon.jit; preserve the launch ABI and return one named compiled kernel.",
         ]
+        if request.strategy.id == TRITON_FREEFORM_ACTION:
+            payload["task"] = "Optimize this verified pure-Triton kernel freely under the workload contract."
+            payload["strategy"]["prompt_version"] = TRITON_FREEFORM_PROMPT_VERSION
+            payload["constraints"][-1] = (
+                "Use only @triton.jit and triton.language; do not use Gluon. "
+                "Preserve the launch ABI and return one named compiled kernel."
+            )
         if request.reference_baselines:
             payload["constraints"].append(
                 "Treat cuBLAS timing as a reference target; search reward is measured against the Triton root."
@@ -135,6 +157,8 @@ def build_generation_prompt(request: GenerationRequest) -> str:
         payload["incoming_profile_delta"] = _json_value(
             request.incoming_profile_delta
         )
+    if request.existing_realizations:
+        payload["existing_realizations"] = _json_value(request.existing_realizations)
     if request.compiler_summary is not None:
         payload["parent_compiler_summary"] = _json_value(request.compiler_summary)
     if request.dataflow_view is not None:
@@ -182,7 +206,7 @@ def _repair_evidence(result: EvaluationResult | None) -> Mapping[str, object] | 
             value = compilation.get(key)
             if isinstance(value, str):
                 compilation[key] = value[-8_000:]
-    return {
+    evidence = {
         "status": serialized["status"],
         "invalid_reason": serialized["invalid_reason"],
         "compile_status": serialized["compile_status"],
@@ -190,6 +214,14 @@ def _repair_evidence(result: EvaluationResult | None) -> Mapping[str, object] | 
         "compilation": compilation,
         "correctness": serialized.get("correctness"),
     }
+    detail = result.metadata.get("detail")
+    if isinstance(detail, str):
+        evidence["detail"] = detail[-2_000:]
+    if result.invalid_reason is not None and result.invalid_reason.value == "STRATEGY_MISMATCH":
+        evidence["expected_candidate_stage"] = result.metadata.get("expected_candidate_stage")
+        evidence["observed_candidate_stage"] = result.metadata.get("observed_candidate_stage")
+        evidence["strategy_edit_guard"] = result.metadata.get("strategy_edit_guard")
+    return evidence
 
 
 def _json_value(value: object) -> object:

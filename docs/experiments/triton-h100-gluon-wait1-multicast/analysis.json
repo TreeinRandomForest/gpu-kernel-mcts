@@ -1,0 +1,207 @@
+{
+  "complete": false,
+  "correctness": {
+    "extra_seeds": {
+      "1": {
+        "multicast": true,
+        "ordinary": true
+      },
+      "2": {
+        "ordinary": true
+      }
+    },
+    "fresh_seed2_diagnostic_log_sha256": "48f3622083b8f0006f264b3f872da477bf2e80dd5ed9c1c09047b5b421b25bfa",
+    "post_round_seed0": {
+      "cublas": [
+        true,
+        true,
+        true
+      ],
+      "multicast": [
+        true,
+        true,
+        true
+      ],
+      "ordinary": [
+        true,
+        true,
+        true
+      ],
+      "triton_b": [
+        true,
+        true,
+        true
+      ]
+    },
+    "seed0": {
+      "cublas": true,
+      "multicast": true,
+      "ordinary": true,
+      "triton_b": true
+    },
+    "seed2_multicast_failure": {
+      "message": "incorrect multicast output at seed 2",
+      "traceback_tail": "Traceback (most recent call last):\n  File \"/tmp/gluon-wait1-b-paired.py\", line 123, in main\n    run(args, report)\n  File \"/tmp/gluon-wait1-b-paired.py\", line 104, in run\n    raise ValueError(f\"incorrect {name} output at seed {seed}\")\nValueError: incorrect multicast output at seed 2\n",
+      "type": "ValueError"
+    }
+  },
+  "paired_multicast_speedup": [
+    0.986156226773144,
+    0.9896018058635295,
+    0.9899613267020633
+  ],
+  "profiles": {
+    "multicast": {
+      "reason": "NCU replay still active after more than two minutes; no completed report or traffic counters",
+      "status": "stopped_after_stall"
+    },
+    "ordinary": {
+      "compiler": {
+        "cubin_sha256": "5216a83fd20aeb901904931703929ba3146d5e25dd42844abf3a752eae67b350",
+        "ptx_multicast_sites": 4,
+        "ptx_sha256": "2cfed630dc36cdae0eebc04aee0297a2394262a5b9f192ae1f1c54bff0900912",
+        "registers_per_thread": 154,
+        "sass_multicast_sites": 4,
+        "sass_warpgroup_wait_sites": 2,
+        "shared_memory_bytes": 147480,
+        "spills": 0
+      },
+      "cubin_sha256": "5216a83fd20aeb901904931703929ba3146d5e25dd42844abf3a752eae67b350",
+      "metrics": {
+        "dram__bytes_read.sum": {
+          "unit": "Mbyte",
+          "value": 174.102016
+        },
+        "dram__bytes_write.sum": {
+          "unit": "Mbyte",
+          "value": 28.689408
+        },
+        "gpu__time_duration.sum": {
+          "unit": "us",
+          "value": 220.32
+        },
+        "launch__registers_per_thread": {
+          "unit": "register/thread",
+          "value": 154.0
+        },
+        "launch__shared_mem_per_block": {
+          "unit": "Kbyte/block",
+          "value": 148.504
+        },
+        "lts__t_sectors_srcunit_tex_op_read.sum": {
+          "unit": "sector",
+          "value": 27150068.0
+        },
+        "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum": {
+          "unit": "sector",
+          "value": 7920612.0
+        },
+        "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed": {
+          "unit": "%",
+          "value": 84.305432
+        },
+        "smsp__inst_executed.sum": {
+          "unit": "inst",
+          "value": 24524288.0
+        }
+      },
+      "sass": {
+        "barrier_poll_branch_samples": 1474,
+        "multicast_tma_executions": 0,
+        "ordinary_tma_executions": 294912,
+        "top_sites": [
+          {
+            "executed": 262144,
+            "instruction": "WARPGROUP.DEPBAR.LE gsb0, 0x1",
+            "samples": 4748
+          },
+          {
+            "executed": 262144,
+            "instruction": "@P1   BRA 0x72e24f7b5f60",
+            "samples": 2423
+          },
+          {
+            "executed": 262144,
+            "instruction": "@!P1  BRA 0x72e24f7b68a0",
+            "samples": 1474
+          },
+          {
+            "executed": 262144,
+            "instruction": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24",
+            "samples": 1102
+          },
+          {
+            "executed": 262144,
+            "instruction": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24, gsb0",
+            "samples": 902
+          },
+          {
+            "executed": 262144,
+            "instruction": "UMOV UR23, 0x40000040",
+            "samples": 387
+          },
+          {
+            "executed": 262144,
+            "instruction": "UIADD3 UR5, UR5, 0x1, URZ",
+            "samples": 377
+          },
+          {
+            "executed": 4096,
+            "instruction": "UCGABAR_WAIT",
+            "samples": 367
+          },
+          {
+            "executed": 4096,
+            "instruction": "MEMBAR.ALL.CTA",
+            "samples": 342
+          },
+          {
+            "executed": 262144,
+            "instruction": "HGMMA.64x256x16.F32.BF16 R24, gdesc[UR20], R24",
+            "samples": 339
+          }
+        ],
+        "total_source_page_pc_samples": 18298,
+        "warpgroup_wait_samples": 5011
+      }
+    }
+  },
+  "run_id": "d91228d6-41cf-4a40-93ba-13f45a2062a0",
+  "schema_version": 1,
+  "seed0_timing_complete": true,
+  "source_sha256": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+  "timing": {
+    "cublas": {
+      "median_of_round_medians_us": 176.67199671268463,
+      "round_medians_us": [
+        174.3839979171753,
+        176.67199671268463,
+        181.2319979071617
+      ]
+    },
+    "multicast": {
+      "median_of_round_medians_us": 189.26399946212769,
+      "round_medians_us": [
+        187.23200261592865,
+        189.26399946212769,
+        194.44800168275833
+      ]
+    },
+    "ordinary": {
+      "median_of_round_medians_us": 187.29599565267563,
+      "round_medians_us": [
+        184.64000523090363,
+        187.29599565267563,
+        192.49600172042847
+      ]
+    },
+    "triton_b": {
+      "median_of_round_medians_us": 185.2799952030182,
+      "round_medians_us": [
+        183.27999860048294,
+        185.2799952030182,
+        189.03999775648117
+      ]
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "attempts": [
+    {
+      "attempt": 0,
+      "b_gen": 1,
+      "candidate_stage": "pointer_triton",
+      "generation_id": "chatcmpl-7088a09e-fbb3-4997-80b9-bc3719e573ea",
+      "input_tokens": 1305,
+      "latency_seconds": 43.62311289599165,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 3259,
+      "prompt_sha256": "583d8762678e3944b08055da0090ac5f48c5d04d5fcd2958adf6b4d6348afb9b",
+      "source_sha256": "fd70d66d4dee3259cf66d9416bbb81bc0f56fda42540c057e8f2f9738ae9aa95",
+      "stage_accepted": false
+    },
+    {
+      "attempt": 1,
+      "b_gen": 2,
+      "candidate_stage": "missing",
+      "generation_id": "chatcmpl-fb394bc5-4bc1-479c-a978-a792b202cff6",
+      "input_tokens": 2269,
+      "latency_seconds": 114.60548823489808,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 8192,
+      "prompt_sha256": "481d803dabea32a06a4bbf992ae11fe3a4033c0ab3cad91ad74a65aa0dce35d2",
+      "source_sha256": null,
+      "stage_accepted": false
+    }
+  ],
+  "b_gen_used": 2,
+  "catalog_sha256": "c7fd976070f7361fa7f39a9eb5777d1b2d8e480ff430f2dbc660c9da344c1e61",
+  "complete": true,
+  "expected_candidate_stage": "single_cta_gluon",
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "parent_source_sha256": "ccfc06f9dafe254680ce31a6f006c246d4fa3c2478b9617c8c22c0f0e1ac516d",
+  "scaffold": false,
+  "schema_version": 1,
+  "stage_accepted": false,
+  "strategy_id": "single_cta_gluon_wgmma_tma"
+}

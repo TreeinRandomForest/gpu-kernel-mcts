@@ -1,0 +1,152 @@
+{
+  "bundle_sha256": "7557f593a0e9c71429edbdca2e80c59b10a5e3177469e48f52fedea1640532ca",
+  "candidate_sha256": "ded1ce26e1f09afd6666555dcda45fe9fcabf271e74eb51dbd95d792b34653a3",
+  "complete": false,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-05T04:12:59.257895+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-b74fc06c-2972-5ff3-18ca-1e312a74f522",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "954f79b758841304bbb2308b195382dbf8765f3d72ad05bf040b24957c702ec1",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00yw545xqdtv2sy25",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00yw545xqdtv2sy25"
+  },
+  "git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+  "harness_sha256": "86ff1045048271dc9db4e7b3ddc586bd0d1e736254a40e0b8747ec87bed35995",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "measurement": {
+    "candidates": {
+      "generated_candidate": {
+        "compile_stderr": "/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\n/opt/venv/lib/python3.12/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.\n  warn_once(FP_FUSION_DEFAULT_WARNING)\n",
+        "compile_stdout": "{\"status\": \"candidate_failure\", \"error_type\": \"CompilationError\", \"message\": \"at 9:4:\\ndef gemm(A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,\\n         BM: gl.constexpr, BN: gl.constexpr, BK: gl.constexpr):\\n    pid_m = gl.program_id(0)\\n    pid_n = gl.program_id(1)\\n    off_m = pid_m * BM\\n    off_n = pid_n * BN\\n\\n    # A tile: [BM, BK], K contiguous (row-major A)\\n    a_layout = gl.BlockedLayout([1, 16], [4, 4], [2, 2], [0, 1])\\n    ^\\nTypeError(\\\"cannot convert BlockedLayout(size_per_thread=(1, 16), threads_per_warp=(4, 4), warps_per_cta=(2, 2), order=(0, 1), cga_layout=[]) of type <class 'triton.experimental.gluon.language._layouts.BlockedLayout'> to tensor\\\")\"}\n",
+        "compile_success": false,
+        "source_sha256": "ded1ce26e1f09afd6666555dcda45fe9fcabf271e74eb51dbd95d792b34653a3"
+      },
+      "triton_root": {
+        "artifact_id": "19c81527089da2b4466ff52aff8d1d9b719ebcc378bb5d9c0a0b35870c816c28",
+        "compile_success": true,
+        "compiler_context": {
+          "architecture": "sm_90",
+          "backend": "triton_h100",
+          "kernel_name": "bf16_gemm_triton",
+          "ptx": {
+            "artifacts": [
+              {
+                "path": "/tmp/gluon-search-adapter-artifacts/triton-artifact-lkakwj0k/kernel.ptx",
+                "sha256": "bfa4afc8004dac337d611e6f79322e6cb16731ce1c93f11f2e057803f4bfc2ba",
+                "size_bytes": 14899,
+                "storage_status": "eligible"
+              }
+            ],
+            "static_instruction_sites": {
+              "categories": {
+                "async_copy": 17,
+                "barrier": 6,
+                "control": 2,
+                "global_load": 0,
+                "global_store": 2,
+                "local_load": 0,
+                "local_store": 0,
+                "other": 159,
+                "shared_load": 2,
+                "shared_store": 0,
+                "tensor": 8
+              },
+              "total": 196
+            },
+            "status": "captured"
+          },
+          "resources": {
+            "registers_per_thread": 48,
+            "spills": 0,
+            "static_shared_memory_bytes": 12288
+          },
+          "sass": {
+            "status": "unavailable"
+          },
+          "schema_version": 1
+        },
+        "correctness_success": true,
+        "kernel_name": "bf16_gemm_triton",
+        "maximum_error": 0.0,
+        "median_us": 835.0720107555389,
+        "source_sha256": "b4f4ab4a0ab553175743f98929d882731503746d6095761093fda9deee04479c",
+        "timings_us": [
+          844.9599742889404,
+          834.559977054596,
+          838.8800024986267,
+          837.5999927520752,
+          835.968017578125,
+          832.0320248603821,
+          833.5999846458435,
+          834.7200155258179,
+          831.8719863891602,
+          843.6160087585449,
+          835.4880213737488,
+          834.6880078315735,
+          829.6639919281006,
+          834.7200155258179,
+          837.4080061912537,
+          831.6799998283386,
+          832.7999711036682,
+          837.7280235290527,
+          838.0159735679626,
+          834.0479731559753,
+          833.8879942893982,
+          838.1119966506958,
+          838.0799889564514,
+          830.2720189094543,
+          833.184003829956,
+          839.5839929580688,
+          838.1440043449402,
+          835.42400598526,
+          838.3359909057617,
+          830.3040266036987
+        ]
+      }
+    },
+    "complete": false,
+    "cuda_version": "12.8",
+    "error": "RuntimeError: generated_candidate compile failed: {\"status\": \"candidate_failure\", \"error_type\": \"CompilationError\", \"message\": \"at 9:4:\\ndef gemm(A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,\\n         BM: gl.constexpr, BN: gl.constexpr, BK: gl.constexpr):\\n    pid_m = gl.program_id(0)\\n    pid_n = gl.program_id(1)\\n    off_m = pid_m * BM\\n    off_n = pid_n * BN\\n\\n    # A tile: [BM, BK], K contiguous (row-major A)\\n    a_layout = gl.BlockedLayout([1, 16], [4, 4], [2, 2], [0, 1])\\n    ^\\nTypeError(\\\"cannot convert BlockedLayout(size_per_thread=(1, 16), threads_per_warp=(4, 4), warps_per_cta=(2, 2), order=(0, 1), cga_layout=[]) of type <class 'triton.experimental.gluon.language._layouts.BlockedLayout'> to tensor\\\")\"}\n",
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "schema_version": 1,
+    "torch_version": "2.7.1+cu128",
+    "triton_version": "3.9.0"
+  },
+  "mode": "smoke",
+  "remote_exit_code": 1,
+  "remote_log_tail": "Warning: Permanently added '89.169.98.49' (ED25519) to the list of known hosts.\n/opt/venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:276: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\ncandidate triton_root: compiling\ncandidate triton_root: correctness\ncandidate triton_root: benchmarking\ncandidate triton_root: 835.072 us, kernel bf16_gemm_triton\ncandidate generated_candidate: compiling\nTraceback (most recent call last):\n  File \"/tmp/gluon-search-adapter-smoke.py\", line 123, in <module>\n    main()\n  File \"/tmp/gluon-search-adapter-smoke.py\", line 85, in main\n    raise RuntimeError(\nRuntimeError: generated_candidate compile failed: {\"status\": \"candidate_failure\", \"error_type\": \"CompilationError\", \"message\": \"at 9:4:\\ndef gemm(A, B, C, M: gl.constexpr, N: gl.constexpr, K: gl.constexpr,\\n         BM: gl.constexpr, BN: gl.constexpr, BK: gl.constexpr):\\n    pid_m = gl.program_id(0)\\n    pid_n = gl.program_id(1)\\n    off_m = pid_m * BM\\n    off_n = pid_n * BN\\n\\n    # A tile: [BM, BK], K contiguous (row-major A)\\n    a_layout = gl.BlockedLayout([1, 16], [4, 4], [2, 2], [0, 1])\\n    ^\\nTypeError(\\\"cannot convert BlockedLayout(size_per_thread=(1, 16), threads_per_warp=(4, 4), warps_per_cta=(2, 2), order=(0, 1), cga_layout=[]) of type <class 'triton.experimental.gluon.language._layouts.BlockedLayout'> to tensor\\\")\"}\n\n",
+  "schema_version": 1,
+  "smoke_sha256": "86ff1045048271dc9db4e7b3ddc586bd0d1e736254a40e0b8747ec87bed35995"
+}

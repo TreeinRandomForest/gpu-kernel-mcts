@@ -1,0 +1,79 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-04T03:04:03.744684+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-e2412f30-102d-6332-c124-f802c460fd3c",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "4ce8a592bf143c4a46eb65c726fdeb061802e9dc88b1f781167f3b50334d5bb0",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00d4kavxz4bff18sx",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00d4kavxz4bff18sx"
+  },
+  "git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+  "harness_sha256": "269f25c0280a4f1b70fff68fef161c290c592ce9ed64f37fe516e2b6521e1471",
+  "helper_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "last_output": "5 cublas 182.3359951376915\n5 gluon 194.43199783563614\n6 gluon 195.0719952583313\n6 cublas 183.119997382164\n7 cublas 182.15999752283096\n7 gluon 194.35200095176697\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"create_umulhi\"\n - leaked function \"create_cat\"\n - leaked function \"get_loc\"\n - leaked function \"get_int64_ty\"\n - leaked function \"create_buffer_load\"\n - leaked function \"create_make_tensor_descriptor\"\n - leaked function \"get_tensor_descriptor_layout_type\"\n - leaked function \"get_distributed_ty\"\n - leaked function \"create_floor\"\n - leaked function \"get_cache_policy\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+  "paired_complete": true,
+  "profile_harness_sha256": "4440a32bd86de288f0840308a64eeae7614100ae0f7e3af468a7b5fb320fd7b4",
+  "profiles": {
+    "cublas": {
+      "arm": "cublas",
+      "correctness_exact": true,
+      "cubin_sha256": null,
+      "helper_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+      "nvtx_range": "WAIT1_VS_CUBLAS_CUBLAS",
+      "source_sha256": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+      "status": "ok",
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    },
+    "gluon": {
+      "arm": "gluon",
+      "correctness_exact": true,
+      "cubin_sha256": "378eb2cf981372381b041f67b24f01f68a114e63132ba764bb539c2a1200edc7",
+      "helper_sha256": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+      "nvtx_range": "WAIT1_VS_CUBLAS_GLUON",
+      "source_sha256": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+      "status": "ok",
+      "torch_version": "2.7.1+cu128",
+      "triton_version": "3.9.0"
+    }
+  },
+  "remote_artifacts_sha256": "ab45311edd62a58013367b3ce0014bf4c68427015a5451032b10ac685f142c8e",
+  "remote_exit_code": 0,
+  "run_id": "660c5941-e21d-4fe7-acef-51245f24e5a9",
+  "schema_version": 1,
+  "source_sha256": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525"
+}

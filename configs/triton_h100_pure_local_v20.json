@@ -1,0 +1,53 @@
+{
+  "version": "triton_h100_pure_local_v20",
+  "strategies": [
+    {
+      "id": "triton_pointer_advance_tile_128",
+      "description": "Rewrite the pointer-load Triton loop with advancing operand pointers and a legal 128x128x64 eight-warp tile",
+      "candidate_stage": "pointer_triton",
+      "applicability": {
+        "backend": "triton_h100",
+        "operation": "gemm",
+        "gpu_model": "H100",
+        "parent_stages": [
+          "pointer_triton"
+        ]
+      },
+      "prompts": {
+        "triton_h100": "Return one complete Python source file defining launch(A,B,C,M,N,K) and a named @triton.jit GEMM. Keep pure Triton language, FP32 accumulation, BF16 output, row-major A/C, column-major B[K,N] with B[k,n] at B+n*K+k, and exact masks. Make the coordinated first transition from the packaged pointer-load root to a 128x128x64 output/K tile with eight warps and three stages. In launch use literal `BM, BN, BK = 128, 128, 64`, a two-dimensional grid `(triton.cdiv(M,BM), triton.cdiv(N,BN))`, and `num_warps=8, num_stages=3`. Keep tl.program_id(0) and (1); do not add grouped scheduling. Precompute base operand pointers `a_ptrs` and `b_ptrs` using K-contiguous physical addressing: A row stride K and B column stride K. Each K iteration loads A/B from these pointers with M/N/K masks, accumulates with `acc = tl.dot(a, b, acc)`, then advances both `a_ptrs += BK` and `b_ptrs += BK`. Preserve one writer per output and masked row-major C store. Do not use Gluon, descriptors, TMA, or a copied reference source. This action is a coordinated loop/tile/warp rewrite; compile, exact correctness, and measured CUDA-event latency decide acceptance."
+      }
+    },
+    {
+      "id": "triton_widen_bn_256_eight_warps",
+      "description": "Widen only the output N tile from 128 to 256 in an eight-warp advancing-pointer Triton kernel",
+      "candidate_stage": "pointer_triton",
+      "applicability": {
+        "backend": "triton_h100",
+        "operation": "gemm",
+        "gpu_model": "H100",
+        "parent_stages": [
+          "pointer_triton"
+        ]
+      },
+      "prompts": {
+        "triton_h100": "Return the complete parent pure-Triton Python source, changing only the literal BN assignment in launch from 128 to 256. Preserve BM=128, BK=64, num_warps=8, num_stages=3, the two-dimensional CTA grid, pointer-advancing K loop, masks, dot, and all other AST statements exactly. The H100 crossover found a severe register/spill cliff when BN=256 was paired with four warps; eight warps avoided that cliff in the measured source family. This is workload-specific evidence, not a universal tile rule. The local edit guard rejects any other source change before GPU evaluation. Compile, correctness, and CUDA-event latency still decide acceptance."
+      }
+    },
+    {
+      "id": "triton_specialize_gemm_dims",
+      "description": "Specialize the wide eight-warp pointer-loop GEMM dimensions at Triton JIT compile time",
+      "candidate_stage": "pointer_triton",
+      "applicability": {
+        "backend": "triton_h100",
+        "operation": "gemm",
+        "gpu_model": "H100",
+        "parent_stages": [
+          "pointer_triton"
+        ]
+      },
+      "prompts": {
+        "triton_h100": "Return the complete parent pure-Triton source, changing only the @triton.jit kernel signature annotations for M, N, and K from runtime parameters to `M: tl.constexpr, N: tl.constexpr, K: tl.constexpr`. Do not change the Python launch signature, source body, BM/BN/BK, grid, pointer loop, masks, dot, num_warps=8, or num_stages=3. The parent must already be the valid 128x256x64 advancing-pointer source family. A three-round same-worker H100 crossover of this exact annotation change passed correctness and reduced the paired median by 45.344 us; this is workload-specific evidence, not a guarantee for other shapes. A static AST guard rejects any other edit before GPU evaluation; compilation, correctness and CUDA-event latency still decide node admission."
+      }
+    }
+  ]
+}

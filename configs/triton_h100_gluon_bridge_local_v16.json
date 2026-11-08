@@ -1,0 +1,69 @@
+{
+  "version": "triton_h100_gluon_bridge_local_v16",
+  "strategies": [
+    {
+      "id": "descriptor_tma_staging",
+      "description": "Replace Triton pointer operand loads with descriptor TMA loads",
+      "candidate_stage": "descriptor_triton",
+      "applicability": {
+        "backend": "triton_h100",
+        "operation": "gemm",
+        "gpu_model": "H100",
+        "parent_stages": [
+          "pointer_triton"
+        ]
+      },
+      "prompts": {
+        "triton_h100": "Return one complete Python source file with launch(A,B,C,M,N,K), at most 130 lines. Keep @triton.jit, tl.dot, single CTA, BF16 output and FP32 accumulation. Import TensorDescriptor from triton.tools.tensor_descriptor. In launch, use BM=64, BN=128, BK=64, num_warps=8. Construct a_desc = TensorDescriptor(A, shape=[M,K], strides=[K,1], block_shape=[BM,BK]) and b_desc = TensorDescriptor(B, shape=[N,K], strides=[K,1], block_shape=[BN,BK]). B is column-major [K,N] and the same memory is a contiguous [N,K] B.T view; no copied transpose. Pass a_desc and b_desc as the first two kernel arguments, with matching kernel parameter names. Inside the kernel, load A tile with a_desc.load([pid_m*BM, off_k]) and physical B.T tile with b_desc.load([pid_n*BN, off_k]); use tl.trans on that B tile before tl.dot. Use `acc += tl.dot(a, tl.trans(b))` with tl.zeros float32 accumulator. Store C with tl.store to pointer offsets and a mask for M/N; do not use a C descriptor. Use tl.program_id for both grid axes and a loop over K in BK chunks. Return the compiled kernel from launch. Do not change the workload ABI, use pointer tl.load for A/B, or insert a complete source scaffold."
+      }
+    },
+    {
+      "id": "gluon_mma_v2_pointer_port",
+      "description": "Port descriptor Triton GEMM to a one-CTA pointer-load Gluon MMA-v2 kernel",
+      "candidate_stage": "gluon_mma_v2",
+      "applicability": {
+        "backend": "triton_h100",
+        "operation": "gemm",
+        "gpu_model": "H100",
+        "parent_stages": [
+          "descriptor_triton"
+        ]
+      },
+      "prompts": {
+        "triton_h100": "Return only one complete Python source file, at most 130 lines. Use precisely these imports for Gluon: `import triton`, `from triton.experimental import gluon`, `from triton.experimental.gluon import language as gl`, `from triton.experimental.gluon.language.nvidia.ampere import mma_v2`. Do not import `triton.language as tl` or a top-level `gluon` package. Port to one-CTA `@gluon.jit` with ordinary pointer `gl.load` and `mma_v2`; this intermediate may be slower. Keep `launch(A,B,C,M,N,K)`, BF16 input/output, FP32 accumulation, and one writer per output. A[M,K] is row-major, B[K,N] is column-major with B[k,n] at B+n*K+k, and C[M,N] is row-major. Use BM=64, BN=128, BK=64, num_warps=4. Use only `gl.*` operations inside the JIT kernel. Annotate each local layout assignment `: gl.constexpr`. Set `a_layout = gl.BlockedLayout([1,16],[4,8],[2,2],[1,0])`, `b_layout = gl.BlockedLayout([16,1],[8,4],[2,2],[0,1])`, and `out_layout = gl.BlockedLayout([1,8],[4,8],[4,1],[1,0])`; each threads_per_warp product must be 32. Set `mma_layout = gl.NVMMADistributedLayout(version=[2,0], warps_per_cta=[4,1], instr_shape=[16,8])` and `a_op`/`b_op` as `gl.DotOperandLayout(operand_index=0 or 1, parent=mma_layout, k_width=2)`. The crucial layout rule: every `gl.arange` call must have its third argument, a matching `gl.SliceLayout`. Construct six separate vectors, for example `row_a = pid_m*BM + gl.arange(0,BM,gl.SliceLayout(1,a_layout))`, `k_a = gl.arange(0,BK,gl.SliceLayout(0,a_layout))`, `k_b = gl.arange(0,BK,gl.SliceLayout(1,b_layout))`, `col_b = pid_n*BN + gl.arange(0,BN,gl.SliceLayout(0,b_layout))`, `row_c = pid_m*BM + gl.arange(0,BM,gl.SliceLayout(1,out_layout))`, `col_c = pid_n*BN + gl.arange(0,BN,gl.SliceLayout(0,out_layout))`. Build each A/B/C pointer and mask from its own matching vectors using broadcasting (`[:,None]` and `[None,:]`), without `gl.reshape` or `gl.convert_layout` on the offset vectors. A pointer is `A + row_a[:,None]*K + (off_k+k_a)[None,:]`; B pointer is `B + col_b[None,:]*K + (off_k+k_b)[:,None]`; C pointer is `C + row_c[:,None]*N + col_c[None,:]`. `gl.load` and `gl.store` take no positional layout argument. Use `acc = gl.zeros((BM,BN), gl.float32, layout=mma_layout)`, convert A/B loaded tiles to their dot operand layouts, call `mma_v2(a,b,acc)`, convert the final accumulator to out_layout, cast to BF16 and store. Use `gl.program_id`, never `tl.program_id`. Return the compiled kernel from launch. Do not use descriptors, TMA, WGMMA, clusters, or a complete Gluon source scaffold."
+      }
+    },
+    {
+      "id": "gluon_mma_v2_coalesced_layout",
+      "description": "Order Gluon A, B, and C thread layouts by their contiguous memory axes",
+      "candidate_stage": "gluon_mma_v2",
+      "applicability": {
+        "backend": "triton_h100",
+        "operation": "gemm",
+        "gpu_model": "H100",
+        "parent_stages": [
+          "gluon_mma_v2"
+        ]
+      },
+      "prompts": {
+        "triton_h100": "Keep the complete working Gluon MMA-v2 source, tile, grid, compute, and launcher unchanged. Change only the fourth argument (axis order) of the gl.BlockedLayout assignments named a_layout, b_layout, and out_layout. For row-major A[M,K], K is contiguous: a_layout order=[1,0]. For column-major B[K,N], K is contiguous: b_layout order=[0,1]. For row-major C[M,N], N is contiguous: out_layout order=[1,0]. Preserve the first three layout arguments and every other statement exactly. Return a complete source file with no Markdown. Correctness and measured latency decide acceptance."
+      }
+    },
+    {
+      "id": "single_cta_gluon_tma_wgmma_serial_guarded",
+      "description": "Convert Gluon MMA-v2 to serial one-buffer Hopper TMA/WGMMA with bounded API check",
+      "candidate_stage": "single_cta_gluon",
+      "applicability": {
+        "backend": "triton_h100",
+        "operation": "gemm",
+        "gpu_model": "H100",
+        "parent_stages": [
+          "gluon_mma_v2"
+        ]
+      },
+      "prompts": {
+        "triton_h100": "Return one complete Python source file for a single-CTA Gluon GEMM with launch(A,B,C,M,N,K). Convert the parent pointer-load MMA-v2 kernel to a serial, one-buffer Hopper TMA/WGMMA kernel; this action may jointly set BM=128, BN=256, BK=64 and num_warps=8. Do not copy a complete source scaffold. Import `TensorDescriptor` from `triton.experimental.gluon.nvidia.hopper`; import `mbarrier`, `tma`, `warpgroup_mma`, `warpgroup_mma_init`, `warpgroup_mma_wait`, and `fence_async_shared` from `triton.experimental.gluon.language.nvidia.hopper`. In launch verify BF16 A/C contiguous and B strides (1,K). Use B.T as a zero-copy contiguous physical [N,K] tensor. Build `gl.NVMMASharedLayout.get_default_for` layouts and `TensorDescriptor.from_tensor` for A block [BM,BK], B.T block [BN,BK], C block [BM,BN]. In @gluon.jit allocate one shared-memory tile each for A/B/C using the descriptor layout; one mbarrier with `bars = mbarrier.allocate_mbarrier(batch=1)`, `bar = bars.index(0)`, and `mbarrier.init(bar,count=1)`. Use `gl.NVMMADistributedLayout(version=[3,0],warps_per_cta=[8,1],instr_shape=[16,256,16])` and an FP32 accumulator from `warpgroup_mma_init(gl.zeros(...))`. For each K block call `mbarrier.expect(bar,a_desc.nbytes_per_cta+b_desc.nbytes_per_cta)`, then `tma.async_load` A and B with the same bar, then `mbarrier.wait(bar,phase=step%2,deps=[a_smem,b_smem])`. Call `warpgroup_mma(a_smem,b_smem.permute((1,0)),acc,is_async=True)` and call `warpgroup_mma_wait(num_outstanding=0,deps=(acc,))` WITHOUT assigning its return inside the loop; assigning it changes the loop-carried accumulator type and fails compilation. After the loop assign `acc = warpgroup_mma_wait(num_outstanding=0,deps=(acc,))` once to materialize the tensor, then invalidate the bar; store BF16 accumulator to C shared memory, call `fence_async_shared()`, `tma.async_store(c_desc,[off_m,off_n],c_smem)`, and `tma.store_wait(pendings=0)`. Use only ordinary unicast B TMA loads, num_ctas=1, a two-dimensional CTA grid, and one writer per output. No cluster, multicast, persistence, or multi-slot pipeline. Return the compiled kernel from launch; exact correctness and measured latency decide acceptance. The H100-validated host layout expressions are exactly `a_layout = gl.NVMMASharedLayout.get_default_for([BM, BK], gl.bfloat16)`, `b_layout = gl.NVMMASharedLayout.get_default_for([BN, BK], gl.bfloat16)`, and `c_layout = gl.NVMMASharedLayout.get_default_for([BM, BN], gl.bfloat16)`. Copy these three expressions literally in launch before `TensorDescriptor.from_tensor`; never pass `dtype=`, `swizzle=`, `rank=`, `rep_shape=`, or `element_bitwidth=` to get_default_for. The accepted descriptor calls have exactly three positional arguments. Use no `gl.allocate_shared`, shared-memory indexing, `gl.tensor`, or `tma.store_commit`. Copy these exact host descriptor calls with positional arguments and no `layout=` keyword: `a_desc = TensorDescriptor.from_tensor(A, [BM, BK], a_layout)`; `b_desc = TensorDescriptor.from_tensor(B.T, [BN, BK], b_layout)`; `c_desc = TensorDescriptor.from_tensor(C, [BM, BN], c_layout)`. Copy these exact device load call forms with the barrier THIRD: `tma.async_load(a_desc, [off_m, step * BK], bar, a_smem)` and `tma.async_load(b_desc, [off_n, step * BK], bar, b_smem)`. Passing destination shared memory third is invalid. Inside every K iteration assign the result exactly as `acc = warpgroup_mma(a_smem, b_smem.permute((1, 0)), acc, is_async=True)`; calling WGMMA without storing its returned accumulator loses the GEMM. Then call `warpgroup_mma_wait(num_outstanding=0,deps=(acc,))` without assignment inside the loop. After the loop materialize the result with `acc = warpgroup_mma_wait(num_outstanding=0,deps=(acc,))` and write it directly with `c_smem.store(acc.to(gl.bfloat16))`; never call gl.convert_layout on acc to c_desc.layout because a shared layout is not a distributed tensor layout. After the K loop, invalidate the mbarrier with the exact call `mbarrier.invalidate(bar)`. Never abbreviate this method to `mbarrier.inval`; that name is absent in Triton 3.9 and causes compilation failure. Before the two TMA loads in each K step, set the barrier expected transfer bytes with exactly `mbarrier.expect(bar, a_desc.nbytes_per_cta + b_desc.nbytes_per_cta)`. Do not read `.nbytes` from shared memory; the descriptor byte counts are the validated transfer size."
+      }
+    }
+  ]
+}

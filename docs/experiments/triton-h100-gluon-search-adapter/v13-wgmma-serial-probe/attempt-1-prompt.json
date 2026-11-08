@@ -1,0 +1,111 @@
+{
+  "attempt": 1,
+  "backend": "triton_h100",
+  "constraints": [
+    "Return a complete Python Triton or Gluon source file without Markdown.",
+    "Define launch(A, B, C, M, N, K) and return the CompiledKernel that computes C.",
+    "A is row-major BF16 [M,K]; B is column-major BF16 [K,N]; C is row-major BF16 [M,N].",
+    "Preserve FP32 accumulation and the fixed correctness tolerance.",
+    "The kernel may use @triton.jit or @gluon.jit; preserve the launch ABI and return one named compiled kernel.",
+    "Treat cuBLAS timing as a reference target; search reward is measured against the Triton root."
+  ],
+  "parent_kernel": "import triton\nfrom triton.experimental import gluon\nfrom triton.experimental.gluon import language as gl\nfrom triton.experimental.gluon.language.nvidia.ampere import mma_v2\n\n\n@gluon.jit\ndef gluon_gemm(A, B, C, M, N, K, BM: gl.constexpr, BN: gl.constexpr, BK: gl.constexpr):\n    pid_m = gl.program_id(0)\n    pid_n = gl.program_id(1)\n\n    a_layout: gl.constexpr = gl.BlockedLayout([1, 16], [4, 8], [2, 2], [1, 0])\n    b_layout: gl.constexpr = gl.BlockedLayout([16, 1], [8, 4], [2, 2], [0, 1])\n    out_layout: gl.constexpr = gl.BlockedLayout([1, 8], [4, 8], [4, 1], [1, 0])\n    mma_layout: gl.constexpr = gl.NVMMADistributedLayout(\n        version=[2, 0], warps_per_cta=[4, 1], instr_shape=[16, 8]\n    )\n\n    a_op: gl.constexpr = gl.DotOperandLayout(operand_index=0, parent=mma_layout, k_width=2)\n    b_op: gl.constexpr = gl.DotOperandLayout(operand_index=1, parent=mma_layout, k_width=2)\n\n    row_a = pid_m * BM + gl.arange(0, BM, gl.SliceLayout(1, a_layout))\n    k_a = gl.arange(0, BK, gl.SliceLayout(0, a_layout))\n    k_b = gl.arange(0, BK, gl.SliceLayout(1, b_layout))\n    col_b = pid_n * BN + gl.arange(0, BN, gl.SliceLayout(0, b_layout))\n    row_c = pid_m * BM + gl.arange(0, BM, gl.SliceLayout(1, out_layout))\n    col_c = pid_n * BN + gl.arange(0, BN, gl.SliceLayout(0, out_layout))\n\n    acc = gl.zeros((BM, BN), gl.float32, layout=mma_layout)\n\n    for start in range(0, (K + BK - 1) // BK):\n        off_k = start * BK\n\n        a_ptrs = A + row_a[:, None] * K + (off_k + k_a)[None, :]\n        a_mask = (row_a[:, None] < M) & ((off_k + k_a)[None, :] < K)\n        a = gl.load(a_ptrs, mask=a_mask, other=0.0)\n        a = gl.convert_layout(a, layout=a_op)\n\n        b_ptrs = B + col_b[None, :] * K + (off_k + k_b)[:, None]\n        b_mask = ((off_k + k_b)[:, None] < K) & (col_b[None, :] < N)\n        b = gl.load(b_ptrs, mask=b_mask, other=0.0)\n        b = gl.convert_layout(b, layout=b_op)\n\n        acc = mma_v2(a, b, acc)\n\n    out = gl.convert_layout(acc, layout=out_layout)\n    c_ptrs = C + row_c[:, None] * N + col_c[None, :]\n    c_mask = (row_c[:, None] < M) & (col_c[None, :] < N)\n    gl.store(c_ptrs, out.to(gl.bfloat16), mask=c_mask)\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 64, 128, 64\n    return gluon_gemm[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        A, B, C, M, N, K, BM, BN, BK, num_warps=4\n    )",
+  "parent_profile": null,
+  "parent_timing": {
+    "measurement": "CUDA events",
+    "median_us": 1718.96,
+    "sample_count": null,
+    "warmup_count": null
+  },
+  "performance_references": {
+    "cublas_median_us": 181.04
+  },
+  "repair": {
+    "instruction": "Repair the failed candidate while preserving semantics.",
+    "previous_candidate": "import triton\nfrom triton.experimental import gluon\nfrom triton.experimental.gluon import language as gl\nfrom triton.experimental.gluon.nvidia.hopper import TensorDescriptor\nfrom triton.experimental.gluon.language.nvidia.hopper import (\n    mbarrier,\n    tma,\n    warpgroup_mma,\n    warpgroup_mma_init,\n    warpgroup_mma_wait,\n    fence_async_shared,\n)\n\n\n@gluon.jit\ndef gluon_gemm_tma(\n    A,\n    B,\n    C,\n    M,\n    N,\n    K,\n    BM: gl.constexpr,\n    BN: gl.constexpr,\n    BK: gl.constexpr,\n    a_desc,\n    b_desc,\n    c_desc,\n):\n    pid_m = gl.program_id(0)\n    pid_n = gl.program_id(1)\n\n    a_layout: gl.constexpr = gl.NVMMASharedLayout.get_default_for(\n        [BM, BK], gl.bfloat16\n    )\n    b_layout: gl.constexpr = gl.NVMMASharedLayout.get_default_for(\n        [BN, BK], gl.bfloat16\n    )\n    c_layout: gl.constexpr = gl.NVMMASharedLayout.get_default_for(\n        [BM, BN], gl.bfloat16\n    )\n\n    mma_layout: gl.constexpr = gl.NVMMADistributedLayout(\n        version=[3, 0], warps_per_cta=[8, 1], instr_shape=[16, 256, 16]\n    )\n\n    a_smem = gl.allocate_shared((BM, BK), gl.bfloat16, a_layout)\n    b_smem = gl.allocate_shared((BN, BK), gl.bfloat16, b_layout)\n    c_smem = gl.allocate_shared((BM, BN), gl.bfloat16, c_layout)\n\n    bars = mbarrier.allocate_mbarrier(batch=1)\n    bar = bars.index(0)\n    mbarrier.init(bar, count=1)\n\n    off_m = pid_m * BM\n    off_n = pid_n * BN\n\n    acc = warpgroup_mma_init(\n        gl.zeros((BM, BN), gl.float32, layout=mma_layout)\n    )\n\n    for step in range(0, (K + BK - 1) // BK):\n        mbarrier.expect(bar, a_desc.nbytes_per_cta + b_desc.nbytes_per_cta)\n        tma.async_load(a_desc, [off_m, step * BK], bar, a_smem)\n        tma.async_load(b_desc, [off_n, step * BK], bar, b_smem)\n        mbarrier.wait(bar, phase=step % 2, deps=[a_smem, b_smem])\n\n        warpgroup_mma(a_smem, b_smem.permute((1, 0)), acc, is_async=True)\n        warpgroup_mma_wait(num_outstanding=0, deps=(acc,))\n\n    acc = warpgroup_mma_wait(num_outstanding=0, deps=(acc,))\n    mbarrier.invalidate(bar)\n\n    out = gl.convert_layout(acc, layout=c_layout)\n    c_smem.store(out.to(gl.bfloat16))\n    fence_async_shared()\n    tma.async_store(c_desc, [off_m, off_n], c_smem)\n    tma.store_wait(pendings=0)\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 128, 256, 64\n\n    assert A.dtype == triton.bfloat16 and C.dtype == triton.bfloat16\n    assert A.is_contiguous() and C.is_contiguous()\n    assert B.stride(0) == 1 and B.stride(1) == K\n    B_T = B.T\n\n    a_layout = gl.NVMMASharedLayout.get_default_for([BM, BK], gl.bfloat16)\n    b_layout = gl.NVMMASharedLayout.get_default_for([BN, BK], gl.bfloat16)\n    c_layout = gl.NVMMASharedLayout.get_default_for([BM, BN], gl.bfloat16)\n\n    a_desc = TensorDescriptor.from_tensor(A, [BM, BK], a_layout)\n    b_desc = TensorDescriptor.from_tensor(B_T, [BN, BK], b_layout)\n    c_desc = TensorDescriptor.from_tensor(C, [BM, BN], c_layout)\n\n    return gluon_gemm_tma[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n        A,\n        B,\n        C,\n        M,\n        N,\n        K,\n        BM,\n        BN,\n        BK,\n        a_desc,\n        b_desc,\n        c_desc,\n        num_warps=8,\n    )",
+    "previous_evaluation": {
+      "compilation": null,
+      "compile_status": "NOT_ATTEMPTED",
+      "correctness": null,
+      "correctness_status": "NOT_TESTED",
+      "expected_candidate_stage": "single_cta_gluon",
+      "invalid_reason": "STRATEGY_MISMATCH",
+      "observed_candidate_stage": "single_cta_gluon",
+      "status": "INVALID",
+      "strategy_edit_guard": null
+    }
+  },
+  "strategy": {
+    "backend_prompt": "Return one complete Python source file for a single-CTA Gluon GEMM with launch(A,B,C,M,N,K). Convert the parent pointer-load MMA-v2 kernel to a serial, one-buffer Hopper TMA/WGMMA kernel; this action may jointly set BM=128, BN=256, BK=64 and num_warps=8. Do not copy a complete source scaffold. Import `TensorDescriptor` from `triton.experimental.gluon.nvidia.hopper`; import `mbarrier`, `tma`, `warpgroup_mma`, `warpgroup_mma_init`, `warpgroup_mma_wait`, and `fence_async_shared` from `triton.experimental.gluon.language.nvidia.hopper`. In launch verify BF16 A/C contiguous and B strides (1,K). Use B.T as a zero-copy contiguous physical [N,K] tensor. Build `gl.NVMMASharedLayout.get_default_for` layouts and `TensorDescriptor.from_tensor` for A block [BM,BK], B.T block [BN,BK], C block [BM,BN]. In @gluon.jit allocate one shared-memory tile each for A/B/C using the descriptor layout; one mbarrier with `bars = mbarrier.allocate_mbarrier(batch=1)`, `bar = bars.index(0)`, and `mbarrier.init(bar,count=1)`. Use `gl.NVMMADistributedLayout(version=[3,0],warps_per_cta=[8,1],instr_shape=[16,256,16])` and an FP32 accumulator from `warpgroup_mma_init(gl.zeros(...))`. For each K block call `mbarrier.expect(bar,a_desc.nbytes_per_cta+b_desc.nbytes_per_cta)`, then `tma.async_load` A and B with the same bar, then `mbarrier.wait(bar,phase=step%2,deps=[a_smem,b_smem])`. Call `warpgroup_mma(a_smem,b_smem.permute((1,0)),acc,is_async=True)` and call `warpgroup_mma_wait(num_outstanding=0,deps=(acc,))` WITHOUT assigning its return inside the loop; assigning it changes the loop-carried accumulator type and fails compilation. After the loop assign `acc = warpgroup_mma_wait(num_outstanding=0,deps=(acc,))` once to materialize the tensor, then invalidate the bar; store BF16 accumulator to C shared memory, call `fence_async_shared()`, `tma.async_store(c_desc,[off_m,off_n],c_smem)`, and `tma.store_wait(pendings=0)`. Use only ordinary unicast B TMA loads, num_ctas=1, a two-dimensional CTA grid, and one writer per output. No cluster, multicast, persistence, or multi-slot pipeline. Return the compiled kernel from launch; exact correctness and measured latency decide acceptance. The H100-validated host layout expressions are exactly `a_layout = gl.NVMMASharedLayout.get_default_for([BM, BK], gl.bfloat16)`, `b_layout = gl.NVMMASharedLayout.get_default_for([BN, BK], gl.bfloat16)`, and `c_layout = gl.NVMMASharedLayout.get_default_for([BM, BN], gl.bfloat16)`. Copy these three expressions literally in launch before `TensorDescriptor.from_tensor`; never pass `dtype=`, `swizzle=`, `rank=`, `rep_shape=`, or `element_bitwidth=` to get_default_for. The accepted descriptor calls have exactly three positional arguments. Use no `gl.allocate_shared`, shared-memory indexing, `gl.tensor`, or `tma.store_commit`. Copy these exact host descriptor calls with positional arguments and no `layout=` keyword: `a_desc = TensorDescriptor.from_tensor(A, [BM, BK], a_layout)`; `b_desc = TensorDescriptor.from_tensor(B.T, [BN, BK], b_layout)`; `c_desc = TensorDescriptor.from_tensor(C, [BM, BN], c_layout)`. Copy these exact device load call forms with the barrier THIRD: `tma.async_load(a_desc, [off_m, step * BK], bar, a_smem)` and `tma.async_load(b_desc, [off_n, step * BK], bar, b_smem)`. Passing destination shared memory third is invalid. Static edit guard: reuse descriptor.layout inside the JIT kernel; do not call get_default_for there; compare host tensor dtype with torch.bfloat16, not triton.bfloat16; allocate A/B/C with gl.allocate_shared_memory(descriptor.dtype, descriptor.block_shape, descriptor.layout); gl.allocate_shared is not the serial action shared-memory API",
+    "description": "Convert Gluon MMA-v2 to serial one-buffer Hopper TMA/WGMMA with bounded API check",
+    "id": "single_cta_gluon_tma_wgmma_serial_guarded"
+  },
+  "target_hardware": {
+    "gpu_model": "H100"
+  },
+  "task": "Produce a complete replacement GPU kernel preserving the workload contract.",
+  "workload": {
+    "atol": 0.02,
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "dtype": "bfloat16",
+    "metadata": {
+      "abi": {
+        "launch": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "parameters": [
+          "A",
+          "B",
+          "C",
+          "M",
+          "N",
+          "K"
+        ]
+      },
+      "accumulation_dtype": "float32",
+      "entry_point": "launch",
+      "output_dtype": "bfloat16",
+      "target": {
+        "form_factor": "SXM",
+        "gpu_model": "H100",
+        "minimum_compute_capability": "9.0"
+      },
+      "tensors": {
+        "A": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "K"
+          ]
+        },
+        "B": {
+          "layout": "column_major",
+          "shape": [
+            "K",
+            "N"
+          ]
+        },
+        "C": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "N"
+          ]
+        }
+      }
+    },
+    "operation": "gemm",
+    "rtol": 0.02,
+    "shapes": [
+      {
+        "dimensions": {
+          "K": 4096,
+          "M": 4096,
+          "N": 4096
+        },
+        "weight": 1.0
+      }
+    ]
+  }
+}

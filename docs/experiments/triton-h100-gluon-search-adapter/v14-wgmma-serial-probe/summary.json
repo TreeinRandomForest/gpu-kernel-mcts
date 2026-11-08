@@ -1,0 +1,43 @@
+{
+  "attempts": [
+    {
+      "attempt": 0,
+      "b_gen": 1,
+      "candidate_stage": "single_cta_gluon",
+      "edit_mismatch": "compare host tensor dtype with torch.bfloat16, not triton.bfloat16; allocate A/B/C with gl.allocate_shared_memory(descriptor.dtype, descriptor.block_shape, descriptor.layout)",
+      "generation_id": "chatcmpl-8c246a2b-0627-4d6c-8964-56e0da9c730d",
+      "input_tokens": 2681,
+      "latency_seconds": 11.223287670873106,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 841,
+      "prompt_sha256": "9d2eacb5a493b8bd70ded4049b4b2db7614e9994222e8e86946b88dd98e027bf",
+      "source_sha256": "fe5d87d68577acc1b554ef34c5aa3718de1d2ebfcf593e2ddd6b3cb12bcfffec",
+      "stage_accepted": false
+    },
+    {
+      "attempt": 1,
+      "b_gen": 2,
+      "candidate_stage": "single_cta_gluon",
+      "edit_mismatch": null,
+      "generation_id": "chatcmpl-78d35bac-337a-40fb-b6a6-65aab3ef60b6",
+      "input_tokens": 3753,
+      "latency_seconds": 17.564341329038143,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 1096,
+      "prompt_sha256": "7a7405bd87ba3ba9be54404be2b03679164a31ed5d91e92e75980693ab7560ff",
+      "source_sha256": "72542e67de927c1e16126feab44e5082070bf44fde52bddf0062a39841f99718",
+      "stage_accepted": true
+    }
+  ],
+  "b_gen_used": 2,
+  "catalog_sha256": "1e4b159dbd3cb7ee8feb4272b1757d6f5384e857e30d3673a6f627db60693844",
+  "complete": true,
+  "expected_candidate_stage": "single_cta_gluon",
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "parent_source_sha256": "3ade911c03eb6a9fbb9db8af98078b64a35e754319ef0d63ee867545a7547cf2",
+  "scaffold": false,
+  "schema_version": 1,
+  "stage_accepted": true,
+  "strategy_id": "single_cta_gluon_tma_wgmma_serial_guarded"
+}

@@ -1,0 +1,47 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-03T16:37:03.402511+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:cutedsl-wide-swizzle-v71",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-8a81dc70-6e03-9f55-086d-8299a8a925df",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "7c6231eb3ec328fd9effe2e7bfe80fb2030cec987c5b718a89d52938b8193694",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00xceztgshnrz2c1n",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.2.1.0 (build 35987062) (public-release)"
+    },
+    "project_git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.9.1",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Mon_May_19_08:50:03_PDT_2025 Cuda compilation tools, release 12.9, V12.9.82 Build cuda_12.9.r12.9/compiler.36001619_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.9"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00xceztgshnrz2c1n"
+  },
+  "git_commit": "80e62c928aa5a7d43dd7a243a11e003e914d1418",
+  "harness_sha256": "a8a91fc22090b85a835fb1842b0e6db6ff508b09ce701e40868f98332eba6829",
+  "image": "docker.io/saarora/gpu-kernel-mcts:cutedsl-wide-swizzle-v71",
+  "remote_artifacts_sha256": "7700f8237216424f83b1b9017317bf504d4eed3d945fec7c7c627440ca09de09",
+  "run_id": "3e7ae6d0-f2ef-47b3-91f6-fe29d8c55535",
+  "schema_version": 1
+}

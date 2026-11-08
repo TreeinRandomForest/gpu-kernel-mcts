@@ -226,6 +226,25 @@ def test_repair_prompt_contains_failed_candidate_and_bounded_diagnostics() -> No
     assert recorded_stderr.endswith("useful compiler error")
 
 
+def test_repair_prompt_includes_bounded_static_guard_detail() -> None:
+    failed_program = KernelProgram("failed candidate")
+    detail = "x" * 2_100 + "use valid TMA API"
+    failed_result = EvaluationResult(
+        ProposalStatus.INVALID, program=failed_program,
+        invalid_reason=InvalidReason.STRATEGY_MISMATCH,
+        metadata={"detail": detail, "expected_candidate_stage": "single_cta_gluon",
+                  "observed_candidate_stage": "single_cta_gluon",
+                  "strategy_edit_guard": "single_cta_gluon_tma_wgmma_serial_guarded"},
+    )
+    prompt = json.loads(build_generation_prompt(request(
+        attempt=1, previous_program=failed_program, previous_result=failed_result,
+    )))
+    evidence = prompt["repair"]["previous_evaluation"]
+    assert len(evidence["detail"]) == 2_000
+    assert evidence["detail"].endswith("use valid TMA API")
+    assert evidence["strategy_edit_guard"] == "single_cta_gluon_tma_wgmma_serial_guarded"
+
+
 def test_empty_model_output_produces_no_program() -> None:
     result = LLMKernelGenerator(FakeLLMClient("  ")).generate(request())
 

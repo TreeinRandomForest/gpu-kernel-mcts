@@ -1,0 +1,29 @@
+{
+  "attempts": [
+    {
+      "attempt": 0,
+      "b_gen": 1,
+      "candidate_stage": "gluon_mma_v2",
+      "edit_mismatch": null,
+      "generation_id": "chatcmpl-2aeb406b-b66d-4f1b-bdb7-4c0973b1bd27",
+      "input_tokens": 1942,
+      "latency_seconds": 12.641914587002248,
+      "model": "rits/zai-org/glm-5-3",
+      "output_tokens": 872,
+      "prompt_sha256": "be37195933d2d9a86866ea3735f6617b10d26f24e81e6f5c5b7392560db20322",
+      "source_sha256": "288eafafa66c3a3d2f9c1134e8076bfcfe889c852622c6a90211c9ac5db5cb44",
+      "stage_accepted": true
+    }
+  ],
+  "b_gen_used": 1,
+  "catalog_sha256": "9d845ea4aaad5bccf8cb65114ba4ab8ed60dd73ada44c5ea3ddaee5bd9262448",
+  "complete": true,
+  "expected_candidate_stage": "gluon_mma_v2",
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "parent_source_sha256": "ccfc06f9dafe254680ce31a6f006c246d4fa3c2478b9617c8c22c0f0e1ac516d",
+  "scaffold": false,
+  "schema_version": 1,
+  "stage_accepted": true,
+  "strategy_id": "gluon_mma_v2_pointer_port"
+}

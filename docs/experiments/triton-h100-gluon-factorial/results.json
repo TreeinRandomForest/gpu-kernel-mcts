@@ -1,0 +1,201 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-04T04:05:30.006951+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-bcc6a623-2eff-6537-bcea-664209b7c04c",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "89693a4e076d01a4fa448ed0f8cb0a2dcaf8d507352bba0aadc7c475f3fc8c72",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00x6m0bmfd5z6frtn",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00x6m0bmfd5z6frtn"
+  },
+  "expected_arms": [
+    "original",
+    "cublas",
+    "n256_mfast_regular",
+    "n256_mfast_persistent",
+    "n256_nfast_regular",
+    "n256_nfast_persistent",
+    "n128_mfast_regular",
+    "n128_mfast_persistent",
+    "n128_nfast_regular",
+    "n128_nfast_persistent"
+  ],
+  "git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "last_output": "timing 8 n256_mfast_regular 185.95200031995773\ntiming 8 n256_mfast_persistent 184.4799965620041\ntiming 8 n256_nfast_regular 184.89599972963333\ntiming 8 n256_nfast_persistent 183.85600298643112\ntiming 8 n128_mfast_regular 286.0320061445236\ntiming 8 n128_mfast_persistent 284.1759920120239\ntiming 9 n128_nfast_persistent 286.22400760650635\ntiming 9 original 186.2879991531372\ntiming 9 cublas 175.59999972581863\ntiming 9 n256_mfast_regular 184.65600162744522\ntiming 9 n256_mfast_persistent 182.3359951376915\ntiming 9 n256_nfast_regular 183.6320012807846\ntiming 9 n256_nfast_persistent 182.44799971580505\ntiming 9 n128_mfast_regular 284.7200036048889\ntiming 9 n128_mfast_persistent 282.73600339889526\ntiming 9 n128_nfast_regular 280.799999833107\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"create_trans\"\n - leaked function \"get_shape\"\n - leaked function \"create_set_auto_layout\"\n - leaked function \"create_broadcast\"\n - leaked function \"create_scaled_downcast_fp4\"\n - leaked function \"create_get_num_programs\"\n - leaked function \"get_int8\"\n - leaked function \"create_if_op\"\n - leaked function \"get_uint16\"\n - leaked function \"get_string_attr\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+  "paired_complete": true,
+  "profiles": {
+    "cublas": {
+      "arm": "cublas",
+      "correctness_exact": true,
+      "cubin_sha256": null,
+      "nvtx_range": "FACTOR_CUBLAS",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    },
+    "n128_mfast_persistent": {
+      "arm": "n128_mfast_persistent",
+      "correctness_exact": true,
+      "cubin_sha256": "d4db1c0c5ec856191f7c74111185b9ba32ca984d8e091fcc37885afc40330aa7",
+      "nvtx_range": "FACTOR_N128_MFAST_PERSISTENT",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    },
+    "n128_mfast_regular": {
+      "arm": "n128_mfast_regular",
+      "correctness_exact": true,
+      "cubin_sha256": "04ef79fe038006c605cda2954c2d95b5e41d83a409e9b298e203b4df43a744aa",
+      "nvtx_range": "FACTOR_N128_MFAST_REGULAR",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    },
+    "n128_nfast_persistent": {
+      "arm": "n128_nfast_persistent",
+      "correctness_exact": true,
+      "cubin_sha256": "be98fa1e2d9b3ba75112cbadf06cb08d92bb02b4843d4948f5daf519cf8d63ad",
+      "nvtx_range": "FACTOR_N128_NFAST_PERSISTENT",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    },
+    "n128_nfast_regular": {
+      "arm": "n128_nfast_regular",
+      "correctness_exact": true,
+      "cubin_sha256": "4e95e3ed77da761dc360eac58cdadc780d850763130095e1e26776b6eded00e8",
+      "nvtx_range": "FACTOR_N128_NFAST_REGULAR",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    },
+    "n256_mfast_persistent": {
+      "arm": "n256_mfast_persistent",
+      "correctness_exact": true,
+      "cubin_sha256": "29b630c591f8c469c96e2c62d940d01d403a998492b810ec92595152575fc4d7",
+      "nvtx_range": "FACTOR_N256_MFAST_PERSISTENT",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    },
+    "n256_mfast_regular": {
+      "arm": "n256_mfast_regular",
+      "correctness_exact": true,
+      "cubin_sha256": "ab8df31810c9f70098db21f483708a927664e57cad72c617164ac5140cce5bcb",
+      "nvtx_range": "FACTOR_N256_MFAST_REGULAR",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    },
+    "n256_nfast_persistent": {
+      "arm": "n256_nfast_persistent",
+      "correctness_exact": true,
+      "cubin_sha256": "dc84e16600b9c7fea44b93b157b6de58eb0cd0267fbb673703707fba6dd03cc2",
+      "nvtx_range": "FACTOR_N256_NFAST_PERSISTENT",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    },
+    "n256_nfast_regular": {
+      "arm": "n256_nfast_regular",
+      "correctness_exact": true,
+      "cubin_sha256": "35f98049b8f9927662e4550468a1a18dd3f0c0ce1bbfb89c6bcdc06bb570e564",
+      "nvtx_range": "FACTOR_N256_NFAST_REGULAR",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    },
+    "original": {
+      "arm": "original",
+      "correctness_exact": true,
+      "cubin_sha256": "fbfccefed6335969880ec45d1866a9e0ae667e46eb386d1d070ddb2f428201d3",
+      "nvtx_range": "FACTOR_ORIGINAL",
+      "sha256": {
+        "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+        "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+        "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+        "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449"
+      },
+      "status": "ok"
+    }
+  },
+  "remote_exit_code": 0,
+  "run_id": "2fccba9f-badc-4319-893e-1f772e316e02",
+  "schema_version": 1,
+  "sha256": {
+    "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2",
+    "kernel": "0ea8933caeec2d12a5035a914018a4585cb22b0b9444a3b0dcca9e9d3ff80620",
+    "original": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+    "paired": "068afd449fe84ac7796743656bdc0eebd64ad4c36b56f6380470f30a4fd32449",
+    "profile": "a00226f1fc594193ea3214d6c6eeb480a8629602f828afa876e40c589d97b407"
+  }
+}

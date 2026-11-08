@@ -1,0 +1,110 @@
+{
+  "attempt": 1,
+  "backend": "triton_h100",
+  "constraints": [
+    "Return a complete Python Triton or Gluon source file without Markdown.",
+    "Define launch(A, B, C, M, N, K) and return the CompiledKernel that computes C.",
+    "A is row-major BF16 [M,K]; B is column-major BF16 [K,N]; C is row-major BF16 [M,N].",
+    "Preserve FP32 accumulation and the fixed correctness tolerance.",
+    "The kernel may use @triton.jit or @gluon.jit; preserve the launch ABI and return one named compiled kernel.",
+    "Treat cuBLAS timing as a reference target; search reward is measured against the Triton root."
+  ],
+  "parent_kernel": "\"\"\"Triton root for the existing H100 BF16 GEMM workload.\"\"\"\n\nimport triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_triton(A, B, C, M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,\n                     BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    acc = tl.full((BM, BN), 0, tl.float32)\n    for start in range(tl.cdiv(K, BK)):\n        k = start * BK + kk\n        a = tl.load(A + row[:, None] * K + k[None, :],\n                    (row[:, None] < M) & (k[None, :] < K), other=0)\n        # B is [K,N] column-major, so its K stride is 1 and N stride is K.\n        b = tl.load(B + k[:, None] + col[None, :] * K,\n                    (k[:, None] < K) & (col[None, :] < N), other=0)\n        acc += tl.dot(a, b)\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    bm, bn, bk = 32, 64, 32\n    return bf16_gemm_triton[(triton.cdiv(M, bm), triton.cdiv(N, bn))](\n        A, B, C, M, N, K, bm, bn, bk, num_warps=4\n    )\n",
+  "parent_profile": null,
+  "parent_timing": {
+    "measurement": "CUDA events",
+    "median_us": 832.784,
+    "sample_count": null,
+    "warmup_count": null
+  },
+  "performance_references": {
+    "cublas_median_us": 183.568
+  },
+  "repair": {
+    "instruction": "Repair the failed candidate while preserving semantics.",
+    "previous_candidate": "import triton\nimport triton.language as tl\nfrom triton.tools.tensor_descriptor import TensorDescriptor\n\n\n@triton.jit\ndef bf16_gemm_tma(a_desc, b_desc, C, M, N, K,\n                  BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    pid_m = tl.program_id(0)\n    pid_n = tl.program_id(1)\n    off_m = pid_m * BM\n    off_n = pid_n * BN\n    acc = tl.zeros((BM, BN), dtype=tl.float32)\n    for off_k in range(0, K, BK):\n        a = a_desc.load([off_m, off_k])\n        b = b_desc.load([off_n, off_k])\n        acc += tl.dot(a, tl.trans(b))\n    row = off_m + tl.arange(0, BM)\n    col = off_n + tl.arange(0, BN)\n    tl.store(C + row[:, None] * N + col[None, :],\n             acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\n@triton.jit\ndef bf16_gemm_fallback(A, B, C, M, N, K,\n                       BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    acc = tl.zeros((BM, BN), dtype=tl.float32)\n    for start in range(tl.cdiv(K, BK)):\n        k = start * BK + kk\n        a = tl.load(A + row[:, None] * K + k[None, :],\n                    (row[:, None] < M) & (k[None, :] < K), other=0)\n        b = tl.load(B + k[:, None] + col[None, :] * K,\n                    (k[:, None] < K) & (col[None, :] < N), other=0)\n        acc += tl.dot(a, b)\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    BM, BN, BK = 64, 128, 64\n    if (M % BM == 0 and N % BN == 0 and K % BK == 0\n            and A.data_ptr() % 16 == 0 and B.data_ptr() % 16 == 0\n            and C.data_ptr() % 16 == 0):\n        a_desc = TensorDescriptor(A, shape=[M, K], strides=[K, 1],\n                                  block_shape=[BM, BK])\n        # B is [K,N] column-major == zero-copy contiguous B.T [N,K].\n        b_desc = TensorDescriptor(B, shape=[N, K], strides=[K, 1],\n                                  block_shape=[BN, BK])\n        return bf16_gemm_tma[(M // BM, N // BN)](\n            a_desc, b_desc, C, M, N, K, BM, BN, BK,\n            num_warps=8, num_stages=3\n        )\n    else:\n        return bf16_gemm_fallback[(triton.cdiv(M, BM), triton.cdiv(N, BN))](\n            A, B, C, M, N, K, BM, BN, BK, num_warps=8\n        )",
+    "previous_evaluation": {
+      "compilation": null,
+      "compile_status": "NOT_ATTEMPTED",
+      "correctness": null,
+      "correctness_status": "NOT_TESTED",
+      "expected_candidate_stage": "descriptor_triton",
+      "invalid_reason": "STRATEGY_MISMATCH",
+      "observed_candidate_stage": "unknown",
+      "status": "INVALID"
+    }
+  },
+  "strategy": {
+    "backend_prompt": "Keep the existing @triton.jit GEMM, tl.dot, single-CTA grid, output tile and BF16 epilogue. Change only A/B operand retrieval from pointer tl.load to descriptor loads. In launch(A,B,C,M,N,K), create Triton TensorDescriptor objects for contiguous row-major A[M,K] and the zero-copy contiguous B.T[N,K] physical view; pass both descriptors to the JIT kernel. Inside the K loop, use a_desc.load([off_m, off_k]) and b_desc.load([off_n, off_k]), then transpose the B tile for tl.dot. Use the TensorDescriptor API supported by Triton 3.9 and legal aligned block shapes. Do not introduce Gluon, clusters, or a new pipeline yet. Preserve one output writer and verify correctness before latency.",
+    "description": "Replace Triton pointer operand loads with descriptor TMA loads",
+    "id": "descriptor_tma_staging"
+  },
+  "target_hardware": {
+    "gpu_model": "H100"
+  },
+  "task": "Produce a complete replacement GPU kernel preserving the workload contract.",
+  "workload": {
+    "atol": 0.02,
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "dtype": "bfloat16",
+    "metadata": {
+      "abi": {
+        "launch": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "parameters": [
+          "A",
+          "B",
+          "C",
+          "M",
+          "N",
+          "K"
+        ]
+      },
+      "accumulation_dtype": "float32",
+      "entry_point": "launch",
+      "output_dtype": "bfloat16",
+      "target": {
+        "form_factor": "SXM",
+        "gpu_model": "H100",
+        "minimum_compute_capability": "9.0"
+      },
+      "tensors": {
+        "A": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "K"
+          ]
+        },
+        "B": {
+          "layout": "column_major",
+          "shape": [
+            "K",
+            "N"
+          ]
+        },
+        "C": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "N"
+          ]
+        }
+      }
+    },
+    "operation": "gemm",
+    "rtol": 0.02,
+    "shapes": [
+      {
+        "dimensions": {
+          "K": 4096,
+          "M": 4096,
+          "N": 4096
+        },
+        "weight": 1.0
+      }
+    ]
+  }
+}

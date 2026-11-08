@@ -1,0 +1,65 @@
+{
+  "balanced_cubin_sha256": {
+    "candidate": "b78bea01af7cefb887fec05a11fa1b60d7a744a8308446684f5512e5c3fec1c5",
+    "control": "5aecbda1ec61c4c7d8edbe3c1623cb0d227cd13a222d764d5e944b300b929753"
+  },
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-04T02:54:24.769544+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": null,
+    "container_image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-6053d15e-20e6-0202-433f-492251bed2bc",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "8c3fa2bdceffccc008cb1dbfdb2db1cdf56b71da5d5c421054a76398bf0077d8",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00vqr6632xwgh442c",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00vqr6632xwgh442c"
+  },
+  "first_run_cubin_sha256": {
+    "candidate": "b78bea01af7cefb887fec05a11fa1b60d7a744a8308446684f5512e5c3fec1c5",
+    "control": "5aecbda1ec61c4c7d8edbe3c1623cb0d227cd13a222d764d5e944b300b929753"
+  },
+  "git_commit": "88e6b3cdf27147eae445465a5398d7ce85e9e139",
+  "image": "docker.io/saarora/gpu-kernel-mcts:triton-gluon-3.9-cluster-v1",
+  "last_output": "6 cublas 189.2319992184639\n6 control 201.9840031862259\n7 cublas 188.91199678182602\n7 triton_b 197.11999595165253\n7 control 199.61600005626678\n7 candidate 199.88799840211868\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"set_insertion_point_after\"\n - leaked function \"create_local_atomic_scatter_rmw\"\n - leaked function \"create_buffer_load_to_local\"\n - leaked function \"create_set_auto_layout\"\n - leaked function \"create_fmul\"\n - leaked function \"__init__\"\n - leaked function \"get_slice_layout\"\n - leaked function \"create_int_cast\"\n - leaked function \"create_async_copy_global_to_local\"\n - leaked function \"create_memdesc_index\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+  "paired_complete": true,
+  "remote_exit_code": 0,
+  "run_id": "29ab6d9f-8cfd-498a-ba2e-3979373b1936",
+  "schema_version": 1,
+  "source_sha256": {
+    "candidate": "3bdf8d4ed4a02f01097dd169c0b8f1df46e25a468e11a64256ceaa5148ee0ff4",
+    "control": "8982d55a2337a47689d88c05cbf7e2e39cd87f82ea13f264e1b18c6d8ff9a525",
+    "fast_b": "b9b4574de16a817477990842f3e1e4d4dbd95b662e17f375f5c82981a463fba4",
+    "harness": "d2df498f1b99db52a2ff2de421484b6b3974cd3e3bcedae1f8dec3bd517ba4d3",
+    "helper": "01fef7cb1e454f81975f729374695aa2b4cfe55392ee565d3ae73322d41f71c2"
+  }
+}

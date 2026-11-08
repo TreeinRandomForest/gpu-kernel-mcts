@@ -1,0 +1,100 @@
+{
+  "attempt": 0,
+  "backend": "triton_h100",
+  "constraints": [
+    "Return a complete Python Triton or Gluon source file without Markdown.",
+    "Define launch(A, B, C, M, N, K) and return the CompiledKernel that computes C.",
+    "A is row-major BF16 [M,K]; B is column-major BF16 [K,N]; C is row-major BF16 [M,N].",
+    "Preserve FP32 accumulation and the fixed correctness tolerance.",
+    "The kernel may use @triton.jit or @gluon.jit; preserve the launch ABI and return one named compiled kernel.",
+    "Treat cuBLAS timing as a reference target; search reward is measured against the Triton root."
+  ],
+  "parent_kernel": "\"\"\"Triton root for the existing H100 BF16 GEMM workload.\"\"\"\n\nimport triton\nimport triton.language as tl\n\n\n@triton.jit\ndef bf16_gemm_triton(A, B, C, M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,\n                     BM: tl.constexpr, BN: tl.constexpr, BK: tl.constexpr):\n    row = tl.program_id(0) * BM + tl.arange(0, BM)\n    col = tl.program_id(1) * BN + tl.arange(0, BN)\n    kk = tl.arange(0, BK)\n    acc = tl.full((BM, BN), 0, tl.float32)\n    for start in range(tl.cdiv(K, BK)):\n        k = start * BK + kk\n        a = tl.load(A + row[:, None] * K + k[None, :],\n                    (row[:, None] < M) & (k[None, :] < K), other=0)\n        # B is [K,N] column-major, so its K stride is 1 and N stride is K.\n        b = tl.load(B + k[:, None] + col[None, :] * K,\n                    (k[:, None] < K) & (col[None, :] < N), other=0)\n        acc += tl.dot(a, b)\n    tl.store(C + row[:, None] * N + col[None, :], acc.to(tl.bfloat16),\n             (row[:, None] < M) & (col[None, :] < N))\n\n\ndef launch(A, B, C, M, N, K):\n    bm, bn, bk = 32, 64, 32\n    return bf16_gemm_triton[(triton.cdiv(M, bm), triton.cdiv(N, bn))](\n        A, B, C, M, N, K, bm, bn, bk, num_warps=4\n    )\n",
+  "parent_profile": null,
+  "parent_timing": {
+    "measurement": "CUDA events",
+    "median_us": 832.784,
+    "sample_count": null,
+    "warmup_count": null
+  },
+  "performance_references": {
+    "cublas_median_us": 183.568
+  },
+  "strategy": {
+    "backend_prompt": "Produce a clustered Gluon WGMMA/TMA kernel, not an ordinary triton.jit pointer-load kernel. Use the supplied validated Gluon source scaffold as the structural basis for the complete replacement source. Keep launch(A,B,C,M,N,K) and return the compiled kernel. Preserve the ABI's B.T physical [N,K] descriptor view, legal two-CTA output ownership, ordinary B loads, three-slot TMA barriers, wait-one WGMMA lifetime, FP32 accumulation, BF16 output and one writer per output. Do not substitute a tl.load/tl.dot mainloop. Any change to the scaffold must preserve descriptor legality, shared-memory capacity and barrier teardown; compile, check correctness and benchmark before treating it as a valid realization.",
+    "description": "Make a structural two-CTA Gluon WGMMA/TMA GEMM",
+    "id": "clustered_gluon_wgmma_tma",
+    "source_scaffold": {
+      "sha256": "583f9260134329555679bb6fde0091e538cec0f6feb0fc3472f58fbb181d6c07",
+      "source": "\"\"\"Validated wait-one Gluon GEMM adapted to the Triton H100 search ABI.\"\"\"\n\nfrom __future__ import annotations\n\nimport triton\nfrom triton.experimental import gluon\nfrom triton.experimental.gluon import language as gl\nfrom triton.experimental.gluon.nvidia.hopper import TensorDescriptor\nfrom triton.experimental.gluon.language.nvidia.hopper import (\n    fence_async_shared,\n    mbarrier,\n    tma,\n    warpgroup_mma,\n    warpgroup_mma_init,\n    warpgroup_mma_wait,\n)\n\n\nCTA_M = 128\nCTA_N = 256\nBLOCK_K = 64\nWARPS = 8\n\n\n@gluon.jit(do_not_specialize=[\"B_MODE\"])\ndef gemm(a_desc, b_desc, c_desc, CLUSTERED: gl.constexpr,\n         PIPELINED: gl.constexpr, B_MODE):\n    block_m: gl.constexpr = a_desc.block_shape[0]\n    block_n: gl.constexpr = b_desc.block_shape[0]\n    block_k: gl.constexpr = a_desc.block_shape[1]\n    dtype: gl.constexpr = a_desc.dtype\n    k_size = a_desc.shape[1]\n\n    a_smem = gl.allocate_shared_memory(dtype, [3] + a_desc.block_shape, a_desc.layout)\n    b_smem = gl.allocate_shared_memory(dtype, [3] + b_desc.block_shape, b_desc.layout)\n    pid_m = gl.program_id(0)\n    pid_n = gl.program_id(1)\n    off_m = pid_m * block_m\n    off_n = pid_n * block_n\n\n    if CLUSTERED:\n        mma_layout: gl.constexpr = gl.NVMMADistributedLayout(\n            version=[3, 0], warps_per_cta=[8, 1], instr_shape=[16, 256, 16],\n            cga_layout=[[1, 0]],\n        )\n    else:\n        mma_layout: gl.constexpr = gl.NVMMADistributedLayout(\n            version=[3, 0], warps_per_cta=[8, 1], instr_shape=[16, 256, 16],\n        )\n    initial_acc = gl.zeros((block_m, block_n), dtype=gl.float32, layout=mma_layout)\n    acc = warpgroup_mma_init(initial_acc)\n    bars = mbarrier.allocate_mbarrier(batch=3)\n    for initial_slot in gl.static_range(3):\n        mbarrier.init(bars.index(initial_slot), count=1)\n    steps = k_size // block_k\n    for pre in gl.static_range(3):\n        a_tile = a_smem.index(pre)\n        b_tile = b_smem.index(pre)\n        bar = bars.index(pre)\n        mbarrier.expect(bar, a_desc.nbytes_per_cta + b_desc.nbytes_per_cta)\n        tma.async_load(a_desc, [off_m, pre * block_k], bar, a_tile)\n        if B_MODE == 1:\n            tma.async_load(b_desc, [off_n, pre * block_k], bar, b_tile,\n                           multicast=False)\n        else:\n            tma.async_load(b_desc, [off_n, pre * block_k], bar, b_tile,\n                           multicast=True)\n    for step in range(steps):\n        slot = step % 3\n        a_tile = a_smem.index(slot)\n        b_tile = b_smem.index(slot)\n        mbarrier.wait(bars.index(slot), phase=(step // 3) % 2,\n                      deps=[a_tile, b_tile])\n        acc = warpgroup_mma(a_tile, b_tile.permute((1, 0)), acc, is_async=True)\n        # Keep the current group in flight while releasing the previous slot.\n        warpgroup_mma_wait(num_outstanding=1, deps=(acc,))\n        if step > 0:\n            # The prior group has released its slot before we refill it.\n            future = step + 2\n            if future < steps:\n                next_slot = future % 3\n                next_a = a_smem.index(next_slot)\n                next_b = b_smem.index(next_slot)\n                next_bar = bars.index(next_slot)\n                mbarrier.expect(next_bar, a_desc.nbytes_per_cta + b_desc.nbytes_per_cta)\n                tma.async_load(a_desc, [off_m, future * block_k], next_bar, next_a)\n                if B_MODE == 1:\n                    tma.async_load(b_desc, [off_n, future * block_k], next_bar,\n                                   next_b, multicast=False)\n                else:\n                    tma.async_load(b_desc, [off_n, future * block_k], next_bar,\n                                   next_b, multicast=True)\n\n    acc = warpgroup_mma_wait(num_outstanding=0, deps=(acc,))\n    for final_slot in gl.static_range(3):\n        mbarrier.invalidate(bars.index(final_slot))\n    c_smem = gl.allocate_shared_memory(dtype, c_desc.block_shape, c_desc.layout)\n    c_smem.store(acc.to(dtype))\n    fence_async_shared()\n    tma.async_store(c_desc, [off_m, off_n], c_smem)\n    tma.store_wait(pendings=0)\n\n\ndef launch(A, B, C, M, N, K):\n    \"\"\"Compute C=A@B for A[M,K], column-major B[K,N], row-major C[M,N].\"\"\"\n    import torch\n\n    if A.dtype != torch.bfloat16 or B.dtype != torch.bfloat16 or C.dtype != torch.bfloat16:\n        raise ValueError(\"expected BF16 A, B and C\")\n    if A.shape != (M, K) or B.shape != (K, N) or C.shape != (M, N):\n        raise ValueError(\"GEMM dimensions disagree\")\n    if not A.is_contiguous() or not C.is_contiguous() or B.stride() != (1, K):\n        raise ValueError(\"expected row-major A/C and column-major B\")\n    # The search ABI views B as [K,N] with strides (1,K). Its transpose is a\n    # zero-copy, contiguous [N,K] view for the validated descriptor layout.\n    b_physical = B.T\n    if not b_physical.is_contiguous():\n        raise ValueError(\"B transpose must be physically contiguous\")\n    cluster_size = 2\n    block_m = CTA_M * cluster_size\n    if M % block_m or N % CTA_N or K % BLOCK_K or K < 3 * BLOCK_K:\n        raise ValueError(\"wait-one Gluon reference requires full tiles and three K stages\")\n    cga_m = [[1, 0]]\n    cga_b = [[0, 0]]\n    a_layout = gl.NVMMASharedLayout.get_default_for(\n        [block_m, BLOCK_K], gl.bfloat16, cga_layout=cga_m)\n    b_layout = gl.NVMMASharedLayout.get_default_for(\n        [CTA_N, BLOCK_K], gl.bfloat16, cga_layout=cga_b)\n    c_layout = gl.NVMMASharedLayout.get_default_for(\n        [block_m, CTA_N], gl.bfloat16, cga_layout=cga_m)\n    a_desc = TensorDescriptor.from_tensor(A, [block_m, BLOCK_K], a_layout)\n    b_desc = TensorDescriptor.from_tensor(b_physical, [CTA_N, BLOCK_K], b_layout)\n    c_desc = TensorDescriptor.from_tensor(C, [block_m, CTA_N], c_layout)\n    grid = (triton.cdiv(M, block_m), triton.cdiv(N, CTA_N))\n    return gemm[grid](a_desc, b_desc, c_desc, True, True, 1,\n                      num_warps=WARPS, num_ctas=cluster_size)\n"
+    }
+  },
+  "target_hardware": {
+    "gpu_model": "H100"
+  },
+  "task": "Produce a complete replacement GPU kernel preserving the workload contract.",
+  "workload": {
+    "atol": 0.02,
+    "benchmark_id": "bf16_gemm_4096_h100",
+    "dtype": "bfloat16",
+    "metadata": {
+      "abi": {
+        "launch": {
+          "dynamic": true,
+          "entry_point": "launch"
+        },
+        "parameters": [
+          "A",
+          "B",
+          "C",
+          "M",
+          "N",
+          "K"
+        ]
+      },
+      "accumulation_dtype": "float32",
+      "entry_point": "launch",
+      "output_dtype": "bfloat16",
+      "target": {
+        "form_factor": "SXM",
+        "gpu_model": "H100",
+        "minimum_compute_capability": "9.0"
+      },
+      "tensors": {
+        "A": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "K"
+          ]
+        },
+        "B": {
+          "layout": "column_major",
+          "shape": [
+            "K",
+            "N"
+          ]
+        },
+        "C": {
+          "layout": "row_major",
+          "shape": [
+            "M",
+            "N"
+          ]
+        }
+      }
+    },
+    "operation": "gemm",
+    "rtol": 0.02,
+    "shapes": [
+      {
+        "dimensions": {
+          "K": 4096,
+          "M": 4096,
+          "N": 4096
+        },
+        "weight": 1.0
+      }
+    ]
+  }
+}

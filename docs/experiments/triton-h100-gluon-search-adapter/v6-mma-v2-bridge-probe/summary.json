@@ -1,0 +1,14 @@
+{
+  "attempts": [],
+  "catalog_sha256": "9d845ea4aaad5bccf8cb65114ba4ab8ed60dd73ada44c5ea3ddaee5bd9262448",
+  "complete": false,
+  "error": "RuntimeError: Messages API transport failed",
+  "expected_candidate_stage": "gluon_mma_v2",
+  "failed_attempt": 0,
+  "max_b_gen": 2,
+  "max_repairs": 1,
+  "parent_source_sha256": "ccfc06f9dafe254680ce31a6f006c246d4fa3c2478b9617c8c22c0f0e1ac516d",
+  "scaffold": false,
+  "schema_version": 1,
+  "strategy_id": "gluon_mma_v2_pointer_port"
+}

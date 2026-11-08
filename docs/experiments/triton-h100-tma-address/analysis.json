@@ -1,0 +1,1053 @@
+{
+  "correctness": {
+    "baseline": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "both": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "constant_group": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    },
+    "unmasked_store": {
+      "exact_mismatches_vs_cublas": 0,
+      "maximum_error_vs_cublas": 0.0
+    }
+  },
+  "limitations": "Full NCU metrics may be replayed separately and are not a latency decomposition. The specialization is tested only for the aligned 4096^3 workload.",
+  "median_paired_delta_us": {
+    "both": 0.6240010261535645,
+    "constant_group": -1.2960061430931091,
+    "unmasked_store": -0.06400793790817261
+  },
+  "paired_delta_from_baseline_us": {
+    "both": [
+      0.6240010261535645,
+      0.46399980783462524,
+      1.7120018601417542
+    ],
+    "constant_group": [
+      0.44799596071243286,
+      -1.2960061430931091,
+      -3.455996513366699
+    ],
+    "unmasked_store": [
+      2.6559978723526,
+      -0.06400793790817261,
+      -4.128001630306244
+    ]
+  },
+  "profiles": {
+    "baseline": {
+      "ncu_report_sha256": "00cc13f43e5217559d5940119f312a7da92703c7f33c6090488238b1a5769f3b",
+      "raw": {
+        "kernel_name": "bf16_gemm_tma",
+        "metrics": {
+          "dram__bytes_read.sum": 186.682624,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": 60.27866,
+          "launch__registers_per_thread": 154.0,
+          "launch__shared_mem_per_block": 148.504,
+          "lts__t_sector_op_read_hit_rate.pct": 69.790858,
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": 50.452408,
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": 91.571775,
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": 87.306682,
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": 4.576053,
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": 1.841625,
+          "smsp__inst_executed.sum": 27754496.0
+        }
+      },
+      "sass": {
+        "executed_warp_instructions": 27752960,
+        "opcode_executions": {
+          "BAR": 1097728,
+          "BRA": 536576,
+          "CS2R": 262144,
+          "DEPBAR": 4096,
+          "ELECT": 540672,
+          "EXIT": 8192,
+          "F2FP": 262144,
+          "F2I": 4096,
+          "FENCE": 1536,
+          "HGMMA": 1048576,
+          "I2F": 4096,
+          "IABS": 12288,
+          "IADD3": 540672,
+          "IMAD": 2502656,
+          "ISETP": 1679360,
+          "LDC": 12288,
+          "LDS": 65536,
+          "LEA": 77824,
+          "LOP3": 229376,
+          "MUFU": 4096,
+          "NOP": 7168,
+          "PLOP3": 262144,
+          "R2UR": 2433024,
+          "S2R": 8192,
+          "S2UR": 4096,
+          "SHF": 81920,
+          "SHFL": 262144,
+          "STG": 65536,
+          "STSM": 65536,
+          "SYNCS": 546304,
+          "UIADD3": 2908160,
+          "UISETP": 786432,
+          "ULDC": 4096,
+          "ULEA": 1572864,
+          "ULOP3": 1835008,
+          "UMOV": 4250624,
+          "UPRMT": 4096,
+          "USEL": 786432,
+          "USHF": 1056768,
+          "UTMALDG": 540672,
+          "VIADD": 274432,
+          "VIMNMX": 4096,
+          "VOTEU": 557056,
+          "WARPGROUP": 528384,
+          "WARPSYNC": 13824
+        },
+        "opcode_sites": {
+          "BAR": 16,
+          "BRA": 8,
+          "CS2R": 64,
+          "DEPBAR": 1,
+          "ELECT": 6,
+          "EXIT": 2,
+          "F2FP": 64,
+          "F2I": 1,
+          "FENCE": 3,
+          "HGMMA": 4,
+          "I2F": 1,
+          "IABS": 3,
+          "IADD3": 6,
+          "IMAD": 107,
+          "ISETP": 32,
+          "LDC": 3,
+          "LDS": 16,
+          "LEA": 19,
+          "LOP3": 56,
+          "MUFU": 1,
+          "NOP": 18,
+          "PLOP3": 1,
+          "R2UR": 27,
+          "S2R": 2,
+          "S2UR": 1,
+          "SHF": 20,
+          "SHFL": 1,
+          "STG": 16,
+          "STSM": 16,
+          "SYNCS": 11,
+          "UIADD3": 17,
+          "UISETP": 3,
+          "ULDC": 1,
+          "ULEA": 6,
+          "ULOP3": 7,
+          "UMOV": 35,
+          "UPRMT": 1,
+          "USEL": 3,
+          "USHF": 6,
+          "UTMALDG": 6,
+          "VIADD": 4,
+          "VIMNMX": 1,
+          "VOTEU": 10,
+          "WARPGROUP": 3,
+          "WARPSYNC": 3
+        },
+        "site_count": 632,
+        "top_executed_opcodes": [
+          {
+            "opcode": "UMOV",
+            "static_sites": 35,
+            "warp_instructions": 4250624
+          },
+          {
+            "opcode": "UIADD3",
+            "static_sites": 17,
+            "warp_instructions": 2908160
+          },
+          {
+            "opcode": "IMAD",
+            "static_sites": 107,
+            "warp_instructions": 2502656
+          },
+          {
+            "opcode": "R2UR",
+            "static_sites": 27,
+            "warp_instructions": 2433024
+          },
+          {
+            "opcode": "ULOP3",
+            "static_sites": 7,
+            "warp_instructions": 1835008
+          },
+          {
+            "opcode": "ISETP",
+            "static_sites": 32,
+            "warp_instructions": 1679360
+          },
+          {
+            "opcode": "ULEA",
+            "static_sites": 6,
+            "warp_instructions": 1572864
+          },
+          {
+            "opcode": "BAR",
+            "static_sites": 16,
+            "warp_instructions": 1097728
+          },
+          {
+            "opcode": "USHF",
+            "static_sites": 6,
+            "warp_instructions": 1056768
+          },
+          {
+            "opcode": "HGMMA",
+            "static_sites": 4,
+            "warp_instructions": 1048576
+          },
+          {
+            "opcode": "UISETP",
+            "static_sites": 3,
+            "warp_instructions": 786432
+          },
+          {
+            "opcode": "USEL",
+            "static_sites": 3,
+            "warp_instructions": 786432
+          },
+          {
+            "opcode": "VOTEU",
+            "static_sites": 10,
+            "warp_instructions": 557056
+          },
+          {
+            "opcode": "SYNCS",
+            "static_sites": 11,
+            "warp_instructions": 546304
+          },
+          {
+            "opcode": "ELECT",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "IADD3",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "UTMALDG",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "BRA",
+            "static_sites": 8,
+            "warp_instructions": 536576
+          },
+          {
+            "opcode": "WARPGROUP",
+            "static_sites": 3,
+            "warp_instructions": 528384
+          },
+          {
+            "opcode": "VIADD",
+            "static_sites": 4,
+            "warp_instructions": 274432
+          },
+          {
+            "opcode": "CS2R",
+            "static_sites": 64,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "SHFL",
+            "static_sites": 1,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "PLOP3",
+            "static_sites": 1,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "F2FP",
+            "static_sites": 64,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "LOP3",
+            "static_sites": 56,
+            "warp_instructions": 229376
+          }
+        ]
+      }
+    },
+    "both": {
+      "ncu_report_sha256": "95f62ef3a8225a922db1331ff07d0800d71b14da9bd23db0f3664d041930a1f9",
+      "raw": {
+        "kernel_name": "bf16_gemm_tma",
+        "metrics": {
+          "dram__bytes_read.sum": 186.68288,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": 60.196887,
+          "launch__registers_per_thread": 154.0,
+          "launch__shared_mem_per_block": 148.504,
+          "lts__t_sector_op_read_hit_rate.pct": 64.90758,
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": 50.213083,
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": 91.476201,
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": 87.137702,
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": 4.586055,
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": 1.686975,
+          "smsp__inst_executed.sum": 27549696.0
+        }
+      },
+      "sass": {
+        "executed_warp_instructions": 27548160,
+        "opcode_executions": {
+          "BAR": 1097728,
+          "BRA": 536576,
+          "CS2R": 262144,
+          "DEPBAR": 4096,
+          "ELECT": 540672,
+          "EXIT": 4096,
+          "F2FP": 262144,
+          "FENCE": 1536,
+          "HGMMA": 1048576,
+          "IADD3": 540672,
+          "IMAD": 2379776,
+          "ISETP": 1593344,
+          "LDC": 12288,
+          "LDS": 65536,
+          "LEA": 4096,
+          "LOP3": 155648,
+          "NOP": 7168,
+          "PLOP3": 262144,
+          "PRMT": 4096,
+          "R2UR": 2424832,
+          "S2R": 4096,
+          "S2UR": 8192,
+          "SHF": 69632,
+          "SHFL": 262144,
+          "STG": 65536,
+          "STSM": 65536,
+          "SYNCS": 546304,
+          "UIADD3": 2924544,
+          "UISETP": 786432,
+          "ULDC": 4096,
+          "ULEA": 1581056,
+          "ULOP3": 1327104,
+          "UMOV": 4258816,
+          "UPRMT": 28672,
+          "USEL": 786432,
+          "USGXT": 524288,
+          "USHF": 1069056,
+          "UTMALDG": 540672,
+          "VIADD": 389120,
+          "VOTEU": 557056,
+          "WARPGROUP": 528384,
+          "WARPSYNC": 13824
+        },
+        "opcode_sites": {
+          "BAR": 16,
+          "BRA": 8,
+          "CS2R": 64,
+          "DEPBAR": 1,
+          "ELECT": 6,
+          "EXIT": 1,
+          "F2FP": 64,
+          "FENCE": 3,
+          "HGMMA": 4,
+          "IADD3": 6,
+          "IMAD": 77,
+          "ISETP": 11,
+          "LDC": 3,
+          "LDS": 16,
+          "LEA": 1,
+          "LOP3": 38,
+          "NOP": 20,
+          "PLOP3": 1,
+          "PRMT": 1,
+          "R2UR": 25,
+          "S2R": 1,
+          "S2UR": 2,
+          "SHF": 17,
+          "SHFL": 1,
+          "STG": 16,
+          "STSM": 16,
+          "SYNCS": 11,
+          "UIADD3": 21,
+          "UISETP": 3,
+          "ULDC": 1,
+          "ULEA": 8,
+          "ULOP3": 9,
+          "UMOV": 37,
+          "UPRMT": 7,
+          "USEL": 3,
+          "USGXT": 2,
+          "USHF": 9,
+          "UTMALDG": 6,
+          "VIADD": 32,
+          "VOTEU": 10,
+          "WARPGROUP": 3,
+          "WARPSYNC": 3
+        },
+        "site_count": 584,
+        "top_executed_opcodes": [
+          {
+            "opcode": "UMOV",
+            "static_sites": 37,
+            "warp_instructions": 4258816
+          },
+          {
+            "opcode": "UIADD3",
+            "static_sites": 21,
+            "warp_instructions": 2924544
+          },
+          {
+            "opcode": "R2UR",
+            "static_sites": 25,
+            "warp_instructions": 2424832
+          },
+          {
+            "opcode": "IMAD",
+            "static_sites": 77,
+            "warp_instructions": 2379776
+          },
+          {
+            "opcode": "ISETP",
+            "static_sites": 11,
+            "warp_instructions": 1593344
+          },
+          {
+            "opcode": "ULEA",
+            "static_sites": 8,
+            "warp_instructions": 1581056
+          },
+          {
+            "opcode": "ULOP3",
+            "static_sites": 9,
+            "warp_instructions": 1327104
+          },
+          {
+            "opcode": "BAR",
+            "static_sites": 16,
+            "warp_instructions": 1097728
+          },
+          {
+            "opcode": "USHF",
+            "static_sites": 9,
+            "warp_instructions": 1069056
+          },
+          {
+            "opcode": "HGMMA",
+            "static_sites": 4,
+            "warp_instructions": 1048576
+          },
+          {
+            "opcode": "UISETP",
+            "static_sites": 3,
+            "warp_instructions": 786432
+          },
+          {
+            "opcode": "USEL",
+            "static_sites": 3,
+            "warp_instructions": 786432
+          },
+          {
+            "opcode": "VOTEU",
+            "static_sites": 10,
+            "warp_instructions": 557056
+          },
+          {
+            "opcode": "SYNCS",
+            "static_sites": 11,
+            "warp_instructions": 546304
+          },
+          {
+            "opcode": "ELECT",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "IADD3",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "UTMALDG",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "BRA",
+            "static_sites": 8,
+            "warp_instructions": 536576
+          },
+          {
+            "opcode": "WARPGROUP",
+            "static_sites": 3,
+            "warp_instructions": 528384
+          },
+          {
+            "opcode": "USGXT",
+            "static_sites": 2,
+            "warp_instructions": 524288
+          },
+          {
+            "opcode": "VIADD",
+            "static_sites": 32,
+            "warp_instructions": 389120
+          },
+          {
+            "opcode": "CS2R",
+            "static_sites": 64,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "SHFL",
+            "static_sites": 1,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "PLOP3",
+            "static_sites": 1,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "F2FP",
+            "static_sites": 64,
+            "warp_instructions": 262144
+          }
+        ]
+      }
+    },
+    "constant_group": {
+      "ncu_report_sha256": "b78921d1d8f280fc941308e0034e51dbec49e57b8dc76868dba99b89f6ea1a5b",
+      "raw": {
+        "kernel_name": "bf16_gemm_tma",
+        "metrics": {
+          "dram__bytes_read.sum": 186.682368,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": 60.327629,
+          "launch__registers_per_thread": 154.0,
+          "launch__shared_mem_per_block": 148.504,
+          "lts__t_sector_op_read_hit_rate.pct": 68.413435,
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": 48.878139,
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": 91.669411,
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": 87.190713,
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": 4.625994,
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": 1.761799,
+          "smsp__inst_executed.sum": 27680768.0
+        }
+      },
+      "sass": {
+        "executed_warp_instructions": 27679232,
+        "opcode_executions": {
+          "BAR": 1097728,
+          "BRA": 536576,
+          "CS2R": 262144,
+          "DEPBAR": 4096,
+          "ELECT": 540672,
+          "EXIT": 8192,
+          "F2FP": 262144,
+          "FENCE": 1536,
+          "HGMMA": 1048576,
+          "IADD3": 540672,
+          "IMAD": 2441216,
+          "ISETP": 1658880,
+          "LDC": 12288,
+          "LDS": 65536,
+          "LEA": 4096,
+          "LOP3": 217088,
+          "NOP": 7168,
+          "PLOP3": 262144,
+          "PRMT": 4096,
+          "R2UR": 2424832,
+          "S2R": 4096,
+          "S2UR": 8192,
+          "SHF": 69632,
+          "SHFL": 262144,
+          "STG": 65536,
+          "STSM": 65536,
+          "SYNCS": 546304,
+          "UIADD3": 2924544,
+          "UISETP": 786432,
+          "ULDC": 4096,
+          "ULEA": 1581056,
+          "ULOP3": 1327104,
+          "UMOV": 4258816,
+          "UPRMT": 28672,
+          "USEL": 786432,
+          "USGXT": 524288,
+          "USHF": 1069056,
+          "UTMALDG": 540672,
+          "VIADD": 327680,
+          "VOTEU": 557056,
+          "WARPGROUP": 528384,
+          "WARPSYNC": 13824
+        },
+        "opcode_sites": {
+          "BAR": 16,
+          "BRA": 8,
+          "CS2R": 64,
+          "DEPBAR": 1,
+          "ELECT": 6,
+          "EXIT": 2,
+          "F2FP": 64,
+          "FENCE": 3,
+          "HGMMA": 4,
+          "IADD3": 6,
+          "IMAD": 92,
+          "ISETP": 27,
+          "LDC": 3,
+          "LDS": 16,
+          "LEA": 1,
+          "LOP3": 53,
+          "NOP": 20,
+          "PLOP3": 1,
+          "PRMT": 1,
+          "R2UR": 25,
+          "S2R": 1,
+          "S2UR": 2,
+          "SHF": 17,
+          "SHFL": 1,
+          "STG": 16,
+          "STSM": 16,
+          "SYNCS": 11,
+          "UIADD3": 21,
+          "UISETP": 3,
+          "ULDC": 1,
+          "ULEA": 8,
+          "ULOP3": 9,
+          "UMOV": 37,
+          "UPRMT": 7,
+          "USEL": 3,
+          "USGXT": 2,
+          "USHF": 9,
+          "UTMALDG": 6,
+          "VIADD": 17,
+          "VOTEU": 10,
+          "WARPGROUP": 3,
+          "WARPSYNC": 3
+        },
+        "site_count": 616,
+        "top_executed_opcodes": [
+          {
+            "opcode": "UMOV",
+            "static_sites": 37,
+            "warp_instructions": 4258816
+          },
+          {
+            "opcode": "UIADD3",
+            "static_sites": 21,
+            "warp_instructions": 2924544
+          },
+          {
+            "opcode": "IMAD",
+            "static_sites": 92,
+            "warp_instructions": 2441216
+          },
+          {
+            "opcode": "R2UR",
+            "static_sites": 25,
+            "warp_instructions": 2424832
+          },
+          {
+            "opcode": "ISETP",
+            "static_sites": 27,
+            "warp_instructions": 1658880
+          },
+          {
+            "opcode": "ULEA",
+            "static_sites": 8,
+            "warp_instructions": 1581056
+          },
+          {
+            "opcode": "ULOP3",
+            "static_sites": 9,
+            "warp_instructions": 1327104
+          },
+          {
+            "opcode": "BAR",
+            "static_sites": 16,
+            "warp_instructions": 1097728
+          },
+          {
+            "opcode": "USHF",
+            "static_sites": 9,
+            "warp_instructions": 1069056
+          },
+          {
+            "opcode": "HGMMA",
+            "static_sites": 4,
+            "warp_instructions": 1048576
+          },
+          {
+            "opcode": "UISETP",
+            "static_sites": 3,
+            "warp_instructions": 786432
+          },
+          {
+            "opcode": "USEL",
+            "static_sites": 3,
+            "warp_instructions": 786432
+          },
+          {
+            "opcode": "VOTEU",
+            "static_sites": 10,
+            "warp_instructions": 557056
+          },
+          {
+            "opcode": "SYNCS",
+            "static_sites": 11,
+            "warp_instructions": 546304
+          },
+          {
+            "opcode": "ELECT",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "IADD3",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "UTMALDG",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "BRA",
+            "static_sites": 8,
+            "warp_instructions": 536576
+          },
+          {
+            "opcode": "WARPGROUP",
+            "static_sites": 3,
+            "warp_instructions": 528384
+          },
+          {
+            "opcode": "USGXT",
+            "static_sites": 2,
+            "warp_instructions": 524288
+          },
+          {
+            "opcode": "VIADD",
+            "static_sites": 17,
+            "warp_instructions": 327680
+          },
+          {
+            "opcode": "CS2R",
+            "static_sites": 64,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "SHFL",
+            "static_sites": 1,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "PLOP3",
+            "static_sites": 1,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "F2FP",
+            "static_sites": 64,
+            "warp_instructions": 262144
+          }
+        ]
+      }
+    },
+    "unmasked_store": {
+      "ncu_report_sha256": "45500de372796f29427f43c5fd7143960f45d271925d3175d7f3bdb8f6ce0f00",
+      "raw": {
+        "kernel_name": "bf16_gemm_tma",
+        "metrics": {
+          "dram__bytes_read.sum": 186.660096,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_ld.sum": 0.0,
+          "l1tex__t_sectors_pipe_lsu_mem_local_op_st.sum": 0.0,
+          "l1tex__throughput.avg.pct_of_peak_sustained_active": 60.148215,
+          "launch__registers_per_thread": 154.0,
+          "launch__shared_mem_per_block": 148.504,
+          "lts__t_sector_op_read_hit_rate.pct": 68.366751,
+          "lts__throughput.avg.pct_of_peak_sustained_elapsed": 48.827146,
+          "sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_active": 91.368291,
+          "sm__throughput.avg.pct_of_peak_sustained_elapsed": 87.011155,
+          "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": 4.545274,
+          "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": 1.699711,
+          "smsp__inst_executed.sum": 27615232.0
+        }
+      },
+      "sass": {
+        "executed_warp_instructions": 27613696,
+        "opcode_executions": {
+          "BAR": 1097728,
+          "BRA": 536576,
+          "CS2R": 262144,
+          "DEPBAR": 4096,
+          "ELECT": 540672,
+          "EXIT": 4096,
+          "F2FP": 262144,
+          "F2I": 4096,
+          "FENCE": 1536,
+          "HGMMA": 1048576,
+          "I2F": 4096,
+          "IABS": 12288,
+          "IADD3": 540672,
+          "IMAD": 2445312,
+          "ISETP": 1609728,
+          "LDC": 12288,
+          "LDS": 65536,
+          "LEA": 8192,
+          "LOP3": 167936,
+          "MUFU": 4096,
+          "NOP": 7168,
+          "PLOP3": 262144,
+          "R2UR": 2433024,
+          "S2R": 8192,
+          "S2UR": 4096,
+          "SHF": 77824,
+          "SHFL": 262144,
+          "STG": 65536,
+          "STSM": 65536,
+          "SYNCS": 546304,
+          "UIADD3": 2908160,
+          "UISETP": 786432,
+          "ULDC": 4096,
+          "ULEA": 1572864,
+          "ULOP3": 1310720,
+          "UMOV": 4250624,
+          "UPRMT": 4096,
+          "USEL": 786432,
+          "USGXT": 524288,
+          "USHF": 1056768,
+          "UTMALDG": 540672,
+          "VIADD": 401408,
+          "VIMNMX": 4096,
+          "VOTEU": 557056,
+          "WARPGROUP": 528384,
+          "WARPSYNC": 13824
+        },
+        "opcode_sites": {
+          "BAR": 16,
+          "BRA": 8,
+          "CS2R": 64,
+          "DEPBAR": 1,
+          "ELECT": 6,
+          "EXIT": 1,
+          "F2FP": 64,
+          "F2I": 1,
+          "FENCE": 3,
+          "HGMMA": 4,
+          "I2F": 1,
+          "IABS": 3,
+          "IADD3": 6,
+          "IMAD": 93,
+          "ISETP": 15,
+          "LDC": 3,
+          "LDS": 16,
+          "LEA": 2,
+          "LOP3": 41,
+          "MUFU": 1,
+          "NOP": 20,
+          "PLOP3": 1,
+          "R2UR": 27,
+          "S2R": 2,
+          "S2UR": 1,
+          "SHF": 19,
+          "SHFL": 1,
+          "STG": 16,
+          "STSM": 16,
+          "SYNCS": 11,
+          "UIADD3": 17,
+          "UISETP": 3,
+          "ULDC": 1,
+          "ULEA": 6,
+          "ULOP3": 5,
+          "UMOV": 35,
+          "UPRMT": 1,
+          "USEL": 3,
+          "USGXT": 2,
+          "USHF": 6,
+          "UTMALDG": 6,
+          "VIADD": 35,
+          "VIMNMX": 1,
+          "VOTEU": 10,
+          "WARPGROUP": 3,
+          "WARPSYNC": 3
+        },
+        "site_count": 600,
+        "top_executed_opcodes": [
+          {
+            "opcode": "UMOV",
+            "static_sites": 35,
+            "warp_instructions": 4250624
+          },
+          {
+            "opcode": "UIADD3",
+            "static_sites": 17,
+            "warp_instructions": 2908160
+          },
+          {
+            "opcode": "IMAD",
+            "static_sites": 93,
+            "warp_instructions": 2445312
+          },
+          {
+            "opcode": "R2UR",
+            "static_sites": 27,
+            "warp_instructions": 2433024
+          },
+          {
+            "opcode": "ISETP",
+            "static_sites": 15,
+            "warp_instructions": 1609728
+          },
+          {
+            "opcode": "ULEA",
+            "static_sites": 6,
+            "warp_instructions": 1572864
+          },
+          {
+            "opcode": "ULOP3",
+            "static_sites": 5,
+            "warp_instructions": 1310720
+          },
+          {
+            "opcode": "BAR",
+            "static_sites": 16,
+            "warp_instructions": 1097728
+          },
+          {
+            "opcode": "USHF",
+            "static_sites": 6,
+            "warp_instructions": 1056768
+          },
+          {
+            "opcode": "HGMMA",
+            "static_sites": 4,
+            "warp_instructions": 1048576
+          },
+          {
+            "opcode": "UISETP",
+            "static_sites": 3,
+            "warp_instructions": 786432
+          },
+          {
+            "opcode": "USEL",
+            "static_sites": 3,
+            "warp_instructions": 786432
+          },
+          {
+            "opcode": "VOTEU",
+            "static_sites": 10,
+            "warp_instructions": 557056
+          },
+          {
+            "opcode": "SYNCS",
+            "static_sites": 11,
+            "warp_instructions": 546304
+          },
+          {
+            "opcode": "ELECT",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "IADD3",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "UTMALDG",
+            "static_sites": 6,
+            "warp_instructions": 540672
+          },
+          {
+            "opcode": "BRA",
+            "static_sites": 8,
+            "warp_instructions": 536576
+          },
+          {
+            "opcode": "WARPGROUP",
+            "static_sites": 3,
+            "warp_instructions": 528384
+          },
+          {
+            "opcode": "USGXT",
+            "static_sites": 2,
+            "warp_instructions": 524288
+          },
+          {
+            "opcode": "VIADD",
+            "static_sites": 35,
+            "warp_instructions": 401408
+          },
+          {
+            "opcode": "CS2R",
+            "static_sites": 64,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "SHFL",
+            "static_sites": 1,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "PLOP3",
+            "static_sites": 1,
+            "warp_instructions": 262144
+          },
+          {
+            "opcode": "F2FP",
+            "static_sites": 64,
+            "warp_instructions": 262144
+          }
+        ]
+      }
+    }
+  },
+  "round_medians_us": {
+    "baseline": [
+      197.32800126075745,
+      204.00000363588333,
+      206.7839950323105
+    ],
+    "both": [
+      197.952002286911,
+      204.46400344371796,
+      208.49599689245224
+    ],
+    "constant_group": [
+      197.77599722146988,
+      202.70399749279022,
+      203.3279985189438
+    ],
+    "cublas": [
+      188.9759972691536,
+      188.400000333786,
+      193.42400133609772
+    ],
+    "unmasked_store": [
+      199.98399913311005,
+      203.93599569797516,
+      202.65599340200424
+    ]
+  },
+  "schema_version": 1,
+  "source_sha256": {
+    "baseline": "c7113204ec9d45e858382fc7d2ede9a6d33d18fadbc0f842c6031d91f7163dfa",
+    "both": "ba23ab92f31a278dfbcc4052c02d5f240764712c4cdd5c183bc8ea3892c5890c",
+    "constant_group": "a54e8d42452f30b05e0b0bf8c861fce5734bc554770855cb533a4e0494a3e503",
+    "unmasked_store": "9b94d26ab08c5b8991d717a23f091912118f66b1e17c7391515931e98bf8e953"
+  }
+}
