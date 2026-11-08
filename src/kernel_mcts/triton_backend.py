@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import csv
+import math
 import os
 import statistics
 import subprocess
@@ -20,6 +21,7 @@ from .domain import BenchmarkResult, KernelProgram, WorkloadContract
 from .evaluation import CandidateBenchmarkError, CandidateLaunchError, CandidateTimeoutError, EvaluationInfrastructureError
 from .profiling import normalize_ncu_version, resolve_profile_metric_set
 from .triton_compiler_summary import ptx_instruction_sites
+from .triton_harness import GRAPH_TIMING_CONTRACT
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,13 +182,37 @@ class TritonH100Backend:
 
     def benchmark(self, artifact: TritonArtifact, workload: WorkloadContract) -> BenchmarkResult:
         payload = self._execute(artifact, workload, "benchmark")
+        if payload.get("timing_contract") != GRAPH_TIMING_CONTRACT:
+            raise EvaluationInfrastructureError("Triton harness timing contract mismatch")
         timings = tuple(float(value) for value in payload["timings_us"])
-        if len(timings) != self.config.measurement_count or any(value <= 0 for value in timings):
+        if (len(timings) != self.config.measurement_count or
+                any(not math.isfinite(value) or value <= 0 for value in timings)):
             raise EvaluationInfrastructureError("Triton harness returned invalid timings")
+        raw_diagnostics = payload.get("diagnostics", {})
+        diagnostics: dict[str, object] = {}
+        if isinstance(raw_diagnostics, Mapping):
+            if isinstance(raw_diagnostics.get("ordinary_launch_error_type"), str):
+                diagnostics["ordinary_launch_error_type"] = raw_diagnostics[
+                    "ordinary_launch_error_type"]
+            try:
+                ordinary = tuple(float(value) for value in raw_diagnostics.get(
+                    "ordinary_launch_timings_us", ()))
+            except (TypeError, ValueError):
+                ordinary = ()
+            if (len(ordinary) == self.config.measurement_count and
+                    all(math.isfinite(value) and value > 0 for value in ordinary)):
+                diagnostics["ordinary_launch_timings_us"] = ordinary
+                diagnostics["ordinary_launch_median_us"] = statistics.median(ordinary)
+            elif "ordinary_launch_error_type" not in diagnostics:
+                diagnostics["ordinary_launch_error_type"] = "InvalidDiagnosticSamples"
+        else:
+            diagnostics["ordinary_launch_error_type"] = "MissingDiagnostics"
         return BenchmarkResult(
             timings_us=timings, median_us=statistics.median(timings),
             warmup_count=self.config.warmup_count, mean_us=statistics.fmean(timings),
             stddev_us=statistics.pstdev(timings), min_us=min(timings), max_us=max(timings),
+            timing_contract=GRAPH_TIMING_CONTRACT,
+            diagnostics=diagnostics,
         )
 
     def binary_fingerprint(self, artifact: TritonArtifact,

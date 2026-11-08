@@ -1,0 +1,55 @@
+{
+  "complete": true,
+  "dirty_tree": true,
+  "environment_manifest": {
+    "backend_implementation_hash": null,
+    "captured_at": "2026-11-06T22:16:13.084544+00:00",
+    "compute_capability": "9.0",
+    "config_hashes": {},
+    "container_digest": "sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5",
+    "container_image": "docker.io/saarora/gpu-kernel-mcts@sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5",
+    "container_runtime": null,
+    "dirty_tree": true,
+    "form_factor": "SXM",
+    "gpu_count": 1,
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "gpu_uuid": "GPU-f5f98415-c528-c78a-a3f7-dfe62230253e",
+    "host_information": {
+      "data_center_id": null,
+      "pod_hostname": null
+    },
+    "library_versions": {},
+    "manifest_id": "f2f71868ecd0de454ae5e182b9da67ecf0d5ffb87e3cea1bedeea84ccd5efd97",
+    "mig_configuration": {},
+    "operating_state": {},
+    "pod_id": "computeinstance-e00c6qx193nmp9bh55",
+    "profiler_versions": {
+      "ncu": "NVIDIA (R) Nsight Compute Command Line Profiler Copyright (c) 2018-2025 NVIDIA Corporation Version 2025.1.1.0 (build 35528883) (public-release)"
+    },
+    "project_git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+    "provider": "nebius",
+    "sm_count": null,
+    "toolchain_versions": {
+      "cuda_toolkit": "12.8.2",
+      "cuobjdump": "cuobjdump: NVIDIA (R) fat binary listing tool Copyright (c) 2005-2025 NVIDIA Corporation Built on Thu_Feb_13_02:19:26_PST_2025 Cuda compilation tools, release 12.8, V12.8.90 Build cuda_12.8.r12.8/compiler.35538042_0",
+      "cutlass": "v4.5.1",
+      "nvcc": "12.8",
+      "torch": "2.7.1+cu128",
+      "triton": "3.9.0"
+    },
+    "total_memory_bytes": 85520809984,
+    "worker_id": "computeinstance-e00c6qx193nmp9bh55"
+  },
+  "git_commit": "d0d30c13843720149cb6eafec5a2dfcb233d1a15",
+  "image": "docker.io/saarora/gpu-kernel-mcts@sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5",
+  "last_output": "timing 6 persistent search_event 272.7520018815994\ntiming 6 single_cta prepared_event 199.08799976110458\ntiming 6 persistent graph_event 189.2319992184639\ntiming 6 persistent prepared_event 197.87199795246124\ntiming 7 cublas graph_event 181.2480017542839\ntiming 7 persistent search_event 266.6720002889633\ntiming 7 persistent batched_event 187.73333231608072\ntiming 7 persistent graph_event 186.17599457502365\ntiming 7 cublas prepared_event 191.96799397468567\ntiming 7 single_cta graph_event 190.3200000524521\ntiming 7 cublas search_event 193.05600225925446\ntiming 7 single_cta prepared_event 201.31199806928635\ntiming 7 single_cta batched_event 188.5471979777018\ntiming 7 single_cta search_event 255.35999238491058\ntiming 7 cublas batched_event 178.74879837036133\ntiming 7 persistent prepared_event 200.17600059509277\nnanobind: leaked 4 instances!\nnanobind: leaked 8 types!\n - leaked type \"triton._C.libtriton.gluon_ir.GluonOpBuilder\"\n - leaked type \"triton._C.libtriton.ir.builder\"\n - leaked type \"PROPAGATE_NAN\"\n - leaked type \"MEM_SEMANTIC\"\n - leaked type \"triton._C.libtriton.ir.attribute\"\n - leaked type \"triton._C.libtriton.ir.type\"\n - leaked type \"CACHE_MODIFIER\"\n - leaked type \"triton._C.libtriton.ir.value\"\nnanobind: leaked 331 functions!\n - leaked function \"get_shape_from_tensor\"\n - leaked function \"create_warp_specialize\"\n - leaked function \"create_masked_store\"\n - leaked function \"create_scaled_downcast_fp8\"\n - leaked function \"get_ptr_ty\"\n - leaked function \"get_tensor_memory_layout\"\n - leaked function \"get_bool_attr\"\n - leaked function \"create_lshr\"\n - leaked function \"create_tcgen05_mma_scaled\"\n - leaked function \"create_buffer_atomic_rmw\"\n - ... skipped remainder\nnanobind: this is likely caused by a reference counting issue in the binding code.\nSee https://nanobind.readthedocs.io/en/latest/refleaks.html",
+  "paired_complete": true,
+  "remote_exit_code": 0,
+  "run_id": "d7ebc0a4-3c14-4b05-abf3-4d173f8a588b",
+  "schema_version": 1,
+  "source_sha256": {
+    "measure": "f43ee8db86fe999e86a8ad0c347517d8829a765b157a8ca41b433f2c3fb4babb",
+    "persistent": "d6bc549b4e7c3a8c35b4635716699582b3e84353e5baba02d00ce1c1174209b9",
+    "single": "0a19a0237606f07d36148bd735b0a8a2ff70a798c76739eee39d432c51dd2393"
+  }
+}

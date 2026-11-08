@@ -25,6 +25,7 @@ from .providers import GPUProvider, GPUWorker, HardwareSpec
 from .resource_graph import h100_sxm_resource_graph
 from .search import MCTS, MCTSConfig, SearchResult
 from .serialization import serialize_evaluation, serialize_program, serialize_workload
+from .triton_harness import GRAPH_TIMING_CONTRACT
 
 
 class SearchTraceStore(EventSink, Protocol):
@@ -273,6 +274,24 @@ def _evaluate_with_infrastructure_retries(
     return result
 
 
+def _validate_timing_calibration(calibration: Mapping[str, object], backend: str) -> None:
+    if backend != "triton_h100":
+        return
+    if calibration.get("timing_contract") != GRAPH_TIMING_CONTRACT:
+        raise RuntimeError("Triton worker does not use the required CUDA Graph timing contract")
+    root = calibration.get("benchmark")
+    vendors = calibration.get("vendor_baselines")
+    if not isinstance(root, Mapping) or root.get("timing_contract") != GRAPH_TIMING_CONTRACT:
+        raise RuntimeError("Triton root calibration timing contract mismatch")
+    if not isinstance(vendors, Mapping):
+        raise RuntimeError("Triton vendor calibration is missing")
+    for name in ("cublas", "cutlass"):
+        entry = vendors.get(name)
+        benchmark = entry.get("benchmark") if isinstance(entry, Mapping) else None
+        if not isinstance(benchmark, Mapping) or benchmark.get("timing_contract") != GRAPH_TIMING_CONTRACT:
+            raise RuntimeError(f"Triton {name} calibration timing contract mismatch")
+
+
 def run_mcts_search(
     *,
     provider: GPUProvider,
@@ -291,6 +310,7 @@ def run_mcts_search(
     model_name: str | None = None,
     run_metadata: Mapping[str, object] | None = None,
     tuning_config: TuningConfig | None = None,
+    worker_prepare: Callable[[GPUWorker], None] | None = None,
 ) -> SearchExecution:
     """Run one global MCTS search on one acquired worker with durable traces."""
     budget = GenerationBudget(generation_budget)
@@ -303,6 +323,8 @@ def run_mcts_search(
         "mcts": asdict(mcts_config),
         "seed": seed,
     }
+    if root_program.backend == "triton_h100":
+        run_config["timing_contract"] = GRAPH_TIMING_CONTRACT
     if model_name is not None:
         run_config["model_name"] = model_name
     if run_metadata is not None:
@@ -323,12 +345,15 @@ def run_mcts_search(
     root_attempts = 0
     try:
         worker = provider.acquire_worker(hardware)
+        if worker_prepare is not None:
+            worker_prepare(worker)
         trace.emit("environment_manifest", worker.get_environment_manifest().as_dict())
         calibration = worker.get_calibration()
         if calibration.get("benchmark_id") != workload.benchmark_id:
             raise RuntimeError("worker calibration does not match the search workload")
         if calibration.get("backend") != root_program.backend:
             raise RuntimeError("worker calibration does not match the root backend")
+        _validate_timing_calibration(calibration, root_program.backend)
         trace.emit("worker_calibration", calibration)
         worker_evaluator = WorkerKernelEvaluator(worker, resolved_run_id, trace)
         def record_root_attempt(attempt: int, result: EvaluationResult) -> None:
@@ -438,6 +463,9 @@ def _calibrated_cublas_reference(
         return None
     if not isinstance(benchmark, Mapping):
         return None
+    contract = benchmark.get("timing_contract")
+    if calibration.get("timing_contract") == GRAPH_TIMING_CONTRACT and contract != GRAPH_TIMING_CONTRACT:
+        return None
     median = benchmark.get("median_us")
     if not isinstance(median, (int, float)) or not math.isfinite(median) or median <= 0:
         return None
@@ -447,7 +475,7 @@ def _calibrated_cublas_reference(
             "median_us": median,
             "sample_count": len(samples) if isinstance(samples, (list, tuple)) else None,
             "warmup_count": benchmark.get("warmup_count"),
-            "measurement": "same-worker CUDA events",
+            "measurement": contract or "legacy same-worker CUDA events",
             "role": "performance reference only",
         }
     }
@@ -459,6 +487,8 @@ def run_sequential_search(
     trace: SearchTraceStore, config: "SequentialConfig", seed: int = 0,
     run_id: str | None = None, model_name: str | None = None,
     run_metadata: Mapping[str, object] | None = None,
+    strategy_catalog: tuple[Strategy, ...] = (),
+    worker_prepare: Callable[[GPUWorker], None] | None = None,
 ) -> "SequentialExecution":
     """Run linear refinement on one worker, preserving the tier-0 contract."""
     from .sequential import run_sequential_loop
@@ -466,7 +496,10 @@ def run_sequential_search(
     resolved_run_id = run_id or str(uuid4())
     run_config: dict[str, object] = {
         "generation_budget": generation_budget, "sequential": asdict(config), "seed": seed,
+        "strategy_ids": [item.id for item in strategy_catalog],
     }
+    if root_program.backend == "triton_h100":
+        run_config["timing_contract"] = GRAPH_TIMING_CONTRACT
     if model_name is not None:
         run_config["model_name"] = model_name
     if run_metadata is not None:
@@ -482,8 +515,17 @@ def run_sequential_search(
     try:
         worker = provider.acquire_worker(hardware)
         worker_started = perf_counter()
+        if worker_prepare is not None:
+            worker_prepare(worker)
         manifest = worker.get_environment_manifest().as_dict()
         trace.emit("environment_manifest", manifest)
+        calibration = worker.get_calibration()
+        if calibration.get("benchmark_id") != workload.benchmark_id:
+            raise RuntimeError("worker calibration does not match the search workload")
+        if calibration.get("backend") != root_program.backend:
+            raise RuntimeError("worker calibration does not match the root backend")
+        _validate_timing_calibration(calibration, root_program.backend)
+        trace.emit("worker_calibration", calibration)
         resource_graph = (
             h100_sxm_resource_graph(manifest)
             if config.include_hardware_graph else None
@@ -517,7 +559,8 @@ def run_sequential_search(
             evaluator=RootNormalizedEvaluator(worker_evaluator, root.benchmark),
             profiler=WorkerNodeProfiler(worker, resolved_run_id, config.profile_metric_set),
             trace=trace, generation_budget=generation_budget, config=config, seed=seed,
-            resource_graph=resource_graph,
+            resource_graph=resource_graph, strategy_catalog=strategy_catalog,
+            reference_baselines=_calibrated_cublas_reference(calibration),
         )
         return SequentialExecution(resolved_run_id, result)
     except Exception as error:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import shutil
 import statistics
@@ -12,6 +13,10 @@ from typing import Mapping, Protocol, Sequence
 
 from .domain import BenchmarkResult, WorkloadContract
 from .evaluation import EvaluationInfrastructureError
+from .triton_harness import GRAPH_TIMING_CONTRACT
+
+
+ORDINARY_EVENT_CONTRACT = "cuda_event_per_call_v1"
 
 
 class BaselineRunner(Protocol):
@@ -32,11 +37,16 @@ class VendorBaselineConfig:
     architecture: str = "sm_90a"
     warmup_count: int = 10
     measurement_count: int = 30
+    timing_contract: str = ORDINARY_EVENT_CONTRACT
     seed: int = 0
     timeout_seconds: float = 180.0
     subprocess_environment: Mapping[str, str] = field(
         default_factory=lambda: {"PATH": os.defpath, "LANG": "C", "LC_ALL": "C"}
     )
+
+    def __post_init__(self) -> None:
+        if self.timing_contract not in {ORDINARY_EVENT_CONTRACT, GRAPH_TIMING_CONTRACT}:
+            raise ValueError("unsupported vendor baseline timing contract")
 
 
 class VendorBaselineSuite:
@@ -111,6 +121,7 @@ class VendorBaselineSuite:
             f"--seed={self.config.seed}",
             f"--warmups={self.config.warmup_count}",
             f"--measurements={self.config.measurement_count}",
+            f"--timing-contract={self.config.timing_contract}",
         ]
         try:
             result = self._runner(
@@ -126,9 +137,18 @@ class VendorBaselineSuite:
             raise EvaluationInfrastructureError("vendor baseline execution failed") from error
         if result.returncode != 0 or payload.get("status") != "ok":
             raise EvaluationInfrastructureError("vendor baseline execution failed")
+        if payload.get("timing_contract") != self.config.timing_contract:
+            raise EvaluationInfrastructureError("vendor baseline timing contract mismatch")
         timings = tuple(float(value) for value in payload["timings_us"])
-        if len(timings) != self.config.measurement_count:
+        if (len(timings) != self.config.measurement_count or
+                any(not math.isfinite(value) or value <= 0 for value in timings)):
             raise EvaluationInfrastructureError("vendor baseline timing count is invalid")
+        ordinary = tuple(float(value) for value in payload.get("ordinary_launch_timings_us", ()))
+        if self.config.timing_contract == GRAPH_TIMING_CONTRACT and (
+            len(ordinary) != self.config.measurement_count or
+            any(not math.isfinite(value) or value <= 0 for value in ordinary)
+        ):
+            raise EvaluationInfrastructureError("vendor ordinary launch diagnostics are invalid")
         benchmark = BenchmarkResult(
             timings,
             statistics.median(timings),
@@ -137,6 +157,12 @@ class VendorBaselineSuite:
             stddev_us=statistics.pstdev(timings),
             min_us=min(timings),
             max_us=max(timings),
+            timing_contract=self.config.timing_contract,
+            diagnostics=(
+                {"ordinary_launch_timings_us": ordinary,
+                 "ordinary_launch_median_us": statistics.median(ordinary)}
+                if self.config.timing_contract == GRAPH_TIMING_CONTRACT else {}
+            ),
         )
         return {
             "correctness": {

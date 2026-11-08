@@ -26,6 +26,7 @@ from kernel_mcts.llm_generation import LLMKernelGenerator
 from kernel_mcts.orchestration import (
     WorkerKernelEvaluator,
     _calibrated_cublas_reference,
+    _validate_timing_calibration,
     run_candidate_evaluation,
     run_mcts_search,
     run_sequential_search,
@@ -240,6 +241,41 @@ class MockProvider:
         self.releases += 1
 
 
+def test_mcts_prepares_worker_before_root_and_releases_on_failure(tmp_path) -> None:
+    class PreparedWorker(MockWorker):
+        prepared = False
+
+        def evaluate(self, evaluation_id, program, workload, profile_level):
+            assert self.prepared
+            return super().evaluate(evaluation_id, program, workload, profile_level)
+
+    worker = PreparedWorker()
+    provider = MockProvider(worker)
+    with SQLiteTraceStore(tmp_path / "prepared.sqlite") as trace:
+        run_mcts_search(
+            provider=provider, hardware=HARDWARE, workload=WORKLOAD,
+            root_program=KernelProgram("root"), strategies=(STRATEGY,),
+            generator=OneCandidateGenerator(), prior_provider=UniformStrategyPrior(),
+            generation_budget=1, trace=trace,
+            mcts_config=MCTSConfig(max_repairs=0),
+            worker_prepare=lambda acquired: setattr(acquired, "prepared", True),
+        )
+    assert worker.prepared and provider.releases == 1
+    failing_provider = MockProvider()
+    with SQLiteTraceStore(tmp_path / "prepare-failed.sqlite") as trace:
+        with pytest.raises(RuntimeError, match="prepare failed"):
+            run_mcts_search(
+                provider=failing_provider, hardware=HARDWARE, workload=WORKLOAD,
+                root_program=KernelProgram("root"), strategies=(STRATEGY,),
+                generator=OneCandidateGenerator(), prior_provider=UniformStrategyPrior(),
+                generation_budget=1, trace=trace,
+                worker_prepare=lambda _worker: (_ for _ in ()).throw(
+                    RuntimeError("prepare failed")),
+            )
+    assert failing_provider.releases == 1
+    assert not failing_provider.worker.calls
+
+
 class MockGenerator:
     def __init__(self) -> None:
         self.sources = iter(("candidate-1", "invalid", "candidate-2", "candidate-2"))
@@ -295,12 +331,16 @@ def test_triton_search_records_calibration_and_passes_measured_context(tmp_path)
     calibration = {
         "benchmark_id": WORKLOAD.benchmark_id,
         "backend": "triton_h100",
-        "benchmark": {"median_us": 80.0},
+        "timing_contract": "triton_h100_cuda_graph_v1",
+        "benchmark": {"median_us": 80.0, "timing_contract": "triton_h100_cuda_graph_v1"},
         "vendor_baselines": {
             "cublas": {
                 "correctness": {"success": True},
-                "benchmark": {"median_us": 10.0, "timings_us": [9.0, 11.0], "warmup_count": 3},
-            }
+                "benchmark": {"median_us": 10.0, "timings_us": [9.0, 11.0],
+                              "warmup_count": 3,
+                              "timing_contract": "triton_h100_cuda_graph_v1"},
+            },
+            "cutlass": {"benchmark": {"timing_contract": "triton_h100_cuda_graph_v1"}},
         },
     }
 
@@ -338,6 +378,20 @@ def test_triton_search_records_calibration_and_passes_measured_context(tmp_path)
             "SELECT payload_json FROM search_events WHERE event_type = 'worker_calibration'"
         ).fetchone()
     assert json.loads(row[0]) == calibration
+
+
+def test_triton_calibration_rejects_legacy_vendor_timing() -> None:
+    contract = "triton_h100_cuda_graph_v1"
+    calibration = {
+        "timing_contract": contract,
+        "benchmark": {"timing_contract": contract},
+        "vendor_baselines": {
+            "cublas": {"benchmark": {"timing_contract": "cuda_event_per_call_v1"}},
+            "cutlass": {"benchmark": {"timing_contract": contract}},
+        },
+    }
+    with pytest.raises(RuntimeError, match="cublas calibration timing contract mismatch"):
+        _validate_timing_calibration(calibration, "triton_h100")
 
 
 def test_cublas_reference_requires_valid_correctness_and_timing() -> None:
@@ -643,6 +697,9 @@ def test_sequential_orchestration_reuses_worker_and_releases_it(tmp_path):
         assert connection.execute(
             "SELECT algorithm, final_b_gen, final_profile_calls FROM search_runs"
         ).fetchone() == ("sequential", 3, 3)
+        assert connection.execute(
+            "SELECT count(*) FROM search_events WHERE event_type = 'worker_calibration'"
+        ).fetchone() == (1,)
 
 
 def test_sequential_orchestration_builds_prompt_graph_from_worker_manifest(tmp_path):

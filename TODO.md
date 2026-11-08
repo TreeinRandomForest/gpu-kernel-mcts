@@ -15,13 +15,162 @@ standalone gap-closing GPU experiments while building this path.
   range for NCU selection, with reported-name verification. The device
   kernel body matches the validated source by AST. Local contract and prompt
   tests pass; see `docs/experiments/triton-h100-gluon-search-adapter/README.md`.
-- [ ] Validate the adapted Gluon candidate through the H100 search harness:
+- [x] Validate the adapted Gluon candidate through the H100 search harness:
   compile, correctness, CUDA-event latency, compiled resources, and an NCU
   profile selecting `gemm`. Compare it with the packaged root and cuBLAS on
-  the same worker before using it as a search reference.
-- [ ] Version a stage-aware Triton/Gluon strategy catalog. Keep the current
-  catalog as a baseline; test applicability filters, prompt content, and a
-  valid structural Gluon realization before search ablations.
+  the same worker before using it as a search reference. One H100 smoke passed:
+  832.784 µs packaged root, 269.120 µs Gluon, 183.568 µs cuBLAS under
+  separate CUDA-event timing loops. See
+  `docs/experiments/triton-h100-gluon-search-adapter/README.md`.
+- [x] Version a stage-aware Triton/Gluon strategy catalog while retaining the
+  current five-action baseline. Local tests cover applicability, prompt guards,
+  and MCTS routing of the H100-validated structural Gluon fixture; see
+  `configs/triton_h100_strategies_v2.json` and
+  `docs/experiments/triton-h100-search-strategy-context-plan.md`.
+- [x] Require a clustered-Gluon candidate stage for the v2 Gluon actions.
+  Stage-mismatched generations consume `B_gen`, are rejected before GPU
+  evaluation with `STRATEGY_MISMATCH`, and may use ordinary repair calls.
+  This is a source-stage guard, not proof of pipeline or persistent behavior.
+- [ ] Prove that a model can generate a compile/correctness/timing-valid
+  clustered Gluon rewrite from the scaffold-free v2 structural-action prompt.
+  A bounded GLM-5.3 probe returned pointer-load Triton; with the validated
+  Gluon source supplied explicitly, it copied that source AST. Treat the
+  scaffold arm separately in any search ablation.
+- [x] Split the failed direct rewrite into an opt-in staged v3 catalog with
+  descriptor Triton, Gluon MMA-v2, single-CTA Gluon TMA/WGMMA, and two-CTA
+  cluster transitions, each with parent/output stage guards. A two-call
+  GLM-5.3 descriptor probe produced a correctness-passing H100 kernel on
+  repair (300.448 µs versus 834.864 µs root, same worker); see
+  `docs/experiments/triton-h100-gluon-search-adapter/README.md`.
+- [x] Establish a model-generated, compile/correctness-valid Gluon
+  intermediate without supplying the full validated kernel. The opt-in v4
+  pointer-load MMA-v2 bridge reached this gate after five B_gen calls with
+  source/compiler feedback. It is slow (3276.432 µs) with 255 registers/thread
+  and 46 spills; see the adapter experiment README. This is not yet a
+  performance-positive transition or a demonstrated full MCTS traversal.
+- [x] Consolidate descriptor staging, the Gluon bridge, and a guarded local
+  coalesced-layout action in the opt-in v5 search catalog. A live alternate-
+  Gluon-root MCTS `B_gen=1` smoke generated the local action, admitted a valid
+  child, and improved 3306.896 to 2231.024 µs.
+- [x] Reach a valid Gluon intermediate within the per-action repair limit and
+  exercise the full packaged-root descriptor-to-Gluon chain in one budgeted
+  MCTS run. The v6 standalone bridge passed H100 correctness in one model call
+  (2230.576 µs). The opt-in v8 catalog and a clean live MCTS run created the
+  descriptor child at 294.928 µs and the Gluon child at 1718.960 µs from an
+  834.336 µs packaged root, using `B_gen=2` of 4. The Gluon node is valid but
+  slower than its parent. See the adapter README and SQLite trace.
+- [x] Stop MCTS when the configured depth and finite action space leave
+  generation budget unspent. An earlier v8 trace reached both valid children
+  but repeated depth-limit visits; it was interrupted and its VM/disk released.
+  The fixed run ended in five iterations with two generation calls unspent;
+  targeted tests include a shallower transposition route.
+- [x] Test a bounded spill-reducing Gluon MMA-v2 tile action. Shrinking 64×128
+  to 32×64 removed spills but regressed by a median paired 2128.096 µs; do
+  not add it as a performance strategy. The coalesced-layout action improved
+  latency by 1077.184 µs in paired H100 rounds despite 48 spills.
+- [x] Find a model-reachable stage-aware transition from the correct MMA-v2
+  intermediate to serial single-CTA TMA/WGMMA. The v16 opt-in action and
+  bounded API guard created a correct measured child in a live alternate-root
+  GLM-5.3 MCTS run: 1719.840 to 500.352 µs with `B_gen=2`, 154 registers,
+  zero spills, and 114,696 B static shared memory. A standalone two-call v11
+  model probe independently reached 496.336 µs. Both supply precise API
+  snippets but no complete source scaffold; see the adapter README.
+- [x] Exercise the full packaged-root descriptor → MMA-v2 → serial WGMMA path
+  in one MCTS run at a disclosed budget. A seed-0 v16 run at `B_gen=6`
+  reached valid descriptor and MMA-v2 nodes but failed the serial API guard.
+  A second seed-0 run at `B_gen=10` reached all four valid nodes in four
+  generation calls: 834.016 → 305.584 → 1782.160 → 502.368 µs. The
+  descriptor remained best. See the adapter README and SQLite traces.
+- [x] Measure full-chain reachability across three declared seeds. Packaged-
+  root v18 MCTS reached a correct wait-one Gluon node at 249.856, 252.992,
+  and 251.984 µs in seeds 0–2, using 6, 7, and 7 generation calls. This is a
+  small feasibility sample, not a policy comparison or a success-rate estimate;
+  see the adapter README and SQLite traces.
+- [x] Validate the opt-in combined v19 catalog from the packaged root. It adds
+  a guarded pure-Triton pointer-loop/tile action and an AST-local BN 128→256
+  action alongside the v18 Gluon chain. One seed-0 `B_gen=14` run admitted
+  both pure-Triton children and a valid Gluon wait-one child; best was the
+  wide pure-Triton child at 245.600 µs. This is routing evidence, not a
+  matched catalog comparison; see the combined-strategy README and trace.
+- [x] Validate the v20 `triton_specialize_gemm_dims` action from the measured
+  wide pure-Triton parent and then the packaged root. A three-round paired
+  H100 crossover of the exact M/N/K annotation edit passed correctness and
+  saved 45.344 µs median. A live alternate-root model call improved
+  242.960 → 200.144 µs; a packaged-root MCTS run reached 199.072 µs at
+  `B_gen=7` of 16. See the combined-strategy README and traces.
+- [x] Compare v20 with separate pure-Triton and v18 Gluon catalogs at matched
+  configured `B_gen=16`, seeds 0–2, model, image, and prompt context. Pure
+  reached 197.792–201.872 µs in 2–3 calls; Gluon-only reached
+  242.848–253.920 µs in 6–10; combined reached about 200 µs in two seeds
+  and 246.064 µs in seed 1, always using 16 calls. The combined seed-1 tree
+  spent its last eight calls on serial-Gluon `STRATEGY_MISMATCH` failures and
+  missed pure specialization. Separate workers and early finite-path
+  exhaustion limit comparisons; see the combined-strategy README and traces.
+- [x] Investigate repeated serial-Gluon action failures in mixed-catalog
+  search. The serial guard falsely required literal `a_desc`/`b_desc` kernel
+  parameter names for barrier bytes even when the same descriptor aliases
+  were used by TMA loads. A guard correction and regression test accept those
+  aliases. A seed-1 combined rerun admitted a correct 494.896 µs serial node
+  at call 15; its pure-Triton best was 199.136 µs. Other API, generation, and
+  compile failures remain; see the combined-strategy README and trace.
+- [ ] Improve reliability of the large serial-Gluon rewrite and evaluate a
+  bounded response to repeated failures. Review `spec.md` search invariants
+  and test `B_gen` accounting before changing retry or selection logic.
+- [x] Improve the serial WGMMA kernel with a staged prefetch/wait schedule.
+  The opt-in v18 three-slot wait-one action created a correct child on its
+  first generation call in a live alternate-root H100 MCTS run: 499.296 →
+  251.984 µs on the same worker. The earlier v17 run exposed `.index([slot])`
+  compile failures; v18 prompt/guard correction resolved this. The result is
+  close to the separately measured ~250 µs one-CTA diagnostic reference.
+  Compare across seeds before claiming a reliable strategy success rate.
+- [x] Validate a diagnostic single-CTA Gluon intermediate derived by a small
+  host-launch/layout edit from the known wait-one source. It passed H100
+  correctness and measured 249.632 µs on one worker; see
+  `docs/experiments/triton-h100-gluon-search-adapter/README.md`.
+- [ ] Make the two-CTA cluster transition model-reachable from a valid
+  single-CTA Gluon parent. Two bounded GLM-5.3 responses kept `num_ctas=1`;
+  both were rejected by the output-stage guard. Consider a typed layout/
+  launcher transformation or a labeled partial scaffold, then validate the
+  source and cluster ownership on H100.
+- [x] Run a same-worker crossover of the validated one- and two-CTA Gluon
+  kernels. Single-CTA won all five rounds, with a median paired advantage of
+  20.624 µs. Implement and H100-check a bounded single-CTA tile action;
+  N=128 and BK=32 both passed correctness but regressed by 13.088 and
+  97.920 µs median paired, respectively. A two-mutation MCTS replay kept all
+  valid slower nodes and the root best; see the adapter experiment README.
+- [ ] Find an improving single-CTA action or a model-reachable Gluon bridge
+  before spending a live MCTS run on this two-parameter typed family. Keep
+  template-backed `B_mut` arms separate from scaffold-free `B_gen` arms.
+- [x] Exercise a model-written local traversal strategy from the validated
+  one-CTA Gluon alternate root. GLM-5.3 generated a compile/correctness-valid
+  grouped edit, and an opt-in `B_gen=4` MCTS smoke admitted distinct `GROUP_M=8`
+  and `16` children with one NCU profile. Both were slightly slower than the
+  root. The edit guard, sibling prompt context, root source hash, package
+  overlay hash, and failure traces are documented in the adapter README.
+- [ ] Seek a performance-positive local Gluon action. The `GROUP_M=4` attempt
+  failed compilation due floating-point `/`; the final prompt and static guard
+  now require integer `//`, but that revision has not had a GPU rerun. Keep
+  alternate-root results separate from packaged-root bridge experiments.
+- [x] Reconcile the best factorial persistent Gluon arm with the search timing
+  contract. Its adapted source passed exact correctness, but five same-worker
+  CUDA-event rounds measured 267.760 µs versus 250.800 µs for the one-CTA
+  Gluon source and 182.272 µs for cuBLAS; see the adapter experiment README.
+- [x] Measure the adapted one-CTA and persistent Gluon sources with the exact
+  search event placement, prepared descriptors, batched normal launches, and
+  CUDA Graph replay on one H100. Search-event medians were 259.696 versus
+  276.576 µs, while Graph medians were 191.800 versus 191.568 µs. The
+  paired search-minus-prepared differences (56.520 versus 76.320 µs) match
+  the Python launch costs and explain most of the ranking shift. See
+  `docs/experiments/triton-h100-gluon-timing-reconcile/README.md`.
+- [x] Define and implement `triton_h100_cuda_graph_v1` in `spec.md` Section
+  50: the search reward is median CUDA Graph replay latency; ordinary Python
+  launch latency is diagnostic. The H100 validation passed root, cuBLAS,
+  CUTLASS, one-CTA Gluon, and persistent Gluon correctness and Graph timing
+  on one worker. See
+  `docs/experiments/triton-h100-graph-contract-validation/README.md`.
+- [ ] Rebuild the pinned Triton worker image with the Graph contract, then
+  rerun paired search arms under that contract. Keep their reward curves
+  separate from historical per-call CUDA-event runs.
 - [ ] Share a bounded, provenance-preserving parent-context builder across
   Triton sequential and MCTS prompts: measured NCU, compiler/PTX/SASS,
   architectural H100 graph, and explicitly validated dataflow views.
@@ -263,10 +412,35 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   7.312 µs behind cuBLAS. A 128-wide tile caused roughly 100 µs regression
   and about 310 MB DRAM reads. See
   `docs/experiments/triton-h100-gluon-factorial/README.md`.
-- [ ] Isolate operand sharing/reuse and instruction overhead for 128-wide
-  HGMMA shapes. Current 128-wide Gluon emits the cuBLAS HGMMA shape but has
-  much higher traffic and instruction count. Stress any promising source
-  across seeds and shapes before promoting it to a search strategy.
+- [x] Isolate A-panel reuse for two neighboring 128-wide HGMMA output tiles
+  within one persistent two-CTA cluster. Ten paired H100 rounds found a
+  7.320 µs median benefit from one A load feeding both MMAs versus two A
+  loads, but the shared-A variant remained 62.496 µs slower than the
+  original 256-wide kernel. NCU showed unchanged DRAM reads, fewer TMA and
+  total instructions with reuse, and doubled counted GMMA instructions
+  versus the original. See
+  `docs/experiments/triton-h100-gluon-a-reuse/README.md`.
+- [x] Match the split A-reuse kernel's WGMMA wait policy to the original
+  Gluon kernel. Changing only wait 0 to wait 1 saved 46.968 µs at the paired
+  median and brought the split kernel within 16.136 µs of the original on
+  one H100. Wait 2 was only 0.128 µs faster than wait 1 at the paired
+  median, with mixed rounds. All variants passed exactness; NCU showed the
+  main wait-1 gain was higher tensor-pipe activity at the same instruction
+  and DRAM counts. See
+  `docs/experiments/triton-h100-gluon-a-reuse-wait1/README.md` and
+  `docs/experiments/triton-h100-gluon-a-reuse-wait2/README.md`.
+- [x] Reconcile the split-wait-1 versus 256-wide Gluon SASS and test one
+  256-wide source change. The split executed 5.142M more warp instructions
+  for the same output region, including an extra B TMA load and a second
+  128-wide MMA per K step, with no extra measured DRAM reads. Moving the C
+  scratch allocation after K in the persistent source left its 213,016 B
+  shared allocation and machine instructions unchanged; ten paired rounds
+  showed a +0.080 µs median candidate-minus-control difference. See
+  `docs/experiments/triton-h100-gluon-residual-gap-analysis.md` and
+  `docs/experiments/triton-h100-gluon-c-scratch-lifetime/README.md`.
+- [ ] Retain the efficient 256-wide MMA while reducing instruction overhead
+  or operand traffic; stress any promising source across seeds and shapes
+  before promoting it to a search strategy.
 - [ ] Make Nebius experiment cleanup resilient to CLI token expiry after
   worker provisioning. The multicast runner's instance-IP lookup timed out
   during reauthentication and automatic cleanup failed; the instance and disk
@@ -349,11 +523,67 @@ EnMaaS URL and key in the shell environment, not in committed documentation.
   correlation semantics. The browser visualization does not inject these
   separate-worker reports into MCTS prompts. Build and publish a new worker
   image before treating `spill_v1` as a reproducible deployment configuration.
-- [ ] Specify the next Triton H100 ablation matrix in `spec.md` before adding
-  search behavior: MCTS versus sequential if desired, source/profile context,
-  bounded compiler summaries, dataflow views, and optional H100 resource graph.
-  Section 50 currently permits Triton MCTS and stores PTX, but the CUDA-only
-  compiler/dataflow prompt flags and sequential Triton flow are unsupported.
+- [x] Document the target Triton H100 matrix, including dataflow as a separate
+  context axis, in `docs/experiments/triton-h100-ablation-matrix.md` and
+  `spec.md` Section 50.1. Record supported and planned arms separately.
+- [x] Enable pure-Triton sequential search with stage-restricted freeform and
+  applicability-filtered, guard-enforced strategy-menu choices. Seed-0 H100
+  smoke runs reached 200.464 µs with the menu in two calls and 201.040 µs
+  freeform in six calls; see the sequential-pure README and SQLite traces.
+- [x] Repeat pure-Triton sequential menu/freeform runs across GLM seeds 0–2
+  at configured `B_gen=6`, recording actual calls, prompts, validity, and
+  worker calibration where available. A separate GPT-6 Sol seed-1 menu
+  diagnostic reached 201.376 µs in two valid calls. The seed-0 menu smoke
+  predates calibration persistence; see the sequential-pure README.
+- [ ] Investigate GLM sequential JSON/source extraction and action adherence.
+  Seed-1/2 menu runs spent four of six calls on malformed or off-action
+  responses, whereas the single Sol seed-1 menu run had no repair calls.
+  Preserve raw outputs and `B_gen` accounting when testing prompt or parser
+  changes; do not infer a model ranking from this small sample.
+- [x] Add an opt-in pure-Triton freeform-only MCTS action under the reserved
+  `freeform_triton` ID. Local tests cover eligibility, prompt provenance,
+  rejected Gluon repairs, `B_gen`, and valid local slowdowns. Keep catalog-only
+  and future hybrid MCTS as distinct comparison arms. One live GLM-5.3 H100
+  smoke admitted six valid nodes in six calls and reached 219.824 µs; see the
+  freeform-MCTS README. A matched multi-seed policy comparison remains.
+- [x] Run one deeper pure-Triton freeform MCTS seed at `B_gen=25`. The
+  completed GLM-5.3 H100 retry reached 201.488 µs at call 24, with 19 valid
+  candidates and six compilation failures; an earlier attempt stopped at call
+  9 on a Messages transport failure. See the freeform-MCTS README and traces.
+- [x] Compare freeform MCTS and sequential search at `B_gen=25` over three
+  GLM-5.3 seeds. Sequential bests were 200.368, 202.320, and 218.224 µs;
+  MCTS bests were 201.488, 201.984, and 226.960 µs. Seeds 1–2 paired arms on
+  one H100 each. Prompt protocol differences and the small sample limit the
+  inference; see the freeform-compare README and SQLite traces.
+- [x] Correct the combined Triton/Gluon MCTS runner's worker image from
+  Triton 3.3.1 to a pinned Triton 3.9 digest and require Triton 3.9 in the
+  worker manifest. The old-image seed-0 `B_gen=25` run spent 21 calls on an
+  unavailable descriptor API. The corrected-image four-call smoke reached a
+  valid Gluon MMA-v2 node, and the full 25-call seed reached 198.944 µs with
+  25 valid candidates. See the combined-strategy README and SQLite traces.
+- [x] Run a matched-image, matched-worker freeform versus combined-catalog
+  MCTS comparison at `B_gen=25` over seeds 0–2. Freeform bests were 201.856,
+  225.280, and 231.312 µs; combined bests were 246.480, 244.528, and
+  245.952 µs. The catalog never selected eligible dimension specialization
+  and reused 7/8/5 states. See
+  `docs/experiments/triton-h100-freeform-compare/strategy-vs-freeform-triton39.md`.
+- [ ] Test the combined catalog at `k_max=1` under a matched-image control,
+  then isolate dimension specialization, grouped CTA ordering, and stage
+  count in same-worker source crossovers. Preserve the existing traces and
+  review search invariants before changing duplicate-selection behavior.
+- [ ] Align raw-source versus JSON response format, compact timing versus
+  full benchmark samples, and recent-feedback visibility for a stricter
+  search-policy comparison. Preserve the existing runs as distinct prompt
+  arms. Move the paired runner's no-progress watchdog into a reusable
+  worker-evaluation boundary before larger ablations, and persist raw model
+  output before a potentially stalled GPU evaluation.
+- [ ] Add versioned H100 hardware-context levels and richer compiler views
+  to a shared Triton parent-context builder for sequential and MCTS. Preserve
+  exact prompt/trace provenance and distinguish static from measured evidence.
+- [ ] Reconcile Triton/Gluon per-node dataflow against source, PTX, and SASS
+  across pointer, descriptor, serial, and pipelined kernels. Track graph
+  limits and missing paths; only then expose none/counts/paths/subgraph/full
+  prompt views without inferred per-edge traffic.
 - [ ] Implement the selected Triton context views with exact prompt/trace
   provenance and tests, then run equal-`B_gen`, multi-seed GLM-5.3 ablations.
   Hold the worker image, root, workload, profile policy, and Messages thinking

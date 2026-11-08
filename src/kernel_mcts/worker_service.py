@@ -23,7 +23,8 @@ from .cute_independent_program import IndependentCuteGemmRenderer
 from .evaluation import BackendKernelEvaluator, EvaluationContext
 from .providers import EnvironmentManifest
 from .serialization import serialize_benchmark
-from .vendor_baselines import VendorBaselineConfig, VendorBaselineSuite
+from .vendor_baselines import ORDINARY_EVENT_CONTRACT, VendorBaselineConfig, VendorBaselineSuite
+from .triton_harness import GRAPH_TIMING_CONTRACT
 from .worker_protocol import WorkerApplication, WorkerResponse
 
 
@@ -62,6 +63,8 @@ def build_application(
         VendorBaselineConfig(
             artifact_root=artifact_root,
             cutlass_path=Path(environment.get("CUTLASS_PATH", "/opt/cutlass")),
+            timing_contract=(GRAPH_TIMING_CONTRACT if backend_name == "triton_h100"
+                             else ORDINARY_EVENT_CONTRACT),
         )
     ).run(BF16_GEMM_WORKLOAD)
     evaluator = BackendKernelEvaluator(
@@ -86,6 +89,7 @@ def build_application(
     calibration = {
         "benchmark_id": BF16_GEMM_WORKLOAD.benchmark_id,
         "backend": backend_name,
+        "timing_contract": root_benchmark.timing_contract,
         "compile": {
             "success": root_compilation.success,
             "duration_seconds": root_compilation.duration_seconds,

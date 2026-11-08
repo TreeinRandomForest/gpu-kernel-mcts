@@ -84,7 +84,8 @@ static void launch_cutlass(
     __nv_bfloat16* C,
     int M,
     int N,
-    int K) {
+    int K,
+    cudaStream_t stream) {
     CutlassGemm operation;
     CutlassGemm::Arguments arguments(
         {M, N, K},
@@ -93,7 +94,8 @@ static void launch_cutlass(
         {reinterpret_cast<const Element*>(C), N},
         {reinterpret_cast<Element*>(C), N},
         {1.0f, 0.0f});
-    if (operation(arguments) != cutlass::Status::kSuccess) fail("cutlass_gemm");
+    if (operation(arguments, nullptr, stream) != cutlass::Status::kSuccess)
+        fail("cutlass_gemm");
 }
 
 int main(int argc, char** argv) {
@@ -104,10 +106,13 @@ int main(int argc, char** argv) {
     const int seed = int_arg(argc, argv, "seed", 0);
     const int warmups = int_arg(argc, argv, "warmups", 10);
     const int measurements = int_arg(argc, argv, "measurements", 30);
+    const std::string timing_contract = string_arg(argc, argv, "timing-contract");
     const float rtol = float_arg(argc, argv, "rtol", 0.02f);
     const float atol = float_arg(argc, argv, "atol", 0.02f);
     if ((implementation != "cublas" && implementation != "cutlass") ||
-        M <= 0 || N <= 0 || K <= 0 || measurements <= 0) fail("arguments");
+        M <= 0 || N <= 0 || K <= 0 || measurements <= 0 ||
+        (timing_contract != "cuda_event_per_call_v1" &&
+         timing_contract != "triton_h100_cuda_graph_v1")) fail("arguments");
 
     const size_t a_count = static_cast<size_t>(M) * K;
     const size_t b_count = static_cast<size_t>(K) * N;
@@ -128,9 +133,10 @@ int main(int argc, char** argv) {
 
     cublasHandle_t handle;
     if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS) fail("cublasCreate");
+    cudaStream_t launch_stream = nullptr;
     auto launch = [&]() {
         if (implementation == "cublas") launch_cublas(handle, dA, dB, dC, M, N, K);
-        else launch_cutlass(dA, dB, dC, M, N, K);
+        else launch_cutlass(dA, dB, dC, M, N, K, launch_stream);
     };
 
     launch();
@@ -152,18 +158,73 @@ int main(int argc, char** argv) {
         if (!std::isfinite(actual) || error > atol + rtol * std::abs(reference)) success = false;
     }
 
-    for (int iteration = 0; iteration < warmups; ++iteration) launch();
+    const bool graph_mode = timing_contract == "triton_h100_cuda_graph_v1";
+    cudaGraph_t graph = nullptr;
+    cudaGraphExec_t graph_exec = nullptr;
+    if (graph_mode) {
+        if (cudaStreamCreateWithFlags(&launch_stream, cudaStreamNonBlocking) != cudaSuccess ||
+            cublasSetStream(handle, launch_stream) != CUBLAS_STATUS_SUCCESS)
+            fail("graph_stream_setup");
+        launch();
+        if (cudaStreamSynchronize(launch_stream) != cudaSuccess)
+            fail("graph_stream_warmup");
+        if (cudaStreamBeginCapture(launch_stream, cudaStreamCaptureModeGlobal) != cudaSuccess)
+            fail("graph_begin_capture");
+        launch();
+        if (cudaStreamEndCapture(launch_stream, &graph) != cudaSuccess || graph == nullptr)
+            fail("graph_end_capture");
+        if (cudaGraphInstantiate(&graph_exec, graph, nullptr, nullptr, 0) != cudaSuccess)
+            fail("graph_instantiate");
+        if (cudaMemset(dC, 0, c_count * sizeof(*dC)) != cudaSuccess ||
+            cudaGraphLaunch(graph_exec, launch_stream) != cudaSuccess ||
+            cudaDeviceSynchronize() != cudaSuccess ||
+            cudaMemcpy(hC.data(), dC, c_count * sizeof(*dC), cudaMemcpyDeviceToHost) != cudaSuccess)
+            fail("graph_correctness_replay");
+        double graph_error_sum = 0.0;
+        for (size_t index = 0; index < c_count; ++index) {
+            const double actual = __bfloat162float(hC[index]);
+            const double reference = __bfloat162float(hReference[index]);
+            const double error = std::abs(actual - reference);
+            maximum_error = std::max(maximum_error, error);
+            graph_error_sum += error;
+            if (!std::isfinite(actual) || error > atol + rtol * std::abs(reference))
+                success = false;
+        }
+        error_sum = std::max(error_sum, graph_error_sum);
+    }
+    auto timed_launch = [&]() {
+        if (graph_mode) {
+            if (cudaGraphLaunch(graph_exec, launch_stream) != cudaSuccess) fail("graph_launch");
+        } else launch();
+    };
+    for (int iteration = 0; iteration < warmups; ++iteration) timed_launch();
     if (cudaDeviceSynchronize() != cudaSuccess) fail("warmup");
     cudaEvent_t start, stop;
     if (cudaEventCreate(&start) != cudaSuccess || cudaEventCreate(&stop) != cudaSuccess) fail("events");
     std::vector<float> timings(measurements);
     for (int iteration = 0; iteration < measurements; ++iteration) {
-        if (cudaEventRecord(start) != cudaSuccess) fail("record_start");
-        launch();
-        if (cudaEventRecord(stop) != cudaSuccess || cudaEventSynchronize(stop) != cudaSuccess) fail("record_stop");
+        if (cudaEventRecord(start, launch_stream) != cudaSuccess) fail("record_start");
+        timed_launch();
+        if (cudaEventRecord(stop, launch_stream) != cudaSuccess ||
+            cudaEventSynchronize(stop) != cudaSuccess) fail("record_stop");
         float milliseconds = 0.0f;
         if (cudaEventElapsedTime(&milliseconds, start, stop) != cudaSuccess) fail("elapsed");
         timings[iteration] = milliseconds * 1000.0f;
+    }
+    std::vector<float> ordinary_timings;
+    if (graph_mode) {
+        ordinary_timings.resize(measurements);
+        for (int iteration = 0; iteration < measurements; ++iteration) {
+            if (cudaEventRecord(start, launch_stream) != cudaSuccess)
+                fail("ordinary_record_start");
+            launch();
+            if (cudaEventRecord(stop, launch_stream) != cudaSuccess ||
+                cudaEventSynchronize(stop) != cudaSuccess) fail("ordinary_record_stop");
+            float milliseconds = 0.0f;
+            if (cudaEventElapsedTime(&milliseconds, start, stop) != cudaSuccess)
+                fail("ordinary_elapsed");
+            ordinary_timings[iteration] = milliseconds * 1000.0f;
+        }
     }
 
     std::printf(
@@ -174,10 +235,19 @@ int main(int argc, char** argv) {
         if (index) std::printf(",");
         std::printf("%.9g", timings[index]);
     }
+    std::printf("],\"timing_contract\":\"%s\",\"ordinary_launch_timings_us\":[",
+                timing_contract.c_str());
+    for (int index = 0; index < static_cast<int>(ordinary_timings.size()); ++index) {
+        if (index) std::printf(",");
+        std::printf("%.9g", ordinary_timings[index]);
+    }
     std::printf("]}\n");
 
+    if (graph_exec != nullptr) cudaGraphExecDestroy(graph_exec);
+    if (graph != nullptr) cudaGraphDestroy(graph);
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
+    if (launch_stream != nullptr) cudaStreamDestroy(launch_stream);
     cublasDestroy(handle);
     cudaFree(dA);
     cudaFree(dB);

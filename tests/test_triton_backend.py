@@ -21,6 +21,7 @@ from kernel_mcts.profiling import (
     REUSE_V1_ADDITIONAL_METRICS,
 )
 from kernel_mcts.triton_backend import TritonBackendConfig, TritonH100Backend
+from kernel_mcts.triton_harness import GRAPH_TIMING_CONTRACT
 
 
 class FakeRunner:
@@ -53,7 +54,9 @@ class FakeRunner:
                        "maximum_error": 0.0, "mean_error": 0.0,
                        "failed_test_id": None if self.correct else "gemm"}
         elif mode == "benchmark":
-            payload = {"status": "ok", "timings_us": [5.0, 6.0, 5.5]}
+            payload = {"status": "ok", "timing_contract": GRAPH_TIMING_CONTRACT,
+                       "timings_us": [5.0, 6.0, 5.5],
+                       "diagnostics": {"ordinary_launch_timings_us": [9.0, 10.0, 11.0]}}
         else:
             raise AssertionError(command)
         return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
@@ -78,6 +81,8 @@ def test_triton_valid_candidate_keeps_artifacts_and_profiles_lazily(tmp_path) ->
 
     assert result.status.value == "VALID"
     assert result.benchmark.median_us == 5.5
+    assert result.benchmark.timing_contract == GRAPH_TIMING_CONTRACT
+    assert result.benchmark.diagnostics["ordinary_launch_median_us"] == 10.0
     assert result.metadata["compiler_context"]["resources"]["registers_per_thread"] == 64
     assert result.metadata["compiler_context"]["ptx"]["artifacts"][0]["storage_status"] == "eligible"
     assert len(runner.calls) == 3
@@ -89,6 +94,41 @@ def test_triton_valid_candidate_keeps_artifacts_and_profiles_lazily(tmp_path) ->
     assert runner.calls[-1][0][runner.calls[-1][0].index("--nvtx-include") + 1] == "KERNEL_MCTS_TARGET/"
     assert profile["kernel_name"] == "bf16_gemm_triton"
     assert "RUNPOD_API_KEY" not in runner.calls[0][2]
+
+
+def test_triton_backend_rejects_legacy_timing_payload(tmp_path) -> None:
+    class LegacyRunner(FakeRunner):
+        def __call__(self, command, *, timeout, env):
+            result = super().__call__(command, timeout=timeout, env=env)
+            if "--mode" in command and command[command.index("--mode") + 1] == "benchmark":
+                payload = json.loads(result.stdout)
+                payload["timing_contract"] = "cuda_event_per_call_v1"
+                return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+            return result
+
+    backend = _backend(tmp_path, LegacyRunner())
+    artifact = backend.compile(load_triton_bf16_gemm_root(), BF16_GEMM_WORKLOAD).artifact
+    assert artifact is not None
+    with pytest.raises(EvaluationInfrastructureError, match="timing contract mismatch"):
+        backend.benchmark(artifact, BF16_GEMM_WORKLOAD)
+
+
+def test_triton_graph_reward_survives_ordinary_diagnostic_failure(tmp_path) -> None:
+    class DiagnosticFailureRunner(FakeRunner):
+        def __call__(self, command, *, timeout, env):
+            result = super().__call__(command, timeout=timeout, env=env)
+            if "--mode" in command and command[command.index("--mode") + 1] == "benchmark":
+                payload = json.loads(result.stdout)
+                payload["diagnostics"] = {"ordinary_launch_error_type": "RuntimeError"}
+                return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+            return result
+
+    backend = _backend(tmp_path, DiagnosticFailureRunner())
+    artifact = backend.compile(load_triton_bf16_gemm_root(), BF16_GEMM_WORKLOAD).artifact
+    assert artifact is not None
+    benchmark = backend.benchmark(artifact, BF16_GEMM_WORKLOAD)
+    assert benchmark.median_us == 5.5
+    assert benchmark.diagnostics == {"ordinary_launch_error_type": "RuntimeError"}
 
 
 def test_triton_diagnostic_profile_exposes_local_traffic_and_compiler_spills(tmp_path) -> None:

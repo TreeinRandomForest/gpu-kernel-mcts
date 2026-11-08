@@ -17,6 +17,7 @@ class InvalidReason(StrEnum):
     CORRECTNESS_FAILURE = "CORRECTNESS_FAILURE"
     TIMEOUT = "TIMEOUT"
     BENCHMARK_FAILURE = "BENCHMARK_FAILURE"
+    STRATEGY_MISMATCH = "STRATEGY_MISMATCH"
     OTHER = "OTHER"
 
 
@@ -69,6 +70,9 @@ class Strategy: #prompts for each strategy (and for each backend)
     id: str
     description: str
     prompts: Mapping[str, str] #backend |-> strategy prompt
+    applicability: Mapping[str, Any] = field(default_factory=dict)
+    scaffold_resource: str | None = None
+    candidate_stage: str | None = None
 
     def prompt_for(self, backend: str) -> str:
         try:
@@ -88,6 +92,8 @@ class BenchmarkResult:
     min_us: float | None = None
     max_us: float | None = None
     gpu_operating_state: Mapping[str, Any] = field(default_factory=dict)
+    timing_contract: str | None = None
+    diagnostics: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

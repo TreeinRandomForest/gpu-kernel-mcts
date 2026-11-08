@@ -1521,6 +1521,9 @@ Future ablations may compare mean backup, max backup, mean/max mixtures, or top-
 Do not hard-code a very shallow search.
 
 However, impose a configurable maximum depth to prevent pathological sequences.
+If the depth cap makes every reachable realization terminal before proposal
+budgets are spent, search terminates with the remaining budget reported as
+unspent. A transposed node may still be expanded through a shallower path.
 
 Suggested initial value:
 
@@ -3515,7 +3518,23 @@ to correctness and timing validation under this backend before comparison.
 The backend JITs
 and saves the cubin/PTX when available, checks output against same-worker
 cuBLAS through PyTorch, and times the operation with CUDA events after
-warmup. A candidate is a node only after compile, correctness, and timing.
+warmup. For `triton_h100`, the search reward timing contract is
+`triton_h100_cuda_graph_v1`: after ordinary compile and correctness gates,
+capture one `launch(A, B, C, M, N, K)` GPU invocation with fixed input/output
+addresses, verify a replay against the same correctness tolerance and the
+compiled cubin identity, warm the captured graph, and collect the configured
+number of CUDA-event-timed graph replays. The median of those replay samples
+is the benchmark latency used by MCTS and sequential search. Graph capture or
+replay failure is a benchmark failure, never an implicit fallback to ordinary
+per-call timing. The ordinary `launch()` event latency is recorded separately
+as a diagnostic and does not affect reward, candidate admission, or the
+generation budget. Same-worker cuBLAS and CUTLASS calibration for a Triton
+run uses graph replay too, with its timing contract recorded alongside the
+samples. CUDA C++ and CuTe DSL benchmark contracts are unchanged. Earlier
+Triton runs used events around the Python `launch()` call, including host
+descriptor construction; their latencies and reward curves are labeled as a
+different contract and must not be pooled with Graph-timed runs. A candidate
+is a node only after compile, correctness, and timing.
 Source contributes to the binary fingerprint because launcher grid changes
 may leave cubin bytes unchanged. NCU `lightweight_v1` is collected lazily
 on expansion by default; `diagnostic_v2` may be selected explicitly for
@@ -3551,6 +3570,159 @@ generation/repair budget, valid-node rule, reward, and SQLite trace semantics
 are unchanged. CUDA C++ compiler/dataflow prompt views and CUDA autotuning
 do not apply to this backend. Compiler artifacts are stored on the worker;
 bounded Triton compiler summaries and dataflow views are separate experiments.
+
+An opt-in `triton_h100_stage_v2` catalog keeps the original catalog available
+for comparison. Its semantic actions cover coordinated tile/warp changes,
+descriptor TMA staging, cross-CTA tile traversal, a clustered Gluon WGMMA/TMA
+rewrite, a three-slot wait-one pipeline, and persistent cluster assignment.
+Each action declares backend, operation, GPU model, and eligible parent source
+stages. The parent stage is classified conservatively from parsed source;
+unknown or unsupported syntax cannot enable a stage-specific action. Before
+calling the prior provider or expansion profiler, MCTS filters the catalog for
+the current parent. Priors are normalized only across eligible actions; PUCT,
+progressive widening, UCB, reward, and budget formulas are unchanged. A node
+with no eligible action is a proposal-space dead end and consumes no `B_gen`.
+The catalog prompts describe legality and measurement guards; a structural
+rewrite becomes a search node only after ordinary compile, correctness, and
+timing checks. A source fixture and local routing test do not establish that
+an LLM can produce the structural rewrite unaided. An optional source scaffold
+may be included in an explicitly labeled diagnostic prompt; this changes the
+information available to the model and must not be conflated with the
+scaffold-free v2 catalog arm.
+The v2 Gluon actions also declare a required candidate source stage. After a
+generation call consumes `B_gen` and before GPU evaluation, the controller
+classifies the JIT kernel returned by `launch`. A candidate that is not
+classified as clustered Gluon receives `STRATEGY_MISMATCH`, is logged as an
+invalid realization, and may be repaired within the ordinary repair budget.
+It does not become an MCTS node or consume a GPU evaluation. This syntactic
+stage guard is necessary for action fidelity but does not prove that a
+three-slot wait-one schedule or persistent assignment was implemented; those
+details require separate source/compiler review and measurement.
+An opt-in `triton_h100_staged_v3` catalog subdivides the structural jump:
+pointer Triton to descriptor-load Triton, a separate Gluon layout/MMA-v2
+language port, single-CTA Gluon TMA/WGMMA, and then two-CTA clustered Gluon.
+The source-stage classifier distinguishes descriptor Triton, Gluon MMA-v2,
+single-CTA Gluon WGMMA/TMA, and clustered Gluon. Each transition declares
+eligible parent stages and an expected candidate stage, using the same
+pre-evaluation mismatch rule. These static stages describe source structure;
+compile, correctness, compiler artifacts, and measured latency remain the
+admission and performance evidence. The original and v2 catalogs remain
+separate comparison arms.
+The staged v3 catalog also has an opt-in `single_cta_tile_shape` action for a
+validated single-CTA Gluon parent. Its deterministic realization is limited
+to a pinned source family and two explicitly enumerated tile edits. It uses
+the existing mutation mechanism and charges `B_mut`, never `B_gen`; the
+candidate still needs compile, correctness, and benchmark checks before node
+admission. A measured-result replay may check MCTS routing without GPU
+reevaluation, but must be labeled separately from a live search. This typed
+action does not establish that an LLM can make the descriptor-to-Gluon
+transition.
+An opt-in `triton_h100_gluon_bridge_v4` diagnostic narrows the descriptor-
+Triton transition to a one-CTA pointer-load Gluon MMA-v2 kernel. It supplies
+API/layout constraints but no complete Gluon source scaffold. Its generated
+source still requires the ordinary JIT, correctness, and timing gates; a
+source-stage match alone does not admit a node. The separate opt-in
+`triton_h100_gluon_bridge_local_v5` catalog combines the descriptor transition,
+the Gluon MMA-v2 port, and a local coalesced-layout action for the fixed GEMM
+tensor strides. The local action is eligible only when the parent's named
+A/B/output `BlockedLayout` orders require correction. Its edit guard permits
+only those three axis-order values to change and requires AST identity for the
+rest of the source. A rejected edit consumes `B_gen`, is logged as
+`STRATEGY_MISMATCH`, and never reaches GPU evaluation. This guard does not
+replace compilation or correctness checks and does not alter PUCT, widening,
+UCB, backup, or root-normalized reward. The fixed-stride orders are evidence
+for this benchmark, not a universal layout rule for other kernels.
+The separate opt-in `triton_h100_gluon_bridge_local_v8` catalog gives the
+descriptor and pointer-load MMA-v2 transitions more explicit API and layout
+constraints without supplying complete generated source. Stage classification
+may follow descriptor constructor bindings in `launch` through the kernel-call
+arguments to a descriptor `.load`; source-stage acceptance remains only a
+pre-GPU guard. Ordinary compilation, correctness, and timing gates still
+decide node admission, and failed repairs consume `B_gen`.
+A separate opt-in serial single-CTA TMA/WGMMA action, versioned in
+`triton_h100_gluon_bridge_local_v16`, may validate its required
+Gluon API pattern before GPU compilation. This bounded static guard reports
+recognized descriptor, shared-memory, TMA, barrier, dtype, and accumulator-wait API
+mismatches together so the ordinary repair call can address them. A rejected
+candidate consumes `B_gen` and is recorded as `STRATEGY_MISMATCH`; the guard
+does not establish correctness, resource legality, or performance. The
+compile, correctness, and timing gates remain mandatory for a child node.
+For the serial action, the barrier's expected byte count must sum
+`nbytes_per_cta` from the same two descriptor parameters passed to the
+operand `tma.async_load` calls. The guard compares those bindings rather than
+requiring the literal parameter names `a_desc` and `b_desc`; the host launcher
+may pass its descriptor objects under different kernel parameter names.
+The repair prompt includes a bounded copy of the guard's rejection detail.
+The separate opt-in `triton_h100_gluon_bridge_local_v17` catalog may apply a
+three-slot TMA prefetch and one-outstanding-WGMMA schedule to a valid
+single-CTA Gluon parent. Its static source guard requires the distinct
+three-slot shared/barrier pattern, initial prefetch, guarded ring refill,
+descriptor byte counts, and wait-one/final-drain forms before GPU evaluation.
+It does not prove synchronization safety, correctness, resource legality, or
+speed. Every generation or repair call consumes `B_gen`; only the ordinary
+compile, correctness, and measurement gates can admit the pipelined child.
+The v18 revision clarifies scalar shared/barrier indexing and accepts both
+static-loop and three explicit constant-index barrier initialization forms;
+list-valued `.index([slot])` is rejected before GPU compilation.
+The opt-in `triton_h100_combined_v19` catalog adds a pure-Triton branch beside
+the v18 staged Gluon branch. Its first action changes the packaged pointer
+kernel to a pointer-advancing K loop with a 128×128×64 tile, eight warps, and
+three stages while preserving the Section 50 ABI and physical B strides. Its
+second action is eligible only for that bounded source family and permits
+only the launch `BN` literal to change from 128 to 256; an AST comparison
+rejects any other edit before GPU evaluation. This explicit tile/warp pairing
+uses the measured H100 register/spill cliff as local evidence, not a rule for
+other shapes or GPUs. Static guards establish action fidelity only. Rejected
+generation/repair calls consume `B_gen`; compile, correctness, and measured
+latency still govern node admission and reward. The combined catalog is a
+separate strategy-set arm and does not replace the v18 or original Triton
+catalogs.
+The v20 combined-catalog revision adds an opt-in dimension-specialization
+action for a valid pure-Triton 128×256×64, eight-warp, three-stage advancing-
+pointer parent with runtime M/N/K kernel parameters. It may change only
+those three JIT parameter annotations to `tl.constexpr`; an AST guard rejects
+any other source edit. A three-round same-worker H100 crossover of this
+isolated edit passed correctness and saved 45.344 µs median paired CUDA-event
+latency in the measured source family. That result is local evidence, not a
+general specialization rule or permission to bypass normal JIT, correctness,
+resource, and timing gates. Rejected generations and repairs consume `B_gen`
+as in the other opt-in actions.
+The `triton_h100_pure_local_v20` catalog is an exact three-action subset of
+the combined v20 catalog for a pure-Triton strategy-set control. Its action
+IDs, prompts, applicability, and static guards are identical; only the Gluon
+branch is absent. Comparisons with the v18 Gluon-only and combined v20
+catalogs must record configured and consumed `B_gen` separately because a
+finite action space can exhaust before the configured cap. This control does
+not change search selection or candidate-validity semantics.
+The combined v20 catalog's descriptor and Gluon actions require a worker
+image with the Triton 3.9 descriptor and Gluon APIs used by its prompts.
+Experiment runners must check the worker's recorded Triton version before
+generation. A missing API is an environment compatibility failure for that
+catalog, not evidence about the strategy's search value. This preflight does
+not change candidate admission, budget accounting, or MCTS selection.
+An opt-in `triton_h100_gluon_local_v1` experiment may start from an explicitly
+named, previously validated single-CTA Gluon source rather than the packaged
+pointer-Triton root. Its local tile-traversal action allows a grouped one-
+dimensional program-ID mapping and matching launch-grid change. A static edit
+guard requires the group parameter, the changed grid, and AST identity outside
+those two edit regions; a mismatch consumes `B_gen` and receives
+`STRATEGY_MISMATCH` before GPU evaluation. The guard does not prove tile
+coverage or performance, so compile, correctness, and timing remain mandatory.
+The alternate root and its source hash must be recorded in run provenance;
+results cannot be presented as the packaged-root search reaching Gluon. PUCT,
+progressive widening, UCB, budget accounting, and valid-node rules are
+unchanged.
+For a pinned image that predates a local backend fix, an opt-in Nebius worker
+package overlay may run after worker acquisition and before root evaluation.
+The overlay bundle hash is recorded in run provenance, and a failed overlay
+releases the worker. This preparation step consumes no `B_gen` and does not
+change MCTS selection or candidate evaluation semantics.
+For the local grouped-traversal action, later widening prompts may include
+the accepted sibling group sizes, source hashes, and measured medians. This
+bounded context helps request a distinct realization; it does not change PUCT,
+progressive widening, UCB, or budget accounting. The static edit guard also
+preserves the source module docstring so syntactically different copies of the
+same mapping do not enter the tree solely through that omission.
 The first Triton compiler-summary experiment uses compiler-reported registers
 per thread, static shared-memory bytes, and Triton `n_spills`, plus bounded
 static PTX instruction-site counts for tensor, memory, barrier, and control
@@ -3568,6 +3740,67 @@ paired seeds (0, 1, 2), and `B_gen=10` per arm. Analyze best verified latency,
 valid-candidate rate, and strategy/edit patterns. Any Source-line, SASS,
 dataflow, or hardware-graph addition is a later arm, not part of this first
 2-by-2 comparison.
+
+## 50.1 Planned Triton H100 search and context matrix
+
+The research target crosses allowed source language (pure Triton or Triton
+with Gluon transitions), search algorithm (MCTS or sequential), action policy
+(explicit catalog or freeform), H100 hardware-context level, compiler-summary
+level, NCU profile visibility/metric set, and validated dataflow view. The
+concrete arms, present implementation boundaries, validation gates, and
+comparison controls are recorded in
+`docs/experiments/triton-h100-ablation-matrix.md`. This paragraph does not
+enable unsupported arms or change Milestone A MCTS semantics. The default
+packaged Triton root and Section 50 workload/measurement contract are shared
+across comparisons. A Triton freeform MCTS action requires its own reserved
+ID and explicit implementation specification; Section 48's `freeform_cuda`
+is CUDA-only. A catalog-plus-freeform hybrid is a separate action-policy arm.
+
+An opt-in pure-Triton sequential arm may use the same packaged root and
+verification pipeline. Its freeform mode accepts only source classified as
+pointer or descriptor `@triton.jit`; its explicit-menu mode filters a
+pure-Triton catalog by current-parent applicability, requires one chosen
+action ID, and applies that action's candidate-stage and source-edit guard
+before GPU evaluation. The chosen ID remains locked across repairs. All
+generation and repair calls consume `B_gen`; only compile-successful,
+correctness-passing, measured candidates advance the linear current state,
+including valid local slowdowns. The best verified state is tracked
+separately. With no applicable menu action, the sequential arm stops even if
+its configured `B_gen` cap remains. This is a separate search algorithm, not
+a change to global MCTS selection or budgets. Triton dataflow prompt views
+remain unavailable until validated.
+Both Triton prompt paths serialize the `launch(A,B,C,M,N,K)` ABI rather than
+the CUDA root ABI and may show a correctness-passing, same-worker cuBLAS
+timing as a performance reference. Sequential's JSON response contract,
+selected-ID/hypothesis fields, and recent-feedback field differ from the
+fresh-source MCTS prompt and must be reported when comparing search arms.
+
+An opt-in, freeform-only pure-Triton MCTS arm uses the reserved action ID
+`freeform_triton`. It is selected by the ordinary PUCT policy and widened by
+the ordinary Section 11 formula; existing realizations use ordinary UCB. The
+action is eligible only at pointer/descriptor `@triton.jit` parents. Its
+fresh-session prompt asks for any optimization of the current source under
+the Section 50 workload and ABI, without a catalog strategy choice. Generated
+source must classify as pointer or descriptor `@triton.jit` before GPU
+evaluation; Gluon or unknown stages are recorded as `STRATEGY_MISMATCH` and
+consume `B_gen`, including repairs. Only compile-successful,
+correctness-passing, benchmark-measured candidates become nodes, and valid
+local slowdowns remain eligible. The run records the freeform action ID,
+prompt version, exact prompt/output, model and context provenance. This
+freeform-only arm is separate from catalog-only MCTS and any future hybrid
+catalog-plus-freeform arm; it does not alter Milestone A tree semantics.
+
+Triton/Gluon dataflow is an explicit context axis with `none`, `counts`,
+`paths`, bounded `subgraph`, and `full` adjacency levels. Non-`none` views
+remain unavailable until per-node source/PTX/SASS reconciliation validates
+tensor orientation, descriptors, shared-slot lifetime, paths, and output
+ownership across unlike kernels. Static graph edges must not be presented as
+measured per-tensor traffic or dynamic path counts. NCU profile collection
+and prompt visibility are independent experimental choices. A full Cartesian
+product is not required; matched comparisons should vary one context factor
+at a time before testing selected interactions. Every run must record exact
+prompt/context provenance, algorithm and action policy, root, model, seed,
+`B_gen`, worker image, metric set, and timing contract.
 
 Persist the worker's root and vendor calibration in the run's SQLite trace
 before generation, including correctness and timing evidence. The Triton

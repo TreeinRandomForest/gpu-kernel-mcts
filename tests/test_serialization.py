@@ -39,6 +39,8 @@ def test_complete_evaluation_serializes_to_json() -> None:
             1.5,
             {"n=1": 1.5},
             gpu_operating_state={"before": {"temperature.gpu": 55.0}},
+            timing_contract="triton_h100_cuda_graph_v1",
+            diagnostics={"ordinary_launch_median_us": 3.0},
         ),
         metadata={"registers": 32},
         compile_status=CompileStatus.SUCCESS,
@@ -61,6 +63,11 @@ def test_complete_evaluation_serializes_to_json() -> None:
     assert serialized["benchmark"]["gpu_operating_state"] == {
         "before": {"temperature.gpu": 55.0}
     }
+    assert serialized["benchmark"]["timing_contract"] == "triton_h100_cuda_graph_v1"
+    assert serialized["benchmark"]["diagnostics"] == {"ordinary_launch_median_us": 3.0}
+    recovered = deserialize_evaluation(serialized)
+    assert recovered.benchmark.timing_contract == "triton_h100_cuda_graph_v1"
+    assert recovered.benchmark.diagnostics["ordinary_launch_median_us"] == 3.0
     assert serialized["launch_config"] == {"block": [256, 1, 1]}
     assert serialized["compilation"] == {
         "artifact_id": "artifact",

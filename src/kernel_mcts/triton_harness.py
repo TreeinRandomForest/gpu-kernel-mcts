@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
+
+
+GRAPH_TIMING_CONTRACT = "triton_h100_cuda_graph_v1"
 
 
 def _candidate(path: Path):
@@ -31,6 +35,26 @@ def _inputs(m: int, n: int, k: int, seed: int):
     return a, b, c
 
 
+def _event_timings(torch, call, count: int) -> list[float]:
+    timings = []
+    for _ in range(count):
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        start.record()
+        call()
+        end.record()
+        end.synchronize()
+        timings.append(start.elapsed_time(end) * 1000.0)
+    return timings
+
+
+def _compiled_cubin_hash(compiled) -> str:
+    asm = getattr(compiled, "asm", None)
+    if not isinstance(asm, dict) or not isinstance(asm.get("cubin"), bytes):
+        raise ValueError("launch must return a Triton CompiledKernel with cubin")
+    return hashlib.sha256(asm["cubin"]).hexdigest()
+
+
 def run(arguments: argparse.Namespace) -> dict[str, object]:
     import torch
 
@@ -41,9 +65,8 @@ def run(arguments: argparse.Namespace) -> dict[str, object]:
     compiled = launch(a, b, c, arguments.M, arguments.N, arguments.K)
     torch.cuda.synchronize()
     if arguments.mode == "compile":
-        asm = getattr(compiled, "asm", None)
-        if not isinstance(asm, dict) or not isinstance(asm.get("cubin"), bytes):
-            raise ValueError("launch must return a Triton CompiledKernel with cubin")
+        _compiled_cubin_hash(compiled)
+        asm = compiled.asm
         name = getattr(compiled, "name", None)
         if not isinstance(name, str) or not name or len(name) > 256:
             raise ValueError("launch must return a named Triton CompiledKernel")
@@ -85,16 +108,36 @@ def run(arguments: argparse.Namespace) -> dict[str, object]:
                 torch.cuda.nvtx.range_pop()
             torch.cuda.synchronize()
             return {"status": "ok"}
-        timings = []
-        for _ in range(arguments.measurements):
-            start = torch.cuda.Event(enable_timing=True)
-            end = torch.cuda.Event(enable_timing=True)
-            start.record()
-            launch(a, b, c, arguments.M, arguments.N, arguments.K)
-            end.record()
-            end.synchronize()
-            timings.append(start.elapsed_time(end) * 1000.0)
-        return {"status": "ok", "timings_us": timings}
+        expected = (arguments.artifact_dir / "kernel.cubin").read_bytes()
+        if _compiled_cubin_hash(compiled) != hashlib.sha256(expected).hexdigest():
+            raise ValueError("benchmark cubin differs from compiled artifact")
+        call = lambda: launch(a, b, c, arguments.M, arguments.N, arguments.K)
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            captured = call()
+        if _compiled_cubin_hash(captured) != _compiled_cubin_hash(compiled):
+            raise ValueError("captured graph uses a different compiled cubin")
+        reference = a @ b
+        c.zero_()
+        graph.replay()
+        torch.cuda.synchronize()
+        if not bool(torch.allclose(c, reference, rtol=arguments.rtol,
+                                   atol=arguments.atol)):
+            raise ValueError("captured graph failed correctness")
+        for _ in range(arguments.warmups):
+            graph.replay()
+        torch.cuda.synchronize()
+        timings = _event_timings(torch, graph.replay, arguments.measurements)
+        try:
+            ordinary_diagnostics = {
+                "ordinary_launch_timings_us": _event_timings(
+                    torch, call, arguments.measurements),
+            }
+        except Exception as error:
+            ordinary_diagnostics = {"ordinary_launch_error_type": type(error).__name__}
+        return {"status": "ok", "timing_contract": GRAPH_TIMING_CONTRACT,
+                "timings_us": timings,
+                "diagnostics": ordinary_diagnostics}
     raise ValueError(f"unsupported mode {arguments.mode!r}")
 
 

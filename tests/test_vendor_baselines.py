@@ -6,6 +6,7 @@ from importlib.resources import files
 
 from kernel_mcts.benchmarks import BF16_GEMM_WORKLOAD
 from kernel_mcts.vendor_baselines import VendorBaselineConfig, VendorBaselineSuite
+from kernel_mcts.triton_harness import GRAPH_TIMING_CONTRACT
 
 
 def test_cutlass_baseline_matches_workload_tensor_layouts() -> None:
@@ -33,6 +34,10 @@ class FakeRunner:
             if value.startswith("--implementation=")
         )
         median = 1.0 if implementation == "cublas" else 2.0
+        timing_contract = next(
+            value.split("=", 1)[1] for value in command
+            if value.startswith("--timing-contract=")
+        )
         return subprocess.CompletedProcess(
             command,
             0,
@@ -43,6 +48,10 @@ class FakeRunner:
                     "maximum_error": 0.0,
                     "mean_error": 0.0,
                     "timings_us": [median, median, median],
+                    "timing_contract": timing_contract,
+                    "ordinary_launch_timings_us": (
+                        [median + 3.0] * 3 if timing_contract == GRAPH_TIMING_CONTRACT else []
+                    ),
                 }
             ),
             "",
@@ -80,3 +89,18 @@ def test_vendor_baselines_share_workload_and_measurement_protocol(tmp_path) -> N
         assert "--warmups=2" in command
         assert "--measurements=3" in command
         assert "--seed=7" in command
+        assert "--timing-contract=cuda_event_per_call_v1" in command
+
+
+def test_triton_vendor_calibration_uses_graph_contract(tmp_path) -> None:
+    cutlass = tmp_path / "cutlass"
+    (cutlass / "include").mkdir(parents=True)
+    results = VendorBaselineSuite(
+        VendorBaselineConfig(artifact_root=tmp_path / "artifacts", cutlass_path=cutlass,
+                             measurement_count=3, timing_contract=GRAPH_TIMING_CONTRACT),
+        runner=FakeRunner(),
+    ).run(BF16_GEMM_WORKLOAD)
+    for result in results.values():
+        benchmark = result["benchmark"]
+        assert benchmark.timing_contract == GRAPH_TIMING_CONTRACT
+        assert benchmark.diagnostics["ordinary_launch_median_us"] > benchmark.median_us
