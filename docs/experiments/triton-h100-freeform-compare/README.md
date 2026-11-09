@@ -1,5 +1,9 @@
 # Pure-Triton freeform MCTS versus sequential search
 
+The results below use the historical per-call CUDA-event reward. A separate
+[Graph-replay cohort](../triton-h100-graph-search/README.md) reruns paired
+arms under `triton_h100_cuda_graph_v1`; do not pool the two latency curves.
+
 Six completed GLM-5.3 H100 runs compare freeform MCTS with freeform sequential
 refinement at configured and consumed `B_gen=25`, seeds 0–2. Both use the
 packaged 4096³ BF16 GEMM root, the same pinned worker image and local package

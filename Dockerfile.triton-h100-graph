@@ -1,0 +1,9 @@
+FROM docker.io/saarora/gpu-kernel-mcts@sha256:22eb914d5041a988653d9d19a298d6bdb64f178f175563743d0af4591cd75ee5
+
+WORKDIR /opt/kernel-mcts
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN python -m pip install --no-cache-dir --no-deps --force-reinstall . \
+    && python -c "import triton; assert triton.__version__ == '3.9.0'"
+
+CMD ["python", "-m", "kernel_mcts.worker_service"]

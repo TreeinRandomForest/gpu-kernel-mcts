@@ -113,6 +113,11 @@ def main() -> None:
     parser.add_argument("--budget", type=int, default=25)
     parser.add_argument("--arms", nargs="+", choices=("seq", "mcts", "combined"))
     parser.add_argument("--label", default="")
+    parser.add_argument("--image", default=IMAGE,
+                        help="worker image; use an immutable digest for a recorded comparison")
+    parser.add_argument("--output-dir", type=Path, default=OUTPUT)
+    parser.add_argument("--no-overlay", action="store_true",
+                        help="use the package baked into the pinned worker image")
     parser.add_argument("--stall-timeout", type=float, default=360)
     arguments = parser.parse_args()
     if (arguments.budget < 1 or arguments.stall_timeout <= 0
@@ -122,25 +127,27 @@ def main() -> None:
         parser.error("label must be a short alphanumeric value")
     if arguments.arms and len(set(arguments.arms)) != len(arguments.arms):
         parser.error("arms must be unique")
+    if arguments.no_overlay and image_digest_from_reference(arguments.image) is None:
+        parser.error("--no-overlay requires a digest-pinned --image")
     base = os.environ.get("ENMAAS_BASE_URL", "").rstrip("/")
     if not base.startswith("https://") or not os.environ.get("ENMAAS_KEY"):
         parser.error("ENMAAS_BASE_URL and ENMAAS_KEY are required")
     url = base if base.endswith("/messages") else f"{base}/messages"
-    OUTPUT.mkdir(exist_ok=True)
+    arguments.output_dir.mkdir(parents=True, exist_ok=True)
     repository = capture_repository_state(ROOT)
-    bundle = package_bundle(ROOT)
-    bundle_hash = hashlib.sha256(bundle).hexdigest()
+    bundle = None if arguments.no_overlay else package_bundle(ROOT)
+    bundle_hash = hashlib.sha256(bundle).hexdigest() if bundle is not None else None
     root = load_triton_bf16_gemm_root()
     root_hash = hashlib.sha256(root.source.encode()).hexdigest()
     combined_strategies = parse_strategies(load_data(COMBINED_CATALOG))
     combined_catalog_hash = hashlib.sha256(COMBINED_CATALOG.read_bytes()).hexdigest()
     config = NebiusConfig(
-        image=IMAGE, project_id=PROJECT_ID, subnet_id=SUBNET_ID,
+        image=arguments.image, project_id=PROJECT_ID, subnet_id=SUBNET_ID,
         ssh_public_key=Path.home() / ".ssh/nebius.pub",
         ssh_private_key=Path.home() / ".ssh/nebius", username="sanjay",
         startup_timeout_seconds=1200, backend="triton_h100",
         project_git_commit=repository.commit, project_dirty_tree=repository.dirty,
-        container_digest=image_digest_from_reference(IMAGE),
+        container_digest=image_digest_from_reference(arguments.image),
     )
     provider = create_nebius_provider(
         config, readiness_progress=lambda stage, elapsed: print(
@@ -158,7 +165,7 @@ def main() -> None:
         )
         suffix = f"-{arguments.label}" if arguments.label else ""
         paths = {
-            arm: OUTPUT / f"{arm}-glm53-s{seed}-b{arguments.budget}{suffix}.sqlite"
+            arm: arguments.output_dir / f"{arm}-glm53-s{seed}-b{arguments.budget}{suffix}.sqlite"
             for arm in order
         }
         for path in paths.values():
@@ -166,7 +173,8 @@ def main() -> None:
                 parser.error(f"refusing to overwrite trace: {path}")
         print(f"starting seed={seed}, order={order}", flush=True)
         with provider.worker_for_run(hardware) as worker:
-            overlay_nebius_worker(worker, config.ssh_private_key, config.username, bundle)
+            if bundle is not None:
+                overlay_nebius_worker(worker, config.ssh_private_key, config.username, bundle)
             reused = ReusedWorkerProvider(worker)
             for arm in order:
                 client = MessagesClient(MessagesConfig(
@@ -185,10 +193,12 @@ def main() -> None:
                 else:
                     generator = LLMKernelGenerator(client)
                 metadata = {
-                    "comparison": "triton_h100_search_b25_v1",
+                    "comparison": ("triton_h100_graph_search_v1" if arguments.no_overlay
+                                   else "triton_h100_search_b25_v1"),
                     "comparison_arm": arm,
-                    "worker_image": IMAGE,
+                    "worker_image": arguments.image,
                     "worker_code_overlay_sha256": bundle_hash,
+                    "worker_code_overlay": bundle is not None,
                     "root_source_sha256": root_hash,
                     "messages_thinking": "disabled",
                     "messages_timeout_seconds": 300,

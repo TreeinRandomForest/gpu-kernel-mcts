@@ -168,9 +168,15 @@ standalone gap-closing GPU experiments while building this path.
   CUTLASS, one-CTA Gluon, and persistent Gluon correctness and Graph timing
   on one worker. See
   `docs/experiments/triton-h100-graph-contract-validation/README.md`.
-- [ ] Rebuild the pinned Triton worker image with the Graph contract, then
-  rerun paired search arms under that contract. Keep their reward curves
-  separate from historical per-call CUDA-event runs.
+- [x] Build and publish a digest-pinned Triton 3.9 worker image with the Graph
+  contract. An end-to-end `B_gen=1` smoke and two same-worker freeform
+  sequential/MCTS seed pairs at `B_gen=25` completed; all five SQLite traces
+  passed the timing-contract audit. Keep their reward curves separate from
+  historical per-call CUDA-event runs. See
+  `docs/experiments/triton-h100-graph-search/README.md`.
+- [ ] Remeasure the four Graph-search winners and cuBLAS in randomized,
+  repeated same-worker rounds. Resolve the few-microsecond ranking and
+  quantify drift before treating the near-cuBLAS gap as stable.
 - [ ] Share a bounded, provenance-preserving parent-context builder across
   Triton sequential and MCTS prompts: measured NCU, compiler/PTX/SASS,
   architectural H100 graph, and explicitly validated dataflow views.
@@ -614,8 +620,19 @@ Section 50 of `spec.md` defines this precursor to the MI355X workload.
   inspect the exact Triton prompt and recorded calibration. The `B_gen=3`
   run with reasoning disabled reached 199.712 µs; see
   `docs/experiments/triton-h100-glm53-smoke-2026-10-28.md`.
-- [ ] Use GLM-5.3 throughout equal-budget context ablations so model choice
-  stays fixed; record the Messages thinking mode in each arm.
+- [x] Use GLM-5.3 throughout equal-budget context ablations so model choice
+  stays fixed; record the Messages thinking mode in each arm. The CUDA Graph
+  `B_gen=10`, three-seed compiler × `spill_v1` NCU prompt screen and the
+  paired strategy/history behavior screen are in
+  `docs/experiments/triton-h100-graph-ablations/README.md`. The context
+  ranking changes by seed; three gateway failures are recorded separately.
+  A separate three-seed freeform sequential depth screen compared the best
+  by call 10 and call 25 within each run: one seed improved by 6.192 µs to
+  176.832 µs, while two seeds did not improve after call 10.
+- [ ] Follow up the Graph behavior screen with a broader pure-Triton action
+  catalog or an explicit freeform fallback: catalog sequential exhausted its
+  applicable actions after 2, 3, and 7 calls. Repeat close winners on one
+  worker and align MCTS/sequential response formats before cross-method claims.
 - [ ] Reuse the validated Triton plumbing for the separate MI355X Section 49
   workload, then add ROCm-specific JIT, profiling, and shape coverage.
 

@@ -1,0 +1,10 @@
+{
+  "arm": "mcts",
+  "best_median_us": 177.59999632835388,
+  "best_source": "mcts-glm53-s1-b25-graphv1-best.py",
+  "budget": 25,
+  "generations": 25,
+  "run_id": "7c8e6363-44d3-4b66-a09f-08ad37ce9d8b",
+  "seed": 1,
+  "trace": "mcts-glm53-s1-b25-graphv1.sqlite"
+}
